@@ -1,0 +1,9 @@
+.DS_Store
+.env
+.idea
+/other_apps
+/AWS_source_code/lambda-function/
+/samples/logserv/
+/venv/
+/pem
+*/output/
