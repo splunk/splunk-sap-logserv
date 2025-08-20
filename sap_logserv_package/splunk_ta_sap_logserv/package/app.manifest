@@ -40,7 +40,17 @@
             "uri": ""
         }
     },
-    "dependencies": null,
+    "dependencies": {
+        "Splunk_TA_nix": {
+            "version": ">=10.0.0"
+        },
+        "Splunk_TA_isc-bind": {
+            "version": ">=2.0.0"
+        },
+        "Splunk_TA_squid": {
+            "version": ">=2.0.0"
+        }
+    },
     "tasks": null,
     "inputGroups": null,
     "incompatibleApps": null,

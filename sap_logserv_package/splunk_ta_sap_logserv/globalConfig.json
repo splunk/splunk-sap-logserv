@@ -5,6 +5,6 @@
         "displayName": "Splunk TA for SAP LogServ",
         "version": "0.0.1",
         "schemaVersion": "0.0.9",
-        "_uccVersion": "5.69.1"
+        "isVisible": true
     }
 }
