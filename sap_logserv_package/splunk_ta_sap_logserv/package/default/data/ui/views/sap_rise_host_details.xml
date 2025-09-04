@@ -52,7 +52,7 @@
 			},
 			"name": "host_base_search"
 		},
-		"ds_YluUy6m2": {
+		"ds_uMYqfgoj_ds_YluUy6m2": {
 			"type": "ds.chain",
 			"options": {
 				"extend": "ds_IwSQQBle",
@@ -60,29 +60,13 @@
 			},
 			"name": "host_event_count_chart"
 		},
-		"ds_j5k3lYKk": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_IwSQQBle",
-				"query": "| stats count by sourcetype, source"
-			},
-			"name": "host_source_flow"
-		},
-		"ds_uMYqfgoj_ds_YluUy6m2": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_IwSQQBle",
-				"query": "| timechart span=1d count by sourcetype"
-			},
-			"name": "host_event_count_chart copy 1"
-		},
 		"ds_vLNQtFCW_ds_j5k3lYKk": {
 			"type": "ds.chain",
 			"options": {
 				"extend": "ds_IwSQQBle",
 				"query": "| stats count by sourcetype, source"
 			},
-			"name": "host_source_flow copy 1"
+			"name": "host_source_flow"
 		}
 	},
 	"defaults": {
