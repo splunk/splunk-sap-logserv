@@ -3,6 +3,7 @@
 .idea
 /venv/
 /pem
-*/output/
+*output/
 *.tar.gz
+
 
