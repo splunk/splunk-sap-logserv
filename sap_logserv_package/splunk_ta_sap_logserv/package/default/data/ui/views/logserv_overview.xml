@@ -1,6 +1,6 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP Logserv data pipeline Overview</label>
+    <label>SAP Logserv Data Pipeline Overview</label>
     <description>Data pipeline overview from last 30 days</description>
     <definition><![CDATA[
 {
@@ -19,7 +19,9 @@
 			},
 			"title": "SAP RISE host event count",
 			"options": {
-				"backgroundColor": "transparent"
+				"backgroundColor": "transparent",
+				"y": "> primary | frameBySeriesNames('hec53v013858','hec53v013859','hec53v013868','hec53v052420','hec53v052421','hec53v052422','hec53v052427','hec53v052428','hec53v052470','hec53v052931','hec53v052932','_span','_spandays')",
+				"yAxisScale": "log"
 			}
 		},
 		"viz_TWx0q4MO": {
@@ -40,11 +42,11 @@
 			"options": {
 				"nodeWidth": 202,
 				"nodeSpacingY": 21,
-				"nodeSpacingX": 41,
-				"showValueCounts": false,
+				"nodeSpacingX": 220,
 				"nodeHeight": 23,
 				"backgroundColor": "transparent",
-				"nodeColor": "#0877a6"
+				"nodeColor": "#0877a6",
+				"showValueCounts": false
 			}
 		},
 		"viz_nraRnnPr": {
@@ -96,7 +98,7 @@
 				{
 					"type": "drilldown.linkToDashboard",
 					"options": {
-						"app": "splunk_ta_sap_logserv",
+						"app": "sap_logserv_add_on",
 						"dashboard": "sap_rise_host_details",
 						"newTab": true,
 						"tokens": [
@@ -209,7 +211,7 @@
 	},
 	"inputs": {},
 	"description": "Data pipeline overview from last 30 days",
-	"title": "SAP Logserv data pipeline Overview",
+	"title": "SAP Logserv Data Pipeline Overview",
 	"layout": {
 		"tabs": {
 			"items": [
@@ -223,16 +225,28 @@
 			"layout_1": {
 				"type": "absolute",
 				"options": {
-					"height": 950
+					"height": 950,
+					"width": 1600,
+					"display": "fit-to-width"
 				},
 				"structure": [
+					{
+						"item": "viz_TWx0q4MO",
+						"type": "block",
+						"position": {
+							"x": 450,
+							"y": 310,
+							"w": 1140,
+							"h": 600
+						}
+					},
 					{
 						"item": "viz_pZLsO3n7",
 						"type": "block",
 						"position": {
 							"x": 0,
 							"y": 0,
-							"w": 1200,
+							"w": 1590,
 							"h": 300
 						}
 					},
@@ -242,18 +256,8 @@
 						"position": {
 							"x": 0,
 							"y": 0,
-							"w": 1200,
+							"w": 1580,
 							"h": 300
-						}
-					},
-					{
-						"item": "viz_TWx0q4MO",
-						"type": "block",
-						"position": {
-							"x": 450,
-							"y": 310,
-							"w": 750,
-							"h": 600
 						}
 					},
 					{
@@ -262,7 +266,7 @@
 						"position": {
 							"x": 450,
 							"y": 310,
-							"w": 750,
+							"w": 1130,
 							"h": 600
 						}
 					},

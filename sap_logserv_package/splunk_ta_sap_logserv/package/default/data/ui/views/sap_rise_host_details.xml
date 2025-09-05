@@ -102,7 +102,7 @@
 			"type": "input.timerange",
 			"options": {
 				"token": "global_time",
-				"defaultValue": "-24h@h,now"
+				"defaultValue": "-30d@d,now"
 			},
 			"title": "Global Time Range"
 		}
@@ -122,16 +122,28 @@
 			"layout_1": {
 				"type": "absolute",
 				"options": {
-					"height": 840
+					"height": 840,
+					"width": 1600,
+					"display": "fit-to-width"
 				},
 				"structure": [
+					{
+						"item": "viz_gVgfxMgi",
+						"type": "block",
+						"position": {
+							"x": 0,
+							"y": 310,
+							"w": 1590,
+							"h": 500
+						}
+					},
 					{
 						"item": "viz_EPUhCyRf",
 						"type": "block",
 						"position": {
 							"x": 0,
 							"y": 0,
-							"w": 1200,
+							"w": 1590,
 							"h": 300
 						}
 					},
@@ -141,18 +153,8 @@
 						"position": {
 							"x": 0,
 							"y": 0,
-							"w": 1200,
+							"w": 1580,
 							"h": 300
-						}
-					},
-					{
-						"item": "viz_gVgfxMgi",
-						"type": "block",
-						"position": {
-							"x": 0,
-							"y": 310,
-							"w": 1200,
-							"h": 500
 						}
 					},
 					{
@@ -161,8 +163,8 @@
 						"position": {
 							"x": 0,
 							"y": 310,
-							"w": 1200,
-							"h": 500
+							"w": 1590,
+							"h": 480
 						}
 					}
 				]
