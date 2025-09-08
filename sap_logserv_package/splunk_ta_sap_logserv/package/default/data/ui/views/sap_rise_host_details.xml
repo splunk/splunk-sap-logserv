@@ -16,7 +16,7 @@
 			"type": "splunk.column",
 			"title": "Host: $host_name$",
 			"dataSources": {
-				"primary": "ds_uMYqfgoj_ds_YluUy6m2"
+				"primary": "ds_EEjlHznx"
 			},
 			"options": {
 				"backgroundColor": "transparent"
@@ -32,7 +32,7 @@
 		"viz_b9aRU8GB": {
 			"type": "splunk.sankey",
 			"dataSources": {
-				"primary": "ds_vLNQtFCW_ds_j5k3lYKk"
+				"primary": "ds_hkx9Pl59"
 			},
 			"title": "Sourcetype mapping",
 			"options": {
@@ -41,32 +41,27 @@
 		}
 	},
 	"dataSources": {
-		"ds_IwSQQBle": {
+		"ds_EEjlHznx": {
 			"type": "ds.search",
 			"options": {
-				"query": "`sap_logserv_idx_macro` host=$host_name$\n| fields source, sourcetype, host, _time",
+				"query": "`sap_logserv_idx_macro` host=$host_name$\r\n| fields source, sourcetype, host\r\n| timechart span=1d count by sourcetype",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
 				}
 			},
-			"name": "host_base_search"
+			"name": "Search_1"
 		},
-		"ds_uMYqfgoj_ds_YluUy6m2": {
-			"type": "ds.chain",
+		"ds_hkx9Pl59": {
+			"type": "ds.search",
 			"options": {
-				"extend": "ds_IwSQQBle",
-				"query": "| timechart span=1d count by sourcetype"
+				"query": "`sap_logserv_idx_macro` host=$host_name$\r\n| fields source, sourcetype, host\r\n| stats count by sourcetype, source",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
 			},
-			"name": "host_event_count_chart_search"
-		},
-		"ds_vLNQtFCW_ds_j5k3lYKk": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_IwSQQBle",
-				"query": "| stats count by sourcetype, source"
-			},
-			"name": "host_source_flow_search"
+			"name": "Search_2"
 		}
 	},
 	"defaults": {
