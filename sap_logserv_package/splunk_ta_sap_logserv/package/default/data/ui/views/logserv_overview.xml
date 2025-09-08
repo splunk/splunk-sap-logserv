@@ -142,7 +142,7 @@
 		"ds_gn5P2213": {
 			"name": "host_latest_activity",
 			"options": {
-				"query": "`sap_logserv_idx_macro` \r\n| fields source, sourcetype, host, _time\r\n| dedup host, source, sourcetype\r\n| dedup host\r\n| fields host, _time\r\n| stats count by host, _time\r\n| eval _time = now() - _time \r\n| sort + _time\r\n| eval elapsed_time = case(_time < 60, _time.\" seconds ago\",\r\n_time < 3600, round(_time/60).\" minutes ago\",\r\n_time < 86400, round(_time/3600).\" hours ago\",\r\ntrue(), round(_time/86400).\" days ago\")\r\n| dedup host, elapsed_time\r\n| table host, elapsed_time\r\n| rename host AS \"Host\", elapsed_time AS \"Latest Activity\"",
+				"query": "`sap_logserv_idx_macro` \r\n| fields source, sourcetype, host, _time\r\n| dedup host, source, sourcetype\r\n| dedup host\r\n| fields host, _time\r\n| stats count by host, _time\r\n| eval _time = now() - _time \r\n| sort + _time\r\n| eval elapsed_time = case(_time < 60, _time.\" seconds ago\",\r\n_time < 3600, round(_time/60).\" minutes ago\",\r\n_time < 86400, round(_time/3600).\" hours ago\",\r\ntrue(), round(_time/86400).\" days ago\")\r\n| dedup host\r\n| table host, elapsed_time\r\n| rename host AS \"Host\", elapsed_time AS \"Latest Activity\"",
 				"queryParameters": {
 					"earliest": "$tr_B1kLgEmW.earliest$",
 					"latest": "$tr_B1kLgEmW.latest$"
