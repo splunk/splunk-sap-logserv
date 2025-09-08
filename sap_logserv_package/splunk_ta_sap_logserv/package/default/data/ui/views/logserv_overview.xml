@@ -1,102 +1,101 @@
 
 <dashboard version="2" theme="dark">
     <label>SAP Logserv Data Pipeline Overview</label>
-    <description>Data pipeline overview from last 30 days</description>
+    <description>Data pipeline overview</description>
     <definition><![CDATA[
 {
+	"title": "SAP Logserv Data Pipeline Overview",
+	"description": "Data pipeline overview",
+	"inputs": {
+		"input_xV9baORe": {
+			"options": {
+				"defaultValue": "-30d@d,now",
+				"token": "tr_B1kLgEmW"
+			},
+			"title": "Global Time Range",
+			"type": "input.timerange"
+		}
+	},
+	"defaults": {
+		"dataSources": {
+			"ds.search": {
+				"options": {
+					"queryParameters": {
+						"earliest": "$global_time.earliest$",
+						"latest": "$global_time.latest$"
+					}
+				}
+			}
+		}
+	},
 	"visualizations": {
-		"viz_pZLsO3n7": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6"
-			}
-		},
-		"viz_RaSQZQg0": {
-			"type": "splunk.line",
-			"dataSources": {
-				"primary": "ds_x5TFDlm9_ds_gxQTUbyK"
-			},
-			"title": "SAP RISE host event count",
-			"options": {
-				"backgroundColor": "transparent",
-				"y": "> primary | frameBySeriesNames('hec53v013858','hec53v013859','hec53v013868','hec53v052420','hec53v052421','hec53v052422','hec53v052427','hec53v052428','hec53v052470','hec53v052931','hec53v052932','_span','_spandays')",
-				"yAxisScale": "log"
-			}
-		},
-		"viz_TWx0q4MO": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6"
-			}
-		},
 		"viz_7NM08jn4": {
-			"type": "splunk.linkgraph",
 			"dataSources": {
-				"primary": "ds_5anrJzix_ds_E237l4zD"
+				"primary": "ds_qvNrhKle"
 			},
-			"showProgressBar": false,
-			"showLastUpdated": false,
-			"title": "Source to sourcetype mapping",
 			"options": {
-				"nodeWidth": 202,
-				"nodeSpacingY": 21,
-				"nodeSpacingX": 220,
-				"nodeHeight": 23,
 				"backgroundColor": "transparent",
 				"nodeColor": "#0877a6",
+				"nodeHeight": 23,
+				"nodeSpacingX": 220,
+				"nodeSpacingY": 21,
+				"nodeWidth": 202,
 				"showValueCounts": false
-			}
-		},
-		"viz_nraRnnPr": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6"
-			}
-		},
-		"viz_Rr0ozI8N": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6"
-			}
+			},
+			"showLastUpdated": false,
+			"showProgressBar": false,
+			"title": "Source to sourcetype mapping",
+			"type": "splunk.linkgraph"
 		},
 		"viz_E6VoPgPK": {
-			"type": "splunk.singlevalue",
-			"title": "SAP RISE Active Hosts",
 			"dataSources": {
-				"primary": "ds_9q0Wbh4a_ds_FlqNQGID"
-			},
-			"options": {
-				"majorValue": "> sparklineValues | lastPoint()",
-				"trendValue": "> sparklineValues | delta(-2)",
-				"sparklineValues": "> primary | seriesByName('count(host)')",
-				"backgroundColor": "transparent"
-			},
-			"description": ""
-		},
-		"viz_YGJifJFJ": {
-			"type": "splunk.table",
-			"title": "SAP RISE host Latest Activity",
-			"dataSources": {
-				"primary": "ds_82WV7n8Q_ds_kbElziov"
+				"primary": "ds_mRjpSfGy"
 			},
 			"description": "",
 			"options": {
-				"tableFormat": {
-					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
-					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
-					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
-					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
-				},
-				"headerVisibility": "fixed",
-				"backgroundColor": "transparent"
+				"backgroundColor": "transparent",
+				"majorValue": "> sparklineValues | lastPoint()",
+				"sparklineDisplay": "off",
+				"sparklineValues": "> primary | seriesByName('host_count')",
+				"trendValue": "> sparklineValues | delta(-2)"
 			},
+			"title": "Active Hosts",
+			"type": "splunk.singlevalue"
+		},
+		"viz_RaSQZQg0": {
+			"dataSources": {
+				"primary": "ds_znDIWqYG"
+			},
+			"options": {
+				"backgroundColor": "transparent",
+				"xAxisTitleVisibility": "hide",
+				"y": "> primary | frameBySeriesNames('hec53v013858','hec53v013859','hec53v013868','hec53v052420','hec53v052421','hec53v052422','hec53v052427','hec53v052428','hec53v052470','hec53v052931','hec53v052932','_span','_spandays')",
+				"yAxisScale": "log"
+			},
+			"title": "Host Event Count",
+			"type": "splunk.line"
+		},
+		"viz_Rr0ozI8N": {
+			"options": {
+				"fillColor": "transparent",
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_TWx0q4MO": {
+			"options": {
+				"fillColor": "transparent",
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_YGJifJFJ": {
+			"dataSources": {
+				"primary": "ds_gn5P2213"
+			},
+			"description": "",
 			"eventHandlers": [
 				{
-					"type": "drilldown.linkToDashboard",
 					"options": {
 						"app": "sap_logserv_add_on",
 						"dashboard": "sap_rise_host_details",
@@ -107,213 +106,189 @@
 								"value": "row.Host.value"
 							}
 						]
-					}
+					},
+					"type": "drilldown.linkToDashboard"
 				}
-			]
+			],
+			"options": {
+				"backgroundColor": "transparent",
+				"headerVisibility": "fixed",
+				"tableFormat": {
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)"
+				}
+			},
+			"title": "Host Latest Activity",
+			"type": "splunk.table"
+		},
+		"viz_nraRnnPr": {
+			"options": {
+				"fillColor": "transparent",
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_pZLsO3n7": {
+			"options": {
+				"fillColor": "transparent",
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
 		}
 	},
 	"dataSources": {
-		"ds_kbElziov": {
-			"type": "ds.chain",
+		"ds_gn5P2213": {
+			"name": "host_latest_activity",
 			"options": {
-				"extend": "ds_kzavdy7f",
-				"query": "| dedup host\n| fields host, _time\n| stats count by host, _time\n| eval _time = now() - _time \n| sort + _time\n| eval elapsed_time = case(_time < 60, _time.\" seconds ago\",\n_time < 3600, round(_time/60).\" minutes ago\",\n_time < 86400, round(_time/3600).\" hours ago\",\ntrue(), round(_time/86400).\" days ago\")\n| table host, elapsed_time\n| rename host AS \"Host\", elapsed_time AS \"Latest Activity\""
-			},
-			"name": "host_latest_activity"
-		},
-		"ds_FlqNQGID": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_wl4Og2TU",
-				"query": "| dedup host\n| fields host, _time\n| stats count by host, _time\n| eval _time = now() - _time \n| where _time <= (70*86400)\n| stats count(host)"
-			},
-			"name": "host_active_count"
-		},
-		"ds_wl4Og2TU": {
-			"type": "ds.search",
-			"options": {
-				"query": "`sap_logserv_idx_macro` \n| fields source, sourcetype, host, _time\n",
+				"query": "`sap_logserv_idx_macro` \r\n| fields source, sourcetype, host, _time\r\n| dedup host, source, sourcetype\r\n| dedup host\r\n| fields host, _time\r\n| stats count by host, _time\r\n| eval _time = now() - _time \r\n| sort + _time\r\n| eval elapsed_time = case(_time < 60, _time.\" seconds ago\",\r\n_time < 3600, round(_time/60).\" minutes ago\",\r\n_time < 86400, round(_time/3600).\" hours ago\",\r\ntrue(), round(_time/86400).\" days ago\")\r\n| dedup host, elapsed_time\r\n| table host, elapsed_time\r\n| rename host AS \"Host\", elapsed_time AS \"Latest Activity\"",
 				"queryParameters": {
-					"earliest": "-30d@d",
-					"latest": "now"
+					"earliest": "$tr_B1kLgEmW.earliest$",
+					"latest": "$tr_B1kLgEmW.latest$"
 				}
 			},
-			"name": "search_base"
+			"type": "ds.search"
 		},
-		"ds_E237l4zD": {
-			"type": "ds.chain",
+		"ds_mRjpSfGy": {
+			"name": "single_value_search",
 			"options": {
-				"extend": "ds_kzavdy7f",
-				"query": "| stats count by sourcetype source, host\n| fields - count"
-			},
-			"name": "host_source_sourcetype_map"
-		},
-		"ds_kzavdy7f": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_wl4Og2TU",
-				"query": "| dedup host, source, sourcetype"
-			},
-			"name": "host_search_base"
-		},
-		"ds_gxQTUbyK": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_wl4Og2TU",
-				"query": "|timechart span=1d limit=0 count by host"
-			},
-			"name": "events_by_host"
-		},
-		"ds_x5TFDlm9_ds_gxQTUbyK": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_wl4Og2TU",
-				"query": "|timechart span=1d limit=0 count by host"
-			},
-			"name": "events_by_host copy 1"
-		},
-		"ds_5anrJzix_ds_E237l4zD": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_kzavdy7f",
-				"query": "| stats count by sourcetype source, host\n| fields - count"
-			},
-			"name": "host_source_sourcetype_map copy 1"
-		},
-		"ds_9q0Wbh4a_ds_FlqNQGID": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_wl4Og2TU",
-				"query": "| dedup host\n| fields host, _time\n| stats count by host, _time\n| eval _time = now() - _time \n| where _time <= (70*86400)\n| stats count(host)"
-			},
-			"name": "host_active_count copy 1"
-		},
-		"ds_82WV7n8Q_ds_kbElziov": {
-			"type": "ds.chain",
-			"options": {
-				"extend": "ds_kzavdy7f",
-				"query": "| dedup host\n| fields host, _time\n| stats count by host, _time\n| eval _time = now() - _time \n| sort + _time\n| eval elapsed_time = case(_time < 60, _time.\" seconds ago\",\n_time < 3600, round(_time/60).\" minutes ago\",\n_time < 86400, round(_time/3600).\" hours ago\",\ntrue(), round(_time/86400).\" days ago\")\n| table host, elapsed_time\n| rename host AS \"Host\", elapsed_time AS \"Latest Activity\""
-			},
-			"name": "host_latest_activity copy 1"
-		}
-	},
-	"defaults": {
-		"dataSources": {
-			"ds.search": {
-				"options": {
-					"queryParameters": {
-						"latest": "$global_time.latest$",
-						"earliest": "$global_time.earliest$"
-					}
+				"query": "`sap_logserv_idx_macro` \r\n| stats dc(host) AS host_count",
+				"queryParameters": {
+					"earliest": "$tr_B1kLgEmW.earliest$",
+					"latest": "$tr_B1kLgEmW.latest$"
 				}
-			}
+			},
+			"type": "ds.search"
+		},
+		"ds_qvNrhKle": {
+			"name": "link_map_search",
+			"options": {
+				"enableSmartSources": true,
+				"query": "`sap_logserv_idx_macro` \r\n| fields source, sourcetype, host\r\n| dedup host, source, sourcetype\r\n| stats count by sourcetype source, host\r\n| fields - count",
+				"queryParameters": {
+					"earliest": "$tr_B1kLgEmW.earliest$",
+					"latest": "$tr_B1kLgEmW.latest$"
+				}
+			},
+			"type": "ds.search"
+		},
+		"ds_znDIWqYG": {
+			"name": "line_chart_host_events",
+			"options": {
+				"query": "`sap_logserv_idx_macro` \r\n| fields source, sourcetype, host\r\n| timechart span=1d limit=0 count by host",
+				"queryParameters": {
+					"earliest": "$tr_B1kLgEmW.earliest$",
+					"latest": "$tr_B1kLgEmW.latest$"
+				}
+			},
+			"type": "ds.search"
 		}
 	},
-	"inputs": {},
-	"description": "Data pipeline overview from last 30 days",
-	"title": "SAP Logserv Data Pipeline Overview",
 	"layout": {
-		"tabs": {
-			"items": [
-				{
-					"layoutId": "layout_1",
-					"label": "New tab"
-				}
-			]
-		},
+		"globalInputs": [
+			"input_xV9baORe"
+		],
 		"layoutDefinitions": {
 			"layout_1": {
-				"type": "absolute",
 				"options": {
+					"display": "fit-to-width",
 					"height": 950,
-					"width": 1600,
-					"display": "fit-to-width"
+					"width": 1600
 				},
 				"structure": [
 					{
 						"item": "viz_TWx0q4MO",
-						"type": "block",
 						"position": {
-							"x": 450,
-							"y": 310,
+							"h": 600,
 							"w": 1140,
-							"h": 600
-						}
+							"x": 450,
+							"y": 310
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_pZLsO3n7",
-						"type": "block",
 						"position": {
-							"x": 0,
-							"y": 0,
+							"h": 300,
 							"w": 1590,
-							"h": 300
-						}
+							"x": 0,
+							"y": 0
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_RaSQZQg0",
-						"type": "block",
 						"position": {
-							"x": 0,
-							"y": 0,
+							"h": 300,
 							"w": 1580,
-							"h": 300
-						}
+							"x": 0,
+							"y": 0
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_7NM08jn4",
-						"type": "block",
 						"position": {
-							"x": 450,
-							"y": 310,
+							"h": 600,
 							"w": 1130,
-							"h": 600
-						}
+							"x": 450,
+							"y": 310
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_nraRnnPr",
-						"type": "block",
 						"position": {
-							"x": 0,
-							"y": 310,
+							"h": 140,
 							"w": 440,
-							"h": 140
-						}
+							"x": 0,
+							"y": 310
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_Rr0ozI8N",
-						"type": "block",
 						"position": {
-							"x": 0,
-							"y": 460,
+							"h": 450,
 							"w": 440,
-							"h": 450
-						}
+							"x": 0,
+							"y": 460
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_E6VoPgPK",
-						"type": "block",
 						"position": {
-							"x": 0,
-							"y": 310,
+							"h": 140,
 							"w": 440,
-							"h": 140
-						}
+							"x": 0,
+							"y": 310
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_YGJifJFJ",
-						"type": "block",
 						"position": {
-							"x": 0,
-							"y": 460,
+							"h": 450,
 							"w": 440,
-							"h": 450
-						}
+							"x": 0,
+							"y": 460
+						},
+						"type": "block"
 					}
-				]
+				],
+				"type": "absolute"
 			}
 		},
-		"globalInputs": []
+		"tabs": {
+			"items": [
+				{
+					"label": "New tab",
+					"layoutId": "layout_1"
+				}
+			]
+		}
 	}
 }
     ]]></definition>

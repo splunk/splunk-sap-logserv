@@ -9,7 +9,7 @@
 	"inputs": {
 		"input_global_trp": {
 			"options": {
-				"defaultValue": "-24h@h,now",
+				"defaultValue": "-30d@d,now",
 				"token": "global_time"
 			},
 			"title": "Global Time Range",
@@ -210,7 +210,7 @@
 		"ds_1ZmrypYh": {
 			"name": "Column chart search",
 			"options": {
-				"query": "index=\"sap_logserv_logs\" sourcetype=sap_hana_audit \r\n| where match(audit_category, \"HEC Audit - User Administration\")\r\n| eval admin_action = case(\r\n    match(sql_statement, \"(?i)reset connect\"), \"Password Reset\",\r\n    match(sql_statement, \"(?i)activate user\"), \"User Activation\",\r\n    match(sql_statement, \"(?i)deactivate user\"), \"User Deactivation\",\r\n    match(sql_statement, \"(?i)disable password\"), \"Policy Change\",\r\n    1=1, \"Other Admin\"\r\n)\r\n| timechart span=1d count by admin_action",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_hana_audit \r\n| where match(audit_category, \"HEC Audit - User Administration\")\r\n| eval admin_action = case(\r\n    match(sql_statement, \"(?i)reset connect\"), \"Password Reset\",\r\n    match(sql_statement, \"(?i)activate user\"), \"User Activation\",\r\n    match(sql_statement, \"(?i)deactivate user\"), \"User Deactivation\",\r\n    match(sql_statement, \"(?i)disable password\"), \"Policy Change\",\r\n    1=1, \"Other Admin\"\r\n)\r\n| timechart span=1d count by admin_action",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -232,7 +232,7 @@
 		"ds_TsZBieYG": {
 			"name": "sec_events_timeline_search",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_hana_audit \r\n| where status!=\"SUCCESSFUL\" OR match(action_type, \"(?i)(grant|revoke|create|drop)\")\r\n| eval event_type = case(\r\n    status!=\"SUCCESSFUL\", \"Failed Operation\",\r\n    match(action_type, \"(?i)grant\"), \"Permission Grant\",\r\n    match(action_type, \"(?i)revoke\"), \"Permission Revoke\",\r\n    match(action_type, \"(?i)(create|drop)\"), \"Object Modification\",\r\n    1=1, \"Other Security Event\"\r\n)\r\n| timechart span=1d count by event_type",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_hana_audit \r\n| where status!=\"SUCCESSFUL\" OR match(action_type, \"(?i)(grant|revoke|create|drop)\")\r\n| eval event_type = case(\r\n    status!=\"SUCCESSFUL\", \"Failed Operation\",\r\n    match(action_type, \"(?i)grant\"), \"Permission Grant\",\r\n    match(action_type, \"(?i)revoke\"), \"Permission Revoke\",\r\n    match(action_type, \"(?i)(create|drop)\"), \"Object Modification\",\r\n    1=1, \"Other Security Event\"\r\n)\r\n| timechart span=1d count by event_type",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -243,7 +243,7 @@
 		"ds_WaZCTDkV": {
 			"name": "Bubble chart search 2",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_hana_audit \r\n| where match(sql_statement, \"(?i)password\")\r\n| eval password_action = case(\r\n    match(sql_statement, \"password \\*\\*\\*\"), \"Password Change\",\r\n    match(sql_statement, \"disable password\"), \"Disable Lifetime\",\r\n    match(sql_statement, \"reset.*connect\"), \"Reset Attempts\",\r\n    1=1, \"Other\"\r\n)\r\n| rename password_action AS Action\r\n| rename target_user AS \"Target User\"\r\n| rename executing_user AS \"Exec User\"\r\n| rename client_ip AS \"Client IP\"\r\n| stats count by Action, \"Target User\", \"Exec User\", \"Client IP\"\r\n| sort -count, Action",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_hana_audit \r\n| where match(sql_statement, \"(?i)password\")\r\n| eval password_action = case(\r\n    match(sql_statement, \"password \\*\\*\\*\"), \"Password Change\",\r\n    match(sql_statement, \"disable password\"), \"Disable Lifetime\",\r\n    match(sql_statement, \"reset.*connect\"), \"Reset Attempts\",\r\n    1=1, \"Other\"\r\n)\r\n| rename password_action AS Action\r\n| rename target_user AS \"Target User\"\r\n| rename executing_user AS \"Exec User\"\r\n| rename client_ip AS \"Client IP\"\r\n| stats count by Action, \"Target User\", \"Exec User\", \"Client IP\"\r\n| sort -count, Action",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -254,7 +254,7 @@
 		"ds_pYyp9bI7": {
 			"name": "Requests by Record Type search",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_hana_audit \r\n| stats count by action_category\r\n| sort -count",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_hana_audit \r\n| stats count by action_category\r\n| sort -count",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -265,7 +265,7 @@
 		"ds_yE9yBtpa": {
 			"name": "Bubble chart search",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_hana_audit \r\n| eval day = strftime(_time, \"%Y-%m-%d\")\r\n| stats \r\n    count as daily_events,\r\n    dc(executing_user) as active_users,\r\n    sum(eval(if(status!=\"SUCCESSFUL\", 1, 0))) as daily_failures\r\nby day\r\n| eval success_rate = round(((daily_events - daily_failures)/daily_events)*100, 1)\r\n| sort day\r\n| table day, daily_events, active_users, daily_failures, success_rate",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_hana_audit \r\n| eval day = strftime(_time, \"%Y-%m-%d\")\r\n| stats \r\n    count as daily_events,\r\n    dc(executing_user) as active_users,\r\n    sum(eval(if(status!=\"SUCCESSFUL\", 1, 0))) as daily_failures\r\nby day\r\n| eval success_rate = round(((daily_events - daily_failures)/daily_events)*100, 1)\r\n| sort day\r\n| table day, daily_events, active_users, daily_failures, success_rate",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -276,7 +276,7 @@
 		"ds_NNjH6XTd_ds_pYyp9bI7": {
 			"name": "Requests by Record Type search copy 1",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_hana_audit \r\n| where status!=\"SUCCESSFUL\"\r\n| stats count by host\r\n| sort -count",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_hana_audit \r\n| where status!=\"SUCCESSFUL\"\r\n| stats count by host\r\n| sort -count",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"

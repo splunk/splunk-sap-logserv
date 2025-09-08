@@ -9,7 +9,7 @@
 	"inputs": {
 		"input_global_trp": {
 			"options": {
-				"defaultValue": "-24h@h,now",
+				"defaultValue": "-30d@d,now",
 				"token": "global_time"
 			},
 			"title": "Global Time Range",
@@ -36,22 +36,22 @@
 			},
 			"options": {
 				"backgroundColor": "transparent",
-				"x": "> primary | seriesByName('_time')",
-				"xAxisTitleVisibility": "hide",
-				"y": "> primary | frameBySeriesNames('Client Error (4xx)','Redirect (3xx)','Server Error (5xx)','Success (2xx)')",
+				"columnGrouping": "overlay",
+				"columnSpacing": 0,
 				"resultLimit": 500000,
 				"seriesColorsByField": {
 					"Client Error (4xx)": "#dc4e41",
-					"Server Error (5xx)": "#f1813f",
 					"Redirect (3xx)": "#0877a6",
+					"Server Error (5xx)": "#f1813f",
 					"Success (2xx)": "#4fa484"
 				},
-				"columnSpacing": 0,
-				"showSplitSeries": true,
-				"columnGrouping": "overlay",
 				"showIndependentYRanges": true,
-				"yAxisTitleVisibility": "hide",
-				"y2AxisTitleVisibility": "hide"
+				"showSplitSeries": true,
+				"x": "> primary | seriesByName('_time')",
+				"xAxisTitleVisibility": "hide",
+				"y": "> primary | frameBySeriesNames('Client Error (4xx)','Redirect (3xx)','Server Error (5xx)','Success (2xx)')",
+				"y2AxisTitleVisibility": "hide",
+				"yAxisTitleVisibility": "hide"
 			},
 			"showLastUpdated": false,
 			"showProgressBar": false,
@@ -59,18 +59,18 @@
 			"type": "splunk.column"
 		},
 		"viz_8cdxDtFu": {
+			"containerOptions": {},
 			"dataSources": {
 				"primary": "ds_yE9yBtpa"
 			},
-			"title": "Top 5 Slowest Pages",
-			"type": "splunk.bar",
-			"containerOptions": {},
-			"showProgressBar": false,
-			"showLastUpdated": false,
 			"options": {
 				"backgroundColor": "transparent",
 				"yAxisScale": "log"
-			}
+			},
+			"showLastUpdated": false,
+			"showProgressBar": false,
+			"title": "Top 5 Slowest Pages",
+			"type": "splunk.bar"
 		},
 		"viz_JQwHPBuw": {
 			"options": {
@@ -97,20 +97,20 @@
 			"type": "splunk.rectangle"
 		},
 		"viz_YIm9coVY": {
+			"containerOptions": {},
 			"dataSources": {
 				"primary": "ds_pYyp9bI7"
 			},
-			"title": "Traffic by HTTP Method",
-			"type": "splunk.pie",
-			"containerOptions": {},
-			"showProgressBar": false,
-			"showLastUpdated": false,
 			"options": {
-				"showDonutHole": true,
-				"collapseThreshold": 0,
+				"backgroundColor": "transparent",
 				"collapseLabel": "",
-				"backgroundColor": "transparent"
-			}
+				"collapseThreshold": 0,
+				"showDonutHole": true
+			},
+			"showLastUpdated": false,
+			"showProgressBar": false,
+			"title": "Traffic by HTTP Method",
+			"type": "splunk.pie"
 		},
 		"viz_aHaxUdSn": {
 			"containerOptions": {},
@@ -119,13 +119,13 @@
 			},
 			"options": {
 				"backgroundColor": "transparent",
-				"y": "> primary | frameBySeriesNames('Avg Response Time (ms)')",
-				"xAxisTitleVisibility": "hide",
 				"legendTruncation": "ellipsisMiddle",
-				"showRoundedY2AxisLabels": false,
 				"seriesColorsByField": {
 					"Avg Response Time (ms)": "#62b3b2"
-				}
+				},
+				"showRoundedY2AxisLabels": false,
+				"xAxisTitleVisibility": "hide",
+				"y": "> primary | frameBySeriesNames('Avg Response Time (ms)')"
 			},
 			"showLastUpdated": false,
 			"showProgressBar": false,
@@ -141,22 +141,22 @@
 			"type": "splunk.rectangle"
 		},
 		"viz_mEe7x9fI": {
+			"containerOptions": {},
 			"dataSources": {
 				"primary": "ds_WaZCTDkV"
 			},
 			"options": {
+				"backgroundColor": "transparent",
+				"bubbleSizeMax": 97,
+				"bubbleSizeMin": 52,
 				"category": "> primary | seriesByName('clientip')",
 				"x": "> primary | seriesByName('requests')",
-				"backgroundColor": "transparent",
-				"bubbleSizeMin": 52,
-				"bubbleSizeMax": 97,
 				"y": "> primary | seriesByName('unique_pages')"
 			},
-			"title": "Top Client IPs by Traffic",
-			"type": "splunk.bubble",
-			"containerOptions": {},
+			"showLastUpdated": false,
 			"showProgressBar": false,
-			"showLastUpdated": false
+			"title": "Top Client IPs by Traffic",
+			"type": "splunk.bubble"
 		},
 		"viz_yfcE62rT": {
 			"options": {
@@ -171,7 +171,7 @@
 		"ds_1ZmrypYh": {
 			"name": "Column chart search",
 			"options": {
-				"query": "index=\"sap_logserv_logs\" sourcetype=sap_webdispatcher_access\r\n| eval status_group = case(\r\n    tonumber(status) < 300, \"Success (2xx)\",\r\n    tonumber(status) < 400, \"Redirect (3xx)\", \r\n    tonumber(status) < 500, \"Client Error (4xx)\",\r\n    tonumber(status) >= 500, \"Server Error (5xx)\",\r\n    1=1, \"Other\"\r\n)\r\n| timechart span=1h count by status_group",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access\r\n| eval status_group = case(\r\n    tonumber(status) < 300, \"Success (2xx)\",\r\n    tonumber(status) < 400, \"Redirect (3xx)\", \r\n    tonumber(status) < 500, \"Client Error (4xx)\",\r\n    tonumber(status) >= 500, \"Server Error (5xx)\",\r\n    1=1, \"Other\"\r\n)\r\n| timechart span=1h count by status_group",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -193,7 +193,7 @@
 		"ds_TsZBieYG": {
 			"name": "Scatter chart search",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_webdispatcher_access\r\n| eval response_time_ms = tonumber(total_us)/1000\r\n| timechart span=1h avg(response_time_ms) as \"Avg Response Time (ms)\"",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access\r\n| eval response_time_ms = tonumber(total_us)/1000\r\n| timechart span=1h avg(response_time_ms) as \"Avg Response Time (ms)\"",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -204,7 +204,7 @@
 		"ds_WaZCTDkV": {
 			"name": "Bubble chart search 2",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_webdispatcher_access \r\n| stats count as requests, dc(uri) as unique_pages, avg(tonumber(total_us)/1000) as avg_response_ms by clientip\r\n| sort -requests\r\n| head 25\r\n| table clientip, requests, unique_pages",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access \r\n| stats count as requests, dc(uri) as unique_pages, avg(tonumber(total_us)/1000) as avg_response_ms by clientip\r\n| sort -requests\r\n| head 25\r\n| table clientip, requests, unique_pages",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -215,7 +215,7 @@
 		"ds_pYyp9bI7": {
 			"name": "Requests by Record Type search",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_webdispatcher_access\r\n| stats count by method\r\n| sort -count",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access\r\n| stats count by method\r\n| sort -count",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -226,7 +226,7 @@
 		"ds_yE9yBtpa": {
 			"name": "Bubble chart search",
 			"options": {
-				"query": "index=sap_logserv_logs sourcetype=sap_webdispatcher_access \r\n| eval response_time_ms = tonumber(total_us)/1000\r\n| stats avg(response_time_ms) as avg_response, count as requests by uri\r\n| eval avg_response = round(avg_response, 1)\r\n| sort -avg_response\r\n| head 5\r\n| table uri, avg_response, requests",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access \r\n| eval response_time_ms = tonumber(total_us)/1000\r\n| stats avg(response_time_ms) as avg_response, count as requests by uri\r\n| eval avg_response = round(avg_response, 1)\r\n| sort -avg_response\r\n| head 5\r\n| table uri, avg_response, requests",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"

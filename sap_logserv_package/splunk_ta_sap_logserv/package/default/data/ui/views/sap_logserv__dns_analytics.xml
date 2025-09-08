@@ -4,53 +4,175 @@
     <description></description>
     <definition><![CDATA[
 {
+	"title": "SAP LogServ - DNS Analytics",
+	"description": "",
+	"inputs": {
+		"input_global_trp": {
+			"options": {
+				"defaultValue": "-30d@d,now",
+				"token": "global_time"
+			},
+			"title": "Global Time Range",
+			"type": "input.timerange"
+		}
+	},
+	"defaults": {
+		"dataSources": {
+			"ds.search": {
+				"options": {
+					"queryParameters": {
+						"earliest": "$global_time.earliest$",
+						"latest": "$global_time.latest$"
+					}
+				}
+			}
+		}
+	},
+	"visualizations": {
+		"viz_2nZCdB19": {
+			"containerOptions": {},
+			"dataSources": {
+				"primary": "ds_1ZmrypYh"
+			},
+			"options": {
+				"backgroundColor": "transparent"
+			},
+			"showLastUpdated": false,
+			"showProgressBar": false,
+			"title": "Top 10 Clients - Request Volume",
+			"type": "splunk.line"
+		},
+		"viz_8cdxDtFu": {
+			"dataSources": {
+				"primary": "ds_yE9yBtpa"
+			},
+			"options": {
+				"backgroundColor": "transparent",
+				"bubbleSizeMax": 50,
+				"bubbleSizeMethod": "area",
+				"bubbleSizeMin": 10,
+				"category": "> primary | seriesByIndex(0)",
+				"legendDisplay": "right",
+				"legendTruncation": "ellipsisMiddle",
+				"size": "> primary | seriesByIndex(3)",
+				"x": "> primary | seriesByIndex(1)",
+				"xAxisAbbreviation": "off",
+				"xAxisLabelRotation": 0,
+				"xAxisScale": "linear",
+				"xAxisTitleVisibility": "show",
+				"y": "> primary | seriesByIndex(2)",
+				"yAxisAbbreviation": "auto",
+				"yAxisScale": "linear",
+				"yAxisTitleVisibility": "show"
+			},
+			"title": "Beaconing Activity",
+			"type": "splunk.bubble"
+		},
+		"viz_JQwHPBuw": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_Kj5JGWVb": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_UBrqm3dh": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_YIm9coVY": {
+			"dataSources": {
+				"primary": "ds_pYyp9bI7"
+			},
+			"options": {
+				"backgroundColor": "transparent"
+			},
+			"title": "Requests by Record Type",
+			"type": "splunk.line",
+			"containerOptions": {},
+			"showProgressBar": false,
+			"showLastUpdated": false
+		},
+		"viz_aHaxUdSn": {
+			"dataSources": {
+				"primary": "ds_TsZBieYG"
+			},
+			"options": {
+				"backgroundColor": "transparent",
+				"category": "> primary | seriesByIndex(0)",
+				"legendDisplay": "right",
+				"legendTruncation": "ellipsisMiddle",
+				"x": "> primary | seriesByIndex(1)",
+				"xAxisAbbreviation": "off",
+				"xAxisLabelRotation": 0,
+				"xAxisScale": "linear",
+				"xAxisTitleVisibility": "show",
+				"y": "> primary | seriesByIndex(2)",
+				"yAxisAbbreviation": "auto",
+				"yAxisScale": "linear",
+				"yAxisTitleVisibility": "show"
+			},
+			"title": "Volume & Packet Size",
+			"type": "splunk.scatter"
+		},
+		"viz_kxbrvLhz": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_mEe7x9fI": {
+			"dataSources": {
+				"primary": "ds_WaZCTDkV"
+			},
+			"options": {
+				"backgroundColor": "transparent",
+				"bubbleSizeMax": 56,
+				"bubbleSizeMin": 24,
+				"category": "> primary | seriesByName('count')",
+				"legendDisplay": "right",
+				"legendTruncation": "ellipsisMiddle",
+				"size": "> primary | seriesByName('VarianceBeaconTime')",
+				"x": "> primary | seriesByName('NumHosts')",
+				"xAxisAbbreviation": "off",
+				"xAxisLabelRotation": 0,
+				"xAxisScale": "linear",
+				"xAxisTitleText": "",
+				"xAxisTitleVisibility": "show",
+				"y": "> primary | seriesByName('AverageBeaconTime')",
+				"yAxisAbbreviation": "auto",
+				"yAxisScale": "linear",
+				"yAxisTitleVisibility": "show"
+			},
+			"title": "Hosts to Beaconing Domains",
+			"type": "splunk.bubble"
+		},
+		"viz_yfcE62rT": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		}
+	},
 	"dataSources": {
-		"ds_WaZCTDkV": {
-			"type": "ds.search",
-			"options": {
-				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| fields _time, src, query\r\n| streamstats current=f last(_time) as last_time by query\r\n| eval gap=last_time - _time\r\n| stats count dc(src) AS NumHosts avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query\r\n| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)\r\n| sort –count\r\n| where VarianceBeaconTime < 60 AND AverageBeaconTime > 0",
-				"queryParameters": {
-					"earliest": "$global_time.earliest$",
-					"latest": "$global_time.latest$"
-				}
-			},
-			"name": "Bubble chart search 2"
-		},
-		"ds_yE9yBtpa": {
-			"type": "ds.search",
-			"options": {
-				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| fields _time, query\r\n| streamstats current=f last(_time) as last_time by query\r\n| eval gap=last_time - _time\r\n| stats count avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query\r\n| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)\r\n| sort -count\r\n| where VarianceBeaconTime < 60 AND count > 2 AND AverageBeaconTime>1.000\r\n| table  query VarianceBeaconTime  count AverageBeaconTime",
-				"queryParameters": {
-					"earliest": "$global_time.earliest$",
-					"latest": "$global_time.latest$"
-				}
-			},
-			"name": "Bubble chart search"
-		},
-		"ds_TsZBieYG": {
-			"type": "ds.search",
-			"options": {
-				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| mvexpand query\r\n| eval queryLength=len(query)\r\n| stats count by queryLength, src\r\n| sort -queryLength, count\r\n| rename queryLength AS \"Query Length\"\r\n| rename count AS Volume\r\n| table src \"Query Length\" Volume\r\n| head 1000",
-				"queryParameters": {
-					"earliest": "$global_time.earliest$",
-					"latest": "$global_time.latest$"
-				}
-			},
-			"name": "Scatter chart search"
-		},
-		"ds_pYyp9bI7": {
-			"type": "ds.search",
-			"options": {
-				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| timechart span=1h count BY record_type",
-				"queryParameters": {
-					"earliest": "$global_time.earliest$",
-					"latest": "$global_time.latest$"
-				}
-			},
-			"name": "Requests by Record Type search"
-		},
 		"ds_1ZmrypYh": {
-			"type": "ds.search",
+			"name": "top_10_client_search",
 			"options": {
 				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"Query\"\r\n| timechart span=1h limit=10 usenull=f useother=f count AS Requests by src",
 				"queryParameters": {
@@ -58,325 +180,177 @@
 					"latest": "$global_time.latest$"
 				}
 			},
-			"name": "Column chart search"
+			"type": "ds.search"
 		},
-		"ds_F7WLfuRN_ds_yE9yBtpa": {
-			"type": "ds.search",
+		"ds_TsZBieYG": {
+			"name": "volume_packet_size_search",
 			"options": {
-				"query": "index=\"sap_logserv_logs\" tag=dns message_type=\"QUERY\"\r\n| fields _time, query\r\n| streamstats current=f last(_time) as last_time by query\r\n| eval gap=last_time - _time\r\n| stats count avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query\r\n| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)\r\n| sort -count\r\n| where VarianceBeaconTime < 60 AND count > 2 AND AverageBeaconTime>1.000\r\n| table  query VarianceBeaconTime  count AverageBeaconTime",
+				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| mvexpand query\r\n| eval queryLength=len(query)\r\n| stats count by queryLength, src\r\n| sort -queryLength, count\r\n| rename queryLength AS \"Query Length\"\r\n| rename count AS Volume\r\n| table src \"Query Length\" Volume\r\n| head 1000",
 				"queryParameters": {
-					"earliest": "1751371200",
-					"latest": "1751479200"
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
 				}
 			},
-			"name": "Bubble chart search copy 1"
-		}
-	},
-	"visualizations": {
-		"viz_mEe7x9fI": {
-			"type": "splunk.bubble",
-			"options": {
-				"yAxisAbbreviation": "auto",
-				"legendTruncation": "ellipsisMiddle",
-				"xAxisLabelRotation": 0,
-				"xAxisTitleVisibility": "show",
-				"yAxisTitleVisibility": "show",
-				"xAxisAbbreviation": "off",
-				"xAxisScale": "linear",
-				"yAxisScale": "linear",
-				"bubbleSizeMax": 56,
-				"bubbleSizeMin": 24,
-				"legendDisplay": "right",
-				"x": "> primary | seriesByName('NumHosts')",
-				"y": "> primary | seriesByName('AverageBeaconTime')",
-				"size": "> primary | seriesByName('VarianceBeaconTime')",
-				"category": "> primary | seriesByName('count')",
-				"backgroundColor": "transparent",
-				"xAxisTitleText": ""
-			},
-			"dataSources": {
-				"primary": "ds_WaZCTDkV"
-			},
-			"title": "Hosts to Beaconing Domains"
+			"type": "ds.search"
 		},
-		"viz_8cdxDtFu": {
-			"type": "splunk.bubble",
+		"ds_WaZCTDkV": {
+			"name": "hosts_to_beaconing_domains_search",
 			"options": {
-				"yAxisAbbreviation": "auto",
-				"legendTruncation": "ellipsisMiddle",
-				"xAxisLabelRotation": 0,
-				"xAxisTitleVisibility": "show",
-				"yAxisTitleVisibility": "show",
-				"xAxisAbbreviation": "off",
-				"xAxisScale": "linear",
-				"yAxisScale": "linear",
-				"bubbleSizeMax": 50,
-				"bubbleSizeMin": 10,
-				"bubbleSizeMethod": "area",
-				"legendDisplay": "right",
-				"x": "> primary | seriesByIndex(1)",
-				"y": "> primary | seriesByIndex(2)",
-				"size": "> primary | seriesByIndex(3)",
-				"category": "> primary | seriesByIndex(0)",
-				"backgroundColor": "transparent"
+				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| fields _time, src, query\r\n| streamstats current=f last(_time) as last_time by query\r\n| eval gap=last_time - _time\r\n| stats count dc(src) AS NumHosts avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query\r\n| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)\r\n| sort –count\r\n| where VarianceBeaconTime < 60 AND AverageBeaconTime > 0",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
 			},
-			"dataSources": {
-				"primary": "ds_yE9yBtpa"
-			},
-			"title": "Beaconing Activity"
+			"type": "ds.search"
 		},
-		"viz_aHaxUdSn": {
-			"type": "splunk.scatter",
+		"ds_pYyp9bI7": {
+			"name": "requests_by_record_type_search",
 			"options": {
-				"yAxisAbbreviation": "auto",
-				"legendTruncation": "ellipsisMiddle",
-				"xAxisLabelRotation": 0,
-				"xAxisTitleVisibility": "show",
-				"yAxisTitleVisibility": "show",
-				"xAxisAbbreviation": "off",
-				"xAxisScale": "linear",
-				"yAxisScale": "linear",
-				"legendDisplay": "right",
-				"x": "> primary | seriesByIndex(1)",
-				"y": "> primary | seriesByIndex(2)",
-				"category": "> primary | seriesByIndex(0)",
-				"backgroundColor": "transparent"
+				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| timechart span=1h usenull=f useother=f count BY record_type",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
 			},
-			"dataSources": {
-				"primary": "ds_TsZBieYG"
+			"type": "ds.search"
+		},
+		"ds_yE9yBtpa": {
+			"name": "beaconing_activity_search",
+			"options": {
+				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| fields _time, query\r\n| streamstats current=f last(_time) as last_time by query\r\n| eval gap=last_time - _time\r\n| stats count avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query\r\n| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)\r\n| sort -count\r\n| where VarianceBeaconTime < 60 AND count > 2 AND AverageBeaconTime>1.000\r\n| table  query VarianceBeaconTime  count AverageBeaconTime",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
 			},
-			"title": "Volume & Packet Size"
-		},
-		"viz_YIm9coVY": {
-			"type": "splunk.column",
-			"options": {
-				"yAxisAbbreviation": "auto",
-				"y2AxisAbbreviation": "auto",
-				"showRoundedY2AxisLabels": false,
-				"legendTruncation": "ellipsisMiddle",
-				"showY2MajorGridLines": true,
-				"xAxisLabelRotation": 0,
-				"xAxisTitleVisibility": "hide",
-				"yAxisTitleVisibility": "show",
-				"y2AxisTitleVisibility": "show",
-				"yAxisScale": "linear",
-				"showOverlayY2Axis": false,
-				"y2AxisScale": "inherit",
-				"dataValuesDisplay": "off",
-				"stackMode": "auto",
-				"showSplitSeries": false,
-				"showIndependentYRanges": false,
-				"legendDisplay": "right",
-				"backgroundColor": "transparent"
-			},
-			"dataSources": {
-				"primary": "ds_pYyp9bI7"
-			},
-			"title": "Requests by Record Type"
-		},
-		"viz_2nZCdB19": {
-			"type": "splunk.column",
-			"options": {
-				"backgroundColor": "transparent",
-				"xAxisTitleVisibility": "hide"
-			},
-			"dataSources": {
-				"primary": "ds_1ZmrypYh"
-			},
-			"title": "Top 10 Clients - Request Volume",
-			"containerOptions": {},
-			"showProgressBar": false,
-			"showLastUpdated": false
-		},
-		"viz_JQwHPBuw": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6",
-				"rx": 3
-			}
-		},
-		"viz_yfcE62rT": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6",
-				"rx": 3
-			}
-		},
-		"viz_Kj5JGWVb": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6",
-				"rx": 3
-			}
-		},
-		"viz_kxbrvLhz": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6",
-				"rx": 3
-			}
-		},
-		"viz_UBrqm3dh": {
-			"type": "splunk.rectangle",
-			"options": {
-				"fillColor": "transparent",
-				"strokeColor": "#0877a6",
-				"rx": 3
-			}
-		}
-	},
-	"inputs": {
-		"input_global_trp": {
-			"type": "input.timerange",
-			"options": {
-				"token": "global_time",
-				"defaultValue": "-24h@h,now"
-			},
-			"title": "Global Time Range"
+			"type": "ds.search"
 		}
 	},
 	"layout": {
-		"options": {},
 		"globalInputs": [
 			"input_global_trp"
 		],
-		"tabs": {
-			"items": [
-				{
-					"layoutId": "layout_1",
-					"label": "New tab"
-				}
-			]
-		},
 		"layoutDefinitions": {
 			"layout_1": {
-				"type": "absolute",
+				"options": {
+					"display": "auto",
+					"height": 960,
+					"width": 1920
+				},
 				"structure": [
 					{
 						"item": "viz_UBrqm3dh",
-						"type": "block",
 						"position": {
-							"x": 710,
-							"y": 320,
+							"h": 420,
 							"w": 1210,
-							"h": 420
-						}
+							"x": 710,
+							"y": 320
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_kxbrvLhz",
-						"type": "block",
 						"position": {
-							"x": 10,
-							"y": 320,
+							"h": 420,
 							"w": 690,
-							"h": 420
-						}
+							"x": 10,
+							"y": 320
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_yfcE62rT",
-						"type": "block",
 						"position": {
-							"x": 1420,
-							"y": 0,
+							"h": 310,
 							"w": 500,
-							"h": 310
-						}
+							"x": 1420,
+							"y": 0
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_Kj5JGWVb",
-						"type": "block",
 						"position": {
-							"x": 710,
-							"y": 0,
+							"h": 310,
 							"w": 700,
-							"h": 310
-						}
+							"x": 710,
+							"y": 0
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_JQwHPBuw",
-						"type": "block",
 						"position": {
-							"x": 10,
-							"y": 0,
+							"h": 310,
 							"w": 690,
-							"h": 310
-						}
+							"x": 10,
+							"y": 0
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_2nZCdB19",
-						"type": "block",
 						"position": {
-							"x": 10,
-							"y": 10,
+							"h": 305,
 							"w": 700,
-							"h": 305
-						}
+							"x": 10,
+							"y": 10
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_YIm9coVY",
-						"type": "block",
 						"position": {
-							"x": 1430,
-							"y": 10,
+							"h": 300,
 							"w": 500,
-							"h": 300
-						}
+							"x": 1430,
+							"y": 10
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_aHaxUdSn",
-						"type": "block",
 						"position": {
-							"x": 710,
-							"y": 10,
+							"h": 300,
 							"w": 700,
-							"h": 300
-						}
+							"x": 710,
+							"y": 10
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_8cdxDtFu",
-						"type": "block",
 						"position": {
-							"x": 10,
-							"y": 330,
+							"h": 400,
 							"w": 700,
-							"h": 400
-						}
+							"x": 10,
+							"y": 330
+						},
+						"type": "block"
 					},
 					{
 						"item": "viz_mEe7x9fI",
-						"type": "block",
 						"position": {
-							"x": 720,
-							"y": 330,
+							"h": 400,
 							"w": 1190,
-							"h": 400
-						}
+							"x": 720,
+							"y": 330
+						},
+						"type": "block"
 					}
 				],
-				"options": {
-					"width": 1920,
-					"height": 960,
-					"display": "auto"
-				}
+				"type": "absolute"
 			}
-		}
-	},
-	"title": "SAP LogServ - DNS Analytics",
-	"description": "",
-	"defaults": {
-		"dataSources": {
-			"ds.search": {
-				"options": {
-					"queryParameters": {
-						"latest": "$global_time.latest$",
-						"earliest": "$global_time.earliest$"
-					}
+		},
+		"options": {},
+		"tabs": {
+			"items": [
+				{
+					"label": "New tab",
+					"layoutId": "layout_1"
 				}
-			}
+			]
 		}
 	}
 }
