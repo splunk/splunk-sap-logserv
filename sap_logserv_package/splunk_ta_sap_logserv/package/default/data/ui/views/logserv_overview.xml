@@ -1,11 +1,11 @@
 
 <dashboard version="2" theme="dark">
     <label>SAP Logserv Data Pipeline Overview</label>
-    <description>Data pipeline overview</description>
+    <description></description>
     <definition><![CDATA[
 {
 	"title": "SAP Logserv Data Pipeline Overview",
-	"description": "Data pipeline overview",
+	"description": "",
 	"inputs": {
 		"input_xV9baORe": {
 			"options": {
