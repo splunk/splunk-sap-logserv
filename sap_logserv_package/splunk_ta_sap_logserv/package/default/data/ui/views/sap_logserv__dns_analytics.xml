@@ -1,6 +1,6 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - DNS Analysis</label>
+    <label>SAP LogServ - DNS Analytics</label>
     <description></description>
     <definition><![CDATA[
 {
@@ -10,8 +10,8 @@
 			"options": {
 				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| fields _time, src, query\r\n| streamstats current=f last(_time) as last_time by query\r\n| eval gap=last_time - _time\r\n| stats count dc(src) AS NumHosts avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query\r\n| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)\r\n| sort –count\r\n| where VarianceBeaconTime < 60 AND AverageBeaconTime > 0",
 				"queryParameters": {
-					"earliest": "1751371200",
-					"latest": "1751479200"
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
 				}
 			},
 			"name": "Bubble chart search 2"
@@ -21,8 +21,8 @@
 			"options": {
 				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| fields _time, query\r\n| streamstats current=f last(_time) as last_time by query\r\n| eval gap=last_time - _time\r\n| stats count avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query\r\n| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)\r\n| sort -count\r\n| where VarianceBeaconTime < 60 AND count > 2 AND AverageBeaconTime>1.000\r\n| table  query VarianceBeaconTime  count AverageBeaconTime",
 				"queryParameters": {
-					"earliest": "1751371200",
-					"latest": "1751479200"
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
 				}
 			},
 			"name": "Bubble chart search"
@@ -32,8 +32,8 @@
 			"options": {
 				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| mvexpand query\r\n| eval queryLength=len(query)\r\n| stats count by queryLength, src\r\n| sort -queryLength, count\r\n| rename queryLength AS \"Query Length\"\r\n| rename count AS Volume\r\n| table src \"Query Length\" Volume\r\n| head 1000",
 				"queryParameters": {
-					"earliest": "1751371200",
-					"latest": "1751479200"
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
 				}
 			},
 			"name": "Scatter chart search"
@@ -43,8 +43,8 @@
 			"options": {
 				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"QUERY\"\r\n| timechart span=1h count BY record_type",
 				"queryParameters": {
-					"earliest": "1751371200",
-					"latest": "1751479200"
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
 				}
 			},
 			"name": "Requests by Record Type search"
@@ -54,8 +54,8 @@
 			"options": {
 				"query": "`sap_logserv_idx_macro` tag=dns message_type=\"Query\"\r\n| timechart span=1h limit=10 usenull=f useother=f count AS Requests by src",
 				"queryParameters": {
-					"earliest": "1751371200",
-					"latest": "1751479200"
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
 				}
 			},
 			"name": "Column chart search"
@@ -257,13 +257,23 @@
 				"type": "absolute",
 				"structure": [
 					{
+						"item": "viz_UBrqm3dh",
+						"type": "block",
+						"position": {
+							"x": 710,
+							"y": 320,
+							"w": 1210,
+							"h": 420
+						}
+					},
+					{
 						"item": "viz_kxbrvLhz",
 						"type": "block",
 						"position": {
 							"x": 10,
 							"y": 320,
 							"w": 690,
-							"h": 310
+							"h": 420
 						}
 					},
 					{
@@ -333,17 +343,7 @@
 							"x": 10,
 							"y": 330,
 							"w": 700,
-							"h": 300
-						}
-					},
-					{
-						"item": "viz_UBrqm3dh",
-						"type": "block",
-						"position": {
-							"x": 710,
-							"y": 320,
-							"w": 1210,
-							"h": 310
+							"h": 400
 						}
 					},
 					{
@@ -353,7 +353,7 @@
 							"x": 720,
 							"y": 330,
 							"w": 1190,
-							"h": 300
+							"h": 400
 						}
 					}
 				],
@@ -365,7 +365,7 @@
 			}
 		}
 	},
-	"title": "SAP LogServ - DNS Analysis",
+	"title": "SAP LogServ - DNS Analytics",
 	"description": "",
 	"defaults": {
 		"dataSources": {

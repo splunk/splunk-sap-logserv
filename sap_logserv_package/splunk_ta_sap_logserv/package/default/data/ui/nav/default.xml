@@ -1,7 +1,9 @@
 <nav search_view="search">
   <view name="logserv_overview" default="true" />
   <collection label="Analytics">
-    <view name="dns_analysis" />
+    <view name="sap_logserv__dns_analytics" />
+    <view name="sap_logserv__hana_audit" />
+    <view name="sap_logserv__web_dispatcher_access" />
   </collection>
   <view name="search"/>
 </nav>

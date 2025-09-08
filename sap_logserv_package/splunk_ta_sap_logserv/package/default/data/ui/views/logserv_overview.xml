@@ -1,6 +1,6 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP Logserv data pipeline Overview</label>
+    <label>SAP Logserv Data Pipeline Overview</label>
     <description>Data pipeline overview from last 30 days</description>
     <definition><![CDATA[
 {
@@ -19,7 +19,9 @@
 			},
 			"title": "SAP RISE host event count",
 			"options": {
-				"backgroundColor": "transparent"
+				"backgroundColor": "transparent",
+				"y": "> primary | frameBySeriesNames('hec53v013858','hec53v013859','hec53v013868','hec53v052420','hec53v052421','hec53v052422','hec53v052427','hec53v052428','hec53v052470','hec53v052931','hec53v052932','_span','_spandays')",
+				"yAxisScale": "log"
 			}
 		},
 		"viz_TWx0q4MO": {
@@ -40,11 +42,11 @@
 			"options": {
 				"nodeWidth": 202,
 				"nodeSpacingY": 21,
-				"nodeSpacingX": 41,
+				"nodeSpacingX": 220,
 				"nodeHeight": 23,
 				"backgroundColor": "transparent",
 				"nodeColor": "#0877a6",
-				"resultLimit": 150
+				"showValueCounts": false
 			}
 		},
 		"viz_nraRnnPr": {
@@ -81,7 +83,7 @@
 			"dataSources": {
 				"primary": "ds_82WV7n8Q_ds_kbElziov"
 			},
-			"description": "Select host for details",
+			"description": "",
 			"options": {
 				"tableFormat": {
 					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
@@ -96,7 +98,7 @@
 				{
 					"type": "drilldown.linkToDashboard",
 					"options": {
-						"app": "splunk_ta_sap_logserv",
+						"app": "sap_logserv_add_on",
 						"dashboard": "sap_rise_host_details",
 						"newTab": true,
 						"tokens": [
@@ -111,6 +113,22 @@
 		}
 	},
 	"dataSources": {
+		"ds_kbElziov": {
+			"type": "ds.chain",
+			"options": {
+				"extend": "ds_kzavdy7f",
+				"query": "| dedup host\n| fields host, _time\n| stats count by host, _time\n| eval _time = now() - _time \n| sort + _time\n| eval elapsed_time = case(_time < 60, _time.\" seconds ago\",\n_time < 3600, round(_time/60).\" minutes ago\",\n_time < 86400, round(_time/3600).\" hours ago\",\ntrue(), round(_time/86400).\" days ago\")\n| table host, elapsed_time\n| rename host AS \"Host\", elapsed_time AS \"Latest Activity\""
+			},
+			"name": "host_latest_activity"
+		},
+		"ds_FlqNQGID": {
+			"type": "ds.chain",
+			"options": {
+				"extend": "ds_wl4Og2TU",
+				"query": "| dedup host\n| fields host, _time\n| stats count by host, _time\n| eval _time = now() - _time \n| where _time <= (70*86400)\n| stats count(host)"
+			},
+			"name": "host_active_count"
+		},
 		"ds_wl4Og2TU": {
 			"type": "ds.search",
 			"options": {
@@ -122,6 +140,14 @@
 			},
 			"name": "search_base"
 		},
+		"ds_E237l4zD": {
+			"type": "ds.chain",
+			"options": {
+				"extend": "ds_kzavdy7f",
+				"query": "| stats count by sourcetype source, host\n| fields - count"
+			},
+			"name": "host_source_sourcetype_map"
+		},
 		"ds_kzavdy7f": {
 			"type": "ds.chain",
 			"options": {
@@ -130,7 +156,7 @@
 			},
 			"name": "host_search_base"
 		},
-		"ds_x5TFDlm9_ds_gxQTUbyK": {
+		"ds_gxQTUbyK": {
 			"type": "ds.chain",
 			"options": {
 				"extend": "ds_wl4Og2TU",
@@ -138,13 +164,21 @@
 			},
 			"name": "events_by_host"
 		},
+		"ds_x5TFDlm9_ds_gxQTUbyK": {
+			"type": "ds.chain",
+			"options": {
+				"extend": "ds_wl4Og2TU",
+				"query": "|timechart span=1d limit=0 count by host"
+			},
+			"name": "events_by_host copy 1"
+		},
 		"ds_5anrJzix_ds_E237l4zD": {
 			"type": "ds.chain",
 			"options": {
 				"extend": "ds_kzavdy7f",
 				"query": "| stats count by sourcetype source, host\n| fields - count"
 			},
-			"name": "host_source_sourcetype_map"
+			"name": "host_source_sourcetype_map copy 1"
 		},
 		"ds_9q0Wbh4a_ds_FlqNQGID": {
 			"type": "ds.chain",
@@ -152,7 +186,7 @@
 				"extend": "ds_wl4Og2TU",
 				"query": "| dedup host\n| fields host, _time\n| stats count by host, _time\n| eval _time = now() - _time \n| where _time <= (70*86400)\n| stats count(host)"
 			},
-			"name": "host_active_count"
+			"name": "host_active_count copy 1"
 		},
 		"ds_82WV7n8Q_ds_kbElziov": {
 			"type": "ds.chain",
@@ -160,7 +194,7 @@
 				"extend": "ds_kzavdy7f",
 				"query": "| dedup host\n| fields host, _time\n| stats count by host, _time\n| eval _time = now() - _time \n| sort + _time\n| eval elapsed_time = case(_time < 60, _time.\" seconds ago\",\n_time < 3600, round(_time/60).\" minutes ago\",\n_time < 86400, round(_time/3600).\" hours ago\",\ntrue(), round(_time/86400).\" days ago\")\n| table host, elapsed_time\n| rename host AS \"Host\", elapsed_time AS \"Latest Activity\""
 			},
-			"name": "host_latest_activity"
+			"name": "host_latest_activity copy 1"
 		}
 	},
 	"defaults": {
@@ -177,7 +211,7 @@
 	},
 	"inputs": {},
 	"description": "Data pipeline overview from last 30 days",
-	"title": "SAP Logserv data pipeline Overview",
+	"title": "SAP Logserv Data Pipeline Overview",
 	"layout": {
 		"tabs": {
 			"items": [
@@ -191,16 +225,28 @@
 			"layout_1": {
 				"type": "absolute",
 				"options": {
-					"height": 950
+					"height": 950,
+					"width": 1600,
+					"display": "fit-to-width"
 				},
 				"structure": [
+					{
+						"item": "viz_TWx0q4MO",
+						"type": "block",
+						"position": {
+							"x": 450,
+							"y": 310,
+							"w": 1140,
+							"h": 600
+						}
+					},
 					{
 						"item": "viz_pZLsO3n7",
 						"type": "block",
 						"position": {
 							"x": 0,
 							"y": 0,
-							"w": 1200,
+							"w": 1590,
 							"h": 300
 						}
 					},
@@ -210,18 +256,8 @@
 						"position": {
 							"x": 0,
 							"y": 0,
-							"w": 1200,
+							"w": 1580,
 							"h": 300
-						}
-					},
-					{
-						"item": "viz_TWx0q4MO",
-						"type": "block",
-						"position": {
-							"x": 450,
-							"y": 310,
-							"w": 750,
-							"h": 620
 						}
 					},
 					{
@@ -230,8 +266,8 @@
 						"position": {
 							"x": 450,
 							"y": 310,
-							"w": 750,
-							"h": 620
+							"w": 1130,
+							"h": 600
 						}
 					},
 					{
@@ -251,7 +287,7 @@
 							"x": 0,
 							"y": 460,
 							"w": 440,
-							"h": 470
+							"h": 450
 						}
 					},
 					{
@@ -271,7 +307,7 @@
 							"x": 0,
 							"y": 460,
 							"w": 440,
-							"h": 470
+							"h": 450
 						}
 					}
 				]
