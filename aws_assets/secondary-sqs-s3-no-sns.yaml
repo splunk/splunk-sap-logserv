@@ -127,6 +127,8 @@ Resources:
                   - sqs:DeleteMessage
                   - sqs:ChangeMessageVisibility
                   - sqs:ListQueues
+                  - sqs:DeleteMessageBatch
+                  - sqs:ChangeMessageVisibilityBatch
                 Resource: !Ref CrossAccountSQSArn
               
               # S3 permissions for cross-account source bucket
@@ -161,6 +163,8 @@ Resources:
                   - sqs:DeleteMessage
                   - sqs:ChangeMessageVisibility
                   - sqs:ListQueues
+                  - sqs:DeleteMessageBatch
+                  - sqs:ChangeMessageVisibilityBatch                  
                 Resource: !Ref LocalNotificationQueue
 
   # CloudWatch Log Group for Lambda
