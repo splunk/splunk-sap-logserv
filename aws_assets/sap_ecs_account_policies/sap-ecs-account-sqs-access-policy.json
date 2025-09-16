@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "__default_policy_ID",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<aws-sap-rise-account-id>:root",
+        "Service": "s3.amazonaws.com"
+      },
+      "Action": "sqs:*",
+      "Resource": "arn:aws:sqs:<aws-region>:<aws-sap-rise-account-id>:<sqs-queue-name>"
+    },
+    {
+      "Sid": "__cross_account_splunk_logserv",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<aws-customer-account-id>:role/<cross-account-role-name>"
+      },
+      "Action": [
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:GetQueueUrl",
+        "sqs:ReceiveMessage",
+        "sqs:GetQueueAttributes"
+      ],
+      "Resource": "arn:aws:sqs:<aws-region>:<aws-sap-rise-account-id>:<sqs-queue-name>"
+    }
+  ]
+}

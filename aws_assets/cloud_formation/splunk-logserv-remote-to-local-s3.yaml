@@ -1,0 +1,314 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Lambda function for cross-account S3 object copying with local SQS notification queue.'
+
+Parameters:
+  NewIAMUserName:
+    Type: String
+    Description: "Name for the new IAM user for Splunk LogServ"
+    Default: "splunk_logserv_user"
+    AllowedPattern: '^[a-zA-Z0-9+=,.@_-]+$'
+    MinLength: 3
+    MaxLength: 64
+    ConstraintDescription: 'Must be a valid IAM user name (3-64 characters)'
+
+  CrossAccountSQSQueueArn:
+    Type: String
+    Description: "ARN of the SQS queue in the SAP RISE AWS account"
+    Default: "arn:aws:sqs:ap-south-1:395719258032:splunk-logserv-remote-sqs-queue"
+    AllowedPattern: '^arn:aws:sqs:[a-z0-9-]+:[0-9]{12}:[a-zA-Z0-9_-]{1,80}$'
+    ConstraintDescription: 'Must be a valid SQS ARN format (arn:aws:sqs:region:account-id:queue-name)'
+    MinLength: 20
+    MaxLength: 1024
+
+  CrossAccountS3Bucket:
+    Type: String
+    Description: "Name of the source S3 bucket in the SAP RISE AWS account"
+    Default: "splunk-logserv-remote-bucket"
+    AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
+    ConstraintDescription: 'Must be a valid S3 bucket name (3-63 characters, lowercase letters, numbers, hyphens, and periods only)'
+    MinLength: 3
+    MaxLength: 63
+
+  LocalS3BucketName:
+    Type: String
+    Description: "Name of the local target S3 bucket in this account"
+    Default: "splunk-logserv-local-target-bucket"
+    AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
+    ConstraintDescription: 'Must be a valid S3 bucket name (3-63 characters, lowercase letters, numbers, hyphens, and periods only)'
+    MinLength: 3
+    MaxLength: 63
+
+  LocalSQSQueueName:
+    Type: String
+    Description: "Name for the local SQS queue that receives the local target bucket events"
+    Default: "splunk-logserv-local-target-queue"
+    AllowedPattern: '^[a-zA-Z0-9_-]{1,80}$'
+    ConstraintDescription: 'Queue name must be 3-80 characters long and contain only alphanumeric characters, hyphens, and underscores'
+    MinLength: 3
+    MaxLength: 80
+
+  LambdaCodeBucket:
+    Type: String
+    Description: "S3 bucket name containing the Lambda function code"
+    Default: "splunk-logserv-lambda-binary"
+    AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
+    ConstraintDescription: 'Must be a valid S3 bucket name (3-63 characters, lowercase letters, numbers, hyphens, and periods only)'
+    MinLength: 3
+    MaxLength: 63
+
+  LambdaFunctionName:
+    Type: String
+    Description: "Name of choice for the Lambda function"
+    Default: "splunk-logserv-lambda-logforwarder"
+    AllowedPattern: '^[a-zA-Z0-9_-]{1,64}$'
+    ConstraintDescription: 'Function name must be 3-64 characters long and contain only letters, numbers, hyphens, and underscores'
+    MinLength: 3
+    MaxLength: 64
+
+Resources:
+  # IAM User for Splunk LogServ (created first to break circular dependency)
+  SplunkLogServUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref NewIAMUserName
+
+  # Dead Letter Queue for local notifications (created first)
+  LocalNotificationDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${LocalSQSQueueName}-dlq"
+      MessageRetentionPeriod: 1209600  # 14 days
+
+  # Local SQS Queue for target bucket notifications
+  LocalNotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Ref LocalSQSQueueName
+      VisibilityTimeout: 600  # 10 minutes
+      MessageRetentionPeriod: 1209600  # 14 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt LocalNotificationDLQ.Arn
+        maxReceiveCount: 3
+    DependsOn:
+      - LocalNotificationDLQ
+
+  # SQS Queue Policy to allow S3 to send messages
+  LocalNotificationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref LocalNotificationQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt LocalNotificationQueue.Arn
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Sub "arn:aws:s3:::${LocalS3BucketName}"
+    DependsOn:
+      - LocalNotificationQueue
+
+  # Target bucket in your account
+  TargetS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref LocalS3BucketName
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Event: "s3:ObjectCreated:*"
+            Queue: !GetAtt LocalNotificationQueue.Arn
+    DependsOn:
+      - LocalNotificationQueuePolicy
+
+  # Splunk LogServ TA Role
+  SplunkLogServRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: splunk-logserv-ta-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt SplunkLogServUser.Arn
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: splunk-logserv-ta-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # CloudWatch Logs permissions (explicit)
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*"
+
+              # SQS permissions for cross-account queue
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                  - sqs:SendMessage
+                  - sqs:ChangeMessageVisibility
+                Resource: !Ref CrossAccountSQSQueueArn
+              
+              # S3 permissions for cross-account source bucket
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetObjectAttributes
+                  - s3:ListBucket
+                Resource: 
+                  - !Sub "arn:aws:s3:::${CrossAccountS3Bucket}"
+                  - !Sub "arn:aws:s3:::${CrossAccountS3Bucket}/*"
+
+              # SQS permissions for local queue
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                  - sqs:SendMessage
+                  - sqs:ChangeMessageVisibility
+                  - sqs:ListQueues
+                Resource: !GetAtt LocalNotificationQueue.Arn
+              
+              # S3 permissions for local bucket in your account
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:PutObjectTagging
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetObjectAttributes
+                  - s3:ListBucket
+                Resource: 
+                  - !GetAtt TargetS3Bucket.Arn
+                  - !Sub "${TargetS3Bucket.Arn}/*"
+              
+
+              # KMS Decrypt permissions
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: "*"
+              
+              # SQS List Queues
+              - Effect: Allow
+                Action:
+                  - sqs:ListQueues
+                Resource: "*"     
+
+    DependsOn:
+      - SplunkLogServUser
+      - TargetS3Bucket
+      - LocalNotificationQueue
+
+  # CloudWatch Log Group for Lambda
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunctionName}"
+      RetentionInDays: 14
+
+  # Lambda Function
+  LogServForwarderLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref LambdaFunctionName
+      Runtime: python3.9
+      Handler: log-forwarder-lambda.handler
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: splunk-logserv-lambda-binary.zip
+      Timeout: 300
+      MemorySize: 1024
+      Role: !GetAtt SplunkLogServRole.Arn
+      Environment:
+        Variables:
+          STAGING_BUCKET: !Ref LocalS3BucketName
+    DependsOn:
+      - SplunkLogServRole
+      - LambdaLogGroup
+
+  # Inline Policy for IAM User to assume the role
+  UserAssumeRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: splunk-logserv-sqs-based-input-assume-role-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'AllowAssumeRole'
+            Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: !GetAtt SplunkLogServRole.Arn
+      Users:
+        - !Ref SplunkLogServUser
+    DependsOn:
+      - SplunkLogServUser
+      - SplunkLogServRole
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the Lambda function
+    Value: !GetAtt LogServForwarderLambda.Arn
+  
+  SplunkLogServRoleArn:
+    Description: ARN of the Splunk LogServ TA role
+    Value: !GetAtt SplunkLogServRole.Arn
+  
+  TargetBucketArn:
+    Description: ARN of the target S3 bucket
+    Value: !GetAtt TargetS3Bucket.Arn
+  
+  LocalNotificationQueueArn:
+    Description: ARN of the local notification SQS queue
+    Value: !GetAtt LocalNotificationQueue.Arn
+  
+  LocalNotificationQueueUrl:
+    Description: URL of the local notification SQS queue
+    Value: !Ref LocalNotificationQueue
+
+  SplunkLogServUserArn:
+    Description: ARN of the created Splunk LogServ IAM User
+    Value: !GetAtt SplunkLogServUser.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-SplunkLogServUserArn'
+        
+  YourAccountId:
+    Description: Your AWS Account ID
+    Value: !Ref AWS::AccountId
+
+
+  # Event Source Mapping for cross-account SQS (source bucket events)
+  # CrossAccountSQSEventSourceMapping:
+  #   Type: AWS::Lambda::EventSourceMapping
+  #   Properties:
+  #     EventSourceArn: !Ref CrossAccountSQSQueueArn
+  #     FunctionName: !Ref LogServForwarderLambda
+  #     BatchSize: 10
+  #     MaximumBatchingWindowInSeconds: 5
+  #     Enabled: true
+  #     ScalingConfig:
+  #       MaximumConcurrency: 10
+  #     FunctionResponseTypes:
+  #       - ReportBatchItemFailures
+  #   DependsOn:
+  #     - SplunkLogServRole
+  #     - LogServForwarderLambda

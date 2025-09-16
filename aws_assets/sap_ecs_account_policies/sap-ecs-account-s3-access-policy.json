@@ -1,0 +1,22 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "__cross_account_splunk_logserv",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<aws-customer-account-id>:role/<cross-account-role-name>"
+      },
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:GetObjectAttributes",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::<s3-bucket-name>",
+        "arn:aws:s3:::<s3-bucket-name>/*"
+      ]
+    }
+  ]
+}

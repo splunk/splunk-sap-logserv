@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'New IAM User with Cross-Account IAM Role.'
+
+Parameters:
+  NewIAMUserName:
+    Type: String
+    Description: "Name for the new IAM user for Splunk LogServ"
+    Default: "splunk_logserv_user"
+    AllowedPattern: '^[a-zA-Z0-9+=,.@_-]+$'
+    MinLength: 3
+    MaxLength: 64
+    ConstraintDescription: 'Must be a valid IAM user name (3-64 characters)'
+
+  CrossAccountSQSQueueArn:
+    Type: String
+    Description: "ARN of the SQS queue in the SAP RISE AWS account"
+    Default: "arn:aws:sqs:ap-south-1:395719258032:splunk-logserv-remote-sqs-queue"
+    AllowedPattern: '^arn:aws:sqs:[a-z0-9-]+:[0-9]{12}:[a-zA-Z0-9_-]{1,80}$'
+    ConstraintDescription: 'Must be a valid SQS ARN format (arn:aws:sqs:region:account-id:queue-name)'
+    MinLength: 20
+    MaxLength: 1024
+
+  CrossAccountS3Bucket:
+    Type: String
+    Description: "Name of the source S3 bucket in the SAP RISE AWS account"
+    Default: "splunk-logserv-remote-bucket"
+    AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
+    ConstraintDescription: 'Must be a valid S3 bucket name (3-63 characters, lowercase letters, numbers, hyphens, and periods only)'
+    MinLength: 3
+    MaxLength: 63
+
+Resources:
+  # IAM User for Splunk LogServ (created first to break circular dependency)
+  SplunkLogServUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref NewIAMUserName
+
+  # Splunk LogServ TA Role
+  SplunkLogServRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: splunk-logserv-ta-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt SplunkLogServUser.Arn
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: splunk-logserv-ta-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # SQS permissions for cross-account queue
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:GetQueueUrl
+                  - sqs:ChangeMessageVisibility
+                Resource: !Ref CrossAccountSQSQueueArn
+              
+              # S3 permissions for cross-account source bucket
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetObjectAttributes
+                  - s3:ListBucket
+                Resource: 
+                  - !Sub "arn:aws:s3:::${CrossAccountS3Bucket}"
+                  - !Sub "arn:aws:s3:::${CrossAccountS3Bucket}/*"              
+
+              # KMS Decrypt permissions
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: "*"
+              
+              # SQS List Queues
+              - Effect: Allow
+                Action:
+                  - sqs:ListQueues
+                Resource: "*"     
+
+    DependsOn:
+      - SplunkLogServUser
+
+  # Inline Policy for IAM User to assume the role
+  UserAssumeRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: splunk-logserv-sqs-based-input-assume-role-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'AllowAssumeRole'
+            Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: !GetAtt SplunkLogServRole.Arn
+      Users:
+        - !Ref SplunkLogServUser
+    DependsOn:
+      - SplunkLogServUser
+      - SplunkLogServRole
+
+Outputs:
+  
+  SplunkLogServRoleArn:
+    Description: ARN of the Splunk LogServ TA role
+    Value: !GetAtt SplunkLogServRole.Arn
+  
+  SplunkLogServUserArn:
+    Description: ARN of the created Splunk LogServ IAM User
+    Value: !GetAtt SplunkLogServUser.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-SplunkLogServUserArn'
+              
+  YourAccountId:
+    Description: Your AWS Account ID
+    Value: !Ref AWS::AccountId
+
