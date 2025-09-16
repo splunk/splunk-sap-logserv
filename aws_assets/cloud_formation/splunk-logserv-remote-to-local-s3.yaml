@@ -13,7 +13,7 @@ Parameters:
 
   CrossAccountSQSQueueArn:
     Type: String
-    Description: "ARN of the SQS queue in the SAP RISE AWS account"
+    Description: "ARN of the SQS queue in the SAP ECS AWS account"
     Default: "arn:aws:sqs:ap-south-1:395719258032:splunk-logserv-remote-sqs-queue"
     AllowedPattern: '^arn:aws:sqs:[a-z0-9-]+:[0-9]{12}:[a-zA-Z0-9_-]{1,80}$'
     ConstraintDescription: 'Must be a valid SQS ARN format (arn:aws:sqs:region:account-id:queue-name)'
@@ -22,7 +22,7 @@ Parameters:
 
   CrossAccountS3Bucket:
     Type: String
-    Description: "Name of the source S3 bucket in the SAP RISE AWS account"
+    Description: "Name of the source S3 bucket in the SAP ECS AWS account"
     Default: "splunk-logserv-remote-bucket"
     AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
     ConstraintDescription: 'Must be a valid S3 bucket name (3-63 characters, lowercase letters, numbers, hyphens, and periods only)'
@@ -237,7 +237,7 @@ Resources:
         S3Bucket: !Ref LambdaCodeBucket
         S3Key: splunk-logserv-lambda-binary.zip
       Timeout: 300
-      MemorySize: 1024
+      MemorySize: 512
       Role: !GetAtt SplunkLogServRole.Arn
       Environment:
         Variables:

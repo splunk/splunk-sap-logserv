@@ -5,11 +5,11 @@
       "Sid": "__default_policy_ID",
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::<aws-sap-rise-account-id>:root",
+        "AWS": "arn:aws:iam::<aws-sap-ecs-account-id>:root",
         "Service": "s3.amazonaws.com"
       },
       "Action": "sqs:*",
-      "Resource": "arn:aws:sqs:<aws-region>:<aws-sap-rise-account-id>:<sqs-queue-name>"
+      "Resource": "arn:aws:sqs:<aws-region>:<aws-sap-ecs-account-id>:<sqs-queue-name>"
     },
     {
       "Sid": "__cross_account_splunk_logserv",
@@ -24,7 +24,7 @@
         "sqs:ReceiveMessage",
         "sqs:GetQueueAttributes"
       ],
-      "Resource": "arn:aws:sqs:<aws-region>:<aws-sap-rise-account-id>:<sqs-queue-name>"
+      "Resource": "arn:aws:sqs:<aws-region>:<aws-sap-ecs-account-id>:<sqs-queue-name>"
     }
   ]
 }
