@@ -41,7 +41,9 @@ theme:
         name: Switch to light mode
   features:
     - content.code.copy
-    - navigation.indexes
+    #- navigation.indexes
+    - navigation.instant.preview
+
 
 extra_css:
   - css/extra.css
@@ -60,12 +62,12 @@ plugins:
 
 nav:
 - Overview:
-    - Release notes: 'ReleaseNotes/index.md'
+    - Release notes: 'content/overview/release-notes.md'
     - About the Add-on: 'index.md'
 #    - Use cases: 'UseCases/index.md'
 #    - Source types: 'DataTypes/index.md'
 #    - Hardware and software requirements: 'HardwareAndSoftwareRequirements/index.md'
-#    - Installation and configuration overview: 'Installationandconfiguration/index.md'
+    - Installation and configuration overview: 'content/overview/install-config.md'
 #    - Sizing, performance, and cost considerations: 'SizingAndCost/index.md'
 #    - Deploy: 'Deploy/index.md'
 #    - Installation:
