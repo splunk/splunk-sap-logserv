@@ -38,7 +38,11 @@ iframe {
     transform: rotate(90deg);
   }
 }
+
+.cboxcolor {
+  color: #ff9100;
+}
 .cboxmove {
-  animation: material-circle-box 1000ms infinite;
-  color: #bec1c6;
+  animation: material-circle-box 1500ms infinite;
+  color: #ff9100;
 }

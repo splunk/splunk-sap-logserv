@@ -2,7 +2,7 @@
 
 The Splunk TA for SAP LogServ depends on several additional Splunk Technical Add-ons. 
 
-### :material-circle-box: Primary Prerequisites
+### :material-circle-box:{ .cboxcolor } Primary Prerequisites
 
 You need to first install these required Splunk Technical Add-ons from Splunk Web or through the Splunk Enterprise UI.
 
@@ -12,7 +12,7 @@ You need to first install these required Splunk Technical Add-ons from Splunk We
 
 
 
-### :material-circle-box: SAP LogServ for Amazon Web Services (AWS)
+### :material-circle-box:{ .cboxcolor } SAP LogServ for Amazon Web Services (AWS)
 
 For SAP ECS LogServ running in Amazon Web Services (AWS) you need to install this additional Splunk Technical Add-on as well. 
 
