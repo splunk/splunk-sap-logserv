@@ -29,3 +29,16 @@ iframe {
 [data-md-color-scheme="slate"] {
   --md-default-bg-color: hsla(var(--md-hue), 15%, 14%, 1);
 }
+
+@keyframes material-circle-box {
+  0%, 40%, 80%, 110% {
+    transform: rotate(90deg);
+  }
+  20%, 60% {
+    transform: rotate(90deg);
+  }
+}
+.cboxmove {
+  animation: material-circle-box 1000ms infinite;
+  color: #bec1c6;
+}
