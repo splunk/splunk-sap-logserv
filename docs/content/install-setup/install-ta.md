@@ -2,10 +2,10 @@
 
 ### :material-circle-box:{ .taiconcolor } Create a default index for the Splunk TA for SAP LogServ
 
-The Splunk TA for SAP LogServ needs a default event index defined to store the log events it collects. The suggested default index name is **_sap_logserv_logs_** but you can use any index of your choice. 
+The Splunk TA for SAP LogServ needs a default events index defined to store the log events it collects. The suggested default index name is **_sap_logserv_logs_** but you can use any events index of your choice. 
 
-- <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-your-indexes-and-data-in-splunk-cloud-platform/manage-splunk-cloud-platform-indexes" target="_blank">Create an event index in Splunk Cloud</a>
-- <a href="https://docs.splunk.com/Documentation/Splunk/9.4.2/Indexer/Setupmultipleindexes#Create_events_indexes" target="_blank">Create an event index in Splunk Enterprise</a>
+- <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-your-indexes-and-data-in-splunk-cloud-platform/manage-splunk-cloud-platform-indexes" target="_blank">Create an events index in Splunk Cloud</a>
+- <a href="https://docs.splunk.com/Documentation/Splunk/9.4.2/Indexer/Setupmultipleindexes#Create_events_indexes" target="_blank">Create an events index in Splunk Enterprise</a>
 
 !!! note 
     The Splunk LogServ TA comes with a macro named **_sap_logserv_idx_macro_** that you can change after installation to map to the index name you used in this step.

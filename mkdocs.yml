@@ -66,18 +66,20 @@ plugins:
 
 nav:
 - Overview:
-    - Release notes: 'content/overview/release-notes.md'
+    - Release Notes: 'content/overview/release-notes.md'
     - About the Add-on: 'index.md'
 #    - Use cases: 'UseCases/index.md'
 #    - Source types: 'DataTypes/index.md'
 #    - Hardware and software requirements: 'HardwareAndSoftwareRequirements/index.md'
-    - Installation and setup overview: 'content/overview/install-setup.md'
+    - Installation and Setup Overview: 'content/overview/install-setup.md'
 #    - Sizing, performance, and cost considerations: 'SizingAndCost/index.md'
 #    - Deploy: 'Deploy/index.md'
 - Installation and Setup:
     - Prerequisites: 'content/install-setup/prerequisites.md'
     - Installing the TA: 'content/install-setup/install-ta.md'
-    - Setup walkthroughs: 'content/install-setup/setup-walkthroughs.md'
+    - Setup Walkthroughs Overview: 'content/install-setup/setup-walkthroughs.md'
+    - AWS Direct Connect Walkthrough: 'content/install-setup/aws-direct-connect-walkthrough.md'
+    - AWS Local S3 Copy Walkthrough: 'content/install-setup/aws-local-s3-copy-walkthrough.md'    
 #    - Install in a single-instance Splunk Enterprise deployment: 'SingleInstance/index.md'
 #    - Install in a distributed Splunk Enterprise deployment: 'DistributedSplunk/index.md'
 #    - Add-on upgrade guide: 'Upgrade/index.md'

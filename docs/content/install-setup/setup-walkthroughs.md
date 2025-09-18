@@ -1,2 +1,32 @@
 # Setup Walkthroughs
 
+### :material-circle-box:{ .taiconcolor } Introduction
+Once the [prerequisites](prerequisites.md) and the [installation of the Splunk TA for SAP LogServ](install-ta.md) have been completed, use the provided setup walkthroughs to complete the setup based on the cloud provider where your SAP ECS environment is and your preferred deployment scenario.
+
+### :material-circle-box:{ .taiconcolor } Walkthroughs by Cloud Provider
+
+#### :material-greater-than:{ .taiconcolor } SAP ECS running in Amazon Web Services (AWS)
+??? note
+    Both deployment scenarios below for AWS require the use of a secondary AWS account (a different AWS account than the one SAP ECS is running in) due to the requirement from SAP for a cross-account IAM Role to access the AWS SAP ECS account where the LogServ logs reside.  Both deployment scenarios also require the use of an AWS IAM User that has an Access Key configured for it as this is a requirement for the Splunk Add-on for Amazon Web Services (AWS).
+
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-console-line:{ .taiconcolor } [Direct Connect Walkthrough](aws-direct-connect-walkthrough.md) 
+??? indented-note "Note"
+    This deployment scenario uses an IAM User with a configured Access Key and a cross-account IAM Role to directly access LogServ resources in the AWS SAP ECS account where the LogServ logs reside without the need to copy logs to a secondary S3 bucket. 
+
+    - No secondary S3 Bucket needed
+    - No secondary SQS Queue needed
+    - Does not support ingestion of historical logs
+    
+    ![image](../../images/aws-direct-connect-architecture.png "Direct Connect Deployment Architecture")
+
+    
+#### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-console-line:{ .taiconcolor } [Local S3 Copy Walkthrough](aws-local-s3-copy-walkthrough.md)
+??? indented-note "Note"
+    This deployment scenario uses an IAM User with a configured Access Key and a cross-account IAM Role along with a secondary S3 bucket and SQS queue. 
+
+    - Greater control of data + retention
+    - Requires secondary S3 Bucket
+    - Requires secondary SQS Queue
+    - Supports ingestion of historical logs
+    
+    ![image](../../images/aws-local-s3-copy-architecture.png "Local S3 Copy Deployment Architecture")

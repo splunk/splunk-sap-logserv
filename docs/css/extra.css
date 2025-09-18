@@ -43,3 +43,26 @@ iframe {
   animation: material-circle-box 12000ms infinite;
   color: #ff9100;
 }
+
+/* Create an indented-note subclass that matches the default note styling */
+.md-typeset .admonition.indented-note,
+.md-typeset details.indented-note {
+    /* Use the same border color as note */
+    border-color: #448aff;
+    margin-left: 1.5rem; /* Add your desired indentation */
+}
+
+.md-typeset .indented-note > .admonition-title,
+.md-typeset .indented-note > summary {
+    /* Use the same background as note */
+    background-color: rgba(68, 138, 255, 0.1);
+    border-color: #448aff;
+}
+
+.md-typeset .indented-note > .admonition-title::before,
+.md-typeset .indented-note > summary::before {
+    /* Use the same icon and color as note */
+    background-color: #448aff;
+    -webkit-mask-image: var(--md-admonition-icon--note);
+    mask-image: var(--md-admonition-icon--note);
+}
