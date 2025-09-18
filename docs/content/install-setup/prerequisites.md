@@ -12,12 +12,14 @@ You need to first install these required Splunk Technical Add-ons from Splunk We
 
 
 
-### :material-circle-box:{ .taiconcolor } SAP LogServ for Amazon Web Services (AWS)
+### :material-circle-box:{ .taiconcolor } SAP ECS running in Amazon Web Services (AWS)
 
-For SAP ECS LogServ running in Amazon Web Services (AWS) you need to install this additional Splunk Technical Add-on as well. 
+If you have SAP ECS running in Amazon Web Services (AWS) you need to install this additional Splunk Technical Add-on as well. 
 
-- <a href="https://splunkbase.splunk.com/app/1876" target="_blank">Splunk Add-on for Amazon Web Services (AWS)</a> 
+- <a href="https://splunkbase.splunk.com/app/1876" target="_blank">Splunk Add-on for Amazon Web Services (AWS) Download</a> 
+- <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/Installationandconfiguration/" target="_blank">Splunk Add-on for Amazon Web Services (AWS) Documentation</a>
 
+Addition configuration instructions for the Splunk Add-on for Amazon Web Services (AWS) are provided in the [Setup walkthroughs](../install-setup/setup-walkthroughs.md) after the prerequisite steps have been completed so just install for now. 
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 
