@@ -19,7 +19,7 @@ For SAP ECS LogServ running in Amazon Web Services (AWS) you need to install thi
 - <a href="https://splunkbase.splunk.com/app/1876" target="_blank">Splunk Add-on for Amazon Web Services (AWS)</a> 
 
 
-### :material-circle-box:{ .cboxmove } Next Steps
+## :material-circle-box:{ .cboxmove } Next Steps
 
 
 Additional instructions for next steps are provided in the [Setup walkthroughs](../install-setup/setup-walkthroughs.md)
