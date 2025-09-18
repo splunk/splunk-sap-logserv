@@ -5,7 +5,7 @@ edit_uri: "tree/main/docs/"
 remote_branch: gh-pages
 
 repo_name: Splunk TA for SAP LogServ
-repo_url: "https://https://github.com/splunk/splunk-sap-logserv"
+repo_url: "https://github.com/splunk/splunk-sap-logserv"
 
 markdown_extensions:
   - toc:
