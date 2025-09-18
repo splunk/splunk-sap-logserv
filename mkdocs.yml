@@ -76,6 +76,7 @@ nav:
 #    - Deploy: 'Deploy/index.md'
 - Installation and Setup:
     - Prerequisites: 'content/install-setup/prerequisites.md'
+    - Installing the TA: 'content/install-setup/install-ta.md'
     - Setup walkthroughs: 'content/install-setup/setup-walkthroughs.md'
 #    - Install in a single-instance Splunk Enterprise deployment: 'SingleInstance/index.md'
 #    - Install in a distributed Splunk Enterprise deployment: 'DistributedSplunk/index.md'
