@@ -13,7 +13,7 @@ The Splunk TA for SAP LogServ needs a default event index defined to store the l
 
 ### :material-circle-box:{ .taiconcolor } Download the TA
 
-Download and install the Splunk TA for SAP LogServ from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>
+Download the Splunk TA for SAP LogServ from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>
 
 ### :material-circle-box:{ .taiconcolor } Install in Splunk Cloud
 
@@ -28,7 +28,7 @@ Install the Splunk TA for SAP LogServ to your instance of Splunk Cloud using the
 
 #### :material-greater-than:{ .taiconcolor } Victoria Experience
 
-- <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-apps-and-add-ons-in-splunk-cloud-platform/manage-private-apps-on-your-splunk-cloud-platform-deployment#b5f810d7_e842_487d_b752_3662cfb646bc__Install_a_private_app_on_Victoria_Experience" target="_blank">Installation instructions for Classic Experience</a>
+- <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-apps-and-add-ons-in-splunk-cloud-platform/manage-private-apps-on-your-splunk-cloud-platform-deployment#b5f810d7_e842_487d_b752_3662cfb646bc__Install_a_private_app_on_Victoria_Experience" target="_blank">Installation instructions for Victoria Experience</a>
 
 
 ### :material-circle-box:{ .taiconcolor } Install in Splunk Enterprise
