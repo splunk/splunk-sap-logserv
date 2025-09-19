@@ -2,10 +2,10 @@
 
 ### :material-circle-box:{ .taiconcolor } High level steps
 
-Follow this process to install the Splunk TA for SAP LogServ
+Follow these high level steps in the order seen below to install and setup the Splunk TA for SAP LogServ correctly.
 
 1. Perform all prerequisite steps specified in the [Installation and Setup Prerequisites](../install-setup/prerequisites.md)
-2. Download and install the Splunk TA for SAP LogServ from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>
+2. Install the [Splunk TA for SAP LogServ](../install-setup/install-ta.md)
 3. Follow the setup options in the [Setup walkthroughs](../install-setup/setup-walkthroughs.md)
 
 
