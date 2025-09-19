@@ -7,6 +7,8 @@ remote_branch: gh-pages
 repo_name: Splunk TA for SAP LogServ
 repo_url: "https://github.com/splunk/splunk-sap-logserv"
 
+# site_dir: site
+
 markdown_extensions:
   - toc:
       permalink: True
