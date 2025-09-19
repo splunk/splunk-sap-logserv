@@ -18,7 +18,7 @@ Once the [prerequisites](prerequisites.md) and the [installation of the Splunk T
     - No secondary S3 Bucket needed
     - No secondary SQS Queue needed
     - Does not support ingestion of historical logs
-    - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-connect.yaml" target="_blank">CloudFormation Template</a> Provided    
+    - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-connect.yaml" target="_blank">CloudFormation Template</a> provided    
     
     ![image](../../images/aws-remote-s3-connect-architecture.png "Direct Connect Deployment Architecture")
 
@@ -31,6 +31,6 @@ Once the [prerequisites](prerequisites.md) and the [installation of the Splunk T
     - Requires secondary S3 Bucket
     - Requires secondary SQS Queue
     - Supports ingestion of historical logs
-    - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-copy.yaml" target="_blank">CloudFormation Template</a> Provided    
+    - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-copy.yaml" target="_blank">CloudFormation Template</a> provided    
     
     ![image](../../images/aws-remote-s3-copy-architecture.png "Local S3 Copy Deployment Architecture")
