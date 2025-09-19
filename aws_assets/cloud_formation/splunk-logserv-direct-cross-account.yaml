@@ -14,7 +14,7 @@ Parameters:
   CrossAccountSQSQueueArn:
     Type: String
     Description: "ARN of the SQS queue in the SAP ECS AWS account"
-    Default: "arn:aws:sqs:ap-south-1:145478675309:splunk-logserv-remote-sqs-queue"
+    Default: "arn:aws:sqs:us-texas-1:145478675309:splunk-logserv-remote-sqs-queue"
     AllowedPattern: '^arn:aws:sqs:[a-z0-9-]+:[0-9]{12}:[a-zA-Z0-9_-]{1,80}$'
     ConstraintDescription: 'Must be a valid SQS ARN format (arn:aws:sqs:region:account-id:queue-name)'
     MinLength: 20
