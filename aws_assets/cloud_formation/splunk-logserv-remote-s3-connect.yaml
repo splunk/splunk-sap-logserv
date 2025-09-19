@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'New IAM User with Cross-Account IAM Role.'
+Description: 'Creates a new IAM User with a Cross-Account IAM Role.'
 
 Parameters:
   NewIAMUserName:
