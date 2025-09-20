@@ -64,6 +64,21 @@ plugins:
             filters: ["!^_"]
             show_source: true
   - autorefs
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: zoom
+      slide_effect: zoom
+      width: 100%
+      height: auto
+      zoomable: true
+      draggable: false
+      auto_themed: false
+      auto_caption: false
+      caption_position: bottom
+      background: none
+      shadow: true
+      manual: false  
   - print-site  # should be at the end
 
 nav:

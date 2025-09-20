@@ -30,7 +30,7 @@ Parameters:
     MaxLength: 63
 
 Resources:
-  # IAM User for Splunk LogServ (created first to break circular dependency)
+  # IAM User for Splunk LogServ
   SplunkLogServUser:
     Type: AWS::IAM::User
     Properties:
