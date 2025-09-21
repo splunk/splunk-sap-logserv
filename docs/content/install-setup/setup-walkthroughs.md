@@ -10,6 +10,7 @@ Both deployment scenarios below for AWS require the use of a secondary AWS accou
 
 If you want to ingest historical logs from the S3 bucket in the SAP ECS account, the [AWS Remote S3 Copy Setup](aws-remote-s3-copy-walkthrough.md) is the recommended approach. Utilizing that approach provides you the ability to copy historical logs from the S3 bucket in the SAP ECS account to a secondary S3 bucket, so they will be ingested into Splunk, with the flexibility to switch over to the [AWS Remote S3 Connect Setup](aws-remote-s3-connect-walkthrough.md) approach afterward.   
 
+
 #### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-circle-box:{ .cboxmove } [AWS Remote S3 Connect Setup Walkthrough](aws-remote-s3-connect-walkthrough.md) 
 ??? indented-note "Note"
     This deployment scenario uses an IAM User with a configured Access Key and a cross-account IAM Role to directly access LogServ resources in the AWS SAP ECS account where the LogServ logs reside without the need to copy logs to a secondary S3 bucket. 

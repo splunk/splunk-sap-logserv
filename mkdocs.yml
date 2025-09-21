@@ -96,7 +96,7 @@ nav:
     - Installing the TA: 'content/install-setup/install-ta.md'
     - Setup Walkthroughs Overview: 'content/install-setup/setup-walkthroughs.md'
     - AWS Remote S3 Connect Setup Walkthrough: 'content/install-setup/aws-remote-s3-connect-walkthrough.md'
-    - AWS Rempote S3 Copy Setup Walkthrough: 'content/install-setup/aws-remote-s3-copy-walkthrough.md'    
+    - AWS Remote S3 Copy Setup Walkthrough: 'content/install-setup/aws-remote-s3-copy-walkthrough.md'    
 #    - Install in a single-instance Splunk Enterprise deployment: 'SingleInstance/index.md'
 #    - Install in a distributed Splunk Enterprise deployment: 'DistributedSplunk/index.md'
 #    - Add-on upgrade guide: 'Upgrade/index.md'
