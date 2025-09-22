@@ -124,3 +124,82 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/iam-user-access-key-05.png "Retrieve Access Key")
 
+
+### :material-circle-box:{ .taiconcolor } Configure Secondary Account (AWS Add-on)
+
+:material-lightning-bolt:{ .taiconcolor } Please ensure the user you log in with in your Splunk instance has the appropriate permissions to perform all the steps outlined below.
+
+1. Login to your Splunk console then find and open the **_Splunk Add-on for AWS_** App
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-acct-01.png "Open AWS Add-on")
+
+2. Click on the **_Configuration_** tab, then click on the **_Account_** tab, then click on the **_Add_** button
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-acct-02.png "Account Navigation")
+
+3. Choose and enter a descriptive name for the account in the **_Name_** field. Enter the Access Key and the Secret Key you created for the IAM User in the respective fields. Leave the Region Category set to **_Global_**. Click on the **_Add_** button.
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-acct-03.png "Add Account")
+
+
+### :material-circle-box:{ .taiconcolor } Configure IAM Role (AWS Add-on)
+
+1. Click on the **_IAM Role_** tab to the right of the Account tab, then click on the **_Add_** button
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-role-01.png "Role Navigation")
+
+2. Choose and enter a descriptive name for the role in the **_Name_** field. Enter the IAM Role ARN in the **_IAM Role ARN_** field, then click the **_Add_** button. The ARN for the IAM Role should look like the one below but with your 12-digit AWS account Id of your **_Secondary account_**.
+
+    - arn:aws:iam::**_secondary-account-id_**:role/splunk-logserv-ta-role
+
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-role-02.png "Add Role")
+
+
+
+### :material-circle-box:{ .taiconcolor } Configure SQS-Based S3 Input (AWS Add-on)
+
+1. Click on the **_Inputs_** tab. Click on the **_Create New Input_** button. Select the **_Custom Data Type_** option at the bottom of the drop-down, then select the **_SQS-Based S3 (Recommended)_** option.
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-input-01.png "Navigate Input")
+
+2. Fill out the first three fields in the SQS-Based S3 Input (**_Name_**, **_AWS Account_**, **_Assume Role_**)
+
+    - Choose and enter a descriptive name for the input
+    - Select the AWS Account you configured previously
+    - Select the IAM Role you configured previously
+
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-input-02.png "Input Fields")
+
+3. Fill out the next three fields in the SQS-Based S3 Input (**_Force using DLQ_**, **_AWS Region_**, **_Use Private Endpoints_**)
+
+    - Leave the **_Force using DLQ (Recommended)_** checkbox checked
+    - Select the **_AWS Region_** where you deployed the CloudFormation template previously
+    - Leave the **_Use Private Endpoints_** checkbox unchecked
+
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-input-03.png "Input Fields")
+
+4. Fill out the next three fields in the SQS-Based S3 Input (**_SQS Queue Name_**, **_SQS Batch Size_**, **_S3 File Decoder_**)
+
+    - Enter the **__URL__** of the SQS Queue in your **_SAP ECS account_**, **__not__** the ARN or just the name 
+        - If the ARN for your SQS Queue in your **_SAP ECS account_** looks like this:
+            - arn:aws:sqs:ap-south-1:121212121212:sap-hec-clz-ap-south-1-hec53-xsd-logserv
+        - Then format it as a URL like this
+            - https://sqs.ap-south-1.amazonaws.com/121212121212/sap-hec-clz-ap-south-1-hec53-xsd-logserv
+    - Leave the **_SQS Batch Size_** set to 10
+    - Leave the **_S3 File Decoder_** set to Custom Logs
+
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-input-04-s3-connect.png "Input Fields")
+
+5. Fill out the next three fields in the SQS-Based S3 Input (**_Signature Validate All Events_**, **_Source Type_**, **_Index_**)
+
+    - Uncheck the **_Signature Validate All Events_** checkbox
+    - Enter the value of **_sap_logserv_logs_** in the **_Source Type_** field
+    - Enter the name of the Splunk index you want to use in the **_Index_** field
+    - Click on the **_Add_** button
+
+??? indented-note "Example"
+    ![image](../../images/aws-add-on-config-input-05.png "Input Fields")
