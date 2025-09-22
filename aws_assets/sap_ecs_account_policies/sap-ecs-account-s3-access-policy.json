@@ -5,7 +5,7 @@
       "Sid": "__cross_account_splunk_logserv",
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::<aws-customer-account-id>:role/<cross-account-role-name>"
+        "AWS": "arn:aws:iam::<aws-customer-account-id>:role/splunk-logserv-ta-role"
       },
       "Action": [
         "s3:GetObject",
