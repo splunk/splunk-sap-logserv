@@ -14,6 +14,8 @@ Take note of the AWS Region in your **_SAP ECS account_** where the S3 Bucket an
 
 ![image](../../images/aws-remote-s3-copy-architecture.png "Remote S3 Copy Deployment Architecture")
 
+<br>
+
 ### :material-circle-box:{ .taiconcolor } High Level Steps
 
 Below are the high level steps for this setup process listed in the order they should be followed.
@@ -28,9 +30,10 @@ Below are the high level steps for this setup process listed in the order they s
 6. Configure your AWS **_Secondary account_** in the <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/ManageAwsAccounts/" target="_blank">Splunk Add-on for Amazon Web Services (AWS)</a>
 7. Configure the new cross-account <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/ManageAwsIAMRole/" target="_blank">IAM Role</a> from your AWS **_Secondary account_** in the Splunk Add-on for Amazon Web Services (AWS).
 8. Configure a new <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/SQS-basedS3/" target="_blank">SQS-Based S3 Input</a> in the Splunk Add-on for Amazon Web Services (AWS).
-9. Configure and enable the SQS Queue Trigger in the new Lambda function created with the CloudFormation template
+9. Review the SQS Queue Trigger in the new Lambda function created with the CloudFormation template
 10. Confirm that LogServ logs are being ingested into Splunk
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Create S3 Bucket with Lambda Function ZIP File
 
@@ -43,6 +46,7 @@ Below are the high level steps for this setup process listed in the order they s
 ??? note "Example"
     ![image](../../images/s3-upload-lambda-binary.png "S3 Upload Lambda Binary")
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Deploy CloudFormation Template
 
@@ -115,6 +119,8 @@ Below are the high level steps for this setup process listed in the order they s
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-copy-14.png "Deployment Success")
 
+<br>
+
 ### :material-circle-box:{ .taiconcolor } Contact SAP LogServ Support
 
 Once the deployment of the CloudFormation templates completes successfully, you will need to provide SAP LogServ Support with the ARN of the IAM Role named **_splunk-logserv-ta-role_** that was created by the template.
@@ -128,6 +134,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-sqs-access-policy.json" target="_blank">Example SQS Queue Access Policy</a>
 - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-s3-access-policy.json" target="_blank">Example S3 Bucket Access Policy</a>
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Create Access Key for IAM User
 
@@ -151,6 +158,8 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/iam-user-access-key-05.png "Retrieve Access Key")
 
+<br>
+
 ### :material-circle-box:{ .taiconcolor } Configure Secondary Account (AWS Add-on)
 
 :material-lightning-bolt:{ .taiconcolor } Please ensure the user you log in with in your Splunk instance has the appropriate permissions to perform all the steps outlined below.
@@ -167,6 +176,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-acct-03.png "Add Account")
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Configure IAM Role (AWS Add-on)
 
@@ -181,7 +191,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-role-02.png "Add Role")
 
-
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Configure SQS-Based S3 Input (AWS Add-on)
 
@@ -200,9 +210,9 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 3. Fill out the next three fields in the SQS-Based S3 Input (**_Force using DLQ_**, **_AWS Region_**, **_Use Private Endpoints_**)
 
-    - Leave the **_Force using DLQ (Recommended)_** checkbox checked
+    - Leave the **_Force using DLQ (Recommended)_** checkbox **__checked__**
     - Select the **_AWS Region_** where you deployed the CloudFormation template previously
-    - Leave the **_Use Private Endpoints_** checkbox unchecked
+    - Leave the **_Use Private Endpoints_** checkbox **__unchecked__**
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-03.png "Input Fields")
@@ -218,7 +228,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 5. Fill out the next three fields in the SQS-Based S3 Input (**_Signature Validate All Events_**, **_Source Type_**, **_Index_**)
 
-    - Uncheck the **_Signature Validate All Events_** checkbox
+    - **__Uncheck__** the **_Signature Validate All Events_** checkbox
     - Enter the value of **_sap_logserv_logs_** in the **_Source Type_** field
     - Enter the name of the Splunk index you want to use in the **_Index_** field
     - Click on the **_Add_** button
@@ -226,5 +236,100 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-05.png "Input Fields")
 
+<br>
 
-### :material-circle-box:{ .taiconcolor } Configure SQS Queue Trigger
+### :material-circle-box:{ .taiconcolor } Review SQS Queue Trigger
+
+1. Navigate to the Lambda console in your **_Secondary account_** and ensure the region you are in matches the region in your **_SAP ECS account_**. Find the Lambda function that was created by the CloudFormation template and click on its name to view details. 
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-review-01.png "Navigate Lambda")
+
+
+2. If you **__do not__** see an existing SQS Trigger in the Function overiew diagram as seen in the example image below, then follow the steps in the **_Create SQS Queue Trigger_** section below, otherwise follow the steps in the **_Configure SQS Queue Trigger_** section below.
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-review-02.png "Review SQS Trigger")
+
+<br>
+
+#### :material-crop-square:{ .taiconcolor } Create SQS Queue Trigger
+
+1. Click on the **_Add trigger_** button on the left side of the Function overview diagram to create a new SQS Queue Trigger
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-create-01.png "Add SQS Trigger")
+
+2. Click on the dropdown and select **_SQS_** as the trigger source
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-create-02.png "SQS Trigger Source")
+
+3. Fill out the first three fields in the SQS Trigger (**_SQS queue ARN_**, **_Activate trigger_**, **_Enable metrics_**)
+
+    - Enter the complete **_ARN_** of the SQS Queue in your **_SAP ECS account_**
+    - **_Check_** the **_Activate trigger_** checkbox
+    - **_Check_** the **_Enable metrics_** checkbox
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-create-03.png "Trigger Fields")
+
+4. Fill out the next three fields in the SQS Trigger (**_Batch size_**, **_Batch window_**, **_Maximum concurrency_**)
+
+    - Set the **_Batch Size_** to 10
+    - Set the **_Batch window_** to 5
+    - Set the **_Maximum concurrency_** to 8
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-create-04.png "Trigger Fields")
+
+5. Fill out the last field in the SQS Trigger (**_Report batch item failures_**) and save the trigger
+
+    - **_Check_** the **_Report batch item failures_** checkbox
+    - Click on the **_Add_** button on the bottom right of the screen to save the trigger
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-create-05.png "Trigger Fields")
+
+
+<br>
+
+#### :material-crop-square:{ .taiconcolor } Configure SQS Queue Trigger
+
+1. Click on the **_SQS_** rectangle on the left side of the Function overview diagram to navigate to the SQS Queue Trigger configuration
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-config-01.png "Navigate SQS Trigger")
+
+2. Check the checkbox for the **_SQS_** trigger and then click on the **_Edit_** button
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-config-02.png "Edit SQS Trigger")
+
+3. Validate the first three fields in the SQS Trigger (**_SQS queue ARN_**, **_Activate trigger_**, **_Enable metrics_**)
+
+    - Ensure the complete **_ARN_** of the SQS Queue in your **_SAP ECS account_** is referenced here
+    - Ensure the **_Activate trigger_** checkbox is **_checked_**
+    - Ensure the **_Enable metrics_** checkbox is **_checked_**
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-config-03.png "Trigger Fields")
+
+
+4. Validate the next three fields in the SQS Trigger (**_Batch size_**, **_Batch window_**, **_Maximum concurrency_**)
+
+    - Ensure the **_Batch Size_** is set to 10
+    - Ensure the **_Batch window_** is set to 5
+    - Ensure the **_Maximum concurrency_** is set to 8
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-config-04.png "Trigger Fields")
+
+5. Validate the last field in the SQS Trigger (**_Report batch item failures_**) and save the trigger
+
+    - Ensure the **_Report batch item failures_** checkbox is **_checked_**
+    - Click on the **_Save_** button on the bottom right of the screen to save the trigger
+
+??? indented-note "Example"
+    ![image](../../images/lambda-sqs-queue-trigger-config-05.png "Trigger Fields")
+

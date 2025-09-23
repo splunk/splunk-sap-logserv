@@ -10,10 +10,13 @@ The Splunk TA for SAP LogServ needs a default events index defined to store the 
 !!! note 
     The Splunk LogServ TA comes with a macro named **_sap_logserv_idx_macro_** that you can change after installation to map to the index name you used in this step.
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Download the TA
 
 Download the Splunk TA for SAP LogServ from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>
+
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Install in Splunk Cloud
 
@@ -22,14 +25,15 @@ Install the Splunk TA for SAP LogServ to your instance of Splunk Cloud using the
 !!! note 
     The app installation workflow available to you in Splunk Web depends on your Splunk Cloud Platform Experience: **Victoria** or **Classic**. To find your Splunk Cloud Platform Experience, in Splunk Web, click **Support & Services > About**. 
 
-#### :material-greater-than:{ .taiconcolor } Classic Experience
+#### :material-crop-square:{ .taiconcolor } Classic Experience
 
 - <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-apps-and-add-ons-in-splunk-cloud-platform/manage-private-apps-on-your-splunk-cloud-platform-deployment#e86cbd1a_f4ec_4256_9299_f2c56c9842ad__Install_a_private_app_on_Classic_Experience" target="_blank">Installation instructions for Classic Experience</a>
 
-#### :material-greater-than:{ .taiconcolor } Victoria Experience
+#### :material-crop-square:{ .taiconcolor } Victoria Experience
 
 - <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-apps-and-add-ons-in-splunk-cloud-platform/manage-private-apps-on-your-splunk-cloud-platform-deployment#b5f810d7_e842_487d_b752_3662cfb646bc__Install_a_private_app_on_Victoria_Experience" target="_blank">Installation instructions for Victoria Experience</a>
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Install in Splunk Enterprise
 
@@ -43,8 +47,8 @@ Install the Splunk TA for SAP LogServ to your instance of Splunk Enterprise usin
 
 If you are using separate forwarders in conjunction with your single-instance deployment, be sure to <a href="http://docs.splunk.com/Documentation/AddOns/released/Overview/Distributedinstall#Universal_or_light_forwarders" target="_blank">deploy the add-on to your forwarders</a> as well. 
 
+<br>
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 
-
-Additional instructions for next steps are provided in the [Setup walkthroughs](../install-setup/setup-walkthroughs.md)
+Additional instructions for next steps are provided in the [Setup Walkthroughs Overview](../install-setup/setup-walkthroughs.md)

@@ -5,7 +5,7 @@ Once the [prerequisites](prerequisites.md) and the [installation of the Splunk T
 
 ### :material-circle-box:{ .taiconcolor } Walkthroughs by Cloud Provider
 
-#### :material-greater-than:{ .taiconcolor } Amazon Web Services (AWS)
+#### :material-crop-square:{ .taiconcolor } Amazon Web Services (AWS)
 Both deployment scenarios below for AWS require the use of a secondary AWS account (a different AWS account than the one SAP ECS is running in) due to the requirement from SAP for a cross-account IAM Role to access the AWS SAP ECS account where the LogServ logs reside.  Both deployment scenarios also require the use of an AWS IAM User that has an Access Key configured for it as this is a requirement for the Splunk Add-on for Amazon Web Services (AWS).
 
 If you want to ingest historical logs from the S3 bucket in the SAP ECS account, the [AWS Remote S3 Copy Setup](aws-remote-s3-copy-walkthrough.md) is the recommended approach. Utilizing that approach provides you the ability to copy historical logs from the S3 bucket in the SAP ECS account to a secondary S3 bucket, so they will be ingested into Splunk, with the flexibility to switch over to the [AWS Remote S3 Connect Setup](aws-remote-s3-connect-walkthrough.md) approach afterward.   

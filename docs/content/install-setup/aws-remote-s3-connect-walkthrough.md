@@ -20,6 +20,7 @@ Take note of the AWS Region in your **_SAP ECS account_** where the S3 Bucket an
 
     If you have no interest in obtaining the historical logs then use this remote S3 connect deployment approach.   
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } High Level Steps
 
@@ -36,6 +37,7 @@ Below are the high level steps for this setup process listed in the order they s
 7. Configure a new <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/SQS-basedS3/" target="_blank">SQS-Based S3 Input</a> in the Splunk Add-on for Amazon Web Services (AWS).
 8. Confirm that LogServ logs are being ingested into Splunk
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Deploy CloudFormation Template
 
@@ -87,6 +89,7 @@ Below are the high level steps for this setup process listed in the order they s
 ??? indented-note "Example- Image Needs Update !!!!"
     ![image](../../images/cloud-formation-s3-copy-14.png "Deployment Success")
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Contact SAP LogServ Support
 
@@ -101,6 +104,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-sqs-access-policy.json" target="_blank">Example SQS Queue Access Policy</a>
 - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-s3-access-policy.json" target="_blank">Example S3 Bucket Access Policy</a>
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Create Access Key for IAM User
 
@@ -124,6 +128,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/iam-user-access-key-05.png "Retrieve Access Key")
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Configure Secondary Account (AWS Add-on)
 
@@ -141,6 +146,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-acct-03.png "Add Account")
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Configure IAM Role (AWS Add-on)
 
@@ -156,6 +162,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
     ![image](../../images/aws-add-on-config-role-02.png "Add Role")
 
 
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Configure SQS-Based S3 Input (AWS Add-on)
 
@@ -174,9 +181,9 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 3. Fill out the next three fields in the SQS-Based S3 Input (**_Force using DLQ_**, **_AWS Region_**, **_Use Private Endpoints_**)
 
-    - Leave the **_Force using DLQ (Recommended)_** checkbox checked
+    - Leave the **_Force using DLQ (Recommended)_** checkbox **__checked__**
     - Select the **_AWS Region_** where you deployed the CloudFormation template previously
-    - Leave the **_Use Private Endpoints_** checkbox unchecked
+    - Leave the **_Use Private Endpoints_** checkbox **__unchecked__**
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-03.png "Input Fields")
@@ -186,7 +193,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
     - Enter the **__URL__** of the SQS Queue in your **_SAP ECS account_**, **__not__** the ARN or just the name 
         - If the ARN for your SQS Queue in your **_SAP ECS account_** looks like this:
             - arn:aws:sqs:ap-south-1:121212121212:sap-hec-clz-ap-south-1-hec53-xsd-logserv
-        - Then format it as a URL like this
+        - Then format it as a URL like this:
             - https://sqs.ap-south-1.amazonaws.com/121212121212/sap-hec-clz-ap-south-1-hec53-xsd-logserv
     - Leave the **_SQS Batch Size_** set to 10
     - Leave the **_S3 File Decoder_** set to Custom Logs
@@ -196,7 +203,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 5. Fill out the next three fields in the SQS-Based S3 Input (**_Signature Validate All Events_**, **_Source Type_**, **_Index_**)
 
-    - Uncheck the **_Signature Validate All Events_** checkbox
+    - **__Uncheck__** the **_Signature Validate All Events_** checkbox
     - Enter the value of **_sap_logserv_logs_** in the **_Source Type_** field
     - Enter the name of the Splunk index you want to use in the **_Index_** field
     - Click on the **_Add_** button
