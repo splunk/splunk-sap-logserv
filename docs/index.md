@@ -12,7 +12,6 @@ The Splunk TA for SAP LogServ provides multiple mechanisms to access the logs fr
 |-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Version     | 0.0.1-beta                                                                                                                                                                |
 | Supported vendor products     | SAP LogServ for SAP ECS in Amazon Web Services (AWS)                                                                                                                                                          |
-| CIM-compliant vendor products | lorem ipsum|
-| Add-on has a web UI           | Yes. This add-on contains views for configuration.                                                                                                                     |
+| CIM | 5.1.1 and later |
+| Add-on has a web UI           | Yes. This add-on contains dashboards.                                                                                                                     |
 
-lorem ipsum lorem
