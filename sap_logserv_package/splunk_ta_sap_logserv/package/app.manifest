@@ -9,7 +9,7 @@
         },
         "author": [
             {
-                "name": "",
+                "name": "Splunk",
                 "email": null,
                 "company": null
             }
@@ -25,9 +25,9 @@
         },
         "commonInformationModels": null,
         "license": {
-            "name": "LICENSE.txt",
-            "text": "./LICENSES/LICENSE.txt",
-            "uri": null
+            "name": "Splunk Software License Agreement",
+            "text": "LICENSES/LicenseRef-Splunk-8-2021.txt",
+            "uri": "https://www.splunk.com/view/SP-CAAAAFA"
         },
         "privacyPolicy": {
             "name": null,
