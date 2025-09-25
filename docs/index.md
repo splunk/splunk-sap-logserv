@@ -15,3 +15,5 @@ The Splunk TA for SAP LogServ provides multiple mechanisms to access the logs fr
 | CIM | 5.1.1 and later |
 | Add-on has a web UI           | Yes. This add-on contains dashboards.                                                                                                                     |
 
+
+![image](images/dashboard-data-pipeline.png "Data Pipeline Dashboard")
