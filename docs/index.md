@@ -17,3 +17,7 @@ The Splunk TA for SAP LogServ provides multiple mechanisms to access the logs fr
 
 
 ![image](images/dashboard-data-pipeline.png "Data Pipeline Dashboard")
+
+<br>
+
+![image](images/dashboard-host-details.png "Host Details Dashboard")
