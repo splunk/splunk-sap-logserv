@@ -4,5 +4,5 @@
 /venv/
 /pem
 *output/
-
-
+appinspect_report.html
+splunk_ta_sap_logserv*.tar.gz
