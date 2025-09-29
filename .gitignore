@@ -4,5 +4,6 @@
 /venv/
 /pem
 *output/
+/sap_docs_local/
 
 

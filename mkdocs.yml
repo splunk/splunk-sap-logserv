@@ -91,6 +91,7 @@ nav:
     - Installation and Setup Overview: 'content/overview/install-setup.md'
 #    - Sizing, performance, and cost considerations: 'SizingAndCost/index.md'
 #    - Deploy: 'Deploy/index.md'
+    - Sourcetype mapping: 'content/overview/ta_mapping.md'
 - Installation and Setup:
     - Prerequisites: 'content/install-setup/prerequisites.md'
     - Installing the TA: 'content/install-setup/install-ta.md'
