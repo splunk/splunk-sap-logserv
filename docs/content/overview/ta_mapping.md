@@ -28,11 +28,21 @@ However `clz_dir` and `clz_subdir` fields are preserved, to maintain backtrackin
 | 	/var/log/localmessages	   | 	linux_messages_syslog	 |
 | 	/var/log/messages	        | 	linux_messages_syslog	 |
 | 	/var/log/pacemaker(.log)	 | 	syslog	                |
+| 	/var/log/slapd.log	       | 	syslog	                |
 | 	/var/log/sssd(.log)	      | 	linux_secure	          |
 | 	/var/log/sudolog	         | 	syslog	                |
 | 	/var/log/warn	            | 	syslog	                |
 | 	/who	                     | 	who	                   |
 
+
+<a href="https://splunkbase.splunk.com/app/742" target="_blank"> Splunk Add-on for Microsoft Windows</a>
+
+| Source field value         | Sourcetype assigned |
+|----------------------------|---------------------|
+| 	WinEventLog:Application	  | 	XmlWinEventLog	    |
+| 	WinEventLog:(*.)Operational	 | 	XmlWinEventLog	    |
+| 	WinEventLog:Security	     | 	XmlWinEventLog	    |
+| 	WinEventLog:System	       | 	XmlWinEventLog	    |
 
 <a href="https://splunkbase.splunk.com/app/2965" target="_blank">Splunk Add-on for Squid Proxy</a> 
 
@@ -45,11 +55,17 @@ However `clz_dir` and `clz_subdir` fields are preserved, to maintain backtrackin
 
 <a href="https://splunkbase.splunk.com/app/2876" target="_blank">Splunk Add-on for ISC BIND</a> 
 
-| Source field value                     | Sourcetype assigned     |
-|----------------------------------------|-------------------------|
-| 	/var/lib/named/log/named/default.log	 |	isc:bind:query	|
-| 	/var/lib/named/log/named/queries.log	 |	isc:bind:query	|
-| 	/var/log/named/lame-servers.log	      |	isc:bind:lameserver	|
+| Source field value                           | Sourcetype assigned     |
+|----------------------------------------------|-------------------------|
+| 	/var/lib/named/log/named/default.log	       |	isc:bind:query	|
+| 	/var/lib/named/log/named/general.log	       |	isc:bind:network	|
+| 	/var/lib/named/log/named/lame-servers.log 	 |	isc:bind:lameserver	|
+| 	/var/lib/named/log/named/network.log	       |	isc:bind:network	|
+| 	/var/lib/named/log/named/notify.log	        |	isc:bind:transfer	|
+| 	/var/lib/named/log/named/queries.log	       |	isc:bind:query	|
+| 	/var/lib/named/log/named/resolver.log	      |	isc:bind:network	|
+| 	/var/lib/named/log/named/update.log	        |	isc:bind:transfer	|
+| 	/var/lib/named/log/named/xfer-out.log	      |	isc:bind:transfer	|
 
 
 
