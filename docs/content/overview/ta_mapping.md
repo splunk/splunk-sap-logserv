@@ -2,11 +2,11 @@
 
 ### :material-circle-box:{ .taiconcolor } Overview
 
-SAP RISE environment logs are not a singular data source but, in fact, a collection of OS-specific, SAP environment, database, and other application logs.
+SAP RISE environment logs are not a singular data source but, in fact, a collection of OS-specific, SAP environment, database, and other applications logs.
 
 Due to the nature of this solution, the Splunk Technical Add-on for SAP Logserv is not a standalone integration. To take full advantage of its capabilities (like CIM mapping), you need to install additional TAs as specified in the [Installation and Setup Prerequisites](../install-setup/prerequisites.md)
 
-For a streamlined data ingestion process, all selected logs are ingested under one sourcetype: `sap_logserv_logs`. They are then assigned to a final sourcetype during the indexing phase directly at the Splunk Indexer, based on the `source` field.
+For a streamlined data ingestion process, all selected logs are ingested under one sourcetype: `sap_logserv_logs`. They are then assigned to a final sourcetype during parsing/indexing either on a Splunk Heavy Forwarder or directly at the Splunk Indexer, based on the `source` field.
 
 All events are in JSON format with metadata (like _time, host, source, etc.) and the _raw field containing the event contents. 
 To limit index size, only the _raw field is ingested from each event - metadata fields are either mapped to Splunk's native metadata fields or dropped. 
