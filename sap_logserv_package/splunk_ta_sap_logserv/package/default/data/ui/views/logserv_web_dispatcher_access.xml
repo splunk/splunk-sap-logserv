@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - Web Dispatcher Access</label>
+    <label>SAP LogServ Web Dispatcher Access</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - Web Dispatcher Access",
+	"title": "SAP LogServ Web Dispatcher Access",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {
@@ -171,7 +171,7 @@
 		"ds_1ZmrypYh": {
 			"name": "Column chart search",
 			"options": {
-				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access\r\n| eval status_group = case(\r\n    tonumber(status) < 300, \"Success (2xx)\",\r\n    tonumber(status) < 400, \"Redirect (3xx)\", \r\n    tonumber(status) < 500, \"Client Error (4xx)\",\r\n    tonumber(status) >= 500, \"Server Error (5xx)\",\r\n    1=1, \"Other\"\r\n)\r\n| timechart span=1h count by status_group",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access\r\n| eval status_group = case(\r\n    tonumber(status) < 300, \"Success (2xx)\",\r\n    tonumber(status) < 400, \"Redirect (3xx)\", \r\n    tonumber(status) < 500, \"Client Error (4xx)\",\r\n    tonumber(status) >= 500, \"Server Error (5xx)\",\r\n    1=1, \"Other\"\r\n)\r\n| timechart span=1h count by status_group",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -193,7 +193,7 @@
 		"ds_TsZBieYG": {
 			"name": "Scatter chart search",
 			"options": {
-				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access\r\n| eval response_time_ms = tonumber(total_us)/1000\r\n| timechart span=1h avg(response_time_ms) as \"Avg Response Time (ms)\"",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access\r\n| eval response_time_ms = tonumber(total_us)/1000\r\n| timechart span=1h avg(response_time_ms) as \"Avg Response Time (ms)\"",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -204,7 +204,7 @@
 		"ds_WaZCTDkV": {
 			"name": "Bubble chart search 2",
 			"options": {
-				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access \r\n| stats count as requests, dc(uri) as unique_pages, avg(tonumber(total_us)/1000) as avg_response_ms by clientip\r\n| sort -requests\r\n| head 25\r\n| table clientip, requests, unique_pages",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access \r\n| stats count as requests, dc(uri) as unique_pages, avg(tonumber(total_us)/1000) as avg_response_ms by clientip\r\n| sort -requests\r\n| head 25\r\n| table clientip, requests, unique_pages",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -215,7 +215,7 @@
 		"ds_pYyp9bI7": {
 			"name": "Requests by Record Type search",
 			"options": {
-				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access\r\n| stats count by method\r\n| sort -count",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access\r\n| stats count by method\r\n| sort -count",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"
@@ -226,7 +226,7 @@
 		"ds_yE9yBtpa": {
 			"name": "Bubble chart search",
 			"options": {
-				"query": "`sap_logserv_idx_macro` sourcetype=sap_webdispatcher_access \r\n| eval response_time_ms = tonumber(total_us)/1000\r\n| stats avg(response_time_ms) as avg_response, count as requests by uri\r\n| eval avg_response = round(avg_response, 1)\r\n| sort -avg_response\r\n| head 5\r\n| table uri, avg_response, requests",
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access \r\n| eval response_time_ms = tonumber(total_us)/1000\r\n| stats avg(response_time_ms) as avg_response, count as requests by uri\r\n| eval avg_response = round(avg_response, 1)\r\n| sort -avg_response\r\n| head 5\r\n| table uri, avg_response, requests",
 				"queryParameters": {
 					"earliest": "$global_time.earliest$",
 					"latest": "$global_time.latest$"

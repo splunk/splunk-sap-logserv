@@ -1,6 +1,6 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP RISE host details</label>
+    <label>SAP Host Details</label>
     <description></description>
     <definition><![CDATA[
 {
@@ -87,7 +87,7 @@
 		}
 	},
 	"description": "",
-	"title": "SAP RISE host details",
+	"title": "SAP Host Details",
 	"layout": {
 		"tabs": {
 			"items": [

@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - DNS Analytics</label>
+    <label>SAP LogServ DNS Analytics</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - DNS Analytics",
+	"title": "SAP LogServ DNS Analytics",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {
