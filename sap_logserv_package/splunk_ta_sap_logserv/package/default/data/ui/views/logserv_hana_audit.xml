@@ -38,14 +38,7 @@
 				"backgroundColor": "transparent",
 				"x": "> primary | seriesByName('_time')",
 				"xAxisTitleVisibility": "hide",
-				"y": "> primary | frameBySeriesNames('Other Admin','Password Reset','Policy Change','User Activation')",
 				"resultLimit": 500000,
-				"seriesColorsByField": {
-					"Client Error (4xx)": "#dc4e41",
-					"Server Error (5xx)": "#f1813f",
-					"Redirect (3xx)": "#0877a6",
-					"Success (2xx)": "#4fa484"
-				},
 				"columnSpacing": 0,
 				"showSplitSeries": true,
 				"columnGrouping": "overlay",
@@ -125,7 +118,6 @@
 			},
 			"options": {
 				"backgroundColor": "transparent",
-				"y": "> primary | frameBySeriesNames('Failed Operation','Object Modification','Permission Grant')",
 				"xAxisTitleVisibility": "hide",
 				"showSplitSeries": true,
 				"yAxisTitleVisibility": "hide",

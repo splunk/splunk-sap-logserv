@@ -49,7 +49,6 @@
 				"showSplitSeries": true,
 				"x": "> primary | seriesByName('_time')",
 				"xAxisTitleVisibility": "hide",
-				"y": "> primary | frameBySeriesNames('Client Error (4xx)','Redirect (3xx)','Server Error (5xx)','Success (2xx)')",
 				"y2AxisTitleVisibility": "hide",
 				"yAxisTitleVisibility": "hide"
 			},
@@ -125,7 +124,6 @@
 				},
 				"showRoundedY2AxisLabels": false,
 				"xAxisTitleVisibility": "hide",
-				"y": "> primary | frameBySeriesNames('Avg Response Time (ms)')"
 			},
 			"showLastUpdated": false,
 			"showProgressBar": false,

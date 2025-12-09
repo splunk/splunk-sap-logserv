@@ -69,7 +69,6 @@
 			"options": {
 				"backgroundColor": "transparent",
 				"xAxisTitleVisibility": "hide",
-				"y": "> primary | frameBySeriesNames('hec53v013858','hec53v013859','hec53v013868','hec53v052420','hec53v052421','hec53v052422','hec53v052427','hec53v052428','hec53v052470','hec53v052931','hec53v052932','_span','_spandays')",
 				"yAxisScale": "log"
 			},
 			"title": "Host Event Count",
