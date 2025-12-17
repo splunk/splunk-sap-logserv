@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ Data Pipeline Overview</label>
+    <label>SAP Logserv Data Pipeline Overview</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ Data Pipeline Overview",
+	"title": "SAP Logserv Data Pipeline Overview",
 	"description": "",
 	"inputs": {
 		"input_xV9baORe": {
@@ -96,9 +96,10 @@
 			"description": "",
 			"eventHandlers": [
 				{
+					"type": "drilldown.linkToDashboard",
 					"options": {
-						"app": "sap_logserv_add_on",
-						"dashboard": "sap_rise_host_details",
+						"app": "splunk_ta_sap_logserv",
+						"dashboard": "logserv_host_details",
 						"newTab": true,
 						"tokens": [
 							{
@@ -106,8 +107,7 @@
 								"value": "row.Host.value"
 							}
 						]
-					},
-					"type": "drilldown.linkToDashboard"
+					}
 				}
 			],
 			"options": {
