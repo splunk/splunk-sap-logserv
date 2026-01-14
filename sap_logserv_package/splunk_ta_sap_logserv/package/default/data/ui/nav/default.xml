@@ -3,7 +3,7 @@
   <collection label="Analytics">
     <view name="logserv_dns_analytics" />
     <view name="logserv_hana_audit" />
-    <view name="logserv_web_dispatcher_access" />
+    <view name="logserv_web_dispatcher" />
   </collection>
   <view name="search"/>
 </nav>
