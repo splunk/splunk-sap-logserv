@@ -123,7 +123,7 @@
 					"Avg Response Time (ms)": "#62b3b2"
 				},
 				"showRoundedY2AxisLabels": false,
-				"xAxisTitleVisibility": "hide",
+				"xAxisTitleVisibility": "hide"
 			},
 			"showLastUpdated": false,
 			"showProgressBar": false,
