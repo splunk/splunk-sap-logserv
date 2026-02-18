@@ -57,7 +57,7 @@ The table below lists the different features supported by each deployment scenar
     - No secondary S3 Bucket needed
     - Secondary SQS Queue needed
     - Log filtering options supported
-    - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/migration/connect_2_filter/migrate-to-filter.py" target="_blank">Python Migration Script</a> provided    
+    - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-filter.yaml" target="_blank">CloudFormation Template</a> provided    
     
     ![image](../../images/aws-remote-s3-filter-architecture.png "Filter Deployment Architecture")
     
