@@ -96,9 +96,12 @@ nav:
     - Prerequisites: 'content/install-setup/prerequisites.md'
     - Installing the TA: 'content/install-setup/install-ta.md'
     - Setup Walkthroughs Overview: 'content/install-setup/setup-walkthroughs.md'
-    - AWS Remote S3 Connect Setup Walkthrough: 'content/install-setup/aws-remote-s3-connect-walkthrough.md'
-    - AWS Remote S3 Filter Setup Walkthrough: 'content/install-setup/aws-remote-s3-filter-walkthrough.md'    
-    - AWS Remote S3 Copy Setup Walkthrough: 'content/install-setup/aws-remote-s3-copy-walkthrough.md'    
+    - AWS Setup Walkthroughs:
+        - AWS Remote S3 Connect Setup Walkthrough: 'content/install-setup/aws-remote-s3-connect-walkthrough.md'
+        - AWS Remote S3 Filter Setup Walkthrough: 'content/install-setup/aws-remote-s3-filter-walkthrough.md'    
+        - AWS Remote S3 Copy Setup Walkthrough: 'content/install-setup/aws-remote-s3-copy-walkthrough.md'
+    - AWS Setup Migrations:
+        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-walkthrough.md'    
 #    - Install in a single-instance Splunk Enterprise deployment: 'SingleInstance/index.md'
 #    - Install in a distributed Splunk Enterprise deployment: 'DistributedSplunk/index.md'
 #    - Add-on upgrade guide: 'Upgrade/index.md'

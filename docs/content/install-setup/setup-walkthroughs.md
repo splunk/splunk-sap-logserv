@@ -36,8 +36,8 @@ The table below lists the different features supported by each deployment scenar
 | Feature    | [AWS Remote S3 Connect Setup](aws-remote-s3-connect-walkthrough.md) | [AWS Remote S3 Filter Setup](aws-remote-s3-filter-walkthrough.md) | [AWS Remote S3 Copy Setup](aws-remote-s3-copy-walkthrough.md) |
 |------------------------------------------ | --------- -------------- | ------------------------- | ---------------------- |
 | Secondary Copy of Logs                    | ❌ Not Supported        | ❌ Not Supported          | ✅ Supported          |      
-| Filter Logs by Time Stamp                 | ❌ Not Supported        | ✅ Supported              | ❌ Not Supported      | 
-| Filter Logs by Log Type                   | ❌ Not Supported        | ✅ Supported              | ❌ Not Supported      | 
+| Filter Logs by Time Stamp                 | ❌ Not Supported        | ✅ Supported              | ❌ Not yet, coming soon | 
+| Filter Logs by Log Type                   | ❌ Not Supported        | ✅ Supported              | ❌ Not yet, coming soon | 
 
 
 ### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-crop-square:{ .cboxmove } [AWS Remote S3 Connect Setup Walkthrough](aws-remote-s3-connect-walkthrough.md) 
