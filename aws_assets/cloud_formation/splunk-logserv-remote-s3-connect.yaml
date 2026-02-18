@@ -61,6 +61,7 @@ Resources:
                   - sqs:GetQueueAttributes
                   - sqs:GetQueueUrl
                   - sqs:ChangeMessageVisibility
+                  - sqs:SendMessage
                 Resource: !Ref CrossAccountSQSQueueArn
               
               # S3 permissions for cross-account source bucket

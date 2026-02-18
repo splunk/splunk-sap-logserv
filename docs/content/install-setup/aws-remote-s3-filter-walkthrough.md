@@ -1,4 +1,4 @@
-# AWS Remote S3 Copy Setup Walkthrough
+# AWS Remote S3 Filter Setup Walkthrough
 
 ### :material-circle-box:{ .taiconcolor } Introduction
 
@@ -6,13 +6,13 @@ The deployment diagram below shows two different AWS accounts.  For brevity and 
 
 Ensure you have completed all of the steps in the [Prerequisites](prerequisites.md) and the [Installation of the Splunk TA for SAP LogServ](install-ta.md) before you continue with the steps in this setup walkthrough.
 
-Your SAP ECS LogServ subscription for AWS (e.g. in your **_SAP ECS account_**) should have one S3 Bucket in that account where LogServ will store your LogServ logs.  It should also have one SQS Queue in your **_SAP ECS account_** that receives notifications when new logs are added to the S3 Bucket in that account.
+Your SAP ECS LogServ subscription for AWS (e.g. in your **_SAP ECS account_**) should have one **S3 Bucket** in that account where LogServ will store your LogServ logs.  It should also have one **SQS Queue** in your **_SAP ECS account_** that receives notifications when new logs are added to the **S3 Bucket** in that account.
 
-You will need obtain the <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html" target="_blank">AWS ARN</a> for the SQS Queue and the S3 Bucket that resides in your **_SAP ECS account_** prior to performing the steps in this setup walkthrough.
+You will need obtain the <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html" target="_blank">AWS ARN</a> for the **SQS Queue** and the **S3 Bucket** that resides in your **_SAP ECS account_** prior to performing the steps in this setup walkthrough.
 
-Take note of the AWS Region in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located as you will need to deploy the CloudFormation template provided in that same region in your **_Secondary account_**. 
+Take note of the **AWS Region** in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located as you will need to deploy the CloudFormation template provided in that same region in your **_Secondary account_**. 
 
-![image](../../images/aws-remote-s3-copy-architecture.png "Remote S3 Copy Deployment Architecture")
+![image](../../images/aws-remote-s3-filter-architecture.png "Remote S3 Filter Deployment Architecture")
 
 <br>
 
@@ -23,8 +23,8 @@ Below are the high level steps for this setup process listed in the order they s
 :material-lightning-bolt:{ .taiconcolor } Please ensure the user you log in with in your AWS **_Secondary account_** has the appropriate permissions to perform all the steps outlined below.  
 
 1. Obtain the ARNs for the SQS Queue and the S3 Bucket in your **_SAP ECS account_**
-2. Create a new S3 Bucket in the correct AWS Region in your **_Secondary account_** and upload the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-lambda-binary.zip" target="_blank">splunk-logserv-lambda-binary.zip</a> file to the root of the bucket 
-3. Deploy the AWS <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-copy.yaml" target="_blank">CloudFormation Template</a> provided for this remote S3 connect deployment approach in your **_Secondary account_**
+2. Create a new S3 Bucket in the correct AWS Region in your **_Secondary account_** and upload the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-filter-lambda.zip" target="_blank">splunk-logserv-filter-lambda.zip</a> file to the root of the bucket 
+3. Deploy the AWS <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-filter.yaml" target="_blank">CloudFormation Template</a> provided for this remote S3 filter deployment approach in your **_Secondary account_**
 4. Contact SAP LogServ support and request an update to the access policies for the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-sqs-access-policy.json" target="_blank">SQS Queue</a> and <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-s3-access-policy.json" target="_blank">S3 Bucket</a> residing in your **_SAP ECS account_**
 5. Create an <a href="https://docs.aws.amazon.com/keyspaces/latest/devguide/create.keypair.html" target="_blank">Access Key</a> for the new IAM User that was created with the CloudFormation template in your **_Secondary account_**
 6. Configure your AWS **_Secondary account_** in the <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/ManageAwsAccounts/" target="_blank">Splunk Add-on for Amazon Web Services (AWS)</a>
@@ -37,20 +37,20 @@ Below are the high level steps for this setup process listed in the order they s
 
 ### :material-circle-box:{ .taiconcolor } Create S3 Bucket with Lambda Function ZIP File
 
-1. Take note of the AWS Region in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located.
+1. Take note of the **AWS Region** in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located.
 2. Log into your AWS **_Secondary account_** and change to the region that matches the region in your **_SAP ECS account_**
 3. Choose a name for the new S3 bucket (**_splunk-logserv-lambda-binary_** is the default bucket name in the CloudFormation template used in the next section)
 4. Navigate to the S3 console and create a <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html" target="_blank">general purpose S3 bucket</a> using all the default settings
-5. <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html" target="_blank">Upload</a> the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-lambda-binary.zip" target="_blank">splunk-logserv-lambda-binary.zip</a> file to the root of the S3 bucket
+5. <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html" target="_blank">Upload</a> the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-filter-lambda.zip" target="_blank">splunk-logserv-filter-lambda.zip</a> file to the root of the S3 bucket
 
 ??? note "Example"
-    ![image](../../images/s3-upload-lambda-binary.png "S3 Upload Lambda Binary")
+    ![image](../../images/s3-upload-filter-lambda.png "S3 Upload Lambda Binary")
 
 <br>
 
 ### :material-circle-box:{ .taiconcolor } Deploy CloudFormation Template
 
-:material-lightning-bolt:{ .taiconcolor } Before you deploy the CloudFormation template, take note of the AWS Region in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located as you will need to deploy the CloudFormation template provided in that same region in your **_Secondary account_**.
+:material-lightning-bolt:{ .taiconcolor } Before you deploy the CloudFormation template, take note of the **AWS Region** in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located as you will need to deploy the CloudFormation template provided in that same region in your **_Secondary account_**.
 
 ??? tip "What does the CloudFormation template do?"
     Creates the following resources:
@@ -59,10 +59,9 @@ Below are the high level steps for this setup process listed in the order they s
     - An IAM Policy named **_splunk-logserv-ta-policy_**
     - An IAM Role named **_splunk-logserv-ta-role_**
     - An Inline IAM Policy on the IAM User to assume the IAM Role created above
-    - An S3 Bucket with an Event Notification to the SQS Queue below- Default name is **_splunk-logserv-local-target-bucket_**
     - An SQS Queue - Default name is **_splunk-logserv-local-target-queue_**
     - A Dead Letter SQS Queue - Default name is **_splunk-logserv-local-target-queue-dlq_**
-    - A Lambda Function - Default name is **_splunk-logserv-lambda-logforwarder_**
+    - A Lambda Function - Default name is **_splunk-logserv-lambda-filter_**
     - A LogGroup used by the Lambda Function
 
 1. Navigate to the CloudFormation console (ensure the region you are in matches the region in your **_SAP ECS account_**)
@@ -70,52 +69,60 @@ Below are the high level steps for this setup process listed in the order they s
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-00.png "Create Stack")
 
-3. Upload the AWS <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-copy.yaml" target="_blank">CloudFormation Template file provided</a> for this remote S3 copy deployment approach, then click the **_Next_** button
+3. Upload the AWS <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-filter.yaml" target="_blank">CloudFormation Template file provided</a> for this remote S3 filter deployment approach, then click the **_Next_** button
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-copy-03.png "Upload Template File")
+    ![image](../../images/cloud-formation-s3-filter-03.png "Upload Template File")
 
-4. Enter a name for the CloudFormation Stack - **_splunk-logserv-remote-s3-copy_**
+4. Enter a name for the CloudFormation Stack - **_splunk-logserv-remote-s3-filter_**
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-copy-04.png "Stack Name")
+    ![image](../../images/cloud-formation-s3-filter-04.png "Stack Name")
 
 5. Enter just the name (not the ARN) of the S3 Bucket in your **_SAP ECS account_** in the **_CrossAccountS3Bucket_** parameter
    - If your ARN looks like this *arn:aws:s3:::sap-hec-clz-ap-south-1-hec53-xsd* then just use the name like this *ap-hec-clz-ap-south-1-hec53-xsd*
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-copy-05.png "CrossAccountS3Bucket Parameter")
+    ![image](../../images/cloud-formation-s3-filter-05.png "CrossAccountS3Bucket Parameter")
 
 6. Enter the complete ARN of the SQS Queue in your **_SAP ECS account_** in the **_CrossAccountSQSQueueArn_** parameter
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-copy-06.png "CrossAccountSQSQueueArn Parameter")
+    ![image](../../images/cloud-formation-s3-filter-06.png "CrossAccountSQSQueueArn Parameter")
 
-7. Choose and enter a name for the S3 Bucket in your **_Secondary account_** that you used to upload the Lambda Function ZIP File in the **LambdaCodeBucket** parameter
+7. Enter the number of days in the past to filter messages on. Messages older than this will be discarded.
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-copy-07.png "LambdaCodeBucket Parameter")
+    ![image](../../images/cloud-formation-s3-filter-07.png "DaysInThePast Parameter")
 
-8. Choose and enter a name for the Lambda Function to be created in your **_Secondary account_** in the **LambdaFunctionName** parameter
+8. Enter comma-separated patterns for paths to exclude (e.g., 'linux/cron,*/messages'). Format: <clz_dir\>/<clz_subdir\>. Leave empty to exclude nothing.
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-copy-08.png "LambdaFunctionName Parameter")
+    ![image](../../images/cloud-formation-s3-filter-08.png "ExcludeFilters Parameter")
 
-9. Choose and enter a name for the S3 Bucket to be created in your **_Secondary account_** in the **LocalS3BucketName** parameter
+9. Enter comma-separated patterns for paths to include (e.g., 'hana/hanaaudit,linux/*,webdispatcher/accesslogs'). Format: <clz_dir\>/<clz_subdir\>. Use '\*/\*' to include all paths.
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-copy-09.png "LocalS3BucketName Parameter")
+    ![image](../../images/cloud-formation-s3-filter-09.png "IncludeFilters Parameter")
 
-10. Choose and enter a name for the SQS Queue to be created in your **_Secondary account_** in the **LocalSQSQueueName** parameter
+10. Choose and enter a name for the S3 Bucket in your **_Secondary account_** that you used to upload the Lambda Function ZIP File in the **LambdaCodeBucket** parameter
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-copy-10.png "LocalSQSQueueName Parameter")
+    ![image](../../images/cloud-formation-s3-filter-10.png "LambdaCodeBucket Parameter")
 
-11. Choose and enter a name for the IAM User to be created in your **_Secondary account_** in the **NewIAMUserName** parameter, then click on the **_Next_** button
+11. Choose and enter a name for the Lambda Function to be created in your **_Secondary account_** in the **LambdaFunctionName** parameter
+??? indented-note "Example"
+    ![image](../../images/cloud-formation-s3-filter-11.png "LambdaFunctionName Parameter")
+
+12. Choose and enter a name for the SQS Queue to be created in your **_Secondary account_** in the **LocalSQSQueueName** parameter
+??? indented-note "Example"
+    ![image](../../images/cloud-formation-s3-filter-12.png "LocalSQSQueueName Parameter")
+
+13. Choose and enter a name for the IAM User to be created in your **_Secondary account_** in the **NewIAMUserName** parameter, then click on the **_Next_** button
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-copy-11.png "NewIAMUserName Parameter")
 
-12. Scroll down to the bottom of the page and check the **_I acknowledge that AWS CloudFormation might create IAM resources with custom names_** checkbox, then click on the **_Next_** button
+14. Scroll down to the bottom of the page and check the **_I acknowledge that AWS CloudFormation might create IAM resources with custom names_** checkbox, then click on the **_Next_** button
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-copy-12.png "Check Acknowledgement")
 
-13. Scroll down to the bottom of the page and click on the **_Submit_** button
+15. Scroll down to the bottom of the page and click on the **_Submit_** button
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-copy-13.png "Submit Template")
 
-14. Ensure the deployment of the CloudFormation template completes successfully
+16. Ensure the deployment of the CloudFormation template completes successfully
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-copy-14.png "Deployment Success")
 
@@ -219,7 +226,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 4. Fill out the next three fields in the SQS-Based S3 Input (**_SQS Queue Name_**, **_SQS Batch Size_**, **_S3 File Decoder_**)
 
-    - Select the **_SQS Queue Name_** you used in step **10** when previously deploying the CloudFormation template
+    - Select the **_SQS Queue Name_** you used in step **12** when previously deploying the CloudFormation template
     - Leave the **_SQS Batch Size_** set to 10
     - Leave the **_S3 File Decoder_** set to Custom Logs
 

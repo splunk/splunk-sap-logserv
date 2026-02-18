@@ -22,7 +22,8 @@
         "sqs:ChangeMessageVisibility",
         "sqs:GetQueueUrl",
         "sqs:ReceiveMessage",
-        "sqs:GetQueueAttributes"
+        "sqs:GetQueueAttributes",
+        "sqs:SendMessage"
       ],
       "Resource": "arn:aws:sqs:<aws-region>:<aws-sap-ecs-account-id>:<sqs-queue-name>"
     }

@@ -4,7 +4,7 @@
 
 The deployment diagram below shows two different AWS accounts.  For brevity and clarity, the AWS account at the top of the diagram will be referred to as the **_SAP ECS account_** and the second AWS account in the middle of the diagram will be referred to as the **_Secondary account_** from this point onward. 
 
-Ensure you have completed all of the steps in the [prerequisites](prerequisites.md) and the [installation of the Splunk TA for SAP LogServ](install-ta.md) before you continue with the steps in this setup walkthrough.
+Ensure you have completed all of the steps in the [Prerequisites](prerequisites.md) and the [Installation of the Splunk TA for SAP LogServ](install-ta.md) before you continue with the steps in this setup walkthrough.
 
 Your SAP ECS LogServ subscription for AWS (e.g. in your **_SAP ECS account_**) should have one S3 Bucket in that account where LogServ will store your LogServ logs.  It should also have one SQS Queue in your **_SAP ECS account_** that receives notifications when new logs are added to the S3 Bucket in that account.
 
@@ -62,7 +62,7 @@ Below are the high level steps for this setup process listed in the order they s
 
 4. Enter a name for the CloudFormation Stack - **_splunk-logserv-remote-s3-connect_**
 ??? indented-note "Example"
-    ![image](../../images/cloud-formation-s3-connect-04.png "Template Name")
+    ![image](../../images/cloud-formation-s3-connect-04.png "Stack Name")
 
 5. Enter just the name (not the ARN) of the S3 Bucket in your **_SAP ECS account_** in the **_CrossAccountS3Bucket_** parameter
    - If your ARN looks like this *arn:aws:s3:::sap-hec-clz-ap-south-1-hec53-xsd* then just use the name like this *ap-hec-clz-ap-south-1-hec53-xsd*
@@ -86,7 +86,7 @@ Below are the high level steps for this setup process listed in the order they s
     ![image](../../images/cloud-formation-s3-connect-09.png "Submit Template")
 
 10. Ensure the deployment of the CloudFormation template completes successfully
-??? indented-note "Example- Image Needs Update !!!!"
+??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-copy-14.png "Deployment Success")
 
 <br>

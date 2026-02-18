@@ -1,0 +1,53 @@
+{
+    "_comment": "Splunk LogServ Remote S3 Filter Migration Configuration",
+    "_instructions": "Fill in all values below before running the migration script",
+
+    "aws_region": "us-east-1",
+
+    "existing_resources": {
+        "_comment": "These are from your existing splunk-logserv-remote-s3-connect deployment",
+        "iam_user_arn": "arn:aws:iam::222222222222:user/splunk_logserv_user",
+        "iam_role_name": "splunk-logserv-ta-role",
+        "iam_role_arn": "arn:aws:iam::222222222222:role/splunk-logserv-ta-role",
+        "iam_role_policy_name": "splunk-logserv-ta-policy"
+    },
+
+    "cross_account": {
+        "_comment": "These are from your SAP ECS Account",
+        "sqs_queue_arn": "arn:aws:sqs:us-east-1:111111111111:sap-logserv-queue",
+        "s3_bucket_name": "sap-logserv-bucket"
+    },
+
+    "local_sqs": {
+        "queue_name": "splunk-logserv-local-target-queue",
+        "visibility_timeout_seconds": 600,
+        "message_retention_seconds": 1209600,
+        "dlq_max_receive_count": 3
+    },
+
+    "lambda_function": {
+        "function_name": "splunk-logserv-lambda-filter",
+        "code_s3_bucket": "splunk-logserv-lambda-binary",
+        "code_s3_key": "splunk-logserv-filter-lambda.zip",
+        "handler": "log-filterer-lambda.lambda_handler",
+        "runtime": "python3.12",
+        "timeout_seconds": 300,
+        "memory_size_mb": 512
+    },
+
+    "filter_settings": {
+        "days_in_the_past": 7,
+        "include_filters": "linux/*,hana/*",
+        "exclude_filters": "linux/cron,linux/messages,linux/localmessages,linux/slapd,linux/sudolog,linux/warn"
+    },
+
+    "event_source_mapping": {
+        "batch_size": 10,
+        "maximum_batching_window_seconds": 5,
+        "maximum_concurrency": 10
+    },
+
+    "cloudwatch_logs": {
+        "retention_days": 14
+    }
+}
