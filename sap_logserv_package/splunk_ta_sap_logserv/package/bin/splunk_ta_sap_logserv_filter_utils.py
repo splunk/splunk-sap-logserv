@@ -728,6 +728,9 @@ def is_deployment_server(session_key):
 
     # Fallback: check if any deployment clients are connected
     try:
+        import splunk.rest as rest
+        import json
+
         response, content = rest.simpleRequest(
             '/services/deployment/server/clients',
             sessionKey=session_key,

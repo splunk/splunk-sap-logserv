@@ -183,7 +183,7 @@ The auto-created server class needs client targeting to know which Heavy Forward
 ??? tip "Client Targeting"
     Use IP addresses for client targeting, as Splunk matches against the client's IP, hostname, DNS name, or GUID — not the instance name.
 
-Return to the Filters tab — the setup notice should be gone.
+Return to the Filters tab — the setup notice should be gone (refresh the page in the browser if needed to see the change in the setup notice).
 
 ??? note "Example"
     ![image](../../images/filter-setup-notice-gone.png "Filters After Agent Assignment")
@@ -195,7 +195,7 @@ Return to the Filters tab — the setup notice should be gone.
 
 1. On the Filters tab, click **"Deploy to Forwarders"** and confirm
 2. Wait for your Heavy Forwarders to phone home (typically 30–60 seconds depending on configuration)
-3. Verify deployment status in **Settings → Forwarder Management** — HFs should show as "Ok" under the server class
+3. Verify deployment status in **Settings → Forwarder Management** — HFs should show as "Ok" under the server class, however it may take 5+ minutes to see the status on the forwarders change from `Pending` to `Ok`
 
 ??? note "Example"
     ![image](../../images/filter-deploy-success.png "Deploy Success")
