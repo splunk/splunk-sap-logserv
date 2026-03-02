@@ -98,7 +98,7 @@ Comma-separated patterns specifying which log types to include. Patterns use the
 | `hana/hanaaudit` | Include only HANA audit logs |
 | `linux/*` | Include all Linux log types |
 | `linux/messages, hana/*` | Include Linux messages and all HANA logs |
-| `*/accesslogs` | Include access logs from any directory |
+| `dns/*` | Include all DNS log types |
 
 :material-lightning-bolt:{ .taiconcolor } **Rules:**
 
@@ -107,14 +107,17 @@ Comma-separated patterns specifying which log types to include. Patterns use the
 - Valid characters: letters, numbers, `*`, `?`, `.`, `-`, `:`, `_`
 - This field cannot be empty when filtering is enabled — use `*/*` to include everything
 
+??? tip "Supported Log Types Reference"
+    See the [Supported Log Types](#supported-log-types) section below for a complete list of `clz_dir/clz_subdir` values you can use in your filter patterns.
+
 #### :material-crop-square:{ .taiconcolor } Exclude Filters
 
 Comma-separated patterns for log types to exclude. Same pattern format as includes. Events matching any exclude pattern are dropped even if they also match an include pattern.
 
-**Example:** To include all Linux logs except cron and kernel:
+**Example:** To include all Linux logs except cron and slapd:
 
 - Include: `linux/*`
-- Exclude: `linux/cron, linux/kern`
+- Exclude: `linux/cron, linux/slapd`
 
 Leave this field empty to exclude nothing.
 
@@ -151,7 +154,7 @@ When you save filter settings on a Deployment Server, the TA automatically:
 
 1. Copies the full TA package to `/opt/splunk/etc/deployment-apps/splunk_ta_sap_logserv/`
 2. Mirrors the generated filter configurations (`transforms.conf`, `props.conf`) to the deployment-apps copy
-3. Creates a server class named `SAP_LogServ_HeavyForwarders` (if it doesn't already exist)
+3. Creates a server class named `SAP_LogServ_HeavyForwarders` in a disabled state (if it doesn't already exist). The server class remains disabled until you configure client targeting in the next step.
 
 After saving, the Filters tab displays:
 
@@ -174,7 +177,7 @@ The auto-created server class needs client targeting to know which Heavy Forward
 2. Find the `SAP_LogServ_HeavyForwarders` server class
 3. Click the three-dot menu → **Edit agent assignment**
 4. Add your Heavy Forwarder IP addresses, hostnames, or use `*` for all connected forwarders
-5. Save the agent assignment
+5. Save the agent assignment — this also enables the server class
 
 ??? note "Example"
     ![image](../../images/filter-forwarder-mgmt.png "Forwarder Management Server Class")
@@ -224,10 +227,13 @@ Whenever you change filter settings:
 ### :material-circle-box:{ .taiconcolor } Check Included Data Is Arriving
 
 ```spl
-index=* sourcetype=sap:logserv:* | stats count by clz_dir, clz_subdir
+`sap_logserv_idx_macro` | stats count by clz_dir, clz_subdir
 ```
 
 You should see data only for log types matching your include patterns.
+
+??? tip "Index macro"
+    The `sap_logserv_idx_macro` macro expands to `index="sap_logserv_logs"` by default. If you changed the index name in your environment, update the macro definition under **Settings → Advanced Search → Search Macros** or substitute your index name directly in the search.
 
 <br>
 
@@ -242,10 +248,44 @@ If you configured exclude patterns, verify those log types are absent from searc
 Search for events older than your configured cutoff:
 
 ```spl
-index=* sourcetype=sap:logserv:* earliest=-30d latest=-10d
+`sap_logserv_idx_macro` earliest=-30d latest=-10d
 ```
 
 If your Days in Past is less than 10, this search should return no results.
+
+<br>
+
+---
+
+## Supported Log Types
+
+### :material-circle-box:{ .taiconcolor } Log Type Reference
+
+The table below lists all log types currently supported by the TA. The `clz_dir` and `clz_subdir` columns show the values used in filter patterns. Use these values when configuring your include and exclude filters.
+
+| clz_dir | clz_subdir | Splunk Sourcetype |
+|---------|------------|-------------------|
+| dns | binddns | `isc:bind:query`, `isc:bind:lameserver`, `isc:bind:network`, `isc:bind:transfer` |
+| hana | hanaaudit | `sap:hana:audit` |
+| linux | cron | `syslog` |
+| linux | localmessages | `linux_messages_syslog` |
+| linux | messages | `linux_messages_syslog` |
+| linux | secure | `linux_secure`, `lastlog`, `who` |
+| linux | slapd | `syslog` |
+| linux | sudolog | `syslog` |
+| linux | warn | `syslog` |
+| proxy | squid | `squid:access` |
+| webdispatcher | accesslog | `sap:webdispatcher:access` |
+| windows | WinEventLog:Application | `XmlWinEventLog` |
+| windows | WinEventLog:Powershell | `XmlWinEventLog` |
+| windows | WinEventLog:Security | `XmlWinEventLog` |
+| windows | WinEventLog:System | `XmlWinEventLog` |
+
+??? tip "Filter pattern examples using this table"
+    - To include all DNS logs: `dns/*` or `dns/binddns`
+    - To include all Linux logs except cron: Include `linux/*`, Exclude `linux/cron`
+    - To include only HANA audit and web dispatcher logs: `hana/hanaaudit, webdispatcher/accesslog`
+    - To include all Windows event logs: `windows/*`
 
 <br>
 
@@ -271,53 +311,6 @@ The banner clears automatically once all supported types are covered.
 <br>
 
 ---
-
-<!--
-## Supported Log Types
-
-### :material-circle-box:{ .taiconcolor } Log Type Reference
-
-The TA currently supports the following log types (identified by `clz_dir/clz_subdir`):
-
-| clz_dir | clz_subdir | Splunk Sourcetype |
-|---------|------------|-------------------|
-| dns | binddns | `isc:bind:query` |
-| hana | hanaaudit | `sap:hana:audit` |
-| webdispatcher | accesslogs | `sap:webdispatcher:access` |
-
-logserv/linux/cron/2026/01/20/
-logserv/linux/linux_secure/2026/01/20/
-logserv/linux/localmessages/2026/01/20/
-logserv/linux/messages/2026/01/20/
-logserv/linux/slapd/2026/01/20/
-logserv/linux/sudolog/2026/01/20/
-logserv/linux/warn/2025/09/20/
-
-| linux | cron | `syslog` |
-| linux | linux_secure | `linux_secure` |
-| linux | localmessages | `linux_messages_syslog` |
-| linux | messages | `linux_messages_syslog` |
-| linux | slapd | `syslog` |
-| linux | sudolog | `syslog` |
-| linux | warn | `syslog` |
-
-| linux | pacemaker | `syslog` |
-
-
-| linux | kernel | `linux_secure` |
-| linux | sssd | `linux_secure` |
-| squid | access | `squid:access` |
-| squid | cache | `squid:access` |
-| squid | store | `squid:access` |
-| linux | lastlog | `lastlog` |
-| linux | who | `who` |
-| windows | wineventlog | `XmlWinEventLog` |
-
-<br>
-
----
-
--->
 
 ## Troubleshooting
 

@@ -57,6 +57,7 @@ sap_logserv_package/splunk_ta_sap_logserv/
 ├── globalConfig.json                          # UCC UI definition (Filters tab)
 ├── additional_packaging.py                    # UCC build hook (web.conf expose)
 └── package/
+    ├── app.manifest                               # TA version and metadata
     ├── bin/
     │   ├── splunk_ta_sap_logserv_filter_utils.py      # Core library
     │   ├── splunk_ta_sap_logserv_rh_filter_settings.py # REST handler: Filters tab
@@ -66,8 +67,10 @@ sap_logserv_package/splunk_ta_sap_logserv/
     ├── default/
     │   ├── transforms.conf    # Sourcetype routing + @logserv_filter annotations
     │   ├── props.conf         # Sourcetype configs, TRANSFORMS chains
-    │   └── inputs.conf        # Scripted input schedules
+    │   ├── inputs.conf        # Scripted input schedules
     │   └── macros.conf        # Index name redirect macro
+    ├── metadata/
+    │   └── default.meta       # Default permissions and export settings
     └── appserver/static/js/build/custom/
         └── filter_settings_hook.js   # UCC hook (DS detection, Deploy button)
 ```
@@ -88,20 +91,25 @@ This is the central module. All other components import from it.
 
 | Function | Purpose |
 |----------|---------|
+| `get_app_path()` | Determines the app installation path (checks `SPLUNK_HOME`, falls back to relative path) |
 | `discover_supported_types(app_path)` | Scans `default/transforms.conf` for `@logserv_filter` annotations |
 | `find_uncovered_types(supported, patterns)` | Compares supported types against user include patterns |
 | `parse_comma_patterns(string)` | Splits comma-separated pattern string into list |
 | `validate_patterns(patterns, field_name)` | Validates pattern syntax (dir/subdir format, valid characters) |
 | `validate_single_pattern(pattern)` | Validates one pattern against rules |
+| `fnmatch_patterns_to_combined_regex(patterns)` | Converts a list of fnmatch patterns into a single combined regex using alternation |
+| `epoch_cutoff_from_days(days_in_past)` | Computes the epoch timestamp for midnight N days ago (UTC) |
+| `generate_epoch_less_than_regex(cutoff_epoch)` | Generates a digit-by-digit regex matching epoch values less than the cutoff |
 | `generate_transforms_stanzas(include, exclude, days)` | Generates filter transform stanzas with regex |
 | `generate_props_filter_lines(include, exclude, days, enabled)` | Generates the `TRANSFORMS-00-filter` line |
 | `write_local_conf(app_path, conf_type, content)` | Writes between marker comments in local conf files |
+| `get_ta_version(app_path)` | Reads version from `default/app.conf` (falls back to `app.manifest` if not present) |
+| `get_server_roles(session_key)` | Queries /services/server/info for roles |
 | `is_deployment_server(session_key)` | Two-step DS detection (roles + client probe) |
+| `get_deployment_apps_path()` | Returns the `etc/deployment-apps/` path for the TA |
 | `ensure_deployment_app_synced(app_path)` | Full app copy/upgrade to deployment-apps/ |
 | `mirror_to_deployment_apps(app_path)` | Copies local/transforms.conf and local/props.conf |
 | `ensure_serverclass(session_key)` | Creates server class + app mapping via REST + file |
-| `get_ta_version(app_path)` | Reads version from app.manifest |
-| `get_server_roles(session_key)` | Queries /services/server/info for roles |
 
 #### :material-crop-square:{ .taiconcolor } Constants
 
@@ -111,6 +119,9 @@ This is the central module. All other components import from it.
 | `SERVERCLASS_NAME` | `SAP_LogServ_HeavyForwarders` | Auto-created server class name |
 | `SETTINGS_CONF` | `splunk_ta_sap_logserv_settings` | UCC settings conf file |
 | `FILTER_STANZA` | `filter_settings` | Stanza name in settings conf |
+| `SYSTEM_MESSAGE_NAME` | `logserv_filter_upgrade_warning` | System message banner name for upgrade warnings |
+| `ANNOTATION_PATTERN` | Compiled regex | Matches `@logserv_filter:` annotation comment lines |
+| `VALID_SEGMENT_PATTERN` | Compiled regex | Validates characters in dir/subdir pattern segments |
 | `FILTER_MARKER_START` / `FILTER_MARKER_END` | Marker comments | Delimit generated content in local conf files |
 
 <br>
@@ -124,9 +135,9 @@ UCC REST handler (extends `AdminExternalHandler`) registered in `globalConfig.js
 1. **Validates** patterns server-side (blocks save on failure via `admin.ArgValidationException`)
 2. **Saves** settings to `splunk_ta_sap_logserv_settings.conf` (default UCC behavior)
 3. **Generates** `local/transforms.conf` and `local/props.conf` with filter stanzas
-4. **Reloads** confs via REST API (`/configs/conf-transforms/_reload`, `/configs/conf-props/_reload`)
-5. **Mirrors** to deployment-apps if on a DS
-6. **Creates** server class if on a DS (first time only)
+4. **Syncs and mirrors** to deployment-apps if on a DS (full app copy/upgrade + filter configs)
+5. **Creates** server class if on a DS (first time only)
+6. **Reloads** confs via REST API (`/configs/conf-transforms/_reload`, `/configs/conf-props/_reload`)
 7. **Checks** for uncovered types and manages system message banner
 
 <br>
@@ -203,7 +214,7 @@ The filter chain is evaluated left to right:
 1. **`logserv_filter_include_drop`** — Drops ALL events (sends to `nullQueue`)
 2. **`logserv_filter_include_allow`** — Rescues events matching include patterns (sends back to `indexQueue`)
 3. **`logserv_filter_time_drop`** — Drops events with old timestamps (sends to `nullQueue`)
-4. **`logserv_filter_exclude_*`** — Drops events matching exclude patterns (sends to `nullQueue`)
+4. **`logserv_filter_exclude`** — Drops events matching exclude patterns (sends to `nullQueue`)
 
 This "deny-all, then allow" approach ensures only explicitly included events pass through.
 
@@ -254,13 +265,15 @@ Two-step detection in `is_deployment_server()`:
 
 ### :material-circle-box:{ .taiconcolor } Server Class Creation
 
-`ensure_serverclass()` creates `SAP_LogServ_HeavyForwarders` in two steps:
+`ensure_serverclass()` creates `SAP_LogServ_HeavyForwarders` in three steps:
 
-1. **REST API** — POST to `/services/deployment/server/serverclasses` with `name` parameter to create the server class
+1. **REST API create** — POST to `/services/deployment/server/serverclasses` with `name` parameter to create the server class
 
     :material-lightning-bolt:{ .taiconcolor } The `disabled` parameter is NOT supported during creation (Splunk returns an error).
 
-2. **File-based app mapping** — After REST creates the server class, the function locates the resulting `serverclass.conf` (which Splunk may write to `system/local/` or `apps/search/local/`) and appends the app mapping stanza:
+2. **REST API disable** — Separate POST to `/services/deployment/server/serverclasses/SAP_LogServ_HeavyForwarders` with `disabled=true` to disable the server class. This ensures no deployment occurs until the admin configures client targeting and enables the server class in Forwarder Management.
+
+3. **File-based app mapping** — After REST creates and disables the server class, the function locates the resulting `serverclass.conf` (which Splunk may write to `system/local/` or `apps/search/local/`) and appends the app mapping stanza:
 
 ```ini
 [serverClass:SAP_LogServ_HeavyForwarders:app:splunk_ta_sap_logserv]
@@ -404,6 +417,16 @@ Update the version in `package/app.manifest` (and `globalConfig.json` if applica
 ---
 
 ## Known Gotchas and Technical Notes
+
+### :material-circle-box:{ .taiconcolor } Local Imports in Utility Functions
+
+Functions in `filter_utils.py` use **local imports** (inside the function body) for Splunk-specific modules like `splunk.rest` and `json`. This is intentional — these modules are unavailable during the UCC build step, so importing them at the module level would break the build.
+
+The critical detail is that **local imports are scoped to the function they are declared in**. They do NOT carry into sibling functions. Each function that needs `splunk.rest` or `json` must import them independently. For example, both `get_server_roles()` and `is_deployment_server()` need their own local `import splunk.rest as rest` and `import json` statements — the imports inside `get_server_roles()` are not visible to `is_deployment_server()` even though one calls the other.
+
+Forgetting a local import inside a function that has a bare `except Exception: pass` block is particularly dangerous because the resulting `NameError` is silently swallowed, causing the function to return a default value without any log output.
+
+<br>
 
 ### :material-circle-box:{ .taiconcolor } Persistent Handler sys.path
 
