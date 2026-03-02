@@ -47,8 +47,13 @@ Install the Splunk TA for SAP LogServ to your instance of Splunk Enterprise usin
 
 If you are using separate forwarders in conjunction with your single-instance deployment, be sure to <a href="http://docs.splunk.com/Documentation/AddOns/released/Overview/Distributedinstall#Universal_or_light_forwarders" target="_blank">deploy the add-on to your forwarders</a> as well. 
 
+!!! warning
+    If you are using a **Deployment Server** to manage Heavy Forwarders, install the TA on the Deployment Server only. Do **not** install the TA directly on the Heavy Forwarders — the DS will distribute it automatically when you configure filters. See [Configuring Filters](configure-filters.md) for details.
+
 <br>
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 
 Additional instructions for next steps are provided in the [Setup Walkthroughs Overview](../install-setup/setup-walkthroughs.md)
+
+After completing the AWS setup walkthrough, configure [index-time filters](configure-filters.md) to control which log types are indexed and drop stale data.

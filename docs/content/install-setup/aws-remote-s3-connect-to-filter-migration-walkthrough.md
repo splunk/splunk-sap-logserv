@@ -6,6 +6,9 @@ This guide walks you through migrating from an existing **splunk-logserv-remote-
 
 The migration adds Lambda-based S3 event filtering capabilities to your existing deployment, allowing you to filter S3 event notifications based on time and path patterns before they are processed by Splunk.
 
+??? tip "Also available: Native TA Index-Time Filtering"
+    Starting with version 0.0.3, the TA also includes **built-in index-time filtering** that works inside Splunk itself. This can be used alongside or instead of Lambda-based filtering. After completing this migration (or with any deployment scenario), see [Configuring Filters](configure-filters.md) or the section at the bottom of this page.
+
 :material-lightning-bolt:{ .taiconcolor } This migration guide assumes you have already completed the [AWS Remote S3 Connect Setup](aws-remote-s3-connect-walkthrough.md) and have a working deployment in your **_Secondary account_**.
 
 <br>
@@ -485,4 +488,99 @@ After rollback, update your Splunk AWS Add-on SQS-Based S3 Input to use the orig
 - Verify the local SQS queue URL is correctly configured in the Splunk input
 - Check the Splunk AWS Add-on internal logs for connection errors
 - Verify messages are present in the local SQS queue
+
+<br>
+
+---
+
+## Configure Native TA Index-Time Filtering
+
+### :material-circle-box:{ .taiconcolor } Introduction
+
+Starting with version 0.0.3, the Splunk TA for SAP LogServ includes **built-in index-time filtering** that works inside Splunk itself, independently of the Lambda-based S3 event filtering configured above. You can use both approaches together for defense-in-depth filtering, or use the native TA filtering on its own.
+
+??? tip "Native TA Filtering vs. Lambda-based Filtering"
+    - **Lambda-based filtering** (configured above) filters S3 event notifications *before* they reach Splunk, reducing the number of SQS messages processed by the Splunk AWS Add-on.
+    - **Native TA filtering** (configured below) filters events *inside Splunk at index time* via TRANSFORMS-based queue routing. Filtered events never consume Splunk license.
+    
+    Both use the same `clz_dir/clz_subdir` pattern syntax. Using both together means events are filtered at the AWS level first and then again at the Splunk level, providing a safety net if either filter configuration is incomplete.
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } Open the Filters Tab
+
+1. In Splunk Web, open the **Splunk TA for SAP LogServ** app
+2. Go to **Configuration → Filters**
+
+![image](../../images/filter-tab-overview.png "Filters Tab Overview")
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } Set Your Filter Options
+
+#### :material-crop-square:{ .taiconcolor } Enable Filtering
+
+Check the **Enable Filtering** checkbox to activate index-time filtering.
+
+#### :material-crop-square:{ .taiconcolor } Include Filters
+
+Comma-separated patterns specifying which log types to include. Patterns use the format `clz_dir/clz_subdir` with `fnmatch`-style wildcards:
+
+| Pattern | Meaning |
+|---------|---------|
+| `*/*` | Include all log types (default) |
+| `hana/hanaaudit` | Include only HANA audit logs |
+| `linux/*` | Include all Linux log types |
+| `linux/messages, hana/*` | Include Linux messages and all HANA logs |
+
+:material-lightning-bolt:{ .taiconcolor } This field cannot be empty when filtering is enabled. Use `*/*` to include everything.
+
+#### :material-crop-square:{ .taiconcolor } Exclude Filters
+
+Comma-separated patterns for log types to exclude. Events matching any exclude pattern are dropped even if they also match an include pattern. Leave empty to exclude nothing.
+
+#### :material-crop-square:{ .taiconcolor } Days in the Past
+
+Whole number (0–3650) specifying the maximum age of events to index. Set to `0` to disable time-based filtering. Default: `7`.
+
+#### :material-crop-square:{ .taiconcolor } Save
+
+Click **Save**. The TA validates your patterns and generates the necessary configuration files.
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } Deployment Server: Deploy to Forwarders
+
+If you are running on a Deployment Server with Heavy Forwarders, additional steps are required after saving filters.
+
+After saving, the Filters tab will display a **"⚠ Deployment Server Detected"** banner with a **"Deploy to Forwarders"** button.
+
+![image](../../images/filter-ds-detected-banner.png "Deployment Server Detected Banner")
+
+#### :material-crop-square:{ .taiconcolor } Configure the Server Class (First Time Only)
+
+1. Go to **Settings → Forwarder Management**
+2. Find the `SAP_LogServ_HeavyForwarders` server class
+3. Click the three-dot menu → **Edit agent assignment**
+4. Add your Heavy Forwarder IP addresses or hostnames
+5. Save the agent assignment
+
+#### :material-crop-square:{ .taiconcolor } Deploy
+
+1. Return to the Filters tab and click **"Deploy to Forwarders"**
+2. Confirm the deployment
+3. Wait for HFs to phone home (typically 30–60 seconds)
+4. Verify deployment status in **Settings → Forwarder Management**
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } Verify Native Filtering
+
+After deployment, verify that native filtering is operating correctly:
+
+```spl
+index=* sourcetype=sap:logserv:* | stats count by clz_dir, clz_subdir
+```
+
+You should see data only for log types matching your include patterns. See [Configuring Filters](configure-filters.md) for the full verification and troubleshooting guide.
 

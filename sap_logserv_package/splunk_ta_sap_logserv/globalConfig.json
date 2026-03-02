@@ -3,8 +3,86 @@
         "name": "splunk_ta_sap_logserv",
         "restRoot": "splunk_ta_sap_logserv",
         "displayName": "Splunk TA for SAP LogServ",
-        "version": "0.0.1",
+        "version": "0.0.3",
         "schemaVersion": "0.0.9",
         "isVisible": true
+    },
+    "pages": {
+        "configuration": {
+            "title": "Configuration",
+            "description": "Configure filtering settings for the SAP LogServ TA.",
+            "tabs": [
+                {
+                    "name": "filter_settings",
+                    "title": "Filters",
+                    "restHandlerModule": "splunk_ta_sap_logserv_rh_filter_settings",
+                    "restHandlerClass": "FilterSettingsHandler",
+                    "hook": {
+                        "type": "external",
+                        "src": "filter_settings_hook"
+                    },
+                    "entity": [
+                        {
+                            "field": "filter_enabled",
+                            "label": "Enable Filtering",
+                            "type": "checkbox",
+                            "help": "When enabled, events matching exclude patterns or older than the configured time window are dropped before indexing (zero license cost). On a single instance, changes take effect after clicking Save. On a deployment server, filter configurations are automatically staged to deployment-apps/ and a Deploy to Forwarders button will appear below to distribute changes to your heavy forwarders.",
+                            "defaultValue": 0,
+                            "required": false
+                        },
+                        {
+                            "field": "include_filters",
+                            "label": "Include Filters",
+                            "type": "text",
+                            "help": "Comma-separated fnmatch patterns for clz_dir/clz_subdir values to include. Only events matching at least one pattern are eligible for indexing. Use */* to include all log types (default). Examples: hana/hanaaudit, linux/*, webdispatcher/accesslogs",
+                            "defaultValue": "*/*",
+                            "required": false,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 0,
+                                    "maxLength": 4096,
+                                    "errorMsg": "Include filters must be less than 4096 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "exclude_filters",
+                            "label": "Exclude Filters",
+                            "type": "text",
+                            "help": "Comma-separated fnmatch patterns for clz_dir/clz_subdir values to exclude. Events matching any exclude pattern are dropped before indexing, even if they also match an include pattern. Leave empty to exclude nothing. Examples: linux/cron, linux/kern",
+                            "defaultValue": "",
+                            "required": false,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 0,
+                                    "maxLength": 4096,
+                                    "errorMsg": "Exclude filters must be less than 4096 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "days_in_past",
+                            "label": "Days in the Past",
+                            "type": "text",
+                            "help": "Events with a _time older than this many days from today are dropped before indexing. Set to 0 to disable time-based filtering. This prevents backfill of very old log data during initial setup or recovery scenarios.",
+                            "defaultValue": "7",
+                            "required": false,
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [
+                                        0,
+                                        3650
+                                    ],
+                                    "errorMsg": "Days in the Past must be between 0 and 3650."
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
     }
 }

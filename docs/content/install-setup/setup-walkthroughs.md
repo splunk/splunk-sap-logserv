@@ -3,6 +3,8 @@
 ### :material-circle-box:{ .taiconcolor } Introduction
 Once the [prerequisites](prerequisites.md) and the [installation of the Splunk TA for SAP LogServ](install-ta.md) have been completed, use the provided setup walkthroughs to complete the setup based on the cloud provider where your SAP ECS environment is running in and your preferred deployment scenario.
 
+!!! note
+    Starting with version 0.0.3, the TA includes **built-in index-time filtering** that works with all deployment scenarios below. After completing the AWS setup, see [Configuring Filters](configure-filters.md) to control which log types are indexed and drop stale data directly from Splunk Web — no Lambda-based filtering required.
 
 ### :material-circle-box:{ .taiconcolor } Amazon Web Services (AWS)
 All AWS deployment scenarios achieve the end goal of ingesting LogServ logs into Splunk. However, ther are some differences in functionality. All AWS deployment scenarios involve two distinct AWS accounts.  
@@ -36,8 +38,15 @@ The table below lists the different features supported by each deployment scenar
 | Feature    | [AWS Remote S3 Connect Setup](aws-remote-s3-connect-walkthrough.md) | [AWS Remote S3 Filter Setup](aws-remote-s3-filter-walkthrough.md) | [AWS Remote S3 Copy Setup](aws-remote-s3-copy-walkthrough.md) |
 |------------------------------------------ | --------- -------------- | ------------------------- | ---------------------- |
 | Secondary Copy of Logs                    | ❌ Not Supported        | ❌ Not Supported          | ✅ Supported          |      
-| Filter Logs by Time Stamp                 | ❌ Not Supported        | ✅ Supported              | ❌ Not yet, coming soon | 
-| Filter Logs by Log Type                   | ❌ Not Supported        | ✅ Supported              | ❌ Not yet, coming soon | 
+| AWS Lambda-based Filtering                | ❌ Not Supported        | ✅ Supported              | ❌ Not yet, coming soon | 
+| **Native TA Index-Time Filtering**        | ✅ Supported            | ✅ Supported              | ✅ Supported          |
+
+??? tip "Native TA Filtering vs. AWS Lambda-based Filtering"
+    Starting with version 0.0.3, the TA provides **native index-time filtering** that works with all deployment scenarios. This filtering happens inside Splunk at index time and is configured entirely through the Splunk Web UI.
+
+    The **AWS Lambda-based filtering** (available in the S3 Filter Setup) filters S3 event notifications *before* they reach Splunk, reducing the number of SQS messages processed. Both approaches can be used independently or together for defense-in-depth filtering.
+
+    See [Configuring Filters](configure-filters.md) for details on the native TA filtering.
 
 
 ### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-crop-square:{ .cboxmove } [AWS Remote S3 Connect Setup Walkthrough](aws-remote-s3-connect-walkthrough.md) 

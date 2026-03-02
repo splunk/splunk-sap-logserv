@@ -2,7 +2,7 @@
 
 ### :material-circle-box:{ .taiconcolor } Overview
 
-SAP RISE environment logs are not a singular data source but, in fact, a collection of OS-specific, SAP environment, database, and other applications logs.
+SAP ECS environment logs are not a singular data source but, in fact, a collection of OS-specific, SAP environment, database, and other applications logs.
 
 Due to the nature of this solution, the Splunk Technical Add-on for SAP Logserv is not a standalone integration. To take full advantage of its capabilities (like CIM mapping), you need to install additional TAs as specified in the [Installation and Setup Prerequisites](../install-setup/prerequisites.md)
 
