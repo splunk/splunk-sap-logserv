@@ -57,13 +57,13 @@ sap_logserv_package/splunk_ta_sap_logserv/
 ├── globalConfig.json                          # UCC UI definition (Filters tab)
 ├── additional_packaging.py                    # UCC build hook (web.conf expose)
 └── package/
-    ├── app.manifest                               # TA version and metadata
+    ├── app.manifest                                # TA version and metadata
     ├── bin/
-    │   ├── splunk_ta_sap_logserv_filter_utils.py      # Core library
-    │   ├── splunk_ta_sap_logserv_rh_filter_settings.py # REST handler: Filters tab
-    │   ├── splunk_ta_sap_logserv_rh_deployment_push.py # REST handler: Deploy button
-    │   ├── logserv_filter_time_refresh.py              # Daily epoch cutoff refresh
-    │   └── logserv_filter_upgrade_check.py             # Upgrade coverage check
+    │   ├── splunk_ta_sap_logserv_filter_utils.py        # Core library
+    │   ├── splunk_ta_sap_logserv_rh_filter_settings.py  # REST handler: Filters tab
+    │   ├── splunk_ta_sap_logserv_rh_deployment_push.py  # REST handler: Deploy button
+    │   ├── logserv_filter_time_refresh.py               # Daily epoch cutoff refresh
+    │   └── logserv_filter_upgrade_check.py              # Upgrade coverage check
     ├── default/
     │   ├── transforms.conf    # Sourcetype routing + @logserv_filter annotations
     │   ├── props.conf         # Sourcetype configs, TRANSFORMS chains
