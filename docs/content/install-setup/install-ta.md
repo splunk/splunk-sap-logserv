@@ -22,6 +22,12 @@ Download the Splunk TA for SAP LogServ from the <a href="https://github.com/splu
 
 Install the Splunk TA for SAP LogServ to your instance of Splunk Cloud using the instructions below:
 
+If you are using separate forwarders in conjunction with Splunk Cloud, be sure to <a href="https://docs.splunk.com/Documentation/AddOns/released/Overview/SplunkCloudinstall#Install_an_add-on_on_a_heavy_forwarder" target="_blank">deploy the add-on to your forwarders</a> as well. 
+
+!!! warning
+    If you are using a **Deployment Server** to manage Heavy Forwarders, install the TA on the Deployment Server only. Do **not** install the TA directly on the Heavy Forwarders — the DS will distribute it automatically when you configure filters. See [Configuring Filters](configure-filters.md) for details.
+
+
 !!! note 
     The app installation workflow available to you in Splunk Web depends on your Splunk Cloud Platform Experience: **Victoria** or **Classic**. To find your Splunk Cloud Platform Experience, in Splunk Web, click **Support & Services > About**. 
 
@@ -45,7 +51,7 @@ Install the Splunk TA for SAP LogServ to your instance of Splunk Enterprise usin
 4. If Splunk Enterprise prompts you to restart, do so.
 5. Verify that the add-on appears in the list of apps and add-ons. You can also find it on the server at $SPLUNK_HOME/etc/apps/splunk_ta_sap_logserv. 
 
-If you are using separate forwarders in conjunction with your single-instance deployment, be sure to <a href="http://docs.splunk.com/Documentation/AddOns/released/Overview/Distributedinstall#Universal_or_light_forwarders" target="_blank">deploy the add-on to your forwarders</a> as well. 
+If you are using separate forwarders in conjunction with your single-instance deployment, be sure to <a href="https://docs.splunk.com/Documentation/AddOns/released/Overview/Distributedinstall#Heavy_forwarders" target="_blank">deploy the add-on to your forwarders</a> as well. 
 
 !!! warning
     If you are using a **Deployment Server** to manage Heavy Forwarders, install the TA on the Deployment Server only. Do **not** install the TA directly on the Heavy Forwarders — the DS will distribute it automatically when you configure filters. See [Configuring Filters](configure-filters.md) for details.
