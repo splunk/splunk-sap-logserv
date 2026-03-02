@@ -18,15 +18,15 @@ The filtering system provides index-time event filtering via TRANSFORMS-based qu
 +---------------------------+---------------------------+
                             | Save
                             v
-+-------------------------------------------------------+
-|  rh_filter_settings.py (REST Handler)                 |
-|  - Validates patterns                                 |
-|  - Saves settings to settings conf                    |
-|  - Generates local/transforms.conf + local/props.conf |
-|  - Mirrors to deployment-apps/ (if DS)                |
-|  - Creates server class (if DS, first time)           |
-|  - Reloads confs via REST API                         |
-+---------------------------+---------------------------+
++-------------------------------------------------------------+
+|  splunk_ta_sap_logserv_rh_filter_settings.py (REST Handler) |
+|  - Validates patterns                                       |
+|  - Saves settings to settings conf                          |
+|  - Generates local/transforms.conf + local/props.conf       |
+|  - Mirrors to deployment-apps/ (if DS)                      |
+|  - Creates server class (if DS, first time)                 |
+|  - Reloads confs via REST API                               |
++---------------------------+---------------------------------+
                             |
               +-------------+-------------+
               v                           v
@@ -83,7 +83,7 @@ sap_logserv_package/splunk_ta_sap_logserv/
 
 ### :material-circle-box:{ .taiconcolor } Core Library
 
-**filter_utils.py**{style="font-size: 1.2em;"}
+**splunk_ta_sap_logserv_filter_utils.py**{style="font-size: 1.2em;"}
 
 This is the central module. All other components import from it.
 
@@ -128,7 +128,7 @@ This is the central module. All other components import from it.
 
 ### :material-circle-box:{ .taiconcolor } Filters Tab REST Handler
 
-**rh_filter_settings.py**{style="font-size: 1.2em;"}
+**splunk_ta_sap_logserv_rh_filter_settings.py**{style="font-size: 1.2em;"}
 
 UCC REST handler (extends `AdminExternalHandler`) registered in `globalConfig.json`. Handles the Save action:
 
@@ -144,7 +144,7 @@ UCC REST handler (extends `AdminExternalHandler`) registered in `globalConfig.js
 
 ### :material-circle-box:{ .taiconcolor } Deploy Button REST Handler
 
-**rh_deployment_push.py**{style="font-size: 1.2em;"}
+**splunk_ta_sap_logserv_rh_deployment_push.py**{style="font-size: 1.2em;"}
 
 Persistent REST handler (`PersistentServerConnectionApplication`) registered in `restmap.conf`. Provides two endpoints:
 
@@ -430,7 +430,7 @@ Forgetting a local import inside a function that has a bare `except Exception: p
 
 ### :material-circle-box:{ .taiconcolor } Persistent Handler sys.path
 
-Persistent REST handlers (`rh_deployment_push.py`) do NOT get `import_declare_test` from UCC. They require explicit `sys.path` setup at the top of the file to import from the app's `bin/` and `lib/` directories. Without this, the handler returns 500 errors from splunkd.
+Persistent REST handlers (`splunk_ta_sap_logserv_rh_deployment_push.py`) do NOT get `import_declare_test` from UCC. They require explicit `sys.path` setup at the top of the file to import from the app's `bin/` and `lib/` directories. Without this, the handler returns 500 errors from splunkd.
 
 <br>
 
