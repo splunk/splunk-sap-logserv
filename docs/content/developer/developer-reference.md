@@ -420,7 +420,7 @@ Update the version in `package/app.manifest` (and `globalConfig.json` if applica
 
 ### :material-circle-box:{ .taiconcolor } Local Imports in Utility Functions
 
-Functions in `filter_utils.py` use **local imports** (inside the function body) for Splunk-specific modules like `splunk.rest` and `json`. This is intentional — these modules are unavailable during the UCC build step, so importing them at the module level would break the build.
+Functions in `splunk_ta_sap_logserv_filter_utils.py` use **local imports** (inside the function body) for Splunk-specific modules like `splunk.rest` and `json`. This is intentional — these modules are unavailable during the UCC build step, so importing them at the module level would break the build.
 
 The critical detail is that **local imports are scoped to the function they are declared in**. They do NOT carry into sibling functions. Each function that needs `splunk.rest` or `json` must import them independently. For example, both `get_server_roles()` and `is_deployment_server()` need their own local `import splunk.rest as rest` and `import json` statements — the imports inside `get_server_roles()` are not visible to `is_deployment_server()` even though one calls the other.
 
