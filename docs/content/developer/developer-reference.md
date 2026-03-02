@@ -67,6 +67,7 @@ sap_logserv_package/splunk_ta_sap_logserv/
     │   ├── transforms.conf    # Sourcetype routing + @logserv_filter annotations
     │   ├── props.conf         # Sourcetype configs, TRANSFORMS chains
     │   └── inputs.conf        # Scripted input schedules
+    │   └── macros.conf        # Index name redirect macro
     └── appserver/static/js/build/custom/
         └── filter_settings_hook.js   # UCC hook (DS detection, Deploy button)
 ```
