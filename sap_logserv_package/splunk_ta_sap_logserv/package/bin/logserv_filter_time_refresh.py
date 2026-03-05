@@ -40,6 +40,7 @@ sys.path.insert(
 
 from splunk_ta_sap_logserv_filter_utils import (
     APP_NAME,
+    SERVERCLASS_NAME,
     SETTINGS_CONF,
     FILTER_STANZA,
     generate_transforms_stanzas,
@@ -199,12 +200,52 @@ def main():
         f'Refreshed time filter cutoff: days_in_past={settings["days_in_past"]}'
     )
 
-    # Mirror to deployment server if applicable
+    # Mirror to deployment server if applicable, then trigger a deployment
+    # reload so heavy forwarders receive the updated time cutoff regex on
+    # their next phone-home interval without manual intervention.
     try:
         if is_deployment_server(session_key):
             ensure_deployment_app_synced(app_path)
             mirror_to_deployment_apps(app_path)
             log.info('Mirrored updated configs to deployment-apps/')
+
+            # Trigger a server-class-scoped deployment reload so only
+            # SAP_LogServ_HeavyForwarders clients receive the update.
+            # This avoids a global reload that could push pending changes
+            # for unrelated server classes managed by the same DS.
+            try:
+                import splunk.rest as rest_api_deploy
+
+                sc_reload_endpoint = (
+                    f'/services/deployment/server/serverclasses'
+                    f'/{SERVERCLASS_NAME}/reload'
+                )
+                response, content = rest_api_deploy.simpleRequest(
+                    sc_reload_endpoint,
+                    sessionKey=session_key,
+                    method='POST',
+                )
+                if response.status in (200, 201):
+                    log.info(
+                        f'Deployment reload triggered for server class '
+                        f'"{SERVERCLASS_NAME}" — updated time filter '
+                        f'configs will be distributed to forwarders on '
+                        f'next phone-home.'
+                    )
+                else:
+                    log.warning(
+                        f'Deployment reload for "{SERVERCLASS_NAME}" '
+                        f'returned HTTP {response.status} — forwarders '
+                        f'may not receive the updated time filter until '
+                        f'a manual deploy.'
+                    )
+            except Exception as deploy_err:
+                log.warning(
+                    f'Could not trigger deployment reload for '
+                    f'"{SERVERCLASS_NAME}": {deploy_err} — forwarders '
+                    f'will receive the updated time filter on next '
+                    f'manual deploy.'
+                )
     except Exception as e:
         log.warning(f'Could not mirror to deployment-apps: {e}')
 
