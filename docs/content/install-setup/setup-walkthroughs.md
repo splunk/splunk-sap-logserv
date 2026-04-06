@@ -7,7 +7,7 @@ Once the [prerequisites](prerequisites.md) and the [installation of the Splunk T
     Starting with version 0.0.3, the TA includes **built-in index-time filtering** that works with all deployment scenarios below. After completing the AWS setup, see [Configuring Filters](configure-filters.md) to control which log types are indexed and drop stale data directly from Splunk Web — no Lambda-based filtering required.
 
 ### :material-circle-box:{ .taiconcolor } Amazon Web Services (AWS)
-All AWS deployment scenarios achieve the end goal of ingesting LogServ logs into Splunk. However, ther are some differences in functionality. All AWS deployment scenarios involve two distinct AWS accounts.  
+All AWS deployment scenarios achieve the end goal of ingesting LogServ logs into Splunk. However, there are some differences in functionality. All AWS deployment scenarios involve two distinct AWS accounts.  
 
 All deployment scenarios for AWS require the use of an AWS **_Secondary account_** (a different AWS account than the one SAP ECS is running in) due to the requirement from SAP for a cross-account IAM Role to access the AWS **_SAP ECS account_** where the LogServ logs reside.  See the diagram below for reference.
 

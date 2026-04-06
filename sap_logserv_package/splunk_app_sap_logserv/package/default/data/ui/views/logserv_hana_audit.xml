@@ -1,0 +1,485 @@
+
+<dashboard version="2" theme="dark">
+    <label>SAP LogServ - HANA Audit</label>
+    <description></description>
+    <definition><![CDATA[
+{
+	"title": "SAP LogServ - HANA Audit",
+	"description": "",
+	"inputs": {
+		"input_global_trp": {
+			"options": {
+				"defaultValue": "-30d@d,now",
+				"token": "global_time"
+			},
+			"title": "Global Time Range",
+			"type": "input.timerange"
+		},
+		"input_nav_dropdown": {
+			"type": "input.dropdown",
+			"title": "Navigate to Dashboard",
+			"options": {
+				"items": [
+					{"label": "Overview", "value": "logserv_overview"},
+					{"label": "DNS Analytics", "value": "logserv_dns_analytics"},
+					{"label": "HANA Trace", "value": "logserv_hana_trace"},
+					{"label": "Web Dispatcher", "value": "logserv_web_dispatcher"},
+					{"label": "Host Details", "value": "logserv_host_details"},
+					{"label": "ABAP Security", "value": "logserv_abap_security"},
+					{"label": "ABAP Operations", "value": "logserv_abap_operations"},
+					{"label": "SAP Services", "value": "logserv_sap_services"},
+					{"label": "Cloud Connector", "value": "logserv_cloud_connector"},
+					{"label": "Linux", "value": "logserv_linux"},
+					{"label": "Windows", "value": "logserv_windows"},
+					{"label": "Proxy", "value": "logserv_proxy"},
+					{"label": "Environment Health", "value": "logserv_environment_health"}
+				],
+				"token": "nav_target"
+			}
+		}
+	},
+	"defaults": {
+		"dataSources": {
+			"ds.search": {
+				"options": {
+					"queryParameters": {
+						"earliest": "$global_time.earliest$",
+						"latest": "$global_time.latest$"
+					}
+				}
+			}
+		}
+	},
+	"visualizations": {
+		"viz_kpi_total": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_total"},
+			"title": "Total Audit Events",
+			"options": {"majorValue": "> primary | seriesByName('total') | lastPoint()", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off"}
+		},
+		"viz_kpi_failures": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_failures"},
+			"title": "Failed Operations",
+			"options": {"majorValue": "> primary | seriesByName('failures') | lastPoint()", "majorColor": "#dc4e41", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off"}
+		},
+		"viz_kpi_users": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_users"},
+			"title": "Active Users",
+			"options": {"majorValue": "> primary | seriesByName('users') | lastPoint()", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off"}
+		},
+		"viz_2nZCdB19": {
+			"containerOptions": {},
+			"dataSources": {
+				"primary": "ds_1ZmrypYh"
+			},
+			"options": {
+				"backgroundColor": "transparent",
+				"x": "> primary | seriesByName('_time')",
+				"xAxisTitleVisibility": "hide",
+				"resultLimit": 500000,
+				"columnSpacing": 0,
+				"showSplitSeries": true,
+				"columnGrouping": "overlay",
+				"showIndependentYRanges": true,
+				"yAxisTitleVisibility": "hide",
+				"y2AxisTitleVisibility": "hide"
+			},
+			"showLastUpdated": false,
+			"showProgressBar": false,
+			"title": "User Administration Activity Timeline",
+			"type": "splunk.column"
+		},
+		"viz_8cdxDtFu": {
+			"dataSources": {
+				"primary": "ds_yE9yBtpa"
+			},
+			"title": "Daily Security Health Score",
+			"type": "splunk.column",
+			"containerOptions": {},
+			"showProgressBar": false,
+			"showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"stackMode": "stacked",
+				"seriesColorsByField": {
+					"daily_events": "#7B56DB",
+					"active_users": "#009CEB",
+					"daily_failures": "#af575a",
+					"success_rate": "#53a051"
+				}
+			}
+		},
+		"viz_JQwHPBuw": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_Kj5JGWVb": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_UBrqm3dh": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_YIm9coVY": {
+			"dataSources": {
+				"primary": "ds_pYyp9bI7"
+			},
+			"title": "Audit Category Breakdown",
+			"type": "splunk.pie",
+			"containerOptions": {},
+			"showProgressBar": false,
+			"showLastUpdated": false,
+			"options": {
+				"showDonutHole": true,
+				"collapseLabel": "",
+				"backgroundColor": "transparent",
+				"collapseThreshold": 0
+			}
+		},
+		"viz_aHaxUdSn": {
+			"containerOptions": {},
+			"dataSources": {
+				"primary": "ds_TsZBieYG"
+			},
+			"options": {
+				"backgroundColor": "transparent",
+				"xAxisTitleVisibility": "hide",
+				"showSplitSeries": true,
+				"yAxisTitleVisibility": "hide",
+				"seriesColorsByField": {
+					"Failed Operation": "#dc4e41",
+					"Object Modification": "#62b3b2",
+					"Permission Grant": "#f1813f"
+				},
+				"showIndependentYRanges": true,
+				"xAxisMajorTickVisibility": "show",
+				"xAxisLabelVisibility": "show"
+			},
+			"showLastUpdated": false,
+			"showProgressBar": false,
+			"title": "Security Events Timeline",
+			"type": "splunk.column"
+		},
+		"viz_kxbrvLhz": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_mEe7x9fI": {
+			"dataSources": {
+				"primary": "ds_WaZCTDkV"
+			},
+			"title": "Password Management Activities",
+			"type": "splunk.table",
+			"containerOptions": {},
+			"showProgressBar": false,
+			"showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)",
+					"align": "center",
+					"headerAlign": "center"
+				},
+				"headerVisibility": "fixed"
+			}
+		},
+		"viz_yfcE62rT": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_4bIlKobW": {
+			"dataSources": {
+				"primary": "ds_NNjH6XTd_ds_pYyp9bI7"
+			},
+			"title": "Failed Operations by Host",
+			"type": "splunk.pie",
+			"containerOptions": {},
+			"showProgressBar": false,
+			"showLastUpdated": false,
+			"options": {
+				"showDonutHole": true,
+				"collapseLabel": "",
+				"backgroundColor": "transparent",
+				"collapseThreshold": 0
+			}
+		},
+		"viz_AV7emsQq": {
+			"options": {
+				"fillColor": "transparent",
+				"rx": 3,
+				"strokeColor": "#0877a6"
+			},
+			"type": "splunk.rectangle"
+		},
+		"viz_top_users": {
+			"type": "splunk.table",
+			"dataSources": {"primary": "ds_top_users"},
+			"title": "Top Users by Activity",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
+				}
+			}
+		},
+		"viz_after_hours": {
+			"type": "splunk.column",
+			"dataSources": {"primary": "ds_after_hours"},
+			"title": "Activity by Hour of Day",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"xAxisTitleVisibility": "hide",
+				"yAxisTitleVisibility": "hide",
+				"seriesColorsByField": {"Failures": "#dc4e41", "Successes": "#4fa484"}
+			}
+		},
+		"viz_client_ips": {
+			"type": "splunk.table",
+			"dataSources": {"primary": "ds_client_ips"},
+			"title": "Client IP Analysis",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
+				}
+			}
+		},
+		"viz_rect_r3l": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r3m": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r3r": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_nav_go": {
+			"type": "splunk.singlevalue",
+			"dataSources": {
+				"primary": "ds_nav_go"
+			},
+			"options": {
+				"majorValue": "> primary | seriesByName('label') | lastPoint()",
+				"backgroundColor": "#0877a6",
+				"majorColor": "#ffffff",
+				"sparklineDisplay": "off",
+				"trendDisplay": "off",
+				"majorFontSize": 14
+			},
+			"eventHandlers": [
+				{
+					"type": "drilldown.customUrl",
+					"options": {
+						"url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$",
+						"newTab": false
+					}
+				}
+			]
+		}
+	},
+	"dataSources": {
+		"ds_kpi_total": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit | stats count as total"}
+		},
+		"ds_kpi_failures": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit status!=\"SUCCESSFUL\" | stats count as failures"}
+		},
+		"ds_kpi_users": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit | stats dc(executing_user) as users"}
+		},
+		"ds_1ZmrypYh": {
+			"name": "Column chart search",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit \r\n| where match(audit_category, \"HEC Audit - User Administration\")\r\n| eval admin_action = case(\r\n    match(sql_statement, \"(?i)reset connect\"), \"Password Reset\",\r\n    match(sql_statement, \"(?i)activate user\"), \"User Activation\",\r\n    match(sql_statement, \"(?i)deactivate user\"), \"User Deactivation\",\r\n    match(sql_statement, \"(?i)disable password\"), \"Policy Change\",\r\n    1=1, \"Other Admin\"\r\n)\r\n| timechart span=1d count by admin_action",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
+			},
+			"type": "ds.search"
+		},
+		"ds_F7WLfuRN_ds_yE9yBtpa": {
+			"name": "Bubble chart search copy 1",
+			"options": {
+				"query": "index=\"sap_logserv_logs\" tag=dns message_type=\"QUERY\"\r\n| fields _time, query\r\n| streamstats current=f last(_time) as last_time by query\r\n| eval gap=last_time - _time\r\n| stats count avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query\r\n| eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3)\r\n| sort -count\r\n| where VarianceBeaconTime < 60 AND count > 2 AND AverageBeaconTime>1.000\r\n| table  query VarianceBeaconTime  count AverageBeaconTime",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
+			},
+			"type": "ds.search"
+		},
+		"ds_TsZBieYG": {
+			"name": "sec_events_timeline_search",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit \r\n| where status!=\"SUCCESSFUL\" OR match(action_type, \"(?i)(grant|revoke|create|drop)\")\r\n| eval event_type = case(\r\n    status!=\"SUCCESSFUL\", \"Failed Operation\",\r\n    match(action_type, \"(?i)grant\"), \"Permission Grant\",\r\n    match(action_type, \"(?i)revoke\"), \"Permission Revoke\",\r\n    match(action_type, \"(?i)(create|drop)\"), \"Object Modification\",\r\n    1=1, \"Other Security Event\"\r\n)\r\n| timechart span=1d count by event_type",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
+			},
+			"type": "ds.search"
+		},
+		"ds_WaZCTDkV": {
+			"name": "Bubble chart search 2",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit \r\n| where match(sql_statement, \"(?i)password\")\r\n| eval password_action = case(\r\n    match(sql_statement, \"password \\*\\*\\*\"), \"Password Change\",\r\n    match(sql_statement, \"disable password\"), \"Disable Lifetime\",\r\n    match(sql_statement, \"reset.*connect\"), \"Reset Attempts\",\r\n    1=1, \"Other\"\r\n)\r\n| rename password_action AS Action\r\n| rename target_user AS \"Target User\"\r\n| rename executing_user AS \"Exec User\"\r\n| rename client_ip AS \"Client IP\"\r\n| stats count by Action, \"Target User\", \"Exec User\", \"Client IP\"\r\n| sort -count, Action",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
+			},
+			"type": "ds.search"
+		},
+		"ds_pYyp9bI7": {
+			"name": "Requests by Record Type search",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit \r\n| stats count by action_category\r\n| sort -count",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
+			},
+			"type": "ds.search"
+		},
+		"ds_yE9yBtpa": {
+			"name": "Bubble chart search",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit \r\n| eval day = strftime(_time, \"%Y-%m-%d\")\r\n| stats \r\n    count as daily_events,\r\n    dc(executing_user) as active_users,\r\n    sum(eval(if(status!=\"SUCCESSFUL\", 1, 0))) as daily_failures\r\nby day\r\n| eval success_rate = round(((daily_events - daily_failures)/daily_events)*100, 1)\r\n| sort day\r\n| table day, daily_events, active_users, daily_failures, success_rate",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
+			},
+			"type": "ds.search"
+		},
+		"ds_NNjH6XTd_ds_pYyp9bI7": {
+			"name": "Requests by Record Type search copy 1",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit \r\n| where status!=\"SUCCESSFUL\"\r\n| stats count by host\r\n| sort -count",
+				"queryParameters": {
+					"earliest": "$global_time.earliest$",
+					"latest": "$global_time.latest$"
+				}
+			},
+			"type": "ds.search"
+		},
+		"ds_top_users": {
+			"type": "ds.search",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit | stats count as Events dc(action_type) as \"Action Types\" sum(eval(if(status!=\"SUCCESSFUL\",1,0))) as Failures by executing_user | sort -Events | head 20 | rename executing_user as User"
+			}
+		},
+		"ds_after_hours": {
+			"type": "ds.search",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit | eval hour=strftime(_time, \"%H\") | eval result=if(status=\"SUCCESSFUL\", \"Successes\", \"Failures\") | chart count over hour by result"
+			}
+		},
+		"ds_client_ips": {
+			"type": "ds.search",
+			"options": {
+				"query": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit client_ip=* | stats count as Events dc(executing_user) as Users sum(eval(if(status!=\"SUCCESSFUL\",1,0))) as Failures latest(_time) as \"Last Seen\" by client_ip | eval \"Last Seen\"=strftime('Last Seen', \"%Y-%m-%d %H:%M\") | sort -Events | head 20 | rename client_ip as \"Client IP\""
+			}
+		},
+		"ds_nav_go": {
+			"type": "ds.search",
+			"options": {
+				"query": "| makeresults | eval label=\"Go >\"",
+				"queryParameters": {
+					"earliest": "-1m",
+					"latest": "now"
+				}
+			}
+		}
+	},
+	"layout": {
+		"globalInputs": [
+			"input_global_trp",
+			"input_nav_dropdown"
+		],
+		"layoutDefinitions": {
+			"layout_1": {
+				"options": {
+					"height": 1250,
+					"width": 1920
+				},
+				"structure": [
+					{"item": "viz_nav_go", "type": "block", "position": {"x": 1790, "y": 0, "w": 120, "h": 35}},
+					{"item": "viz_kpi_total", "type": "block", "position": {"x": 10, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_kpi_failures", "type": "block", "position": {"x": 320, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_kpi_users", "type": "block", "position": {"x": 630, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_JQwHPBuw", "type": "block", "position": {"x": 10, "y": 150, "w": 690, "h": 310}},
+					{"item": "viz_2nZCdB19", "type": "block", "position": {"x": 10, "y": 160, "w": 700, "h": 305}},
+					{"item": "viz_Kj5JGWVb", "type": "block", "position": {"x": 710, "y": 150, "w": 700, "h": 310}},
+					{"item": "viz_aHaxUdSn", "type": "block", "position": {"x": 710, "y": 160, "w": 700, "h": 300}},
+					{"item": "viz_yfcE62rT", "type": "block", "position": {"x": 1420, "y": 150, "w": 500, "h": 310}},
+					{"item": "viz_YIm9coVY", "type": "block", "position": {"x": 1430, "y": 155, "w": 500, "h": 300}},
+					{"item": "viz_kxbrvLhz", "type": "block", "position": {"x": 10, "y": 470, "w": 690, "h": 410}},
+					{"item": "viz_8cdxDtFu", "type": "block", "position": {"x": 10, "y": 480, "w": 700, "h": 390}},
+					{"item": "viz_UBrqm3dh", "type": "block", "position": {"x": 710, "y": 470, "w": 700, "h": 410}},
+					{"item": "viz_mEe7x9fI", "type": "block", "position": {"x": 710, "y": 480, "w": 700, "h": 380}},
+					{"item": "viz_AV7emsQq", "type": "block", "position": {"x": 1420, "y": 470, "w": 500, "h": 410}},
+					{"item": "viz_4bIlKobW", "type": "block", "position": {"x": 1430, "y": 480, "w": 500, "h": 390}},
+					{"item": "viz_rect_r3l", "type": "block", "position": {"x": 10, "y": 890, "w": 620, "h": 340}},
+					{"item": "viz_top_users", "type": "block", "position": {"x": 20, "y": 895, "w": 600, "h": 330}},
+					{"item": "viz_rect_r3m", "type": "block", "position": {"x": 640, "y": 890, "w": 640, "h": 340}},
+					{"item": "viz_after_hours", "type": "block", "position": {"x": 650, "y": 895, "w": 620, "h": 330}},
+					{"item": "viz_rect_r3r", "type": "block", "position": {"x": 1290, "y": 890, "w": 620, "h": 340}},
+					{"item": "viz_client_ips", "type": "block", "position": {"x": 1300, "y": 895, "w": 600, "h": 330}}
+				],
+				"type": "absolute"
+			}
+		},
+		"options": {},
+		"tabs": {
+			"items": [
+				{
+					"label": "New tab",
+					"layoutId": "layout_1"
+				}
+			]
+		}
+	}
+}
+    ]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

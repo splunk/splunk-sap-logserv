@@ -3,7 +3,7 @@
         "name": "splunk_ta_sap_logserv",
         "restRoot": "splunk_ta_sap_logserv",
         "displayName": "Splunk TA for SAP LogServ",
-        "version": "0.0.3",
+        "version": "0.0.4.2",
         "schemaVersion": "0.0.9",
         "isVisible": true
     },
@@ -26,7 +26,7 @@
                             "field": "filter_enabled",
                             "label": "Enable Filtering",
                             "type": "checkbox",
-                            "help": "When enabled, events matching exclude patterns or older than the configured time window are dropped before indexing (zero license cost). On a single instance, changes take effect after clicking Save. On a deployment server, filter configurations are automatically staged to deployment-apps/ and a Deploy to Forwarders button will appear below to distribute changes to your heavy forwarders.",
+                            "help": "Controls whether index-time filtering is active. When enabled, incoming log events are evaluated against the Include, Exclude, and Days in the Past rules below — events that don't pass are routed to nullQueue and never indexed (no license usage). When disabled, all events are indexed regardless of the filter rules. On a single instance, changes take effect immediately after Save. On a deployment server, changes are staged to deployment-apps/ and a Deploy to Forwarders button appears below.",
                             "defaultValue": 0,
                             "required": false
                         },
@@ -34,7 +34,7 @@
                             "field": "include_filters",
                             "label": "Include Filters",
                             "type": "text",
-                            "help": "Comma-separated fnmatch patterns for clz_dir/clz_subdir values to include. Only events matching at least one pattern are eligible for indexing. Use */* to include all log types (default). Examples: hana/hanaaudit, linux/*, webdispatcher/accesslogs",
+                            "help": "Allowlist of log types to index, using comma-separated path patterns. Each pattern matches the log type path (e.g., linux/messages, hana/hanaaudit). Only log types matching at least one pattern will be indexed — everything else is dropped. Default: */* (include all). Examples: hana/* (all HANA logs), linux/messages,proxy/squid (specific types only).",
                             "defaultValue": "*/*",
                             "required": false,
                             "validators": [
@@ -50,7 +50,7 @@
                             "field": "exclude_filters",
                             "label": "Exclude Filters",
                             "type": "text",
-                            "help": "Comma-separated fnmatch patterns for clz_dir/clz_subdir values to exclude. Events matching any exclude pattern are dropped before indexing, even if they also match an include pattern. Leave empty to exclude nothing. Examples: linux/cron, linux/kern",
+                            "help": "Blocklist of log types to drop, using comma-separated path patterns. Any log type matching an exclude pattern is dropped — even if it also matches an include pattern (exclude always wins). Leave empty to exclude nothing. Examples: linux/cron,linux/kern (drop cron and kernel logs), dns/* (drop all DNS logs).",
                             "defaultValue": "",
                             "required": false,
                             "validators": [
@@ -66,7 +66,7 @@
                             "field": "days_in_past",
                             "label": "Days in the Past",
                             "type": "text",
-                            "help": "Events with a _time older than this many days from today are dropped before indexing. Set to 0 to disable time-based filtering. This prevents backfill of very old log data during initial setup or recovery scenarios.",
+                            "help": "Only index events from the last N days. The cutoff updates every 24 hours and on each Save, creating a rolling window that moves forward daily. Example with Days in the Past = 7: On March 11, events timestamped March 4 or earlier are dropped. The next day (March 12), the window shifts — now events from March 5 or earlier are dropped. An event from March 5 that was indexed on March 11 would be dropped if re-ingested on March 12. Set to 0 to disable (index all events regardless of age). Useful for preventing bulk backfill of historical data during initial setup or recovery.",
                             "defaultValue": "7",
                             "required": false,
                             "validators": [

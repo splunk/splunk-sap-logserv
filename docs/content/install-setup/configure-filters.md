@@ -197,8 +197,11 @@ Return to the Filters tab — the setup notice should be gone (refresh the page 
 ### :material-circle-box:{ .taiconcolor } Deploy to Forwarders
 
 1. On the Filters tab, click **"Deploy to Forwarders"** and confirm
-2. Wait for your Heavy Forwarders to phone home (typically 30–60 seconds depending on configuration)
-3. Verify deployment status in **Settings → Forwarder Management** — HFs should show as "Ok" under the server class, however it may take 5+ minutes to see the status on the forwarders change from `Pending` to `Ok`
+2. You should see the new updated banner on the filters screen confirming the deployment reload has been initiated
+??? note "Example"
+    ![image](../../images/filter-deploy-initiated.png "Deploy Reload Initiated")
+3. Wait for your Heavy Forwarders to phone home (typically 30–60 seconds depending on configuration)
+4. Verify deployment status in **Settings → Forwarder Management** — HFs should show as "Ok" under the server class, however it may take 5+ minutes to see the status on the forwarders change from `Pending` to `Ok`
 
 ??? note "Example"
     ![image](../../images/filter-deploy-success.png "Deploy Success")
@@ -265,8 +268,18 @@ The table below lists all log types currently supported by the TA. The `clz_dir`
 
 | clz_dir | clz_subdir | Splunk Sourcetype |
 |---------|------------|-------------------|
+| abap | audit | `sap:abap:audit` |
+| abap | dispatcher | `sap:abap:dispatcher` |
+| abap | enqueueserver | `sap:abap:enqueueserver` |
+| abap | event | `sap:abap:event` |
+| abap | gateway | `sap:abap:gateway` |
+| abap | icm | `sap:abap:icm` |
+| abap | messageserver | `sap:abap:messageserver` |
+| abap | sapstartsrv | `sap:abap:sapstartsrv` |
+| abap | workprocess | `sap:abap:workprocess` |
 | dns | binddns | `isc:bind:query`, `isc:bind:lameserver`, `isc:bind:network`, `isc:bind:transfer` |
 | hana | hanaaudit | `sap:hana:audit` |
+| hana | tracelogs | `sap:hana:tracelogs` |
 | linux | cron | `syslog` |
 | linux | localmessages | `linux_messages_syslog` |
 | linux | messages | `linux_messages_syslog` |
@@ -275,6 +288,11 @@ The table below lists all log types currently supported by the TA. The `clz_dir`
 | linux | sudolog | `syslog` |
 | linux | warn | `syslog` |
 | proxy | squid | `squid:access` |
+| sap | saphostexec | `sap:saphostexec` |
+| sap | saprouter | `sap:saprouter` |
+| sap | sapstartsrv | `sap:sapstartsrv` |
+| scc | audit | `sap:scc:audit` |
+| scc | tracelogs | `sap:scc:http_access` |
 | webdispatcher | accesslog | `sap:webdispatcher:access` |
 | windows | WinEventLog:Application | `XmlWinEventLog` |
 | windows | WinEventLog:Powershell | `XmlWinEventLog` |
@@ -286,6 +304,10 @@ The table below lists all log types currently supported by the TA. The `clz_dir`
     - To include all Linux logs except cron: Include `linux/*`, Exclude `linux/cron`
     - To include only HANA audit and web dispatcher logs: `hana/hanaaudit, webdispatcher/accesslog`
     - To include all Windows event logs: `windows/*`
+    - To include all ABAP application logs: `abap/*`
+    - To include specific ABAP types: `abap/icm, abap/gateway`
+    - To include all SAP Cloud Connector logs: `scc/*`
+    - To include all SAP service logs: `sap/*`
 
 <br>
 

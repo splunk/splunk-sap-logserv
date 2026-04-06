@@ -1,0 +1,250 @@
+
+<dashboard version="2" theme="dark">
+    <label>SAP LogServ - Cloud Connector</label>
+    <description></description>
+    <definition><![CDATA[
+{
+	"title": "SAP LogServ - Cloud Connector",
+	"description": "",
+	"inputs": {
+		"input_global_trp": {
+			"options": {"defaultValue": "-30d@d,now", "token": "global_time"},
+			"title": "Global Time Range",
+			"type": "input.timerange"
+		},
+		"input_nav_dropdown": {
+			"type": "input.dropdown",
+			"title": "Navigate to Dashboard",
+			"options": {
+				"items": [
+					{"label": "Overview", "value": "logserv_overview"},
+					{"label": "DNS Analytics", "value": "logserv_dns_analytics"},
+					{"label": "HANA Audit", "value": "logserv_hana_audit"},
+					{"label": "HANA Trace", "value": "logserv_hana_trace"},
+					{"label": "Web Dispatcher", "value": "logserv_web_dispatcher"},
+					{"label": "Host Details", "value": "logserv_host_details"},
+					{"label": "ABAP Security", "value": "logserv_abap_security"},
+					{"label": "ABAP Operations", "value": "logserv_abap_operations"},
+					{"label": "SAP Services", "value": "logserv_sap_services"},
+					{"label": "Linux", "value": "logserv_linux"},
+					{"label": "Windows", "value": "logserv_windows"},
+					{"label": "Proxy", "value": "logserv_proxy"},
+					{"label": "Environment Health", "value": "logserv_environment_health"}
+				],
+				"token": "nav_target"
+			}
+		}
+	},
+	"defaults": {
+		"dataSources": {
+			"ds.search": {
+				"options": {
+					"queryParameters": {
+						"earliest": "$global_time.earliest$",
+						"latest": "$global_time.latest$"
+					}
+				}
+			}
+		}
+	},
+	"visualizations": {
+		"viz_kpi_requests": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_requests"},
+			"title": "Total Requests",
+			"options": {"majorValue": "> primary | seriesByName('total') | lastPoint()", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off"}
+		},
+		"viz_kpi_error_rate": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_error_rate"},
+			"title": "Error Rate",
+			"options": {"majorValue": "> primary | seriesByName('error_rate') | lastPoint()", "majorColor": "#dc4e41", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off", "unit": "%"}
+		},
+		"viz_kpi_audit": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_audit"},
+			"title": "Audit Events",
+			"options": {"majorValue": "> primary | seriesByName('audit_count') | lastPoint()", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off"}
+		},
+		"viz_request_volume": {
+			"type": "splunk.line",
+			"dataSources": {"primary": "ds_request_volume"},
+			"title": "Request Volume Over Time",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {"backgroundColor": "transparent", "xAxisTitleVisibility": "hide", "yAxisTitleVisibility": "hide"}
+		},
+		"viz_status_codes": {
+			"type": "splunk.column",
+			"dataSources": {"primary": "ds_status_codes"},
+			"title": "Status Code Distribution",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent", "stackMode": "stacked",
+				"xAxisTitleVisibility": "hide", "yAxisTitleVisibility": "hide",
+				"seriesColorsByField": {"Success (2xx)": "#4fa484", "Redirect (3xx)": "#0877a6", "Client Error (4xx)": "#dc4e41", "Server Error (5xx)": "#f1813f"}
+			}
+		},
+		"viz_top_uris": {
+			"type": "splunk.table",
+			"dataSources": {"primary": "ds_top_uris"},
+			"title": "Top URIs by Request Count",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
+				}
+			}
+		},
+		"viz_response_time": {
+			"type": "splunk.line",
+			"dataSources": {"primary": "ds_response_time"},
+			"title": "Average Response Time",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {"backgroundColor": "transparent", "xAxisTitleVisibility": "hide", "yAxisTitleVisibility": "hide"}
+		},
+		"viz_top_clients": {
+			"type": "splunk.table",
+			"dataSources": {"primary": "ds_top_clients"},
+			"title": "Top Clients",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
+				}
+			}
+		},
+		"viz_http_methods": {
+			"type": "splunk.pie",
+			"dataSources": {"primary": "ds_http_methods"},
+			"title": "HTTP Methods",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {"showDonutHole": true, "backgroundColor": "transparent"}
+		},
+		"viz_audit_log": {
+			"type": "splunk.table",
+			"dataSources": {"primary": "ds_audit_log"},
+			"title": "Cloud Connector Audit Log",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
+				}
+			}
+		},
+		"viz_rect_r1l": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r1r": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r2l": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r2m": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r2r": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r3l": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r3r": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_nav_go": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_nav_go"},
+			"options": {
+				"majorValue": "> primary | seriesByName('label') | lastPoint()",
+				"backgroundColor": "#0877a6", "majorColor": "#ffffff",
+				"sparklineDisplay": "off", "trendDisplay": "off", "majorFontSize": 14
+			},
+			"eventHandlers": [{"type": "drilldown.customUrl", "options": {"url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$", "newTab": false}}]
+		}
+	},
+	"dataSources": {
+		"ds_kpi_requests": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:http_access\" | stats count as total"}
+		},
+		"ds_kpi_error_rate": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:http_access\" | stats count(eval(is_error=1)) as errors count as total | eval error_rate=round(errors/total*100, 1)"}
+		},
+		"ds_kpi_audit": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:audit\" | stats count as audit_count"}
+		},
+		"ds_request_volume": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:http_access\" | timechart span=1d count as Requests"}
+		},
+		"ds_status_codes": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:http_access\" | eval status_cat=case(status>=200 AND status<300, \"Success (2xx)\", status>=300 AND status<400, \"Redirect (3xx)\", status>=400 AND status<500, \"Client Error (4xx)\", status>=500, \"Server Error (5xx)\", 1=1, \"Other\") | timechart span=1d count by status_cat"}
+		},
+		"ds_top_uris": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:http_access\" | stats count as Requests avg(response_time_ms) as \"Avg Response (ms)\" sum(bytes) as \"Total Bytes\" by uri | eval \"Avg Response (ms)\"=round('Avg Response (ms)', 1) | sort -Requests | head 20 | rename uri as URI"}
+		},
+		"ds_response_time": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:http_access\" | timechart span=1d avg(response_time_ms) as \"Avg Response Time (ms)\""}
+		},
+		"ds_top_clients": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:http_access\" | stats count as Requests sum(bytes) as \"Total Bytes\" dc(uri) as \"Unique URIs\" by clientip | sort -Requests | head 20 | rename clientip as \"Client IP\""}
+		},
+		"ds_http_methods": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:http_access\" method=* | stats count by method | sort -count"}
+		},
+		"ds_audit_log": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:scc:audit\" | table _time scc_audit_type scc_account_id | sort -_time | head 50 | rename scc_audit_type as \"Audit Type\" scc_account_id as \"Account ID\""}
+		},
+		"ds_nav_go": {
+			"type": "ds.search",
+			"options": {"query": "| makeresults | eval label=\"Go >\"", "queryParameters": {"earliest": "-1m", "latest": "now"}}
+		}
+	},
+	"layout": {
+		"globalInputs": ["input_global_trp", "input_nav_dropdown"],
+		"layoutDefinitions": {
+			"layout_1": {
+				"options": {"height": 1200, "width": 1920},
+				"structure": [
+					{"item": "viz_nav_go", "type": "block", "position": {"x": 1790, "y": 0, "w": 120, "h": 35}},
+					{"item": "viz_kpi_requests", "type": "block", "position": {"x": 10, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_kpi_error_rate", "type": "block", "position": {"x": 320, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_kpi_audit", "type": "block", "position": {"x": 630, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_rect_r1l", "type": "block", "position": {"x": 10, "y": 150, "w": 940, "h": 340}},
+					{"item": "viz_request_volume", "type": "block", "position": {"x": 20, "y": 155, "w": 920, "h": 330}},
+					{"item": "viz_rect_r1r", "type": "block", "position": {"x": 960, "y": 150, "w": 950, "h": 340}},
+					{"item": "viz_status_codes", "type": "block", "position": {"x": 970, "y": 155, "w": 930, "h": 330}},
+					{"item": "viz_rect_r2l", "type": "block", "position": {"x": 10, "y": 505, "w": 620, "h": 340}},
+					{"item": "viz_top_uris", "type": "block", "position": {"x": 20, "y": 510, "w": 600, "h": 330}},
+					{"item": "viz_rect_r2m", "type": "block", "position": {"x": 640, "y": 505, "w": 640, "h": 340}},
+					{"item": "viz_response_time", "type": "block", "position": {"x": 650, "y": 510, "w": 620, "h": 330}},
+					{"item": "viz_rect_r2r", "type": "block", "position": {"x": 1290, "y": 505, "w": 620, "h": 340}},
+					{"item": "viz_http_methods", "type": "block", "position": {"x": 1300, "y": 510, "w": 600, "h": 330}},
+					{"item": "viz_rect_r3l", "type": "block", "position": {"x": 10, "y": 860, "w": 950, "h": 330}},
+					{"item": "viz_top_clients", "type": "block", "position": {"x": 20, "y": 865, "w": 930, "h": 320}},
+					{"item": "viz_rect_r3r", "type": "block", "position": {"x": 970, "y": 860, "w": 940, "h": 330}},
+					{"item": "viz_audit_log", "type": "block", "position": {"x": 980, "y": 865, "w": 920, "h": 320}}
+				],
+				"type": "absolute"
+			}
+		},
+		"options": {},
+		"tabs": {"items": [{"label": "New tab", "layoutId": "layout_1"}]}
+	}
+}
+    ]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

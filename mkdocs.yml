@@ -1,10 +1,10 @@
-site_name: Splunk TA for SAP LogServ
+site_name: SAP LogServ for Splunk
 site_author: Splunk
 site_url: "https://splunk.github.io/splunk-sap-logserv/"
 edit_uri: "tree/main/docs/"
 remote_branch: gh-pages
 
-repo_name: Splunk TA for SAP LogServ
+repo_name: SAP LogServ for Splunk
 repo_url: "https://github.com/splunk/splunk-sap-logserv"
 
 # site_dir: site
@@ -23,7 +23,7 @@ markdown_extensions:
   - attr_list
   - pymdownx.emoji:
       emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg  
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 theme:
   name: "material"
@@ -67,21 +67,25 @@ plugins:
   - print-site  # should be at the end
 
 nav:
-- Overview:
+- Getting Started:
+    - About: 'index.md'
+    - Architecture: 'content/getting-started/architecture.md'
     - Release Notes: 'content/overview/release-notes.md'
-    - About the Add-on: 'index.md'
-    - Installation and Setup Overview: 'content/overview/install-setup.md'
-    - Sourcetype mapping: 'content/overview/ta_mapping.md'
-- Installation and Setup:
+    - Supported Log Types: 'content/getting-started/supported-log-types.md'
+- LogServ Data TA:
     - Prerequisites: 'content/install-setup/prerequisites.md'
-    - Installing the TA: 'content/install-setup/install-ta.md'
+    - Installing the Data TA: 'content/install-setup/install-ta.md'
     - Configuring Filters: 'content/install-setup/configure-filters.md'
     - Setup Walkthroughs Overview: 'content/install-setup/setup-walkthroughs.md'
     - AWS Setup Walkthroughs:
         - AWS Remote S3 Connect Setup Walkthrough: 'content/install-setup/aws-remote-s3-connect-walkthrough.md'
-        - AWS Remote S3 Filter Setup Walkthrough: 'content/install-setup/aws-remote-s3-filter-walkthrough.md'    
+        - AWS Remote S3 Filter Setup Walkthrough: 'content/install-setup/aws-remote-s3-filter-walkthrough.md'
         - AWS Remote S3 Copy Setup Walkthrough: 'content/install-setup/aws-remote-s3-copy-walkthrough.md'
     - AWS Setup Migrations:
-        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-walkthrough.md'    
-#- Developer Reference:
-#    - Architecture and Internals: 'content/developer/developer-reference.md'
+        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-walkthrough.md'
+- LogServ UI App:
+    - Installing the LogServ App: 'content/logserv-app/installation.md'
+    - Dashboards Overview: 'content/logserv-app/dashboards-overview.md'
+- Developer Reference:
+    - Testing Guide: 'content/developer/testing-guide.md'
+    - Architecture and Internals: 'content/developer/developer-reference.md'

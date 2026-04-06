@@ -1,0 +1,251 @@
+
+<dashboard version="2" theme="dark">
+    <label>SAP LogServ - HANA Trace</label>
+    <description></description>
+    <definition><![CDATA[
+{
+	"title": "SAP LogServ - HANA Trace",
+	"description": "",
+	"inputs": {
+		"input_global_trp": {
+			"options": {"defaultValue": "-30d@d,now", "token": "global_time"},
+			"title": "Global Time Range",
+			"type": "input.timerange"
+		},
+		"input_nav_dropdown": {
+			"type": "input.dropdown",
+			"title": "Navigate to Dashboard",
+			"options": {
+				"items": [
+					{"label": "Overview", "value": "logserv_overview"},
+					{"label": "DNS Analytics", "value": "logserv_dns_analytics"},
+					{"label": "HANA Audit", "value": "logserv_hana_audit"},
+					{"label": "Web Dispatcher", "value": "logserv_web_dispatcher"},
+					{"label": "Host Details", "value": "logserv_host_details"},
+					{"label": "ABAP Security", "value": "logserv_abap_security"},
+					{"label": "ABAP Operations", "value": "logserv_abap_operations"},
+					{"label": "SAP Services", "value": "logserv_sap_services"},
+					{"label": "Cloud Connector", "value": "logserv_cloud_connector"},
+					{"label": "Linux", "value": "logserv_linux"},
+					{"label": "Windows", "value": "logserv_windows"},
+					{"label": "Proxy", "value": "logserv_proxy"},
+					{"label": "Environment Health", "value": "logserv_environment_health"}
+				],
+				"token": "nav_target"
+			}
+		}
+	},
+	"defaults": {
+		"dataSources": {
+			"ds.search": {
+				"options": {
+					"queryParameters": {
+						"earliest": "$global_time.earliest$",
+						"latest": "$global_time.latest$"
+					}
+				}
+			}
+		}
+	},
+	"visualizations": {
+		"viz_kpi_total": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_total"},
+			"title": "Total Trace Events",
+			"options": {"majorValue": "> primary | seriesByName('total') | lastPoint()", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off"}
+		},
+		"viz_kpi_errors": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_errors"},
+			"title": "Errors / Fatal",
+			"options": {"majorValue": "> primary | seriesByName('error_count') | lastPoint()", "majorColor": "#dc4e41", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off"}
+		},
+		"viz_kpi_components": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_kpi_components"},
+			"title": "Unique Components",
+			"options": {"majorValue": "> primary | seriesByName('components') | lastPoint()", "backgroundColor": "transparent", "sparklineDisplay": "off", "trendDisplay": "off"}
+		},
+		"viz_trace_volume": {
+			"type": "splunk.line",
+			"dataSources": {"primary": "ds_trace_volume"},
+			"title": "Trace Volume Over Time",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {"backgroundColor": "transparent", "xAxisTitleVisibility": "hide", "yAxisTitleVisibility": "hide"}
+		},
+		"viz_by_severity": {
+			"type": "splunk.column",
+			"dataSources": {"primary": "ds_by_severity"},
+			"title": "Trace Events by Severity",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent", "stackMode": "stacked",
+				"xAxisTitleVisibility": "hide", "yAxisTitleVisibility": "hide",
+				"seriesColorsByField": {"info": "#0877a6", "warning": "#f1813f", "error": "#dc4e41", "fatal": "#af575a"}
+			}
+		},
+		"viz_top_components": {
+			"type": "splunk.table",
+			"dataSources": {"primary": "ds_top_components"},
+			"title": "Top Components",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
+				}
+			}
+		},
+		"viz_component_severity": {
+			"type": "splunk.column",
+			"dataSources": {"primary": "ds_component_severity"},
+			"title": "Component by Severity (Top 10)",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent", "stackMode": "stacked",
+				"xAxisTitleVisibility": "hide", "yAxisTitleVisibility": "hide",
+				"seriesColorsByField": {"info": "#0877a6", "warning": "#f1813f", "error": "#dc4e41", "fatal": "#af575a"}
+			}
+		},
+		"viz_source_hotspots": {
+			"type": "splunk.table",
+			"dataSources": {"primary": "ds_source_hotspots"},
+			"title": "Source File Hotspots",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
+				}
+			}
+		},
+		"viz_sid_instance": {
+			"type": "splunk.column",
+			"dataSources": {"primary": "ds_sid_instance"},
+			"title": "Activity by SID / Instance",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {"backgroundColor": "transparent", "stackMode": "stacked", "xAxisTitleVisibility": "hide", "yAxisTitleVisibility": "hide"}
+		},
+		"viz_error_detail": {
+			"type": "splunk.table",
+			"dataSources": {"primary": "ds_error_detail"},
+			"title": "Recent Errors / Fatal Events",
+			"showProgressBar": false, "showLastUpdated": false,
+			"options": {
+				"backgroundColor": "transparent",
+				"tableFormat": {
+					"rowBackgroundColors": "> table | seriesByIndex(0) | pick(tableAltRowBackgroundColorsByBackgroundColor)",
+					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
+					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
+					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
+				}
+			}
+		},
+		"viz_rect_r1l": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r1r": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r2l": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r2r": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r3l": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_rect_r3r": {"type": "splunk.rectangle", "options": {"fillColor": "transparent", "rx": 3, "strokeColor": "#0877a6"}},
+		"viz_nav_go": {
+			"type": "splunk.singlevalue",
+			"dataSources": {"primary": "ds_nav_go"},
+			"options": {
+				"majorValue": "> primary | seriesByName('label') | lastPoint()",
+				"backgroundColor": "#0877a6", "majorColor": "#ffffff",
+				"sparklineDisplay": "off", "trendDisplay": "off", "majorFontSize": 14
+			},
+			"eventHandlers": [{"type": "drilldown.customUrl", "options": {"url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$", "newTab": false}}]
+		}
+	},
+	"dataSources": {
+		"ds_kpi_total": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" | stats count as total"}
+		},
+		"ds_kpi_errors": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" hana_trace_severity IN (\"error\", \"fatal\") | stats count as error_count"}
+		},
+		"ds_kpi_components": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" | stats dc(hana_trace_component) as components"}
+		},
+		"ds_trace_volume": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" | timechart span=1d count as \"Trace Events\""}
+		},
+		"ds_by_severity": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" hana_trace_severity=* | timechart span=1d count by hana_trace_severity"}
+		},
+		"ds_top_components": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" hana_trace_component=* | stats count as Events dc(hana_trace_source_file) as \"Source Files\" values(hana_trace_severity) as Severities by hana_trace_component | sort -Events | head 20 | rename hana_trace_component as Component"}
+		},
+		"ds_component_severity": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" hana_trace_component=* hana_trace_severity=* | stats count by hana_trace_component hana_trace_severity | sort -count | head 50 | chart sum(count) over hana_trace_component by hana_trace_severity | sort -info | head 10 | rename hana_trace_component as Component"}
+		},
+		"ds_source_hotspots": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" hana_trace_source_file=* | stats count as Events dc(hana_trace_source_line) as \"Unique Lines\" latest(hana_trace_severity) as \"Latest Severity\" by hana_trace_source_file hana_trace_component | sort -Events | head 20 | rename hana_trace_source_file as \"Source File\" hana_trace_component as Component"}
+		},
+		"ds_sid_instance": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" | stats count by sap_sid hana_instance | sort -count | head 20 | rename sap_sid as SID hana_instance as Instance"}
+		},
+		"ds_error_detail": {
+			"type": "ds.search",
+			"options": {"query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:tracelogs\" hana_trace_severity IN (\"error\", \"fatal\") | table _time sap_sid hana_instance hana_trace_component hana_trace_source_file hana_trace_source_line hana_trace_severity | sort -_time | head 30 | rename sap_sid as SID hana_instance as Instance hana_trace_component as Component hana_trace_source_file as \"Source File\" hana_trace_source_line as Line hana_trace_severity as Severity"}
+		},
+		"ds_nav_go": {
+			"type": "ds.search",
+			"options": {"query": "| makeresults | eval label=\"Go >\"", "queryParameters": {"earliest": "-1m", "latest": "now"}}
+		}
+	},
+	"layout": {
+		"globalInputs": ["input_global_trp", "input_nav_dropdown"],
+		"layoutDefinitions": {
+			"layout_1": {
+				"options": {"height": 1200, "width": 1920},
+				"structure": [
+					{"item": "viz_nav_go", "type": "block", "position": {"x": 1790, "y": 0, "w": 120, "h": 35}},
+					{"item": "viz_kpi_total", "type": "block", "position": {"x": 10, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_kpi_errors", "type": "block", "position": {"x": 320, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_kpi_components", "type": "block", "position": {"x": 630, "y": 45, "w": 300, "h": 90}},
+					{"item": "viz_rect_r1l", "type": "block", "position": {"x": 10, "y": 150, "w": 940, "h": 340}},
+					{"item": "viz_trace_volume", "type": "block", "position": {"x": 20, "y": 155, "w": 920, "h": 330}},
+					{"item": "viz_rect_r1r", "type": "block", "position": {"x": 960, "y": 150, "w": 950, "h": 340}},
+					{"item": "viz_by_severity", "type": "block", "position": {"x": 970, "y": 155, "w": 930, "h": 330}},
+					{"item": "viz_rect_r2l", "type": "block", "position": {"x": 10, "y": 505, "w": 620, "h": 340}},
+					{"item": "viz_top_components", "type": "block", "position": {"x": 20, "y": 510, "w": 600, "h": 330}},
+					{"item": "viz_rect_r2r", "type": "block", "position": {"x": 640, "y": 505, "w": 1270, "h": 340}},
+					{"item": "viz_component_severity", "type": "block", "position": {"x": 650, "y": 510, "w": 1250, "h": 330}},
+					{"item": "viz_rect_r3l", "type": "block", "position": {"x": 10, "y": 860, "w": 950, "h": 330}},
+					{"item": "viz_error_detail", "type": "block", "position": {"x": 20, "y": 865, "w": 930, "h": 320}},
+					{"item": "viz_rect_r3r", "type": "block", "position": {"x": 970, "y": 860, "w": 940, "h": 330}},
+					{"item": "viz_source_hotspots", "type": "block", "position": {"x": 980, "y": 865, "w": 920, "h": 320}}
+				],
+				"type": "absolute"
+			}
+		},
+		"options": {},
+		"tabs": {"items": [{"label": "New tab", "layoutId": "layout_1"}]}
+	}
+}
+    ]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

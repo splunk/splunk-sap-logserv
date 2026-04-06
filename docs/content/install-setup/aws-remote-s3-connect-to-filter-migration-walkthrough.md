@@ -579,7 +579,7 @@ After saving, the Filters tab will display a **"⚠ Deployment Server Detected"*
 After deployment, verify that native filtering is operating correctly:
 
 ```spl
-index=* sourcetype=sap:logserv:* | stats count by clz_dir, clz_subdir
+`sap_logserv_idx_macro` | stats count by clz_dir, clz_subdir
 ```
 
 You should see data only for log types matching your include patterns. See [Configuring Filters](configure-filters.md) for the full verification and troubleshooting guide.

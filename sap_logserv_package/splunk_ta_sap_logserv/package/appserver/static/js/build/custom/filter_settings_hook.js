@@ -30,14 +30,16 @@ function createDeployUI(serverclass) {
     container.id = 'logserv-deploy-push-container';
     container.style.cssText =
         'margin-top: 20px; padding: 16px; background: #fef9e7; ' +
-        'border: 1px solid #f0c36d; border-radius: 4px;';
+        'border: 1px solid #f0c36d; border-radius: 4px; ' +
+        'font-family: "Proxima Nova", "Helvetica Neue", Helvetica, Arial, sans-serif;';
 
     let serverclassHtml = '';
     if (serverclass && serverclass.exists && serverclass.disabled) {
         serverclassHtml =
             '<div id="logserv-sc-notice" style="margin-bottom: 12px; padding: 10px; ' +
             'background: #fff3cd; border: 1px solid #ffc107; border-radius: 3px; ' +
-            'font-size: 13px; color: #664d03;">' +
+            'font-size: 13px; color: #664d03; ' +
+            'font-family: \'Proxima Nova\', \'Helvetica Neue\', Helvetica, Arial, sans-serif;">' +
             '<strong>⚙ Server Class Setup Required</strong><br>' +
             'A server class <code>SAP_LogServ_HeavyForwarders</code> has been ' +
             'auto-created but is <strong>disabled</strong>. To complete setup:<br>' +
@@ -50,7 +52,8 @@ function createDeployUI(serverclass) {
         serverclassHtml =
             '<div id="logserv-sc-notice" style="margin-bottom: 12px; padding: 10px; ' +
             'background: #fff3cd; border: 1px solid #ffc107; border-radius: 3px; ' +
-            'font-size: 13px; color: #664d03;">' +
+            'font-size: 13px; color: #664d03; ' +
+            'font-family: \'Proxima Nova\', \'Helvetica Neue\', Helvetica, Arial, sans-serif;">' +
             '<strong>⚙ Client Targeting Needed</strong><br>' +
             'Server class <code>SAP_LogServ_HeavyForwarders</code> is enabled but ' +
             'has no client targeting configured. Add a whitelist in ' +
@@ -75,14 +78,24 @@ function createDeployUI(serverclass) {
         '</button>' +
         '<span id="logserv-deploy-status" style="margin-left: 12px; font-size: 13px;"></span>';
 
+    // Insert the banner right after the Save button / inside the form area
+    // so it appears directly below the form without the UCC footer gap.
+    const saveBtn =
+        document.querySelector('[data-test="submit"]') ||
+        document.querySelector('button[label="Save"]') ||
+        document.querySelector('.saveBtn');
     const formWrapper =
         document.querySelector('[data-test="form"]') ||
         document.querySelector('.formWrapper') ||
         document.querySelector('[role="form"]') ||
         document.querySelector('.configurationTab');
 
-    if (formWrapper) {
-        formWrapper.parentNode.insertBefore(container, formWrapper.nextSibling);
+    if (saveBtn && saveBtn.parentNode) {
+        // Place right after the Save button's parent row
+        const saveBtnRow = saveBtn.closest('.formRow') || saveBtn.parentNode;
+        saveBtnRow.parentNode.insertBefore(container, saveBtnRow.nextSibling);
+    } else if (formWrapper) {
+        formWrapper.appendChild(container);
     } else {
         const content =
             document.querySelector('.mainSection') ||
