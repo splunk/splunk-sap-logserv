@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - Windows Events</label>
+    <label>Windows Events</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - Windows Events",
+	"title": "Windows Events",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {
@@ -96,7 +96,7 @@
 					"headerBackgroundColor": "> backgroundColor | setColorChannel(tableHeaderBackgroundColorConfig)",
 					"rowColors": "> rowBackgroundColors | maxContrast(tableRowColorMaxContrast)",
 					"headerColor": "> headerBackgroundColor | maxContrast(tableRowColorMaxContrast)"
-				},
+				}
 			}
 		},
 		"viz_security_actions": {

@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - Cloud Connector</label>
+    <label>Cloud Connector</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - Cloud Connector",
+	"title": "Cloud Connector",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {

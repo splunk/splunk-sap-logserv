@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - Environment Health</label>
+    <label>Environment Health</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - Environment Health",
+	"title": "Environment Health",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {

@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - Proxy Analytics</label>
+    <label>Proxy Analytics</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - Proxy Analytics",
+	"title": "Proxy Analytics",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {

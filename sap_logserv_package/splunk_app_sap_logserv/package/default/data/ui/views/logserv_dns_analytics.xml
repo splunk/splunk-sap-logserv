@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - DNS Analytics</label>
+    <label>DNS Analytics</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - DNS Analytics",
+	"title": "DNS Analytics",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {
@@ -401,8 +401,8 @@
 					{"item": "viz_top_domains", "type": "block", "position": {"x": 20, "y": 905, "w": 600, "h": 330}},
 					{"item": "viz_rect_r3m", "type": "block", "position": {"x": 640, "y": 900, "w": 640, "h": 340}},
 					{"item": "viz_nxdomain", "type": "block", "position": {"x": 650, "y": 905, "w": 620, "h": 330}},
-					{"item": "viz_rect_r3r", "type": "block", "position": {"x": 1290, "y": 900, "w": 620, "h": 340}},
-					{"item": "viz_query_types", "type": "block", "position": {"x": 1300, "y": 905, "w": 600, "h": 330}}
+					{"item": "viz_rect_r3r", "type": "block", "position": {"x": 1290, "y": 900, "w": 630, "h": 340}},
+					{"item": "viz_query_types", "type": "block", "position": {"x": 1300, "y": 905, "w": 610, "h": 330}}
 				],
 				"type": "absolute"
 			}

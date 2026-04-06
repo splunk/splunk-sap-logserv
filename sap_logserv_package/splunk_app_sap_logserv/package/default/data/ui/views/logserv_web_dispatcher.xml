@@ -1,9 +1,9 @@
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - Web Dispatcher Access</label>
+    <label>Web Dispatcher Access</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - Web Dispatcher Access",
+	"title": "Web Dispatcher Access",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {

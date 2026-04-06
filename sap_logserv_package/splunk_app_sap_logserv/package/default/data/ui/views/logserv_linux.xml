@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - Linux System &amp; Security</label>
+    <label>Linux System &amp; Security</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - Linux System & Security",
+	"title": "Linux System & Security",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {

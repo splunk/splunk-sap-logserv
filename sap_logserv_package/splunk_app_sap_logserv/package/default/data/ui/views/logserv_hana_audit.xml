@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - HANA Audit</label>
+    <label>HANA Audit</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - HANA Audit",
+	"title": "HANA Audit",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {

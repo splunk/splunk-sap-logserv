@@ -1,10 +1,10 @@
 
 <dashboard version="2" theme="dark">
-    <label>SAP LogServ - SAP Services</label>
+    <label>SAP Services</label>
     <description></description>
     <definition><![CDATA[
 {
-	"title": "SAP LogServ - SAP Services",
+	"title": "SAP Services",
 	"description": "",
 	"inputs": {
 		"input_global_trp": {

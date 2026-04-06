@@ -58,8 +58,8 @@ Install the LogServ App to your Splunk Enterprise Search Head:
 
 After installation, navigate to the LogServ App in Splunk Web. You should see the navigation bar with:
 
-- **Data Pipeline Overview** (default landing page)
-- **Environment Health** (cross-cutting operations view)
+- **Environment Health** (default landing page — cross-cutting operations view)
+- **Data Pipeline Overview**
 - **SAP Analytics** collection (7 dashboards: ABAP Security, ABAP Operations, HANA Audit, HANA Trace, SAP Services, Cloud Connector, Web Dispatcher)
 - **Infrastructure** collection (5 dashboards: DNS Analytics, Linux, Windows, Proxy, Host Details)
 

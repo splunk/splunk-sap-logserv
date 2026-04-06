@@ -1,6 +1,6 @@
 <nav search_view="search">
-  <view name="logserv_overview" default="true" />
-  <view name="logserv_environment_health" />
+  <view name="logserv_environment_health" default="true" />
+  <view name="logserv_overview" />
   <collection label="SAP Analytics">
     <view name="logserv_abap_security" />
     <view name="logserv_abap_operations" />
