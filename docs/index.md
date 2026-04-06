@@ -23,7 +23,7 @@ For details on which package goes where, see [Architecture](content/getting-star
 
 - **Index-time filtering** -- Control which log types are indexed and drop stale data, all configured through Splunk Web with zero license cost for filtered events
 - **Deployment Server automation** -- Automatically stages filter configurations for distribution to Heavy Forwarders with a one-click deploy button
-- **Dashboard Studio dashboards** -- Five pre-built dashboards for monitoring the data pipeline, analyzing DNS traffic, reviewing HANA audit events, inspecting Web Dispatcher access patterns, and drilling into individual hosts
+- **Dashboard Studio dashboards** -- Fourteen pre-built dashboards organized into SAP Analytics (7), Infrastructure (5), and Pipeline & Health (2) groups, covering ABAP, HANA, Cloud Connector, Web Dispatcher, DNS, Linux, Windows, Proxy, and an Environment Health operations view with cross-dashboard drill-down
 - **Search-time field extractions** -- ~176 search-time directives (EXTRACT, EVAL, FIELDALIAS) across SAP-specific sourcetypes
 
 |             |                                                                                                                                                                        |
