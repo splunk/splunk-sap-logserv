@@ -320,6 +320,18 @@ FORMAT = sourcetype::sap:newdir:logs
 DEST_KEY = MetaData:Sourcetype
 ```
 
+When the same `clz_subdir` value exists under multiple `clz_dir` paths (e.g., `audit` appears under both `abap/` and `scc/`), use a **compound lookahead** regex to match both fields and avoid routing collisions:
+
+```ini
+# @logserv_filter: scc/audit
+[set_srctype_scc_audit]
+REGEX = (?=.*"clz_dir":"scc")(?=.*"clz_subdir":"audit")
+FORMAT = sourcetype::sap:scc:audit
+DEST_KEY = MetaData:Sourcetype
+```
+
+:material-lightning-bolt:{ .taiconcolor } **When to use compound lookahead:** Check if the `clz_subdir` you are adding already exists in another `clz_dir` path. If it does, both the existing and new transforms must use compound lookahead. Current collision-prone values include `audit` (abap, scc), `sapstartsrv` (abap, sap), and `tracelogs` (hana, scc).
+
 <br>
 
 ### :material-circle-box:{ .taiconcolor } Step 2: Add to TRANSFORMS Chain

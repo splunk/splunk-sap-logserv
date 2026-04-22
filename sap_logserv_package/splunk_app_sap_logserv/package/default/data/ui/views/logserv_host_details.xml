@@ -1,0 +1,376 @@
+
+<dashboard version="2" theme="dark">
+    <label>Host Details</label>
+    <description>Per-host drill-down — inventory, activity, and event distribution for a single host</description>
+    <definition><![CDATA[{
+  "visualizations": {
+    "viz_EPUhCyRf": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#141b2d",
+        "strokeColor": "#0877a6",
+        "rx": 3
+      }
+    },
+    "viz_1v5Z17wK": {
+      "type": "splunk.column",
+      "title": "Host: $host_name$",
+      "dataSources": {
+        "primary": "ds_EEjlHznx"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "xAxisTitleVisibility": "hide",
+        "yAxisTitleVisibility": "hide",
+        "dataValuesDisplay": "off"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false
+    },
+    "viz_gVgfxMgi": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#141b2d",
+        "strokeColor": "#0877a6",
+        "rx": 3
+      }
+    },
+    "viz_b9aRU8GB": {
+      "type": "splunk.sankey",
+      "dataSources": {
+        "primary": "ds_hkx9Pl59"
+      },
+      "title": "Sourcetype mapping",
+      "options": {
+        "backgroundColor": "transparent"
+      }
+    },
+    "viz_nav_go": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_nav_go"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$",
+            "newTab": false
+          }
+        }
+      ]
+    },
+    "viz_host_inventory": {
+      "type": "splunk.table",
+      "dataSources": {
+        "primary": "ds_host_inventory"
+      },
+      "title": "Host Inventory",
+      "showProgressBar": false,
+      "showLastUpdated": false,
+      "options": {
+        "backgroundColor": "transparent",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      }
+    },
+    "viz_rect_inventory": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      }
+    }
+  },
+  "dataSources": {
+    "ds_host_inventory": {
+      "type": "ds.search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` host=$host_name$ sourcetype=linux_messages_syslog osqueryd | rex field=_raw \"cpu_brand: (?<cpu_brand>[^,]+)\" | rex field=_raw \"cpu_logical_cores: (?<cpu_cores>[^,]+)\" | rex field=_raw \"physical_memory: (?<phys_mem>[^,]+)\" | rex field=_raw \"hardware_model: (?<hw_model>[^,]+)\" | rex field=_raw \"pretty_name: (?<os_name>[^,]+)\" | rex field=_raw \"region: (?<aws_region>[^,]+)\" | rex field=_raw \"zone: (?<aws_az>[^,]+)\" | rex field=_raw \"id: (?<instance_id>i-[a-f0-9]+)\" | where isnotnull(cpu_brand) | eval memory_gb=round(phys_mem/1073741824,1).\" GB\" | stats latest(cpu_brand) as CPU latest(cpu_cores) as Cores latest(memory_gb) as RAM latest(hw_model) as \"Instance Type\" latest(os_name) as \"Operating System\" latest(aws_region) as Region latest(aws_az) as AZ latest(instance_id) as \"Instance ID\" by host | rename host as Host",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_EEjlHznx": {
+      "type": "ds.search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` host=$host_name$\r\n| fields source, sourcetype, host\r\n| timechart span=1d count by sourcetype",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "name": "Search_1"
+    },
+    "ds_hkx9Pl59": {
+      "type": "ds.search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` host=$host_name$\r\n| fields source, sourcetype, host\r\n| stats count by sourcetype, source",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "name": "Search_2"
+    },
+    "ds_host_list": {
+      "type": "ds.search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` | stats count by host | fields host | rename host AS label | eval value=label | sort label",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_nav_go": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "defaults": {
+    "dataSources": {
+      "ds.search": {
+        "options": {
+          "queryParameters": {
+            "latest": "$global_time.latest$",
+            "earliest": "$global_time.earliest$"
+          }
+        }
+      }
+    }
+  },
+  "inputs": {
+    "input_global_trp": {
+      "type": "input.timerange",
+      "options": {
+        "token": "global_time",
+        "defaultValue": "-30d@d,now"
+      },
+      "title": "Global Time Range"
+    },
+    "input_host_select": {
+      "type": "input.dropdown",
+      "title": "Select Host",
+      "options": {
+        "token": "host_name",
+        "defaultValue": "*"
+      },
+      "dataSources": {
+        "primary": "ds_host_list"
+      }
+    },
+    "input_nav_dropdown": {
+      "type": "input.dropdown",
+      "title": "Navigate to Dashboard",
+      "options": {
+        "items": [
+          {
+            "label": "Overview",
+            "value": "logserv_overview"
+          },
+          {
+            "label": "Network Perimeter",
+            "value": "logserv_network_perimeter"
+          },
+          {
+            "label": "DNS Analytics",
+            "value": "logserv_dns_analytics"
+          },
+          {
+            "label": "HANA Audit",
+            "value": "logserv_hana_audit"
+          },
+          {
+            "label": "HANA Trace",
+            "value": "logserv_hana_trace"
+          },
+          {
+            "label": "Web Dispatcher",
+            "value": "logserv_web_dispatcher"
+          },
+          {
+            "label": "Web and API Performance",
+            "value": "logserv_web_api_performance"
+          },
+          {
+            "label": "ABAP Security",
+            "value": "logserv_abap_security"
+          },
+          {
+            "label": "ABAP Operations",
+            "value": "logserv_abap_operations"
+          },
+          {
+            "label": "SAP Services",
+            "value": "logserv_sap_services"
+          },
+          {
+            "label": "Cloud Connector",
+            "value": "logserv_cloud_connector"
+          },
+          {
+            "label": "Linux",
+            "value": "logserv_linux"
+          },
+          {
+            "label": "Windows",
+            "value": "logserv_windows"
+          },
+          {
+            "label": "Proxy",
+            "value": "logserv_proxy"
+          },
+          {
+            "label": "Environment Health",
+            "value": "logserv_environment_health"
+          },
+          {
+            "label": "Cross-Stack Authentication",
+            "value": "logserv_cross_stack_authentication"
+          },
+          {
+            "label": "Change & Configuration Activity",
+            "value": "logserv_change_config"
+          },
+          {
+            "label": "SAP Router",
+            "value": "logserv_sap_router"
+          },
+          {
+            "label": "Work Process Performance",
+            "value": "logserv_work_process_performance"
+          }
+        ],
+        "token": "nav_target"
+      }
+    }
+  },
+  "description": "Per-host drill-down \u2014 inventory, activity, and event distribution for a single host",
+  "title": "Host Details",
+  "layout": {
+    "tabs": {
+      "items": [
+        {
+          "layoutId": "layout_1",
+          "label": "New tab"
+        }
+      ]
+    },
+    "layoutDefinitions": {
+      "layout_1": {
+        "type": "absolute",
+        "options": {
+          "height": 1039,
+          "width": 1600,
+          "display": "fit-to-width",
+          "backgroundColor": "#0d1117"
+        },
+        "structure": [
+          {
+            "item": "viz_rect_inventory",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 357,
+              "w": 1580,
+              "h": 150
+            }
+          },
+          {
+            "item": "viz_host_inventory",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 362,
+              "w": 1580,
+              "h": 145
+            }
+          },
+          {
+            "item": "viz_gVgfxMgi",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 519,
+              "w": 1580,
+              "h": 500
+            }
+          },
+          {
+            "item": "viz_EPUhCyRf",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 45,
+              "w": 1580,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_1v5Z17wK",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 45,
+              "w": 1580,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_b9aRU8GB",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 524,
+              "w": 1580,
+              "h": 480
+            }
+          },
+          {
+            "item": "viz_nav_go",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 10,
+              "w": 120,
+              "h": 25
+            }
+          }
+        ]
+      }
+    },
+    "globalInputs": [
+      "input_global_trp",
+      "input_host_select",
+      "input_nav_dropdown"
+    ]
+  }
+}]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

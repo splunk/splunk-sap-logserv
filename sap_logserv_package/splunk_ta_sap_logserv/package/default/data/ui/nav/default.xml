@@ -1,10 +1,4 @@
 <nav search_view="search">
-  <view name="logserv_overview" default="true" />
   <view name="configuration" label="Configuration" />
-  <collection label="Analytics">
-    <view name="logserv_dns_analytics" />
-    <view name="logserv_hana_audit" />
-    <view name="logserv_web_dispatcher" />
-  </collection>
-  <view name="search"/>
+  <view name="search" />
 </nav>

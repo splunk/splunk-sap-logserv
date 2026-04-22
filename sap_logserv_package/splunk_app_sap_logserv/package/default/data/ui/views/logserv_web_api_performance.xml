@@ -1,0 +1,987 @@
+
+<dashboard version="2" theme="dark">
+    <label>Web and API Performance</label>
+    <description>Web Dispatcher and Cloud Connector HTTP traffic performance — four-stage request timing, response-time percentiles, TLS posture, and cross-source error correlation</description>
+    <definition><![CDATA[{
+  "title": "Web and API Performance",
+  "description": "Web Dispatcher and Cloud Connector HTTP traffic performance \u2014 four-stage request timing, response-time percentiles, TLS posture, and cross-source error correlation",
+  "inputs": {
+    "input_global_trp": {
+      "options": {
+        "defaultValue": "-30d@d,now",
+        "token": "global_time"
+      },
+      "title": "Global Time Range",
+      "type": "input.timerange"
+    },
+    "input_nav_dropdown": {
+      "type": "input.dropdown",
+      "title": "Navigate to Dashboard",
+      "options": {
+        "items": [
+          {
+            "label": "Overview",
+            "value": "logserv_overview"
+          },
+          {
+            "label": "Environment Health",
+            "value": "logserv_environment_health"
+          },
+          {
+            "label": "ABAP Security",
+            "value": "logserv_abap_security"
+          },
+          {
+            "label": "ABAP Operations",
+            "value": "logserv_abap_operations"
+          },
+          {
+            "label": "Work Process Performance",
+            "value": "logserv_work_process_performance"
+          },
+          {
+            "label": "HANA Audit",
+            "value": "logserv_hana_audit"
+          },
+          {
+            "label": "HANA Trace",
+            "value": "logserv_hana_trace"
+          },
+          {
+            "label": "SAP Services",
+            "value": "logserv_sap_services"
+          },
+          {
+            "label": "SAP Router",
+            "value": "logserv_sap_router"
+          },
+          {
+            "label": "Cloud Connector",
+            "value": "logserv_cloud_connector"
+          },
+          {
+            "label": "Web Dispatcher",
+            "value": "logserv_web_dispatcher"
+          },
+          {
+            "label": "Cross-Stack Authentication",
+            "value": "logserv_cross_stack_authentication"
+          },
+          {
+            "label": "Change & Configuration Activity",
+            "value": "logserv_change_config"
+          },
+          {
+            "label": "Network Perimeter",
+            "value": "logserv_network_perimeter"
+          },
+          {
+            "label": "DNS Analytics",
+            "value": "logserv_dns_analytics"
+          },
+          {
+            "label": "Linux",
+            "value": "logserv_linux"
+          },
+          {
+            "label": "Windows",
+            "value": "logserv_windows"
+          },
+          {
+            "label": "Proxy",
+            "value": "logserv_proxy"
+          },
+          {
+            "label": "Host Details",
+            "value": "logserv_host_details"
+          }
+        ],
+        "token": "nav_target"
+      }
+    }
+  },
+  "visualizations": {
+    "viz_rect_kpi_total_requests": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_error_rate": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_avg_rt": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_auth_fail": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_unique_urls": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_timing": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_percentiles": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_slow_uris": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_error_auth": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_tls_version": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_tls_cipher": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_slow_clients": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_500_errors": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_total_requests": {
+      "dataSources": {
+        "primary": "ds_kpi_total_requests"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Total Requests",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_error_rate": {
+      "dataSources": {
+        "primary": "ds_kpi_error_rate"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "HTTP Error Rate",
+      "type": "splunk.singlevalue",
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20(sourcetype%3D%22sap%3Awebdispatcher%3Aaccess%22%20OR%20sourcetype%3D%22sap%3Ascc%3Ahttp_access%22)%20status%3E%3D400%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ]
+    },
+    "viz_kpi_avg_rt": {
+      "dataSources": {
+        "primary": "ds_kpi_avg_rt"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Avg Response Time",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_auth_fail": {
+      "dataSources": {
+        "primary": "ds_kpi_auth_fail"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Auth Failures",
+      "type": "splunk.singlevalue",
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20((sourcetype%3D%22sap%3Awebdispatcher%3Aaccess%22%20AND%20(status%3D401%20OR%20status%3D403))%20OR%20(sourcetype%3D%22sap%3Ascc%3Ahttp_access%22%20AND%20(status%3D401%20OR%20status%3D403%20OR%20is_authenticated%3D%22false%22)))%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ]
+    },
+    "viz_kpi_unique_urls": {
+      "dataSources": {
+        "primary": "ds_kpi_unique_urls"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Unique URLs",
+      "type": "splunk.singlevalue"
+    },
+    "viz_timing": {
+      "dataSources": {
+        "primary": "ds_timing"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "bottom",
+        "seriesColorsByField": {
+          "Receive (dt1)": "#0877a6",
+          "Handler (dt2)": "#7ee8fa",
+          "Response (dt3)": "#f4a535",
+          "Send (dt4)": "#dc4e41"
+        },
+        "stackMode": "stacked",
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Four-Stage Request Timing Breakdown (avg ms per stage)",
+      "type": "splunk.column"
+    },
+    "viz_percentiles": {
+      "dataSources": {
+        "primary": "ds_percentiles"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "bottom",
+        "seriesColorsByField": {
+          "p50": "#00d4b4",
+          "p95": "#f4a535",
+          "p99": "#dc4e41"
+        },
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Response Time Percentiles Over Time",
+      "type": "splunk.line"
+    },
+    "viz_slow_uris": {
+      "dataSources": {
+        "primary": "ds_slow_uris"
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20(sourcetype%3D%22sap%3Awebdispatcher%3Aaccess%22%20OR%20sourcetype%3D%22sap%3Ascc%3Ahttp_access%22)%20uri%3D%22$row.URI.value$%22%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 20,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Top Slow URIs by Avg Response Time",
+      "type": "splunk.table"
+    },
+    "viz_error_auth": {
+      "dataSources": {
+        "primary": "ds_error_auth"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "bottom",
+        "seriesColorsByField": {
+          "HTTP Error Rate (%)": "#dc4e41",
+          "CC Auth Failure Rate (%)": "#f1813f"
+        },
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "HTTP Error Rate vs Cloud Connector Auth Failure Rate",
+      "type": "splunk.line"
+    },
+    "viz_tls_version": {
+      "dataSources": {
+        "primary": "ds_tls_version"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "right",
+        "seriesColorsByField": {
+          "TLSv1.0": "#dc4e41",
+          "TLSv1.1": "#f1813f",
+          "TLSv1.2": "#f4a535",
+          "TLSv1.3": "#00d4b4"
+        },
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "TLS Version Distribution",
+      "type": "splunk.column"
+    },
+    "viz_tls_cipher": {
+      "dataSources": {
+        "primary": "ds_tls_cipher"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#0877a6"
+        ],
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "TLS Cipher Suite Distribution (Top 10)",
+      "type": "splunk.bar"
+    },
+    "viz_slow_clients": {
+      "dataSources": {
+        "primary": "ds_slow_clients"
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20(sourcetype%3D%22sap%3Awebdispatcher%3Aaccess%22%20OR%20sourcetype%3D%22sap%3Ascc%3Ahttp_access%22)%20clientip%3D%22$row.Client IP.value$%22%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 20,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Top Slow Clients by p95 Response Time",
+      "type": "splunk.table"
+    },
+    "viz_500_errors": {
+      "dataSources": {
+        "primary": "ds_500_errors"
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20(sourcetype%3D%22sap%3Awebdispatcher%3Aaccess%22%20OR%20sourcetype%3D%22sap%3Ascc%3Ahttp_access%22)%20status%3E%3D500%20clientip%3D%22$row.Client IP.value$%22%20uri%3D%22$row.URI.value$%22&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 25,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Recent 500-Level Errors",
+      "type": "splunk.table"
+    },
+    "viz_nav_go": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_nav_go"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$",
+            "newTab": false
+          }
+        }
+      ]
+    }
+  },
+  "dataSources": {
+    "ds_kpi_total_requests": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_error_rate": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") | eval is_err = if(tonumber(status)>=400, 1, 0) | timechart span=1d count as total_daily, sum(is_err) as err_daily | eval daily = if(total_daily>0, round(err_daily*100/total_daily, 2), 0) | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0, total_daily=0, err_daily=0 | fields _time daily total_daily err_daily] | eventstats sum(total_daily) as _tot, sum(err_daily) as _err | eval total = if(_tot>0, tostring(round(_err*100/_tot, 2)) . \"%\", \"0%\")",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_avg_rt": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") response_time_ms=* | timechart span=1d avg(response_time_ms) as avg_daily | eval daily = round(avg_daily, 0) | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0, avg_daily=0 | fields _time daily avg_daily] | eventstats avg(avg_daily) as _avg | eval total = tostring(round(_avg, 0)) . \" ms\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_auth_fail": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ((sourcetype=\"sap:webdispatcher:access\" AND (status=401 OR status=403)) OR (sourcetype=\"sap:scc:http_access\" AND (status=401 OR status=403 OR is_authenticated=\"false\"))) | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_unique_urls": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") uri=* | eventstats dc(uri) as window_dc | timechart span=1d dc(uri) as daily, max(window_dc) as total | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0, total=0 | fields _time daily total]",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_timing": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"sap:webdispatcher:access\" dt1_us=* dt2_us=* dt3_us=* dt4_us=* | eval dt1_ms = dt1_us/1000 | eval dt2_ms = dt2_us/1000 | eval dt3_ms = dt3_us/1000 | eval dt4_ms = dt4_us/1000 | timechart span=1d avg(dt1_ms) as \"Receive (dt1)\", avg(dt2_ms) as \"Handler (dt2)\", avg(dt3_ms) as \"Response (dt3)\", avg(dt4_ms) as \"Send (dt4)\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_percentiles": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") response_time_ms=* | timechart span=1d perc50(response_time_ms) as p50, perc95(response_time_ms) as p95, perc99(response_time_ms) as p99",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_slow_uris": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") response_time_ms=* uri=* | eval src_log = if(sourcetype=\"sap:webdispatcher:access\", \"WebDisp\", \"CC\") | stats count as events, avg(response_time_ms) as avg_ms, perc95(response_time_ms) as p95_ms, sum(eval(if(tonumber(status)>=400, 1, 0))) as errors by uri, src_log | eval avg_ms = round(avg_ms, 0), p95_ms = round(p95_ms, 0) | sort -avg_ms | head 20 | rename uri as \"URI\", src_log as \"Source\", events as \"Events\", avg_ms as \"Avg (ms)\", p95_ms as \"p95 (ms)\", errors as \"Errors\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_error_auth": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") | eval is_http_err = if(tonumber(status)>=400, 1, 0) | eval is_cc = if(sourcetype=\"sap:scc:http_access\", 1, 0) | eval is_cc_auth_fail = if(sourcetype=\"sap:scc:http_access\" AND (status=401 OR status=403 OR is_authenticated=\"false\"), 1, 0) | timechart span=1d count as total_all, sum(is_http_err) as http_err, sum(is_cc) as total_cc, sum(is_cc_auth_fail) as cc_auth_fail | eval \"HTTP Error Rate (%)\" = if(total_all>0, round(http_err*100/total_all, 2), 0) | eval \"CC Auth Failure Rate (%)\" = if(total_cc>0, round(cc_auth_fail*100/total_cc, 2), 0) | fields _time, \"HTTP Error Rate (%)\", \"CC Auth Failure Rate (%)\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_tls_version": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"sap:webdispatcher:access\" tls_version=* | stats count by tls_version | sort tls_version",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_tls_cipher": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"sap:webdispatcher:access\" cipher_suite=* | stats count by cipher_suite | sort -count | head 10 | rename cipher_suite as \"Cipher Suite\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_slow_clients": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") response_time_ms=* clientip=* | stats count as events, avg(response_time_ms) as avg_ms, perc95(response_time_ms) as p95_ms, dc(uri) as unique_uris by clientip | eval avg_ms = round(avg_ms, 0), p95_ms = round(p95_ms, 0) | sort -p95_ms | head 20 | rename clientip as \"Client IP\", events as \"Events\", avg_ms as \"Avg (ms)\", p95_ms as \"p95 (ms)\", unique_uris as \"Unique URIs\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_500_errors": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"sap:webdispatcher:access\" OR sourcetype=\"sap:scc:http_access\") status>=500 | eval src_log = if(sourcetype=\"sap:webdispatcher:access\", \"WebDisp\", \"CC\") | eval resp_time = if(isnotnull(response_time_ms), tostring(response_time_ms) . \" ms\", \"-\") | eval Time=strftime(_time, \"%Y-%m-%d %H:%M:%S\") | sort -_time | head 25 | table Time, src_log, host, clientip, method, uri, status, resp_time | rename src_log as \"Source\", host as \"Host\", clientip as \"Client IP\", method as \"Method\", uri as \"URI\", status as \"Status\", resp_time as \"Response Time\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_nav_go": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [
+      "input_global_trp",
+      "input_nav_dropdown"
+    ],
+    "layoutDefinitions": {
+      "layout_1": {
+        "options": {
+          "backgroundColor": "#0d1117",
+          "height": 2577,
+          "width": 1920,
+          "display": "fit-to-width"
+        },
+        "structure": [
+          {
+            "item": "viz_nav_go",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 10,
+              "w": 120,
+              "h": 25
+            }
+          },
+          {
+            "item": "viz_rect_kpi_total_requests",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 45,
+              "w": 370,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_total_requests",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 50,
+              "w": 360,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_error_rate",
+            "type": "block",
+            "position": {
+              "x": 392,
+              "y": 45,
+              "w": 370,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_error_rate",
+            "type": "block",
+            "position": {
+              "x": 397,
+              "y": 50,
+              "w": 360,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_avg_rt",
+            "type": "block",
+            "position": {
+              "x": 774,
+              "y": 45,
+              "w": 370,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_avg_rt",
+            "type": "block",
+            "position": {
+              "x": 779,
+              "y": 50,
+              "w": 360,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_auth_fail",
+            "type": "block",
+            "position": {
+              "x": 1156,
+              "y": 45,
+              "w": 370,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_auth_fail",
+            "type": "block",
+            "position": {
+              "x": 1161,
+              "y": 50,
+              "w": 360,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_unique_urls",
+            "type": "block",
+            "position": {
+              "x": 1538,
+              "y": 45,
+              "w": 372,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_unique_urls",
+            "type": "block",
+            "position": {
+              "x": 1543,
+              "y": 50,
+              "w": 362,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_timing",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 197,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_timing",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 202,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_percentiles",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 609,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_percentiles",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 614,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_slow_uris",
+            "type": "block",
+            "position": {
+              "x": 966,
+              "y": 609,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_slow_uris",
+            "type": "block",
+            "position": {
+              "x": 971,
+              "y": 614,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_error_auth",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1021,
+              "w": 1900,
+              "h": 350
+            }
+          },
+          {
+            "item": "viz_error_auth",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1026,
+              "w": 1890,
+              "h": 340
+            }
+          },
+          {
+            "item": "viz_rect_tls_version",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1383,
+              "w": 944,
+              "h": 350
+            }
+          },
+          {
+            "item": "viz_tls_version",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1388,
+              "w": 934,
+              "h": 340
+            }
+          },
+          {
+            "item": "viz_rect_tls_cipher",
+            "type": "block",
+            "position": {
+              "x": 966,
+              "y": 1383,
+              "w": 944,
+              "h": 350
+            }
+          },
+          {
+            "item": "viz_tls_cipher",
+            "type": "block",
+            "position": {
+              "x": 971,
+              "y": 1388,
+              "w": 934,
+              "h": 340
+            }
+          },
+          {
+            "item": "viz_rect_slow_clients",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1745,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_slow_clients",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1750,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_500_errors",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 2157,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_500_errors",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 2162,
+              "w": 1890,
+              "h": 390
+            }
+          }
+        ],
+        "type": "absolute"
+      }
+    },
+    "options": {},
+    "tabs": {
+      "items": [
+        {
+          "label": "New tab",
+          "layoutId": "layout_1"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "dataSources": {}
+  }
+}]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

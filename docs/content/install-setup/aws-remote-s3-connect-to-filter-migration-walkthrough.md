@@ -80,13 +80,13 @@ Below are the high level steps for the migration process listed in the order the
 2. Create a new S3 Bucket in your **_Secondary account_** and upload the Lambda function ZIP file
 3. Download the migration scripts and configuration file
 4. Configure the migration configuration file with your deployment details
-5. Run the migration script in dry-run mode to preview changes
-6. Run the migration script to perform the migration
-7. Update the Splunk AWS Add-on SQS-Based S3 Input to use the new local queue
+5. Run the migration script in dry-run mode, then execute it to perform the migration
+6. Update the Splunk AWS Add-on SQS-Based S3 Input to use the new local queue
+7. Verify the migration is successful
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Install Python and boto3
+### :material-circle-box:{ .taiconcolor } 1. Install Python and boto3
 
 The migration scripts require Python 3.9 or higher and the boto3 library.
 
@@ -122,17 +122,21 @@ pip install boto3
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Create S3 Bucket with Lambda Function ZIP File
+### :material-circle-box:{ .taiconcolor } 2. Create S3 Bucket with Lambda Function ZIP File
 
-1. Take note of the **AWS Region** in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located.
-2. Log into your AWS **_Secondary account_** and change to the region that matches the region in your **_SAP ECS account_**
-3. Choose a name for the new S3 bucket (**_splunk-logserv-lambda-binary_** is the default bucket name in the migration configuration file)
-4. Navigate to the S3 console and create a <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html" target="_blank">general purpose S3 bucket</a> using all the default settings
-5. <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html" target="_blank">Upload</a> the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-filter-lambda.zip" target="_blank">splunk-logserv-filter-lambda.zip</a> file to the root of the S3 bucket
+2.<b style="color: #ff9100">a</b> Take note of the **AWS Region** in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located.
+
+2.<b style="color: #ff9100">b</b> Log into your AWS **_Secondary account_** and change to the region that matches the region in your **_SAP ECS account_**
+
+2.<b style="color: #ff9100">c</b> Choose a name for the new S3 bucket (**_splunk-logserv-lambda-binary_** is the default bucket name in the migration configuration file)
+
+2.<b style="color: #ff9100">d</b> Navigate to the S3 console and create a <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html" target="_blank">general purpose S3 bucket</a> using all the default settings
+
+2.<b style="color: #ff9100">e</b> <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html" target="_blank">Upload</a> the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-filter-lambda.zip" target="_blank">splunk-logserv-filter-lambda.zip</a> file to the root of the S3 bucket
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Download Migration Scripts
+### :material-circle-box:{ .taiconcolor } 3. Download Migration Scripts
 
 Download the following files from the GitHub repository to a local directory on your machine:
 
@@ -144,7 +148,7 @@ Download the following files from the GitHub repository to a local directory on 
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Configure Migration Settings
+### :material-circle-box:{ .taiconcolor } 4. Configure Migration Settings
 
 Open the **_migrate-config.json_** file in a text editor and update the values to match your deployment.
 
@@ -270,7 +274,7 @@ Update the **_event_source_mapping_** section to configure the Lambda trigger:
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Run Migration Script
+### :material-circle-box:{ .taiconcolor } 5. Run Migration Script
 
 #### :material-crop-square:{ .taiconcolor } Command Line Arguments
 
@@ -345,28 +349,34 @@ The script will display progress for each step and provide a summary upon comple
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Update Splunk AWS Add-on Configuration
+### :material-circle-box:{ .taiconcolor } 6. Update Splunk AWS Add-on Configuration
 
 After the migration completes successfully, you need to update your existing SQS-Based S3 Input in the Splunk Add-on for AWS to use the new local SQS queue.
 
-1. Log into your Splunk instance and open the **_Splunk Add-on for AWS_**
-2. Navigate to **_Inputs_** and find your existing SQS-Based S3 Input
-3. Click **_Edit_** on the input
-4. Update the **_SQS Queue Name_** field to use the new local queue URL from the migration output
+6.<b style="color: #ff9100">a</b> Log into your Splunk instance and open the **_Splunk Add-on for AWS_**
+
+6.<b style="color: #ff9100">b</b> Navigate to **_Inputs_** and find your existing SQS-Based S3 Input
+
+6.<b style="color: #ff9100">c</b> Click **_Edit_** on the input
+
+6.<b style="color: #ff9100">d</b> Update the **_SQS Queue Name_** field to use the new local queue URL from the migration output
     - Example: `https://sqs.ap-south-1.amazonaws.com/112543817624/splunk-logserv-local-target-queue`
-5. Click **_Save_** to apply the changes
+
+6.<b style="color: #ff9100">e</b> Click **_Save_** to apply the changes
 
 The input will restart and begin polling the new local filtered queue.
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Verify Migration
+### :material-circle-box:{ .taiconcolor } 7. Verify Migration
 
 After completing the migration and updating the Splunk configuration:
 
-1. **Check Lambda Logs** - Navigate to CloudWatch Logs in the AWS Console and verify the Lambda function is receiving and processing messages
-2. **Check Local SQS Queue** - Navigate to SQS in the AWS Console and verify messages are appearing in the local queue
-3. **Check Splunk** - Run a search for recent LogServ logs to confirm data is being ingested:
+7.<b style="color: #ff9100">a</b> **Check Lambda Logs** - Navigate to CloudWatch Logs in the AWS Console and verify the Lambda function is receiving and processing messages
+
+7.<b style="color: #ff9100">b</b> **Check Local SQS Queue** - Navigate to SQS in the AWS Console and verify messages are appearing in the local queue
+
+7.<b style="color: #ff9100">c</b> **Check Splunk** - Run a search for recent LogServ logs to confirm data is being ingested:
     ```
     index=your_index sourcetype=sap_logserv_logs earliest=-1h
     ```
@@ -579,7 +589,7 @@ After saving, the Filters tab will display a **"⚠ Deployment Server Detected"*
 After deployment, verify that native filtering is operating correctly:
 
 ```spl
-index=* sourcetype=sap:logserv:* | stats count by clz_dir, clz_subdir
+`sap_logserv_idx_macro` | stats count by clz_dir, clz_subdir
 ```
 
 You should see data only for log types matching your include patterns. See [Configuring Filters](configure-filters.md) for the full verification and troubleshooting guide.

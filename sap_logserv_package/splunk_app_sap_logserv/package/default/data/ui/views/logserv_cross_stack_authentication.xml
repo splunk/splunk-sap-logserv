@@ -1,0 +1,804 @@
+
+<dashboard version="2" theme="dark">
+    <label>Cross-Stack Authentication</label>
+    <description>Unified authentication failure analysis across SAP, HANA, and Windows layers</description>
+    <definition><![CDATA[{
+  "title": "Cross-Stack Authentication",
+  "description": "Unified authentication failure analysis across SAP, HANA, and Windows layers",
+  "inputs": {
+    "input_global_trp": {
+      "options": {
+        "defaultValue": "-30d@d,now",
+        "token": "global_time"
+      },
+      "title": "Global Time Range",
+      "type": "input.timerange"
+    },
+    "input_nav_dropdown": {
+      "type": "input.dropdown",
+      "title": "Navigate to Dashboard",
+      "options": {
+        "items": [
+          {
+            "label": "Overview",
+            "value": "logserv_overview"
+          },
+          {
+            "label": "Environment Health",
+            "value": "logserv_environment_health"
+          },
+          {
+            "label": "ABAP Security",
+            "value": "logserv_abap_security"
+          },
+          {
+            "label": "ABAP Operations",
+            "value": "logserv_abap_operations"
+          },
+          {
+            "label": "HANA Audit",
+            "value": "logserv_hana_audit"
+          },
+          {
+            "label": "HANA Trace",
+            "value": "logserv_hana_trace"
+          },
+          {
+            "label": "SAP Services",
+            "value": "logserv_sap_services"
+          },
+          {
+            "label": "Cloud Connector",
+            "value": "logserv_cloud_connector"
+          },
+          {
+            "label": "Web Dispatcher",
+            "value": "logserv_web_dispatcher"
+          },
+          {
+            "label": "Web and API Performance",
+            "value": "logserv_web_api_performance"
+          },
+          {
+            "label": "Network Perimeter",
+            "value": "logserv_network_perimeter"
+          },
+          {
+            "label": "DNS Analytics",
+            "value": "logserv_dns_analytics"
+          },
+          {
+            "label": "Linux",
+            "value": "logserv_linux"
+          },
+          {
+            "label": "Windows",
+            "value": "logserv_windows"
+          },
+          {
+            "label": "Proxy",
+            "value": "logserv_proxy"
+          },
+          {
+            "label": "Host Details",
+            "value": "logserv_host_details"
+          },
+          {
+            "label": "SAP Router",
+            "value": "logserv_sap_router"
+          },
+          {
+            "label": "Work Process Performance",
+            "value": "logserv_work_process_performance"
+          },
+          {
+            "label": "Change & Configuration Activity",
+            "value": "logserv_change_config"
+          }
+        ],
+        "token": "nav_target"
+      }
+    }
+  },
+  "visualizations": {
+    "viz_rect_kpi_total": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_sap": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_hana": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_win": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_failures_trend": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_top_users": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_source_ips": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_hana_users": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_windows_events": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_sap_auth": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_total": {
+      "dataSources": {
+        "primary": "ds_kpi_total"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Total Auth Failures",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_sap": {
+      "dataSources": {
+        "primary": "ds_kpi_sap"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "SAP Auth Failures",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_hana": {
+      "dataSources": {
+        "primary": "ds_kpi_hana"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "HANA Auth Failures",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_win": {
+      "dataSources": {
+        "primary": "ds_kpi_win"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Windows Auth Failures",
+      "type": "splunk.singlevalue"
+    },
+    "viz_failures_trend": {
+      "dataSources": {
+        "primary": "ds_failures_trend"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "bottom",
+        "seriesColorsByField": {
+          "SAP": "#f4a535",
+          "HANA": "#dc4e41",
+          "Windows": "#9c6aff"
+        },
+        "stackMode": "stacked",
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Auth Failures Over Time by Layer",
+      "type": "splunk.column"
+    },
+    "viz_top_users": {
+      "dataSources": {
+        "primary": "ds_top_users"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#dc4e41"
+        ],
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Top Users by Auth Failures",
+      "type": "splunk.bar"
+    },
+    "viz_source_ips": {
+      "dataSources": {
+        "primary": "ds_source_ips"
+      },
+      "eventHandlers": [
+        {
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20((sourcetype%3D%22sap%3Asapstartsrv%22%20is_auth_event%3D%22true%22%20auth_result%3D%22failure%22)%20OR%20(sourcetype%3D%22sap%3Ahana%3Aaudit%22%20action_category%3D%22Authentication%22%20status!%3D%22SUCCESSFUL%22)%20OR%20(sourcetype%3D%22XmlWinEventLog%22%20action%3D%22failure%22))%20%7C%20eval%20src%3Dcoalesce(remote_ip%2Cclient_ip%2Csrc_ip%2CIpAddress)%20%7C%20where%20src%3D%22$row.Source IP.value$%22%20%7C%20table%20_time%20sourcetype%20src%20host%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          },
+          "type": "drilldown.customUrl"
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 5,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Auth Failure Source IPs",
+      "type": "splunk.table"
+    },
+    "viz_hana_users": {
+      "dataSources": {
+        "primary": "ds_hana_users"
+      },
+      "eventHandlers": [
+        {
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20sourcetype%3D%22sap%3Ahana%3Aaudit%22%20action_category%3D%22Authentication%22%20src_user%3D%22$row.User.value$%22%20%7C%20table%20_time%20action_type%20status%20client_ip%20db_user%20database%20risk_level%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          },
+          "type": "drilldown.customUrl"
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 5,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "HANA Auth Activity by User",
+      "type": "splunk.table"
+    },
+    "viz_windows_events": {
+      "dataSources": {
+        "primary": "ds_windows_events"
+      },
+      "eventHandlers": [
+        {
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20sourcetype%3D%22XmlWinEventLog%22%20action%3D%22failure%22%20host%3D%22$row.host.value$%22%20%7C%20table%20_time%20EventCode%20signature%20src_user%20src_ip%20LogonType%20status%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          },
+          "type": "drilldown.customUrl"
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 5,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Recent Windows Auth Failures",
+      "type": "splunk.table"
+    },
+    "viz_sap_auth": {
+      "dataSources": {
+        "primary": "ds_sap_auth"
+      },
+      "eventHandlers": [
+        {
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20sourcetype%3D%22sap%3Asapstartsrv%22%20is_auth_event%3D%22true%22%20auth_result%3D%22failure%22%20host%3D%22$row.host.value$%22%20%7C%20table%20_time%20auth_user%20remote_ip%20auth_result%20source_location%20is_ssl_event%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          },
+          "type": "drilldown.customUrl"
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 5,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Recent SAP Auth Failures",
+      "type": "splunk.table"
+    },
+    "viz_nav_go": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_nav_go"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$",
+            "newTab": false
+          }
+        }
+      ]
+    }
+  },
+  "dataSources": {
+    "ds_kpi_total": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ((sourcetype=\"sap:sapstartsrv\" is_auth_event=\"true\" auth_result=\"failure\") OR (sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" status!=\"SUCCESSFUL\") OR (sourcetype=\"XmlWinEventLog\" action=\"failure\")) | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "sapstartsrv_total_auth_fails"
+    },
+    "ds_kpi_sap": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"sap:sapstartsrv\" is_auth_event=\"true\" auth_result=\"failure\" | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "sap_auth_fails"
+    },
+    "ds_kpi_hana": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" status!=\"SUCCESSFUL\" | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "hana_auth_fails"
+    },
+    "ds_kpi_win": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"XmlWinEventLog\" action=\"failure\" | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "windows_auth_fails"
+    },
+    "ds_failures_trend": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ((sourcetype=\"sap:sapstartsrv\" is_auth_event=\"true\" auth_result=\"failure\") OR (sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" status!=\"SUCCESSFUL\") OR (sourcetype=\"XmlWinEventLog\" action=\"failure\")) | eval layer=case(sourcetype=\"sap:sapstartsrv\", \"SAP\", sourcetype=\"sap:hana:audit\", \"HANA\", sourcetype=\"XmlWinEventLog\", \"Windows\") | timechart span=1d count by layer",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "auth_fails_over_time_by_layer"
+    },
+    "ds_top_users": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ((sourcetype=\"sap:sapstartsrv\" is_auth_event=\"true\" auth_result=\"failure\") OR (sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" status!=\"SUCCESSFUL\") OR (sourcetype=\"XmlWinEventLog\" action=\"failure\")) | eval failed_user=coalesce(auth_user, src_user, user) | where isnotnull(failed_user) AND failed_user!=\"\" | stats count as \"Failures\" by failed_user | sort -Failures | head 15 | rename failed_user as \"User\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "top_users_by_auth_fails"
+    },
+    "ds_source_ips": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ((sourcetype=\"sap:sapstartsrv\" is_auth_event=\"true\" auth_result=\"failure\") OR (sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" status!=\"SUCCESSFUL\") OR (sourcetype=\"XmlWinEventLog\" action=\"failure\")) | eval src=coalesce(remote_ip, client_ip, src_ip, IpAddress) | where isnotnull(src) AND src!=\"\" AND src!=\"127.0.0.1\" | stats count as \"Failures\", dc(sourcetype) as \"Layers Hit\", values(eval(case(sourcetype=\"sap:sapstartsrv\",\"SAP\",sourcetype=\"sap:hana:audit\",\"HANA\",sourcetype=\"XmlWinEventLog\",\"Windows\"))) as \"Layers\", latest(_time) as last_seen by src | eval \"Last Seen\"=strftime(last_seen, \"%Y-%m-%d %H:%M:%S\") | sort -Failures | head 20 | fields - last_seen | rename src as \"Source IP\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "auth_fail_source_ips"
+    },
+    "ds_hana_users": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" | stats count as \"Events\", dc(action_type) as \"Action Types\", sum(eval(if(status!=\"SUCCESSFUL\",1,0))) as \"Failures\", values(risk_level) as \"Risk Level\", latest(_time) as last_seen by src_user | eval \"Last Seen\"=strftime(last_seen, \"%Y-%m-%d %H:%M:%S\") | sort -Failures | fields - last_seen | rename src_user as \"User\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "hana_auth_activity_by_user"
+    },
+    "ds_windows_events": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"XmlWinEventLog\" action=\"failure\" | eval logon_type_label=case(Logon_Type=\"2\",\"Interactive\",Logon_Type=\"3\",\"Network\",Logon_Type=\"4\",\"Batch\",Logon_Type=\"5\",\"Service\",Logon_Type=\"7\",\"Unlock\",Logon_Type=\"8\",\"Network Cleartext\",Logon_Type=\"10\",\"Remote Interactive\",1=1,Logon_Type) | eval display_user=coalesce(TargetUserName, SubjectUserName, src_user) | eval Time=strftime(_time, \"%Y-%m-%d %H:%M:%S\") | table Time, display_user, signature, src_ip, logon_type_label, host | sort -Time | head 25 | rename display_user as \"User\", src_ip as \"Source IP\", logon_type_label as \"Logon Type\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "windows_auth_fails_recent"
+    },
+    "ds_sap_auth": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"sap:sapstartsrv\" is_auth_event=\"true\" auth_result=\"failure\" | eval Time=strftime(_time, \"%Y-%m-%d %H:%M:%S\") | table Time, auth_user, remote_ip, source_location, host | sort -Time | head 25 | rename auth_user as \"User\", remote_ip as \"Remote IP\", source_location as \"Source Location\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search",
+      "name": "sap_auth_fails_recent"
+    },
+    "ds_nav_go": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [
+      "input_global_trp",
+      "input_nav_dropdown"
+    ],
+    "layoutDefinitions": {
+      "layout_1": {
+        "options": {
+          "backgroundColor": "#0d1117",
+          "height": 1276,
+          "width": 1920,
+          "display": "fit-to-width"
+        },
+        "structure": [
+          {
+            "item": "viz_nav_go",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 10,
+              "w": 120,
+              "h": 25
+            }
+          },
+          {
+            "item": "viz_rect_kpi_total",
+            "position": {
+              "x": 13,
+              "y": 45,
+              "w": 463,
+              "h": 140
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_kpi_total",
+            "position": {
+              "x": 26,
+              "y": 50,
+              "w": 438,
+              "h": 130
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_kpi_sap",
+            "position": {
+              "x": 488,
+              "y": 45,
+              "w": 463,
+              "h": 140
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_kpi_sap",
+            "position": {
+              "x": 501,
+              "y": 50,
+              "w": 438,
+              "h": 130
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_kpi_hana",
+            "position": {
+              "x": 963,
+              "y": 45,
+              "w": 463,
+              "h": 140
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_kpi_hana",
+            "position": {
+              "x": 976,
+              "y": 50,
+              "w": 438,
+              "h": 130
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_kpi_win",
+            "position": {
+              "x": 1438,
+              "y": 45,
+              "w": 472,
+              "h": 140
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_kpi_win",
+            "position": {
+              "x": 1451,
+              "y": 50,
+              "w": 447,
+              "h": 130
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_failures_trend",
+            "position": {
+              "x": 13,
+              "y": 197,
+              "w": 941,
+              "h": 270
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_failures_trend",
+            "position": {
+              "x": 26,
+              "y": 202,
+              "w": 915,
+              "h": 260
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_top_users",
+            "position": {
+              "x": 966,
+              "y": 197,
+              "w": 944,
+              "h": 270
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_top_users",
+            "position": {
+              "x": 979,
+              "y": 202,
+              "w": 919,
+              "h": 260
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_source_ips",
+            "position": {
+              "x": 13,
+              "y": 479,
+              "w": 941,
+              "h": 385
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_source_ips",
+            "position": {
+              "x": 26,
+              "y": 484,
+              "w": 915,
+              "h": 375
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_hana_users",
+            "position": {
+              "x": 966,
+              "y": 479,
+              "w": 944,
+              "h": 385
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_hana_users",
+            "position": {
+              "x": 979,
+              "y": 484,
+              "w": 919,
+              "h": 380
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_windows_events",
+            "position": {
+              "x": 13,
+              "y": 876,
+              "w": 941,
+              "h": 380
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_windows_events",
+            "position": {
+              "x": 26,
+              "y": 886,
+              "w": 922,
+              "h": 360
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_rect_sap_auth",
+            "position": {
+              "x": 966,
+              "y": 876,
+              "w": 944,
+              "h": 380
+            },
+            "type": "block"
+          },
+          {
+            "item": "viz_sap_auth",
+            "position": {
+              "x": 979,
+              "y": 886,
+              "w": 919,
+              "h": 360
+            },
+            "type": "block"
+          }
+        ],
+        "type": "absolute"
+      }
+    },
+    "options": {},
+    "tabs": {
+      "items": [
+        {
+          "label": "New tab",
+          "layoutId": "layout_1"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "dataSources": {}
+  }
+}]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

@@ -1,0 +1,989 @@
+
+<dashboard version="2" theme="dark">
+    <label>Change &amp; Configuration Activity</label>
+    <description>Cross-stack audit trail — HANA user/role/privilege changes, Windows account and group modifications, Linux sudo and user-management activity, with compliance-focused privileged and after-hours views</description>
+    <definition><![CDATA[{
+  "title": "Change & Configuration Activity",
+  "description": "Cross-stack audit trail \u2014 HANA user/role/privilege changes, Windows account and group modifications, Linux sudo and user-management activity, with compliance-focused privileged and after-hours views",
+  "inputs": {
+    "input_global_trp": {
+      "options": {
+        "defaultValue": "-30d@d,now",
+        "token": "global_time"
+      },
+      "title": "Global Time Range",
+      "type": "input.timerange"
+    },
+    "input_nav_dropdown": {
+      "type": "input.dropdown",
+      "title": "Navigate to Dashboard",
+      "options": {
+        "items": [
+          {
+            "label": "Overview",
+            "value": "logserv_overview"
+          },
+          {
+            "label": "Environment Health",
+            "value": "logserv_environment_health"
+          },
+          {
+            "label": "ABAP Security",
+            "value": "logserv_abap_security"
+          },
+          {
+            "label": "ABAP Operations",
+            "value": "logserv_abap_operations"
+          },
+          {
+            "label": "Work Process Performance",
+            "value": "logserv_work_process_performance"
+          },
+          {
+            "label": "HANA Audit",
+            "value": "logserv_hana_audit"
+          },
+          {
+            "label": "HANA Trace",
+            "value": "logserv_hana_trace"
+          },
+          {
+            "label": "SAP Services",
+            "value": "logserv_sap_services"
+          },
+          {
+            "label": "SAP Router",
+            "value": "logserv_sap_router"
+          },
+          {
+            "label": "Cloud Connector",
+            "value": "logserv_cloud_connector"
+          },
+          {
+            "label": "Web Dispatcher",
+            "value": "logserv_web_dispatcher"
+          },
+          {
+            "label": "Web and API Performance",
+            "value": "logserv_web_api_performance"
+          },
+          {
+            "label": "Cross-Stack Authentication",
+            "value": "logserv_cross_stack_authentication"
+          },
+          {
+            "label": "Network Perimeter",
+            "value": "logserv_network_perimeter"
+          },
+          {
+            "label": "DNS Analytics",
+            "value": "logserv_dns_analytics"
+          },
+          {
+            "label": "Linux",
+            "value": "logserv_linux"
+          },
+          {
+            "label": "Windows",
+            "value": "logserv_windows"
+          },
+          {
+            "label": "Proxy",
+            "value": "logserv_proxy"
+          },
+          {
+            "label": "Host Details",
+            "value": "logserv_host_details"
+          }
+        ],
+        "token": "nav_target"
+      }
+    }
+  },
+  "visualizations": {
+    "viz_nav_go": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_nav_go"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$",
+            "newTab": false
+          }
+        }
+      ]
+    },
+    "viz_rect_kpi_total": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_total": {
+      "dataSources": {
+        "primary": "ds_kpi_total"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Total Change Events",
+      "type": "splunk.singlevalue"
+    },
+    "viz_rect_kpi_user": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_user": {
+      "dataSources": {
+        "primary": "ds_kpi_user_changes"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "User Account Changes",
+      "type": "splunk.singlevalue"
+    },
+    "viz_rect_kpi_perm": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_perm": {
+      "dataSources": {
+        "primary": "ds_kpi_perm_grants"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Permission Grants",
+      "type": "splunk.singlevalue"
+    },
+    "viz_rect_kpi_pw": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_pw": {
+      "dataSources": {
+        "primary": "ds_kpi_password"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Password Events",
+      "type": "splunk.singlevalue"
+    },
+    "viz_rect_kpi_ah": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_ah": {
+      "dataSources": {
+        "primary": "ds_kpi_after_hours"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "After-Hours Changes",
+      "type": "splunk.singlevalue"
+    },
+    "viz_rect_kpi_ops": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_ops": {
+      "dataSources": {
+        "primary": "ds_kpi_operators"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Unique Operators",
+      "type": "splunk.singlevalue"
+    },
+    "viz_rect_activity": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_activity": {
+      "dataSources": {
+        "primary": "ds_activity"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "bottom",
+        "seriesColorsByField": {
+          "HANA": "#0877a6",
+          "Windows": "#00d4b4",
+          "Linux": "#f4a535"
+        },
+        "stackMode": "stacked",
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Change Activity Over Time (by Source)",
+      "type": "splunk.column"
+    },
+    "viz_rect_category": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_category": {
+      "dataSources": {
+        "primary": "ds_category"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "innerRadius": 0.6,
+        "legendDisplay": "right",
+        "legendTruncation": "ellipsisEnd",
+        "seriesColors": [
+          "#0877a6",
+          "#00d4b4",
+          "#7ee8fa",
+          "#f4a535",
+          "#dc4e41",
+          "#9c6aff",
+          "#ffcc00",
+          "#ff7a6b"
+        ]
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Change Events by Category",
+      "type": "splunk.pie"
+    },
+    "viz_rect_operators": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_operators": {
+      "dataSources": {
+        "primary": "ds_operators"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#0877a6"
+        ],
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Top Operators by Change Count (Source-Prefixed)",
+      "type": "splunk.bar"
+    },
+    "viz_rect_hana": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_hana": {
+      "dataSources": {
+        "primary": "ds_hana"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 50,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "HANA Audit \u2014 Change Events (Top 50)",
+      "type": "splunk.table"
+    },
+    "viz_rect_windows": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_windows": {
+      "dataSources": {
+        "primary": "ds_windows"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 50,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Windows \u2014 Account & Group Modifications (Top 50)",
+      "type": "splunk.table"
+    },
+    "viz_rect_linux": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_linux": {
+      "dataSources": {
+        "primary": "ds_linux"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 50,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Linux \u2014 Sudo & Command Activity (Top 50)",
+      "type": "splunk.table"
+    },
+    "viz_rect_priv": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_priv": {
+      "dataSources": {
+        "primary": "ds_priv"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 25,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Recent Privileged Changes (Top 25, Compliance Focus)",
+      "type": "splunk.table"
+    },
+    "viz_rect_ah": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_ah": {
+      "dataSources": {
+        "primary": "ds_ah"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 25,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Recent After-Hours Changes (Top 25, Outside Business Hours)",
+      "type": "splunk.table"
+    }
+  },
+  "dataSources": {
+    "ds_nav_go": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_kpi_total": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" (action_category IN (\"User Management\",\"User Creation\",\"User Deletion\",\"Permission Grant\",\"Permission Revoke\",\"Password Management\",\"Account Status Change\",\"Password Reset\") OR action_type IN (\"CREATE TABLE\",\"ALTER TABLE\",\"DROP TABLE\",\"CREATE VIEW\",\"ALTER VIEW\",\"DROP VIEW\",\"CREATE SCHEMA\",\"ALTER SCHEMA\",\"DROP SCHEMA\",\"CREATE FUNCTION\",\"ALTER FUNCTION\",\"DROP FUNCTION\",\"CREATE PROCEDURE\",\"ALTER PROCEDURE\",\"DROP PROCEDURE\",\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\"))) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (\"COMMAND=\" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd)) ) | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_user_changes": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" action_category IN (\"User Creation\",\"User Deletion\",\"User Management\")) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4725,4726,4738,4781)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") match(_raw, \"(?i)(useradd|usermod|userdel)\")) ) | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_perm_grants": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" action_category=\"Permission Grant\") OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4728,4732,4756)) ) | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_password": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" action_category IN (\"Password Management\",\"Password Reset\")) OR (sourcetype=\"XmlWinEventLog\" EventCode=4724) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") match(_raw, \"(?i)passwd\\b\")) ) | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_after_hours": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" (action_category IN (\"User Management\",\"User Creation\",\"User Deletion\",\"Permission Grant\",\"Permission Revoke\",\"Password Management\",\"Account Status Change\",\"Password Reset\") OR action_type IN (\"CREATE TABLE\",\"ALTER TABLE\",\"DROP TABLE\",\"CREATE VIEW\",\"ALTER VIEW\",\"DROP VIEW\",\"CREATE SCHEMA\",\"ALTER SCHEMA\",\"DROP SCHEMA\",\"CREATE FUNCTION\",\"ALTER FUNCTION\",\"DROP FUNCTION\",\"CREATE PROCEDURE\",\"ALTER PROCEDURE\",\"DROP PROCEDURE\",\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\"))) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (\"COMMAND=\" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd)) ) | eval change_source = case(sourcetype=\"sap:hana:audit\", \"HANA\", sourcetype=\"XmlWinEventLog\", \"Windows\", 1=1, \"Linux\") | rex field=_raw \"sudo:\\s+(?<sudo_op>\\w+)\\s*:\" | rex field=_raw \"\\((?<paren_op>\\w+)\\)\" | eval operator = case(sourcetype=\"sap:hana:audit\", \"HANA:\" . executing_user, sourcetype=\"XmlWinEventLog\", \"Windows:\" . coalesce(SubjectUserName, user, \"unknown\"), 1=1, \"Linux:\" . coalesce(sudo_op, paren_op, os_user, \"unknown\")) | eval category = case(sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Grant\", \"Permission Grant\", sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Revoke\", \"Permission Revoke\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"User Creation\",\"User Deletion\",\"User Management\"), \"User Management\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"Password Management\",\"Password Reset\"), \"Password Change\", sourcetype=\"sap:hana:audit\" AND action_category=\"Account Status Change\", \"Account Status\", sourcetype=\"sap:hana:audit\", \"DDL / Config\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4720,4722,4725,4726,4738,4781), \"User Management\", sourcetype=\"XmlWinEventLog\" AND EventCode=4724, \"Password Change\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4728,4729,4732,4733,4756,4757), \"Group Membership\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4740,4767), \"Account Status\", match(_raw, \"(?i)passwd\\b\"), \"Password Change\", match(_raw, \"(?i)(useradd|usermod|userdel)\"), \"User Management\", match(_raw, \"(?i)(groupadd|groupmod|groupdel)\"), \"Group Membership\", match(_raw, \"COMMAND=\"), \"Sudo Command\", 1=1, \"Other\") | eval hr = tonumber(strftime(_time, \"%H\")) | eval dw = strftime(_time, \"%A\") | eval is_after_hours = case(sourcetype=\"sap:hana:audit\", if(is_business_hours=\"false\" OR is_weekend=\"true\", 1, 0), 1=1, if(hr < 7 OR hr > 19 OR match(dw, \"(?i)(saturday|sunday)\"), 1, 0)) | where is_after_hours=1 | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_operators": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" (action_category IN (\"User Management\",\"User Creation\",\"User Deletion\",\"Permission Grant\",\"Permission Revoke\",\"Password Management\",\"Account Status Change\",\"Password Reset\") OR action_type IN (\"CREATE TABLE\",\"ALTER TABLE\",\"DROP TABLE\",\"CREATE VIEW\",\"ALTER VIEW\",\"DROP VIEW\",\"CREATE SCHEMA\",\"ALTER SCHEMA\",\"DROP SCHEMA\",\"CREATE FUNCTION\",\"ALTER FUNCTION\",\"DROP FUNCTION\",\"CREATE PROCEDURE\",\"ALTER PROCEDURE\",\"DROP PROCEDURE\",\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\"))) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (\"COMMAND=\" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd)) ) | eval change_source = case(sourcetype=\"sap:hana:audit\", \"HANA\", sourcetype=\"XmlWinEventLog\", \"Windows\", 1=1, \"Linux\") | rex field=_raw \"sudo:\\s+(?<sudo_op>\\w+)\\s*:\" | rex field=_raw \"\\((?<paren_op>\\w+)\\)\" | eval operator = case(sourcetype=\"sap:hana:audit\", \"HANA:\" . executing_user, sourcetype=\"XmlWinEventLog\", \"Windows:\" . coalesce(SubjectUserName, user, \"unknown\"), 1=1, \"Linux:\" . coalesce(sudo_op, paren_op, os_user, \"unknown\")) | eval category = case(sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Grant\", \"Permission Grant\", sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Revoke\", \"Permission Revoke\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"User Creation\",\"User Deletion\",\"User Management\"), \"User Management\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"Password Management\",\"Password Reset\"), \"Password Change\", sourcetype=\"sap:hana:audit\" AND action_category=\"Account Status Change\", \"Account Status\", sourcetype=\"sap:hana:audit\", \"DDL / Config\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4720,4722,4725,4726,4738,4781), \"User Management\", sourcetype=\"XmlWinEventLog\" AND EventCode=4724, \"Password Change\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4728,4729,4732,4733,4756,4757), \"Group Membership\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4740,4767), \"Account Status\", match(_raw, \"(?i)passwd\\b\"), \"Password Change\", match(_raw, \"(?i)(useradd|usermod|userdel)\"), \"User Management\", match(_raw, \"(?i)(groupadd|groupmod|groupdel)\"), \"Group Membership\", match(_raw, \"COMMAND=\"), \"Sudo Command\", 1=1, \"Other\") | eval hr = tonumber(strftime(_time, \"%H\")) | eval dw = strftime(_time, \"%A\") | eval is_after_hours = case(sourcetype=\"sap:hana:audit\", if(is_business_hours=\"false\" OR is_weekend=\"true\", 1, 0), 1=1, if(hr < 7 OR hr > 19 OR match(dw, \"(?i)(saturday|sunday)\"), 1, 0)) | eventstats dc(operator) as window_dc | timechart span=1d dc(operator) as daily, max(window_dc) as total | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0, total=0 | fields _time daily total]",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_activity": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" (action_category IN (\"User Management\",\"User Creation\",\"User Deletion\",\"Permission Grant\",\"Permission Revoke\",\"Password Management\",\"Account Status Change\",\"Password Reset\") OR action_type IN (\"CREATE TABLE\",\"ALTER TABLE\",\"DROP TABLE\",\"CREATE VIEW\",\"ALTER VIEW\",\"DROP VIEW\",\"CREATE SCHEMA\",\"ALTER SCHEMA\",\"DROP SCHEMA\",\"CREATE FUNCTION\",\"ALTER FUNCTION\",\"DROP FUNCTION\",\"CREATE PROCEDURE\",\"ALTER PROCEDURE\",\"DROP PROCEDURE\",\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\"))) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (\"COMMAND=\" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd)) ) | eval change_source = case(sourcetype=\"sap:hana:audit\", \"HANA\", sourcetype=\"XmlWinEventLog\", \"Windows\", 1=1, \"Linux\") | timechart span=1d count by change_source",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_category": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" (action_category IN (\"User Management\",\"User Creation\",\"User Deletion\",\"Permission Grant\",\"Permission Revoke\",\"Password Management\",\"Account Status Change\",\"Password Reset\") OR action_type IN (\"CREATE TABLE\",\"ALTER TABLE\",\"DROP TABLE\",\"CREATE VIEW\",\"ALTER VIEW\",\"DROP VIEW\",\"CREATE SCHEMA\",\"ALTER SCHEMA\",\"DROP SCHEMA\",\"CREATE FUNCTION\",\"ALTER FUNCTION\",\"DROP FUNCTION\",\"CREATE PROCEDURE\",\"ALTER PROCEDURE\",\"DROP PROCEDURE\",\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\"))) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (\"COMMAND=\" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd)) ) | eval change_source = case(sourcetype=\"sap:hana:audit\", \"HANA\", sourcetype=\"XmlWinEventLog\", \"Windows\", 1=1, \"Linux\") | rex field=_raw \"sudo:\\s+(?<sudo_op>\\w+)\\s*:\" | rex field=_raw \"\\((?<paren_op>\\w+)\\)\" | eval operator = case(sourcetype=\"sap:hana:audit\", \"HANA:\" . executing_user, sourcetype=\"XmlWinEventLog\", \"Windows:\" . coalesce(SubjectUserName, user, \"unknown\"), 1=1, \"Linux:\" . coalesce(sudo_op, paren_op, os_user, \"unknown\")) | eval category = case(sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Grant\", \"Permission Grant\", sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Revoke\", \"Permission Revoke\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"User Creation\",\"User Deletion\",\"User Management\"), \"User Management\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"Password Management\",\"Password Reset\"), \"Password Change\", sourcetype=\"sap:hana:audit\" AND action_category=\"Account Status Change\", \"Account Status\", sourcetype=\"sap:hana:audit\", \"DDL / Config\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4720,4722,4725,4726,4738,4781), \"User Management\", sourcetype=\"XmlWinEventLog\" AND EventCode=4724, \"Password Change\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4728,4729,4732,4733,4756,4757), \"Group Membership\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4740,4767), \"Account Status\", match(_raw, \"(?i)passwd\\b\"), \"Password Change\", match(_raw, \"(?i)(useradd|usermod|userdel)\"), \"User Management\", match(_raw, \"(?i)(groupadd|groupmod|groupdel)\"), \"Group Membership\", match(_raw, \"COMMAND=\"), \"Sudo Command\", 1=1, \"Other\") | eval hr = tonumber(strftime(_time, \"%H\")) | eval dw = strftime(_time, \"%A\") | eval is_after_hours = case(sourcetype=\"sap:hana:audit\", if(is_business_hours=\"false\" OR is_weekend=\"true\", 1, 0), 1=1, if(hr < 7 OR hr > 19 OR match(dw, \"(?i)(saturday|sunday)\"), 1, 0)) | stats count by category | sort -count",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_operators": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" (action_category IN (\"User Management\",\"User Creation\",\"User Deletion\",\"Permission Grant\",\"Permission Revoke\",\"Password Management\",\"Account Status Change\",\"Password Reset\") OR action_type IN (\"CREATE TABLE\",\"ALTER TABLE\",\"DROP TABLE\",\"CREATE VIEW\",\"ALTER VIEW\",\"DROP VIEW\",\"CREATE SCHEMA\",\"ALTER SCHEMA\",\"DROP SCHEMA\",\"CREATE FUNCTION\",\"ALTER FUNCTION\",\"DROP FUNCTION\",\"CREATE PROCEDURE\",\"ALTER PROCEDURE\",\"DROP PROCEDURE\",\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\"))) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (\"COMMAND=\" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd)) ) | eval change_source = case(sourcetype=\"sap:hana:audit\", \"HANA\", sourcetype=\"XmlWinEventLog\", \"Windows\", 1=1, \"Linux\") | rex field=_raw \"sudo:\\s+(?<sudo_op>\\w+)\\s*:\" | rex field=_raw \"\\((?<paren_op>\\w+)\\)\" | eval operator = case(sourcetype=\"sap:hana:audit\", \"HANA:\" . executing_user, sourcetype=\"XmlWinEventLog\", \"Windows:\" . coalesce(SubjectUserName, user, \"unknown\"), 1=1, \"Linux:\" . coalesce(sudo_op, paren_op, os_user, \"unknown\")) | eval category = case(sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Grant\", \"Permission Grant\", sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Revoke\", \"Permission Revoke\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"User Creation\",\"User Deletion\",\"User Management\"), \"User Management\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"Password Management\",\"Password Reset\"), \"Password Change\", sourcetype=\"sap:hana:audit\" AND action_category=\"Account Status Change\", \"Account Status\", sourcetype=\"sap:hana:audit\", \"DDL / Config\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4720,4722,4725,4726,4738,4781), \"User Management\", sourcetype=\"XmlWinEventLog\" AND EventCode=4724, \"Password Change\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4728,4729,4732,4733,4756,4757), \"Group Membership\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4740,4767), \"Account Status\", match(_raw, \"(?i)passwd\\b\"), \"Password Change\", match(_raw, \"(?i)(useradd|usermod|userdel)\"), \"User Management\", match(_raw, \"(?i)(groupadd|groupmod|groupdel)\"), \"Group Membership\", match(_raw, \"COMMAND=\"), \"Sudo Command\", 1=1, \"Other\") | eval hr = tonumber(strftime(_time, \"%H\")) | eval dw = strftime(_time, \"%A\") | eval is_after_hours = case(sourcetype=\"sap:hana:audit\", if(is_business_hours=\"false\" OR is_weekend=\"true\", 1, 0), 1=1, if(hr < 7 OR hr > 19 OR match(dw, \"(?i)(saturday|sunday)\"), 1, 0)) | stats count by operator | sort -count | head 15 | rename operator as \"Operator\", count as \"Change Events\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_hana": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" (action_category IN (\"User Management\",\"User Creation\",\"User Deletion\",\"Permission Grant\",\"Permission Revoke\",\"Password Management\",\"Account Status Change\",\"Password Reset\") OR action_type IN (\"CREATE TABLE\",\"ALTER TABLE\",\"DROP TABLE\",\"CREATE VIEW\",\"ALTER VIEW\",\"DROP VIEW\",\"CREATE SCHEMA\",\"ALTER SCHEMA\",\"DROP SCHEMA\",\"CREATE FUNCTION\",\"ALTER FUNCTION\",\"DROP FUNCTION\",\"CREATE PROCEDURE\",\"ALTER PROCEDURE\",\"DROP PROCEDURE\",\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\")) | eval Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\") | sort -_time | head 50 | table Time, executing_user, target_user, action_category, action_type, status, audit_hostname | rename executing_user as \"Operator\", target_user as \"Target\", action_category as \"Category\", action_type as \"Action\", status as \"Status\", audit_hostname as \"Host\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_windows": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757) | eval Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\") | eval Description = case(EventCode=4720, \"Account Created\", EventCode=4722, \"Account Enabled\", EventCode=4724, \"Password Reset\", EventCode=4725, \"Account Disabled\", EventCode=4726, \"Account Deleted\", EventCode=4738, \"Account Modified\", EventCode=4740, \"Account Locked Out\", EventCode=4767, \"Account Unlocked\", EventCode=4781, \"Account Renamed\", EventCode=4728, \"Added to Global Group\", EventCode=4729, \"Removed from Global Group\", EventCode=4732, \"Added to Local Group\", EventCode=4733, \"Removed from Local Group\", EventCode=4756, \"Added to Universal Group\", EventCode=4757, \"Removed from Universal Group\", 1=1, \"Other\") | sort -_time | head 50 | table Time, EventCode, Description, SubjectUserName, TargetUserName, host | rename EventCode as \"Event\", SubjectUserName as \"Operator\", TargetUserName as \"Target\", host as \"Computer\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_linux": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (\"COMMAND=\" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd) | eval Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\") | rex field=_raw \"sudo:\\s+(?<sudo_op>\\w+)\\s*:\" | rex field=_raw \"\\((?<paren_op>\\w+)\\)\" | rex field=_raw \"COMMAND=(?<cmd>[^\\s]+(?:\\s[^\\s]+){0,4})\" | eval Operator = coalesce(sudo_op, paren_op, os_user, \"unknown\") | eval Type = case(match(_raw, \"(?i)useradd\"), \"useradd\", match(_raw, \"(?i)usermod\"), \"usermod\", match(_raw, \"(?i)userdel\"), \"userdel\", match(_raw, \"(?i)groupadd\"), \"groupadd\", match(_raw, \"(?i)groupmod\"), \"groupmod\", match(_raw, \"(?i)groupdel\"), \"groupdel\", match(_raw, \"(?i)passwd\\b\"), \"passwd\", match(_raw, \"COMMAND=\"), \"sudo\", 1=1, \"other\") | sort -_time | head 50 | table Time, Operator, Type, cmd, host | rename cmd as \"Command\", host as \"Host\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_priv": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" (action_category IN (\"Permission Grant\",\"User Creation\") OR action_type IN (\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\"))) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4732)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (useradd OR visudo OR usermod OR userdel)) ) | eval change_source = case(sourcetype=\"sap:hana:audit\", \"HANA\", sourcetype=\"XmlWinEventLog\", \"Windows\", 1=1, \"Linux\") | rex field=_raw \"sudo:\\s+(?<sudo_op>\\w+)\\s*:\" | rex field=_raw \"\\((?<paren_op>\\w+)\\)\" | eval operator = case(sourcetype=\"sap:hana:audit\", \"HANA:\" . executing_user, sourcetype=\"XmlWinEventLog\", \"Windows:\" . coalesce(SubjectUserName, user, \"unknown\"), 1=1, \"Linux:\" . coalesce(sudo_op, paren_op, os_user, \"unknown\")) | eval category = case(sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Grant\", \"Permission Grant\", sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Revoke\", \"Permission Revoke\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"User Creation\",\"User Deletion\",\"User Management\"), \"User Management\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"Password Management\",\"Password Reset\"), \"Password Change\", sourcetype=\"sap:hana:audit\" AND action_category=\"Account Status Change\", \"Account Status\", sourcetype=\"sap:hana:audit\", \"DDL / Config\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4720,4722,4725,4726,4738,4781), \"User Management\", sourcetype=\"XmlWinEventLog\" AND EventCode=4724, \"Password Change\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4728,4729,4732,4733,4756,4757), \"Group Membership\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4740,4767), \"Account Status\", match(_raw, \"(?i)passwd\\b\"), \"Password Change\", match(_raw, \"(?i)(useradd|usermod|userdel)\"), \"User Management\", match(_raw, \"(?i)(groupadd|groupmod|groupdel)\"), \"Group Membership\", match(_raw, \"COMMAND=\"), \"Sudo Command\", 1=1, \"Other\") | eval hr = tonumber(strftime(_time, \"%H\")) | eval dw = strftime(_time, \"%A\") | eval is_after_hours = case(sourcetype=\"sap:hana:audit\", if(is_business_hours=\"false\" OR is_weekend=\"true\", 1, 0), 1=1, if(hr < 7 OR hr > 19 OR match(dw, \"(?i)(saturday|sunday)\"), 1, 0)) | eval Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\") | eval Target = case(sourcetype=\"sap:hana:audit\", target_user, sourcetype=\"XmlWinEventLog\", TargetUserName, 1=1, \"-\") | eval Action = case(sourcetype=\"sap:hana:audit\", action_type, sourcetype=\"XmlWinEventLog\" AND EventCode=4720, \"User Created (EventCode 4720)\", sourcetype=\"XmlWinEventLog\" AND EventCode=4722, \"User Enabled (EventCode 4722)\", sourcetype=\"XmlWinEventLog\" AND EventCode=4724, \"Password Reset (EventCode 4724)\", sourcetype=\"XmlWinEventLog\" AND EventCode=4732, \"Added to Local Group (EventCode 4732)\", sourcetype=\"XmlWinEventLog\", \"EventCode \" . EventCode, 1=1, substr(_raw, 1, 120)) | sort -_time | head 25 | table Time, change_source, category, operator, Target, Action | rename change_source as \"Source\", category as \"Category\", operator as \"Operator\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_ah": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` ( (sourcetype=\"sap:hana:audit\" (action_category IN (\"User Management\",\"User Creation\",\"User Deletion\",\"Permission Grant\",\"Permission Revoke\",\"Password Management\",\"Account Status Change\",\"Password Reset\") OR action_type IN (\"CREATE TABLE\",\"ALTER TABLE\",\"DROP TABLE\",\"CREATE VIEW\",\"ALTER VIEW\",\"DROP VIEW\",\"CREATE SCHEMA\",\"ALTER SCHEMA\",\"DROP SCHEMA\",\"CREATE FUNCTION\",\"ALTER FUNCTION\",\"DROP FUNCTION\",\"CREATE PROCEDURE\",\"ALTER PROCEDURE\",\"DROP PROCEDURE\",\"AUDIT POLICY\",\"CREATE AUDIT POLICY\",\"ALTER AUDIT POLICY\",\"DROP AUDIT POLICY\"))) OR (sourcetype=\"XmlWinEventLog\" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757)) OR ((sourcetype=\"linux_messages_syslog\" OR sourcetype=\"linux_secure\" OR sourcetype=\"syslog\") (\"COMMAND=\" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd)) ) | eval change_source = case(sourcetype=\"sap:hana:audit\", \"HANA\", sourcetype=\"XmlWinEventLog\", \"Windows\", 1=1, \"Linux\") | rex field=_raw \"sudo:\\s+(?<sudo_op>\\w+)\\s*:\" | rex field=_raw \"\\((?<paren_op>\\w+)\\)\" | eval operator = case(sourcetype=\"sap:hana:audit\", \"HANA:\" . executing_user, sourcetype=\"XmlWinEventLog\", \"Windows:\" . coalesce(SubjectUserName, user, \"unknown\"), 1=1, \"Linux:\" . coalesce(sudo_op, paren_op, os_user, \"unknown\")) | eval category = case(sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Grant\", \"Permission Grant\", sourcetype=\"sap:hana:audit\" AND action_category=\"Permission Revoke\", \"Permission Revoke\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"User Creation\",\"User Deletion\",\"User Management\"), \"User Management\", sourcetype=\"sap:hana:audit\" AND action_category IN (\"Password Management\",\"Password Reset\"), \"Password Change\", sourcetype=\"sap:hana:audit\" AND action_category=\"Account Status Change\", \"Account Status\", sourcetype=\"sap:hana:audit\", \"DDL / Config\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4720,4722,4725,4726,4738,4781), \"User Management\", sourcetype=\"XmlWinEventLog\" AND EventCode=4724, \"Password Change\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4728,4729,4732,4733,4756,4757), \"Group Membership\", sourcetype=\"XmlWinEventLog\" AND EventCode IN (4740,4767), \"Account Status\", match(_raw, \"(?i)passwd\\b\"), \"Password Change\", match(_raw, \"(?i)(useradd|usermod|userdel)\"), \"User Management\", match(_raw, \"(?i)(groupadd|groupmod|groupdel)\"), \"Group Membership\", match(_raw, \"COMMAND=\"), \"Sudo Command\", 1=1, \"Other\") | eval hr = tonumber(strftime(_time, \"%H\")) | eval dw = strftime(_time, \"%A\") | eval is_after_hours = case(sourcetype=\"sap:hana:audit\", if(is_business_hours=\"false\" OR is_weekend=\"true\", 1, 0), 1=1, if(hr < 7 OR hr > 19 OR match(dw, \"(?i)(saturday|sunday)\"), 1, 0)) | where is_after_hours=1 | eval Time = strftime(_time, \"%Y-%m-%d %H:%M:%S\") | eval Target = case(sourcetype=\"sap:hana:audit\", target_user, sourcetype=\"XmlWinEventLog\", TargetUserName, 1=1, \"-\") | eval Action = case(sourcetype=\"sap:hana:audit\", action_type, sourcetype=\"XmlWinEventLog\", \"EventCode \" . EventCode, 1=1, substr(_raw, 1, 120)) | eval Day = strftime(_time, \"%a %H:%M\") | sort -_time | head 25 | table Time, Day, change_source, category, operator, Target, Action | rename change_source as \"Source\", category as \"Category\", operator as \"Operator\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    }
+  },
+  "layout": {
+    "globalInputs": [
+      "input_global_trp",
+      "input_nav_dropdown"
+    ],
+    "layoutDefinitions": {
+      "layout_1": {
+        "options": {
+          "backgroundColor": "#0d1117",
+          "height": 3089,
+          "width": 1920,
+          "display": "fit-to-width"
+        },
+        "structure": [
+          {
+            "item": "viz_nav_go",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 10,
+              "w": 120,
+              "h": 25
+            }
+          },
+          {
+            "item": "viz_rect_kpi_total",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_total",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_user",
+            "type": "block",
+            "position": {
+              "x": 328,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_user",
+            "type": "block",
+            "position": {
+              "x": 333,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_perm",
+            "type": "block",
+            "position": {
+              "x": 646,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_perm",
+            "type": "block",
+            "position": {
+              "x": 651,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_pw",
+            "type": "block",
+            "position": {
+              "x": 964,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_pw",
+            "type": "block",
+            "position": {
+              "x": 969,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_ah",
+            "type": "block",
+            "position": {
+              "x": 1282,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_ah",
+            "type": "block",
+            "position": {
+              "x": 1287,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_ops",
+            "type": "block",
+            "position": {
+              "x": 1600,
+              "y": 45,
+              "w": 310,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_ops",
+            "type": "block",
+            "position": {
+              "x": 1605,
+              "y": 50,
+              "w": 300,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_activity",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 197,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_activity",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 202,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_category",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 609,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_category",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 614,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_operators",
+            "type": "block",
+            "position": {
+              "x": 966,
+              "y": 609,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_operators",
+            "type": "block",
+            "position": {
+              "x": 971,
+              "y": 614,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_hana",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1021,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_hana",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1026,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_windows",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1433,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_windows",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1438,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_linux",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1845,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_linux",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1850,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_priv",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 2257,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_priv",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 2262,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_ah",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 2669,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_ah",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 2674,
+              "w": 1890,
+              "h": 390
+            }
+          }
+        ],
+        "type": "absolute"
+      }
+    },
+    "options": {},
+    "tabs": {
+      "items": [
+        {
+          "label": "New tab",
+          "layoutId": "layout_1"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "dataSources": {}
+  }
+}]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

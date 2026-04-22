@@ -39,7 +39,35 @@ Below are the high level steps for this setup process listed in the order they s
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Deploy CloudFormation Template
+### :material-circle-box:{ .taiconcolor } 1. Obtain ARNs from SAP ECS Account
+
+Before you can deploy the CloudFormation template in your **_Secondary account_**, you need to obtain the AWS <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html" target="_blank">ARN</a> for two resources that reside in your **_SAP ECS account_**:
+
+- The **S3 Bucket** that stores your LogServ logs
+- The **SQS Queue** that receives notifications when new logs are added to the S3 Bucket
+
+You will also need to note the **AWS Region** where these resources are located, because the CloudFormation template in the next section must be deployed into that same region in your **_Secondary account_**.
+
+??? tip "What does an ARN look like?"
+    AWS Amazon Resource Names (ARNs) follow a predictable format. Examples:
+
+    - S3 Bucket ARN: `arn:aws:s3:::sap-hec-clz-ap-south-1-hec53-xsd`
+    - SQS Queue ARN: `arn:aws:sqs:ap-south-1:121212121212:sap-hec-clz-ap-south-1-hec53-xsd-logserv`
+
+**How to obtain the ARNs:**
+
+1.<b style="color: #ff9100">a</b> If you do not have console access to your **_SAP ECS account_**, contact SAP LogServ Support to obtain the ARN for the S3 Bucket, the ARN for the SQS Queue, and the AWS Region where these resources reside.
+
+1.<b style="color: #ff9100">b</b> If you **do** have console access to your **_SAP ECS account_**, obtain the ARNs yourself:
+
+    - For the **S3 Bucket**: navigate to the S3 console, find the bucket used for LogServ logs, click on the bucket name, and copy the ARN from the **_Properties_** tab.
+    - For the **SQS Queue**: navigate to the SQS console, find the queue that receives S3 notifications, click on the queue name, and copy the ARN from the **_Details_** section.
+
+1.<b style="color: #ff9100">c</b> Save both ARNs and the AWS Region in a secure location — you will reference them during the next section (Deploy CloudFormation Template) and again when configuring the SQS-Based S3 Input.
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } 2. Deploy CloudFormation Template
 
 :material-lightning-bolt:{ .taiconcolor } Before you deploy the CloudFormation template, take note of the AWS Region in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located as you will need to deploy the CloudFormation template provided in that same region in your **_Secondary account_**.
 
@@ -51,47 +79,48 @@ Below are the high level steps for this setup process listed in the order they s
     - An IAM Role named **_splunk-logserv-ta-role_**
     - An Inline IAM Policy on the IAM User to assume the IAM Role created above
 
-1. Navigate to the CloudFormation console (ensure the region you are in matches the region in your **_SAP ECS account_**)
-2. Click on the **_Create stack_** button and select **_With new resources (standard)_**
+2.<b style="color: #ff9100">a</b> Navigate to the CloudFormation console (ensure the region you are in matches the region in your **_SAP ECS account_**)
+
+2.<b style="color: #ff9100">b</b> Click on the **_Create stack_** button and select **_With new resources (standard)_**
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-00.png "Create Stack")
 
-3. Upload the AWS <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-connect.yaml" target="_blank">CloudFormation Template file provided</a> for this remote S3 connect deployment approach, then click the **_Next_** button
+2.<b style="color: #ff9100">c</b> Upload the AWS <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-connect.yaml" target="_blank">CloudFormation Template file provided</a> for this remote S3 connect deployment approach, then click the **_Next_** button
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-connect-03.png "Upload Template File")
 
-4. Enter a name for the CloudFormation Stack - **_splunk-logserv-remote-s3-connect_**
+2.<b style="color: #ff9100">d</b> Enter a name for the CloudFormation Stack - **_splunk-logserv-remote-s3-connect_**
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-connect-04.png "Stack Name")
 
-5. Enter just the name (not the ARN) of the S3 Bucket in your **_SAP ECS account_** in the **_CrossAccountS3Bucket_** parameter
+2.<b style="color: #ff9100">e</b> Enter just the name (not the ARN) of the S3 Bucket in your **_SAP ECS account_** in the **_CrossAccountS3Bucket_** parameter
    - If your ARN looks like this *arn:aws:s3:::sap-hec-clz-ap-south-1-hec53-xsd* then just use the name like this *ap-hec-clz-ap-south-1-hec53-xsd*
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-connect-05.png "CrossAccountS3Bucket Parameter")
 
-6. Enter the complete ARN of the SQS Queue in your **_SAP ECS account_** in the **_CrossAccountSQSQueueArn_** parameter
+2.<b style="color: #ff9100">f</b> Enter the complete ARN of the SQS Queue in your **_SAP ECS account_** in the **_CrossAccountSQSQueueArn_** parameter
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-connect-06.png "CrossAccountSQSQueueArn Parameter")
 
-7. Choose and enter a name for the IAM User to be created in your **_Secondary account_** in the **NewIAMUserName** parameter, then click on the **_Next_** button
+2.<b style="color: #ff9100">g</b> Choose and enter a name for the IAM User to be created in your **_Secondary account_** in the **NewIAMUserName** parameter, then click on the **_Next_** button
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-connect-07.png "NewIAMUserName Parameter")
 
-8. Scroll down to the bottom of the page and check the **_I acknowledge that AWS CloudFormation might create IAM resources with custom names_** checkbox, then click on the **_Next_** button
+2.<b style="color: #ff9100">h</b> Scroll down to the bottom of the page and check the **_I acknowledge that AWS CloudFormation might create IAM resources with custom names_** checkbox, then click on the **_Next_** button
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-connect-08.png "Check Acknowledgement")
 
-9. Scroll down to the bottom of the page and click on the **_Submit_** button
+2.<b style="color: #ff9100">i</b> Scroll down to the bottom of the page and click on the **_Submit_** button
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-connect-09.png "Submit Template")
 
-10. Ensure the deployment of the CloudFormation template completes successfully
+2.<b style="color: #ff9100">j</b> Ensure the deployment of the CloudFormation template completes successfully
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-copy-14.png "Deployment Success")
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Contact SAP LogServ Support
+### :material-circle-box:{ .taiconcolor } 3. Contact SAP LogServ Support
 
 Once the deployment of the CloudFormation templates completes successfully, you will need to provide SAP LogServ Support with the ARN of the IAM Role named **_splunk-logserv-ta-role_** that was created by the template.
 
@@ -106,55 +135,55 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Create Access Key for IAM User
+### :material-circle-box:{ .taiconcolor } 4. Create Access Key for IAM User
 
-1. Navigate to the IAM console in your **_Secondary account_** and search for the IAM User name you used when deploying the CloudFormation template. Click on the name of the IAM User to see the user details.
+4.<b style="color: #ff9100">a</b> Navigate to the IAM console in your **_Secondary account_** and search for the IAM User name you used when deploying the CloudFormation template. Click on the name of the IAM User to see the user details.
 ??? indented-note "Example"
     ![image](../../images/iam-user-access-key-01.png "Find IAM User")
 
-2. Click on the **_Security credentials_** tab in the middle of the screen. Scroll down and click on the **_Create access key_** button.
+4.<b style="color: #ff9100">b</b> Click on the **_Security credentials_** tab in the middle of the screen. Scroll down and click on the **_Create access key_** button.
 ??? indented-note "Example"
     ![image](../../images/iam-user-access-key-02.png "IAM User Security Credentials")
 
-3. Select the **_Local code_** use case, check the **_Confirmation_** checkbox and click on the **_Next_** button.
+4.<b style="color: #ff9100">c</b> Select the **_Local code_** use case, check the **_Confirmation_** checkbox and click on the **_Next_** button.
 ??? indented-note "Example"
     ![image](../../images/iam-user-access-key-03.png "Select Use Case")
 
-4. Enter a description tag value if desired and click on the **_Create access key_** button.
+4.<b style="color: #ff9100">d</b> Enter a description tag value if desired and click on the **_Create access key_** button.
 ??? indented-note "Example"
     ![image](../../images/iam-user-access-key-04.png "Create Access Key")
 
-5. Copy the values for both the **_Access key_** and the **_Secret access key_** and save them in a secure place as you will need them in the upcoming steps. Now click on the **_Done_** button.
+4.<b style="color: #ff9100">e</b> Copy the values for both the **_Access key_** and the **_Secret access key_** and save them in a secure place as you will need them in the upcoming steps. Now click on the **_Done_** button.
 ??? indented-note "Example"
     ![image](../../images/iam-user-access-key-05.png "Retrieve Access Key")
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Configure Secondary Account (AWS Add-on)
+### :material-circle-box:{ .taiconcolor } 5. Configure Secondary Account (AWS Add-on)
 
 :material-lightning-bolt:{ .taiconcolor } Please ensure the user you log in with in your Splunk instance has the appropriate permissions to perform all the steps outlined below.
 
-1. Login to your Splunk console then find and open the **_Splunk Add-on for AWS_** App
+5.<b style="color: #ff9100">a</b> Login to your Splunk console then find and open the **_Splunk Add-on for AWS_** App
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-acct-01.png "Open AWS Add-on")
 
-2. Click on the **_Configuration_** tab, then click on the **_Account_** tab, then click on the **_Add_** button
+5.<b style="color: #ff9100">b</b> Click on the **_Configuration_** tab, then click on the **_Account_** tab, then click on the **_Add_** button
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-acct-02.png "Account Navigation")
 
-3. Choose and enter a descriptive name for the account in the **_Name_** field. Enter the Access Key and the Secret Key you created for the IAM User in the respective fields. Leave the Region Category set to **_Global_**. Click on the **_Add_** button.
+5.<b style="color: #ff9100">c</b> Choose and enter a descriptive name for the account in the **_Name_** field. Enter the Access Key and the Secret Key you created for the IAM User in the respective fields. Leave the Region Category set to **_Global_**. Click on the **_Add_** button.
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-acct-03.png "Add Account")
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Configure IAM Role (AWS Add-on)
+### :material-circle-box:{ .taiconcolor } 6. Configure IAM Role (AWS Add-on)
 
-1. Click on the **_IAM Role_** tab to the right of the Account tab, then click on the **_Add_** button
+6.<b style="color: #ff9100">a</b> Click on the **_IAM Role_** tab to the right of the Account tab, then click on the **_Add_** button
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-role-01.png "Role Navigation")
 
-2. Choose and enter a descriptive name for the role in the **_Name_** field. Enter the IAM Role ARN in the **_IAM Role ARN_** field, then click the **_Add_** button. The ARN for the IAM Role should look like the one below but with your 12-digit AWS account Id of your **_Secondary account_**.
+6.<b style="color: #ff9100">b</b> Choose and enter a descriptive name for the role in the **_Name_** field. Enter the IAM Role ARN in the **_IAM Role ARN_** field, then click the **_Add_** button. The ARN for the IAM Role should look like the one below but with your 12-digit AWS account Id of your **_Secondary account_**.
 
     - arn:aws:iam::**_secondary-account-id_**:role/splunk-logserv-ta-role
 
@@ -164,13 +193,13 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Configure SQS-Based S3 Input (AWS Add-on)
+### :material-circle-box:{ .taiconcolor } 7. Configure SQS-Based S3 Input (AWS Add-on)
 
-1. Click on the **_Inputs_** tab. Click on the **_Create New Input_** button. Select the **_Custom Data Type_** option at the bottom of the drop-down, then select the **_SQS-Based S3 (Recommended)_** option.
+7.<b style="color: #ff9100">a</b> Click on the **_Inputs_** tab. Click on the **_Create New Input_** button. Select the **_Custom Data Type_** option at the bottom of the drop-down, then select the **_SQS-Based S3 (Recommended)_** option.
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-01.png "Navigate Input")
 
-2. Fill out the first three fields in the SQS-Based S3 Input (**_Name_**, **_AWS Account_**, **_Assume Role_**)
+7.<b style="color: #ff9100">b</b> Fill out the first three fields in the SQS-Based S3 Input (**_Name_**, **_AWS Account_**, **_Assume Role_**)
 
     - Choose and enter a descriptive name for the input
     - Select the AWS Account you configured previously
@@ -179,7 +208,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-02.png "Input Fields")
 
-3. Fill out the next three fields in the SQS-Based S3 Input (**_Force using DLQ_**, **_AWS Region_**, **_Use Private Endpoints_**)
+7.<b style="color: #ff9100">c</b> Fill out the next three fields in the SQS-Based S3 Input (**_Force using DLQ_**, **_AWS Region_**, **_Use Private Endpoints_**)
 
     - Leave the **_Force using DLQ (Recommended)_** checkbox **__checked__**
     - Select the **_AWS Region_** where you deployed the CloudFormation template previously
@@ -188,7 +217,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-03.png "Input Fields")
 
-4. Fill out the next three fields in the SQS-Based S3 Input (**_SQS Queue Name_**, **_SQS Batch Size_**, **_S3 File Decoder_**)
+7.<b style="color: #ff9100">d</b> Fill out the next three fields in the SQS-Based S3 Input (**_SQS Queue Name_**, **_SQS Batch Size_**, **_S3 File Decoder_**)
 
     - Enter the **__URL__** of the SQS Queue in your **_SAP ECS account_**, **__not__** the ARN or just the name 
         - If the ARN for your SQS Queue in your **_SAP ECS account_** looks like this:
@@ -201,7 +230,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-04-s3-connect.png "Input Fields")
 
-5. Fill out the next three fields in the SQS-Based S3 Input (**_Signature Validate All Events_**, **_Source Type_**, **_Index_**)
+7.<b style="color: #ff9100">e</b> Fill out the next three fields in the SQS-Based S3 Input (**_Signature Validate All Events_**, **_Source Type_**, **_Index_**)
 
     - **__Uncheck__** the **_Signature Validate All Events_** checkbox
     - Enter the value of **_sap_logserv_logs_** in the **_Source Type_** field
@@ -210,3 +239,48 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-05.png "Input Fields")
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } 8. Confirm LogServ Logs are Being Ingested
+
+After completing all the previous steps, verify that LogServ logs are successfully being ingested into Splunk.
+
+:material-lightning-bolt:{ .taiconcolor } The first events typically appear within 5-10 minutes of completing the SQS-Based S3 Input configuration. The input polls the SQS Queue at the configured interval (default 300 seconds), so allow a short lag before the first events arrive.
+
+8.<b style="color: #ff9100">a</b> Log in to your Splunk console and open the **_Search & Reporting_** app (or the SAP LogServ App if you have installed it)
+
+8.<b style="color: #ff9100">b</b> Run a basic search against the index you configured in the SQS-Based S3 Input to confirm events are flowing:
+
+        index=<your_index_name> | stats count by sourcetype
+
+    If you are using the SAP LogServ App, you can use the provided index macro:
+
+        `sap_logserv_idx_macro` | stats count by sourcetype
+
+8.<b style="color: #ff9100">c</b> You should see events from the LogServ sourcetypes your SAP LogServ subscription is forwarding. Depending on the log types enabled, expected sourcetypes may include (but are not limited to):
+
+    - `linux_messages_syslog`, `linux_secure`, `syslog` -- Linux OS events
+    - `isc:bind:query` -- DNS query events
+    - `squid:access` -- Proxy events
+    - `XmlWinEventLog` -- Windows events
+    - `sap:hana:audit`, `sap:hana:tracelogs` -- HANA database events
+    - `sap:abap:*` -- ABAP application events
+    - `sap:webdispatcher:access` -- Web Dispatcher events
+    - `sap:scc:audit`, `sap:scc:http_access` -- Cloud Connector events
+
+8.<b style="color: #ff9100">d</b> Confirm events are arriving with recent timestamps:
+
+        index=<your_index_name> earliest=-1h | stats count by sourcetype, host
+
+    You should see recent events from multiple hosts.
+
+8.<b style="color: #ff9100">e</b> If no events appear after 15-20 minutes, troubleshoot as follows:
+
+    - **SQS Queue has no messages** -- Verify the SAP LogServ Support team has applied the updated access policies (from Section 3) to the SQS Queue and S3 Bucket in your **_SAP ECS account_**. Without those policies, your **_Secondary account_** cannot receive SQS notifications or read from the S3 Bucket.
+    - **Authentication or permission errors** -- In the Splunk Add-on for AWS, check the logs for errors: run `index=_internal source=*aws* log_level IN (ERROR,WARN) earliest=-1h | head 50`. Common causes are a mis-copied Access Key/Secret Key (Section 4), an incorrect IAM Role ARN (Section 6), or the IAM Role not yet propagated through AWS (wait 5 minutes after initial setup).
+    - **SQS URL format** -- Double-check the **_SQS Queue Name_** field in the SQS-Based S3 Input (Section 7) is the full URL (`https://sqs.<region>.amazonaws.com/<account-id>/<queue-name>`), not the ARN or bare queue name.
+    - **Wrong AWS Region** -- The CloudFormation template (Section 2) and the SQS-Based S3 Input (Section 7) must both be in the same AWS Region as the SQS Queue and S3 Bucket in your **_SAP ECS account_**.
+
+??? tip "Where to go next"
+    Once you've confirmed ingestion is working, explore the dashboards in the [LogServ UI App](../logserv-app/dashboards/index.md) to see your LogServ data in action. The default landing page is the [Environment Health](../logserv-app/dashboards/environment-health.md) dashboard, which provides a cross-cutting view of your entire SAP landscape.

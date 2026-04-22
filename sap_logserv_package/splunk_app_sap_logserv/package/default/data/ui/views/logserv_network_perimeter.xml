@@ -1,0 +1,1099 @@
+
+<dashboard version="2" theme="dark">
+    <label>Network Perimeter</label>
+    <description>Unified network-boundary view — firewall drops (inbound rejections), proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation</description>
+    <definition><![CDATA[{
+  "title": "Network Perimeter",
+  "description": "Unified network-boundary view \u2014 firewall drops (inbound rejections), proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation",
+  "inputs": {
+    "input_global_trp": {
+      "options": {
+        "defaultValue": "-30d@d,now",
+        "token": "global_time"
+      },
+      "title": "Global Time Range",
+      "type": "input.timerange"
+    },
+    "input_nav_dropdown": {
+      "type": "input.dropdown",
+      "title": "Navigate to Dashboard",
+      "options": {
+        "items": [
+          {
+            "label": "Overview",
+            "value": "logserv_overview"
+          },
+          {
+            "label": "Environment Health",
+            "value": "logserv_environment_health"
+          },
+          {
+            "label": "ABAP Security",
+            "value": "logserv_abap_security"
+          },
+          {
+            "label": "ABAP Operations",
+            "value": "logserv_abap_operations"
+          },
+          {
+            "label": "Work Process Performance",
+            "value": "logserv_work_process_performance"
+          },
+          {
+            "label": "HANA Audit",
+            "value": "logserv_hana_audit"
+          },
+          {
+            "label": "HANA Trace",
+            "value": "logserv_hana_trace"
+          },
+          {
+            "label": "SAP Services",
+            "value": "logserv_sap_services"
+          },
+          {
+            "label": "SAP Router",
+            "value": "logserv_sap_router"
+          },
+          {
+            "label": "Cloud Connector",
+            "value": "logserv_cloud_connector"
+          },
+          {
+            "label": "Web Dispatcher",
+            "value": "logserv_web_dispatcher"
+          },
+          {
+            "label": "Web and API Performance",
+            "value": "logserv_web_api_performance"
+          },
+          {
+            "label": "Cross-Stack Authentication",
+            "value": "logserv_cross_stack_authentication"
+          },
+          {
+            "label": "Change & Configuration Activity",
+            "value": "logserv_change_config"
+          },
+          {
+            "label": "DNS Analytics",
+            "value": "logserv_dns_analytics"
+          },
+          {
+            "label": "Linux",
+            "value": "logserv_linux"
+          },
+          {
+            "label": "Windows",
+            "value": "logserv_windows"
+          },
+          {
+            "label": "Proxy",
+            "value": "logserv_proxy"
+          },
+          {
+            "label": "Host Details",
+            "value": "logserv_host_details"
+          }
+        ],
+        "token": "nav_target"
+      }
+    }
+  },
+  "visualizations": {
+    "viz_rect_kpi_fw": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_proxy": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_dns": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_beacon": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_denied": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_kpi_bw": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_activity": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_blocked_src": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_blocked_port": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_fw_proto": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_proxy_denied": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_out_domains": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_dns_type": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_queried": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_rect_suspicious": {
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_kpi_fw": {
+      "dataSources": {
+        "primary": "ds_kpi_fw"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Firewall Drops",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_proxy": {
+      "dataSources": {
+        "primary": "ds_kpi_proxy"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Proxy Requests",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_dns": {
+      "dataSources": {
+        "primary": "ds_kpi_dns"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "DNS Queries",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_beacon": {
+      "dataSources": {
+        "primary": "ds_kpi_beacon"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Beaconing Domains",
+      "type": "splunk.singlevalue"
+    },
+    "viz_kpi_denied": {
+      "dataSources": {
+        "primary": "ds_kpi_denied"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Denied Requests",
+      "type": "splunk.singlevalue",
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20sourcetype%3D%22squid%3Aaccess%22%20(status%3D403%20OR%20vendor_action%3D%22TCP_DENIED%22)%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ]
+    },
+    "viz_kpi_bw": {
+      "dataSources": {
+        "primary": "ds_kpi_bw"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Outbound Bandwidth",
+      "type": "splunk.singlevalue"
+    },
+    "viz_activity": {
+      "dataSources": {
+        "primary": "ds_activity"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "bottom",
+        "seriesColorsByField": {
+          "Firewall Drops": "#dc4e41",
+          "Proxy Requests": "#00d4b4",
+          "DNS Queries": "#0877a6"
+        },
+        "yAxisScale": "log",
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Perimeter Activity Over Time (log scale)",
+      "type": "splunk.line"
+    },
+    "viz_blocked_src": {
+      "dataSources": {
+        "primary": "ds_blocked_src"
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20sourcetype%3D%22linux_secure%22%20%22SRC%3D$row.Source IP.value$%22%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 20,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Top Blocked Source IPs",
+      "type": "splunk.table"
+    },
+    "viz_blocked_port": {
+      "dataSources": {
+        "primary": "ds_blocked_port"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 20,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Top Blocked Destination Ports",
+      "type": "splunk.table"
+    },
+    "viz_fw_proto": {
+      "dataSources": {
+        "primary": "ds_fw_proto"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "bottom",
+        "seriesColorsByField": {
+          "TCP": "#dc4e41",
+          "UDP": "#f4a535",
+          "ICMP": "#9c6aff",
+          "2": "#7ee8fa",
+          "17": "#f4a535",
+          "6": "#dc4e41",
+          "1": "#9c6aff"
+        },
+        "stackMode": "stacked",
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Firewall Drops by Protocol",
+      "type": "splunk.column"
+    },
+    "viz_proxy_denied": {
+      "dataSources": {
+        "primary": "ds_proxy_denied"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "dataValuesDisplay": "off",
+        "legendDisplay": "off",
+        "seriesColors": [
+          "#dc4e41"
+        ],
+        "xAxisLabelVisibility": "auto",
+        "xAxisTitleVisibility": "hide",
+        "yAxisLabelVisibility": "auto",
+        "yAxisTitleVisibility": "hide"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Proxy Denied Traffic Over Time",
+      "type": "splunk.area"
+    },
+    "viz_out_domains": {
+      "dataSources": {
+        "primary": "ds_out_domains"
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20sourcetype%3D%22squid%3Aaccess%22%20url_domain%3D%22$row.Domain.value$%22%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 20,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Top Outbound Domains by Volume & Bytes",
+      "type": "splunk.table"
+    },
+    "viz_dns_type": {
+      "dataSources": {
+        "primary": "ds_dns_type"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "innerRadius": 0.6,
+        "legendDisplay": "right",
+        "legendTruncation": "ellipsisEnd",
+        "seriesColors": [
+          "#0877a6",
+          "#00d4b4",
+          "#7ee8fa",
+          "#f4a535",
+          "#dc4e41",
+          "#9c6aff",
+          "#ffcc00"
+        ]
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "DNS Query Type Distribution",
+      "type": "splunk.pie"
+    },
+    "viz_queried": {
+      "dataSources": {
+        "primary": "ds_queried"
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20tag%3Ddns%20message_type%3D%22Query%22%20query%3D%22$row.Domain.value$%22%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 30,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Top Queried Domains",
+      "type": "splunk.table"
+    },
+    "viz_suspicious": {
+      "dataSources": {
+        "primary": "ds_suspicious"
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "newTab": true,
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20(sourcetype%3D%22isc%3Abind%3Aquery%22%20OR%20sourcetype%3D%22squid%3Aaccess%22)%20(src%3D%22$row.Host.value$%22%20OR%20src_ip%3D%22$row.Host.value$%22)%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$"
+          }
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "count": 20,
+        "dataOverlayMode": "none",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed"
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Suspicious Activity Indicator (Beaconing DNS + Denied Proxy, by Host)",
+      "type": "splunk.table"
+    },
+    "viz_nav_go": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_nav_go"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$",
+            "newTab": false
+          }
+        }
+      ]
+    }
+  },
+  "dataSources": {
+    "ds_kpi_fw": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"linux_secure\" | rex field=_raw \"(?<fw_action>IN_DROP|IN_ACCEPT)\" | where fw_action=\"IN_DROP\" | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_proxy": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"squid:access\" | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_dns": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` tag=dns message_type=\"Query\" | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_beacon": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` tag=dns message_type=\"Query\" | bucket _time span=1d as day | fields day, _time, query | streamstats current=f last(_time) as last_time by query, day | eval gap=last_time - _time | stats count, avg(gap) AS avg_gap, var(gap) AS var_gap BY query, day | where var_gap < 60 AND count > 2 AND avg_gap > 1 | stats dc(query) as daily by day | rename day as _time | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_denied": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"squid:access\" (status=403 OR vendor_action=\"TCP_DENIED\") | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_kpi_bw": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"squid:access\" bytes_out=* | timechart span=1d sum(bytes_out) as bytes_daily | eval daily = round(bytes_daily/1048576, 2) | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0, bytes_daily=0 | fields _time daily bytes_daily] | eventstats sum(bytes_daily) as total_bytes | eval total = case(total_bytes >= 1073741824, tostring(round(total_bytes/1073741824, 2)) . \" GB\", total_bytes >= 1048576, tostring(round(total_bytes/1048576, 1)) . \" MB\", total_bytes >= 1024, tostring(round(total_bytes/1024, 0)) . \" KB\", 1=1, tostring(total_bytes) . \" B\")",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_activity": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` (sourcetype=\"linux_secure\" OR sourcetype=\"squid:access\" OR (tag=dns message_type=\"Query\")) | eval source_type = case(sourcetype=\"linux_secure\" AND match(_raw, \"IN_DROP\"), \"Firewall Drops\", sourcetype=\"squid:access\", \"Proxy Requests\", sourcetype=\"isc:bind:query\", \"DNS Queries\", 1=1, \"other\") | where source_type != \"other\" | timechart span=1d count by source_type",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_blocked_src": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"linux_secure\" | rex field=_raw \"SRC=(?<fw_src>[^ ]+)\" | rex field=_raw \"DST=(?<fw_dst>[^ ]+)\" | rex field=_raw \"PROTO=(?<fw_proto>[^ ]+)\" | where isnotnull(fw_src) | stats count as Drops, dc(fw_dst) as \"Unique Targets\", values(fw_proto) as Protocols by fw_src | sort -Drops | head 20 | rename fw_src as \"Source IP\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_blocked_port": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"linux_secure\" | rex field=_raw \"DPT=(?<fw_dpt>[^ ]+)\" | rex field=_raw \"PROTO=(?<fw_proto>[^ ]+)\" | where isnotnull(fw_dpt) | stats count as Drops, dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops | head 20 | rename fw_dpt as \"Dest Port\", fw_proto as Protocol",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_fw_proto": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"linux_secure\" | rex field=_raw \"(?<fw_action>IN_DROP|IN_ACCEPT)\" | where fw_action=\"IN_DROP\" | rex field=_raw \"PROTO=(?<fw_proto>[^ ]+)\" | where isnotnull(fw_proto) | eval proto_name = case(fw_proto=\"TCP\" OR fw_proto=\"6\", \"TCP\", fw_proto=\"UDP\" OR fw_proto=\"17\", \"UDP\", fw_proto=\"ICMP\" OR fw_proto=\"1\", \"ICMP\", 1=1, fw_proto) | timechart span=1d count by proto_name",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_proxy_denied": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"squid:access\" (status=403 OR vendor_action=\"TCP_DENIED\") | timechart span=1d count as \"Denied Requests\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_out_domains": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` sourcetype=\"squid:access\" url_domain=* bytes_out=* | stats count as Requests, sum(bytes_out) as bytes, dc(src_ip) as \"Unique Clients\" by url_domain | eval Bandwidth = case(bytes >= 1073741824, tostring(round(bytes/1073741824, 2)) . \" GB\", bytes >= 1048576, tostring(round(bytes/1048576, 1)) . \" MB\", bytes >= 1024, tostring(round(bytes/1024, 0)) . \" KB\", 1=1, tostring(bytes) . \" B\") | sort -bytes | head 20 | table url_domain, Requests, Bandwidth, \"Unique Clients\" | rename url_domain as \"Domain\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_dns_type": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` tag=dns message_type=\"Query\" query_type=* | stats count by query_type | sort -count | rename query_type as \"Query Type\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_queried": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` tag=dns message_type=\"Query\" query=* | stats count as Queries, dc(src) as \"Unique Clients\", sum(eval(if(query_type=\"TXT\", 1, 0))) as txt_count, sum(eval(if(query_type=\"MX\", 1, 0))) as mx_count by query | eval pct_txt = tostring(round(txt_count*100/Queries, 1)) . \"%\" | eval pct_mx = tostring(round(mx_count*100/Queries, 1)) . \"%\" | sort -Queries | head 30 | table query, Queries, \"Unique Clients\", pct_txt, pct_mx | rename query as \"Domain\", pct_txt as \"%TXT\", pct_mx as \"%MX\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_suspicious": {
+      "options": {
+        "query": "`sap_logserv_idx_macro` tag=dns message_type=\"Query\" src=* | fields _time, src, query | streamstats current=f last(_time) as last_time by query | eval gap=last_time - _time | stats count AS beacon_query_count, avg(gap) AS avg_gap, var(gap) AS var_gap BY query, src | where var_gap < 60 AND avg_gap > 0 AND beacon_query_count > 2 | stats dc(query) as beacon_domains, sum(beacon_query_count) as beacon_queries by src | append [ search `sap_logserv_idx_macro` sourcetype=\"squid:access\" (status=403 OR vendor_action=\"TCP_DENIED\") src_ip=* | stats count as denied_requests by src_ip | rename src_ip as src ] | stats max(beacon_domains) as beacon_domains, max(beacon_queries) as beacon_queries, max(denied_requests) as denied_requests by src | fillnull value=0 beacon_domains beacon_queries denied_requests | eval signal_score = (beacon_domains * 3) + denied_requests | where signal_score > 0 | sort -signal_score | head 20 | rename src as \"Host\", beacon_domains as \"Beaconing Domains\", beacon_queries as \"Beaconing Queries\", denied_requests as \"Denied Proxy Requests\", signal_score as \"Signal Score\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_nav_go": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [
+      "input_global_trp",
+      "input_nav_dropdown"
+    ],
+    "layoutDefinitions": {
+      "layout_1": {
+        "options": {
+          "backgroundColor": "#0d1117",
+          "height": 2727,
+          "width": 1920,
+          "display": "fit-to-width"
+        },
+        "structure": [
+          {
+            "item": "viz_nav_go",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 10,
+              "w": 120,
+              "h": 25
+            }
+          },
+          {
+            "item": "viz_rect_kpi_fw",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_fw",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_proxy",
+            "type": "block",
+            "position": {
+              "x": 328,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_proxy",
+            "type": "block",
+            "position": {
+              "x": 333,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_dns",
+            "type": "block",
+            "position": {
+              "x": 646,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_dns",
+            "type": "block",
+            "position": {
+              "x": 651,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_beacon",
+            "type": "block",
+            "position": {
+              "x": 964,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_beacon",
+            "type": "block",
+            "position": {
+              "x": 969,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_denied",
+            "type": "block",
+            "position": {
+              "x": 1282,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_denied",
+            "type": "block",
+            "position": {
+              "x": 1287,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_bw",
+            "type": "block",
+            "position": {
+              "x": 1600,
+              "y": 45,
+              "w": 310,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_bw",
+            "type": "block",
+            "position": {
+              "x": 1605,
+              "y": 50,
+              "w": 300,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_activity",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 197,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_activity",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 202,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_blocked_src",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 609,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_blocked_src",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 614,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_blocked_port",
+            "type": "block",
+            "position": {
+              "x": 966,
+              "y": 609,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_blocked_port",
+            "type": "block",
+            "position": {
+              "x": 971,
+              "y": 614,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_fw_proto",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1021,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_fw_proto",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1026,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_proxy_denied",
+            "type": "block",
+            "position": {
+              "x": 966,
+              "y": 1021,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_proxy_denied",
+            "type": "block",
+            "position": {
+              "x": 971,
+              "y": 1026,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_out_domains",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1433,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_out_domains",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1438,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_dns_type",
+            "type": "block",
+            "position": {
+              "x": 966,
+              "y": 1433,
+              "w": 944,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_dns_type",
+            "type": "block",
+            "position": {
+              "x": 971,
+              "y": 1438,
+              "w": 934,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_queried",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1845,
+              "w": 1900,
+              "h": 400
+            }
+          },
+          {
+            "item": "viz_queried",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1850,
+              "w": 1890,
+              "h": 390
+            }
+          },
+          {
+            "item": "viz_rect_suspicious",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 2257,
+              "w": 1900,
+              "h": 450
+            }
+          },
+          {
+            "item": "viz_suspicious",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 2262,
+              "w": 1890,
+              "h": 440
+            }
+          }
+        ],
+        "type": "absolute"
+      }
+    },
+    "options": {},
+    "tabs": {
+      "items": [
+        {
+          "label": "New tab",
+          "layoutId": "layout_1"
+        }
+      ]
+    }
+  },
+  "defaults": {
+    "dataSources": {}
+  }
+}]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

@@ -1,0 +1,765 @@
+
+<dashboard version="2" theme="dark">
+    <label>Data Pipeline Overview</label>
+    <description>End-to-end ingest health — total events, sourcetype summary, source-to-sourcetype mapping, and host activity</description>
+    <definition><![CDATA[{
+  "title": "Data Pipeline Overview",
+  "description": "End-to-end ingest health \u2014 total events, sourcetype summary, source-to-sourcetype mapping, and host activity",
+  "inputs": {
+    "input_xV9baORe": {
+      "options": {
+        "defaultValue": "-30d@d,now",
+        "token": "global_time"
+      },
+      "title": "Global Time Range",
+      "type": "input.timerange"
+    },
+    "input_nav_dropdown": {
+      "type": "input.dropdown",
+      "title": "Navigate to Dashboard",
+      "options": {
+        "items": [
+          {
+            "label": "Network Perimeter",
+            "value": "logserv_network_perimeter"
+          },
+          {
+            "label": "DNS Analytics",
+            "value": "logserv_dns_analytics"
+          },
+          {
+            "label": "HANA Audit",
+            "value": "logserv_hana_audit"
+          },
+          {
+            "label": "HANA Trace",
+            "value": "logserv_hana_trace"
+          },
+          {
+            "label": "Web Dispatcher",
+            "value": "logserv_web_dispatcher"
+          },
+          {
+            "label": "Web and API Performance",
+            "value": "logserv_web_api_performance"
+          },
+          {
+            "label": "Host Details",
+            "value": "logserv_host_details"
+          },
+          {
+            "label": "ABAP Security",
+            "value": "logserv_abap_security"
+          },
+          {
+            "label": "ABAP Operations",
+            "value": "logserv_abap_operations"
+          },
+          {
+            "label": "SAP Services",
+            "value": "logserv_sap_services"
+          },
+          {
+            "label": "Cloud Connector",
+            "value": "logserv_cloud_connector"
+          },
+          {
+            "label": "Linux",
+            "value": "logserv_linux"
+          },
+          {
+            "label": "Windows",
+            "value": "logserv_windows"
+          },
+          {
+            "label": "Proxy",
+            "value": "logserv_proxy"
+          },
+          {
+            "label": "Environment Health",
+            "value": "logserv_environment_health"
+          },
+          {
+            "label": "Cross-Stack Authentication",
+            "value": "logserv_cross_stack_authentication"
+          },
+          {
+            "label": "Change & Configuration Activity",
+            "value": "logserv_change_config"
+          },
+          {
+            "label": "SAP Router",
+            "value": "logserv_sap_router"
+          },
+          {
+            "label": "Work Process Performance",
+            "value": "logserv_work_process_performance"
+          }
+        ],
+        "token": "nav_target"
+      }
+    }
+  },
+  "defaults": {
+    "dataSources": {
+      "ds.search": {
+        "options": {
+          "queryParameters": {
+            "earliest": "$global_time.earliest$",
+            "latest": "$global_time.latest$"
+          }
+        }
+      }
+    }
+  },
+  "visualizations": {
+    "viz_7NM08jn4": {
+      "dataSources": {
+        "primary": "ds_qvNrhKle"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "nodeColor": "#0877a6",
+        "nodeHeight": 23,
+        "nodeSpacingX": 100,
+        "nodeSpacingY": 21,
+        "nodeWidth": 440,
+        "showValueCounts": false
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "title": "Source to sourcetype mapping",
+      "type": "splunk.linkgraph"
+    },
+    "viz_E6VoPgPK": {
+      "dataSources": {
+        "primary": "ds_mRjpSfGy"
+      },
+      "description": "",
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "title": "Active Hosts",
+      "type": "splunk.singlevalue"
+    },
+    "viz_RaSQZQg0": {
+      "dataSources": {
+        "primary": "ds_znDIWqYG"
+      },
+      "options": {
+        "backgroundColor": "transparent",
+        "xAxisTitleVisibility": "hide",
+        "yAxisScale": "log",
+        "yAxisTitleVisibility": "hide",
+        "dataValuesDisplay": "off"
+      },
+      "title": "Host Event Count",
+      "type": "splunk.line",
+      "showLastUpdated": false,
+      "showProgressBar": false
+    },
+    "viz_Rr0ozI8N": {
+      "options": {
+        "fillColor": "#141b2d",
+        "strokeColor": "#0877a6",
+        "rx": 3
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_TWx0q4MO": {
+      "options": {
+        "fillColor": "#141b2d",
+        "strokeColor": "#0877a6",
+        "rx": 3
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_YGJifJFJ": {
+      "dataSources": {
+        "primary": "ds_gn5P2213"
+      },
+      "description": "",
+      "eventHandlers": [
+        {
+          "type": "drilldown.linkToDashboard",
+          "options": {
+            "app": "splunk_app_sap_logserv",
+            "dashboard": "logserv_host_details",
+            "newTab": true,
+            "tokens": [
+              {
+                "token": "host_name",
+                "value": "row.Host.value"
+              }
+            ]
+          }
+        }
+      ],
+      "options": {
+        "backgroundColor": "transparent",
+        "headerVisibility": "fixed",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520"
+      },
+      "title": "Host Latest Activity",
+      "type": "splunk.table"
+    },
+    "viz_nraRnnPr": {
+      "options": {
+        "fillColor": "#141b2d",
+        "strokeColor": "#0877a6",
+        "rx": 3
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_pZLsO3n7": {
+      "options": {
+        "fillColor": "#141b2d",
+        "strokeColor": "#0877a6",
+        "rx": 3
+      },
+      "type": "splunk.rectangle"
+    },
+    "viz_nav_go": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_nav_go"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "/app/splunk_app_sap_logserv/$nav_target$?form.global_time.earliest=$global_time.earliest$&form.global_time.latest=$global_time.latest$",
+            "newTab": false
+          }
+        }
+      ]
+    },
+    "viz_sourcetype_summary": {
+      "type": "splunk.table",
+      "dataSources": {
+        "primary": "ds_sourcetype_summary"
+      },
+      "title": "Sourcetype Summary",
+      "options": {
+        "backgroundColor": "transparent",
+        "headerBackgroundColor": "#1e2a3d",
+        "rowBackgroundColorEven": "transparent",
+        "rowBackgroundColorOdd": "#0d1520",
+        "headerVisibility": "fixed",
+        "columnFormat": {
+          "Trend": {
+            "data": "> primary | seriesByName('Trend')",
+            "type": "sparkline"
+          }
+        }
+      },
+      "showLastUpdated": false,
+      "showProgressBar": false,
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "/app/search/search?q=%60sap_logserv_idx_macro%60%20sourcetype%3D%22$row.Sourcetype.value$%22&earliest=$global_time.earliest$&latest=$global_time.latest$",
+            "newTab": true
+          }
+        }
+      ]
+    },
+    "viz_rect_sourcetype_summary": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      }
+    },
+    "viz_kpi_total_events": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_kpi_total_events"
+      },
+      "title": "Total Events",
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      }
+    },
+    "viz_kpi_total_sourcetypes": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_kpi_total_sourcetypes"
+      },
+      "title": "Total Sourcetypes",
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      }
+    },
+    "viz_kpi_total_volume": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_kpi_total_volume"
+      },
+      "title": "Total Volume",
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#ffffff",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      }
+    },
+    "viz_kpi_total_errors": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_kpi_total_errors"
+      },
+      "title": "Ingest Errors",
+      "options": {
+        "majorValue": "> primary | seriesByName('total') | lastPoint()",
+        "sparklineValue": "> primary | seriesByName('daily')",
+        "backgroundColor": "transparent",
+        "labelColor": "#7b8ea8",
+        "labelFontSize": 13,
+        "majorColor": "#dc4e41",
+        "majorFontSize": 36,
+        "sparklineDisplay": "below",
+        "trendDisplay": "off"
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "/app/search/search?q=index%3D_internal%20sourcetype%3Dsplunkd%20log_level%3DERROR%20%28Splunk_TA_aws%20OR%20splunk_ta_sap_logserv%29%20%7C%20rex%20%22level%3D%28%3F%3Cpy_level%3E%5Cw%2B%29%22%20%7C%20where%20component%21%3D%22ExecProcessor%22%20OR%20py_level%3D%22ERROR%22%20%7C%20sort%20-_time&earliest=$global_time.earliest$&latest=$global_time.latest$",
+            "newTab": true
+          }
+        }
+      ]
+    },
+    "viz_rect_kpi_total_events": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      }
+    },
+    "viz_rect_kpi_total_sourcetypes": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      }
+    },
+    "viz_rect_kpi_total_volume": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      }
+    },
+    "viz_rect_kpi_total_errors": {
+      "type": "splunk.rectangle",
+      "options": {
+        "fillColor": "#141b2d",
+        "rx": 3,
+        "strokeColor": "#0877a6"
+      }
+    }
+  },
+  "dataSources": {
+    "ds_gn5P2213": {
+      "name": "host_latest_activity",
+      "options": {
+        "query": "`sap_logserv_idx_macro` \r\n| fields source, sourcetype, host, _time\r\n| dedup host, source, sourcetype\r\n| dedup host\r\n| fields host, _time\r\n| stats count by host, _time\r\n| eval _time = now() - _time \r\n| sort + _time\r\n| eval elapsed_time = case(_time < 60, _time.\" seconds ago\",\r\n_time < 3600, round(_time/60).\" minutes ago\",\r\n_time < 86400, round(_time/3600).\" hours ago\",\r\ntrue(), round(_time/86400).\" days ago\")\r\n| dedup host\r\n| table host, elapsed_time\r\n| rename host AS \"Host\", elapsed_time AS \"Latest Activity\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_mRjpSfGy": {
+      "name": "single_value_search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` | eventstats dc(host) as window_dc | timechart span=1d dc(host) as daily, max(window_dc) as total | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0, total=0 | fields _time daily total]",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_qvNrhKle": {
+      "name": "link_map_search",
+      "options": {
+        "enableSmartSources": true,
+        "query": "`sap_logserv_idx_macro` \r\n| fields source, sourcetype, host\r\n| dedup host, source, sourcetype\r\n| stats count by sourcetype source, host\r\n| fields - count",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_znDIWqYG": {
+      "name": "line_chart_host_events",
+      "options": {
+        "query": "`sap_logserv_idx_macro` \r\n| fields source, sourcetype, host\r\n| timechart span=1d limit=0 count by host",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      },
+      "type": "ds.search"
+    },
+    "ds_nav_go": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_sourcetype_summary": {
+      "type": "ds.search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` | eval _raw_bytes = if(isnotnull(_raw), len(_raw), 0) | eval is_error_event = case(status>=400 AND isnum(status), 1, severity=\"ERROR\" OR severity=\"error\" OR severity=\"ERR\" OR severity=\"FATAL\" OR severity=\"high\", 1, is_error=\"true\", 1, auth_result=\"failure\", 1, action=\"failure\", 1, log_level=\"ERROR\" OR log_level=\"FATAL\", 1, 1=1, 0) | eventstats count as _total | stats count as events, sparkline(count, 1h) as trend, max(_time) as last_seen_ts, min(_time) as first_seen_ts, dc(host) as hosts, dc(source) as sources, sum(eval(if(_time > relative_time(now(),\"-1h\"), 1, 0))) as events_1h, sum(is_error_event) as errors, sum(_raw_bytes) as bytes, first(_total) as total_events by sourcetype | eval pct = round(events*100/total_events, 1) . \"%\" | eval days_span = case((last_seen_ts - first_seen_ts) > 86400, (last_seen_ts - first_seen_ts)/86400, 1=1, 1) | eval avg_per_day = round(events / days_span, 0) | eval volume = case(bytes >= 1073741824, round(bytes/1073741824, 2) . \" GB\", bytes >= 1048576, round(bytes/1048576, 1) . \" MB\", bytes >= 1024, round(bytes/1024, 0) . \" KB\", 1=1, tostring(bytes) . \" B\") | eval last_seen = strftime(last_seen_ts, \"%Y-%m-%d %H:%M:%S\") | eval first_seen = strftime(first_seen_ts, \"%Y-%m-%d\") | eval lag_s = now() - last_seen_ts | eval lag = case(lag_s < 60, tostring(round(lag_s,0)) . \"s ago\", lag_s < 3600, tostring(round(lag_s/60,0)) . \"m ago\", lag_s < 86400, tostring(round(lag_s/3600,1)) . \"h ago\", 1=1, tostring(round(lag_s/86400,1)) . \"d ago\") | eval health_status = case(lag_s < 300, \"Fresh\", lag_s < 3600, \"Stale\", 1=1, \"Very Stale\") | sort -events | table sourcetype, health_status, trend, events, pct, avg_per_day, volume, errors, hosts, sources, events_1h, first_seen, last_seen, lag | rename sourcetype as \"Sourcetype\", health_status as \"Status\", trend as \"Trend\", events as \"Events\", pct as \"% of Total\", avg_per_day as \"Avg/Day\", volume as \"Volume\", errors as \"App Errors\", hosts as \"Hosts\", sources as \"Sources\", events_1h as \"Events (1h)\", first_seen as \"First Seen\", last_seen as \"Last Seen\", lag as \"Lag\"",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_kpi_total_events": {
+      "type": "ds.search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_kpi_total_sourcetypes": {
+      "type": "ds.search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` | eventstats dc(sourcetype) as window_dc | timechart span=1d dc(sourcetype) as daily, max(window_dc) as total | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0, total=0 | fields _time daily total]",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_kpi_total_volume": {
+      "type": "ds.search",
+      "options": {
+        "query": "`sap_logserv_idx_macro` | eval bytes = if(isnotnull(_raw), len(_raw), 0) | timechart span=1d sum(bytes) as bytes_daily | eventstats sum(bytes_daily) as total_bytes | eval daily = round(bytes_daily/1048576, 2) | eval total = case(total_bytes >= 1073741824, round(total_bytes/1073741824, 2) . \" GB\", total_bytes >= 1048576, round(total_bytes/1048576, 1) . \" MB\", total_bytes >= 1024, round(total_bytes/1024, 0) . \" KB\", 1=1, tostring(total_bytes) . \" B\")",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_kpi_total_errors": {
+      "type": "ds.search",
+      "options": {
+        "query": "index=_internal sourcetype=splunkd log_level=ERROR (Splunk_TA_aws OR splunk_ta_sap_logserv) | rex \"level=(?<py_level>\\w+)\" | where component!=\"ExecProcessor\" OR py_level=\"ERROR\" | timechart span=1d count as daily | appendpipe [stats count as _c | where _c=0 | eval _time=now(), daily=0 | fields _time daily] | eventstats sum(daily) as total",
+        "queryParameters": {
+          "earliest": "$global_time.earliest$",
+          "latest": "$global_time.latest$"
+        }
+      }
+    }
+  },
+  "layout": {
+    "globalInputs": [
+      "input_xV9baORe",
+      "input_nav_dropdown"
+    ],
+    "layoutDefinitions": {
+      "layout_1": {
+        "options": {
+          "display": "fit-to-width",
+          "height": 1591,
+          "width": 1600,
+          "backgroundColor": "#0d1117"
+        },
+        "structure": [
+          {
+            "item": "viz_nav_go",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 10,
+              "w": 120,
+              "h": 25
+            }
+          },
+          {
+            "item": "viz_rect_kpi_total_events",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_total_events",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_total_sourcetypes",
+            "type": "block",
+            "position": {
+              "x": 328,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_total_sourcetypes",
+            "type": "block",
+            "position": {
+              "x": 333,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_total_volume",
+            "type": "block",
+            "position": {
+              "x": 646,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_total_volume",
+            "type": "block",
+            "position": {
+              "x": 651,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_rect_kpi_total_errors",
+            "type": "block",
+            "position": {
+              "x": 964,
+              "y": 45,
+              "w": 306,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_kpi_total_errors",
+            "type": "block",
+            "position": {
+              "x": 969,
+              "y": 50,
+              "w": 296,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_nraRnnPr",
+            "type": "block",
+            "position": {
+              "x": 1282,
+              "y": 45,
+              "w": 308,
+              "h": 140
+            }
+          },
+          {
+            "item": "viz_E6VoPgPK",
+            "type": "block",
+            "position": {
+              "x": 1287,
+              "y": 50,
+              "w": 298,
+              "h": 130
+            }
+          },
+          {
+            "item": "viz_pZLsO3n7",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 197,
+              "w": 1580,
+              "h": 300
+            }
+          },
+          {
+            "item": "viz_RaSQZQg0",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 202,
+              "w": 1570,
+              "h": 290
+            }
+          },
+          {
+            "item": "viz_rect_sourcetype_summary",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 509,
+              "w": 1580,
+              "h": 600
+            }
+          },
+          {
+            "item": "viz_sourcetype_summary",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 514,
+              "w": 1570,
+              "h": 590
+            }
+          },
+          {
+            "item": "viz_Rr0ozI8N",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 1121,
+              "w": 1580,
+              "h": 450
+            }
+          },
+          {
+            "item": "viz_YGJifJFJ",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 1126,
+              "w": 1570,
+              "h": 440
+            }
+          }
+        ],
+        "type": "absolute"
+      },
+      "layout_2": {
+        "options": {
+          "display": "fit-to-width",
+          "width": 1600,
+          "height": 1100,
+          "backgroundColor": "#0d1117"
+        },
+        "structure": [
+          {
+            "item": "viz_nav_go",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 10,
+              "w": 120,
+              "h": 25
+            }
+          },
+          {
+            "item": "viz_TWx0q4MO",
+            "type": "block",
+            "position": {
+              "x": 10,
+              "y": 45,
+              "w": 1580,
+              "h": 1020
+            }
+          },
+          {
+            "item": "viz_7NM08jn4",
+            "type": "block",
+            "position": {
+              "x": 15,
+              "y": 50,
+              "w": 1570,
+              "h": 1010
+            }
+          }
+        ],
+        "type": "absolute"
+      }
+    },
+    "tabs": {
+      "items": [
+        {
+          "label": "Overview",
+          "layoutId": "layout_1"
+        },
+        {
+          "label": "Linked Graph",
+          "layoutId": "layout_2"
+        }
+      ]
+    }
+  }
+}]]></definition>
+    <meta type="hiddenElements"><![CDATA[
+{
+	"hideEdit": false,
+	"hideOpenInSearch": false,
+	"hideExport": false
+}
+    ]]></meta>
+</dashboard>

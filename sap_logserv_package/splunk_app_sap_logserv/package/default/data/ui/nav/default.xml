@@ -1,0 +1,31 @@
+<nav search_view="search">
+  <view name="logserv_environment_health" default="true" />
+  <collection label="Applications">
+    <view name="logserv_abap_security" />
+    <view name="logserv_abap_operations" />
+    <view name="logserv_work_process_performance" />
+    <view name="logserv_hana_audit" />
+    <view name="logserv_hana_trace" />
+  </collection>
+  <collection label="Integration">
+    <view name="logserv_sap_services" />
+    <view name="logserv_sap_router" />
+    <view name="logserv_cloud_connector" />
+    <view name="logserv_web_dispatcher" />
+    <view name="logserv_web_api_performance" />
+  </collection>
+  <collection label="Security">
+    <view name="logserv_network_perimeter" />
+    <view name="logserv_cross_stack_authentication" />
+    <view name="logserv_change_config" />
+  </collection>
+  <collection label="Platform">
+    <view name="logserv_overview" />
+    <view name="logserv_dns_analytics" />
+    <view name="logserv_linux" />
+    <view name="logserv_windows" />
+    <view name="logserv_proxy" />
+    <view name="logserv_host_details" />
+  </collection>
+  <view name="search" />
+</nav>

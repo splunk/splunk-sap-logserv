@@ -1,10 +1,13 @@
 # Prerequisites
 
-The Splunk TA for SAP LogServ depends on several additional Splunk Technical Add-ons. 
+### :material-circle-box:{ .taiconcolor } Splunk Platform Requirements
 
-### :material-circle-box:{ .taiconcolor } Primary Prerequisites
+- **Splunk Enterprise** 9.4.3 or later, or **Splunk Cloud Platform**
+- The LogServ App dashboards use Dashboard Studio v2 which requires Splunk 9.4.3+
 
-You need to first install these required Splunk Technical Add-ons from Splunk Web or through the Splunk Enterprise UI.
+### :material-circle-box:{ .taiconcolor } Required Splunk Add-ons
+
+The SAP LogServ packages depend on several additional Splunk Technical Add-ons for sourcetype definitions and CIM mapping. Install these from Splunkbase before proceeding:
 
 - <a href="https://splunkbase.splunk.com/app/833" target="_blank">Splunk Add-on for Unix and Linux</a> 
 - <a href="https://splunkbase.splunk.com/app/742" target="_blank"> Splunk Add-on for Microsoft Windows</a>
@@ -20,8 +23,11 @@ If you have SAP ECS running in Amazon Web Services (AWS) you need to install thi
 - <a href="https://splunkbase.splunk.com/app/1876" target="_blank">Splunk Add-on for Amazon Web Services (AWS) Download</a> 
 - <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/Installationandconfiguration/" target="_blank">Splunk Add-on for Amazon Web Services (AWS) Documentation</a>
 
-Addition configuration instructions for the Splunk Add-on for Amazon Web Services (AWS) are provided in the [Setup walkthroughs](../install-setup/setup-walkthroughs.md) after the prerequisite steps have been completed so just install for now. 
+Additional configuration instructions for the Splunk Add-on for Amazon Web Services (AWS) are provided in the [Setup walkthroughs](../install-setup/setup-walkthroughs.md) after the prerequisite steps have been completed so just install for now.
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 
-The instructions for next steps are provided here: [Install the Splunk TA for SAP LogServ](../install-setup/install-ta.md)
+Next steps:
+
+1. [Install the Data TA](../install-setup/install-ta.md)
+2. [Install the LogServ App](../logserv-app/installation.md)
