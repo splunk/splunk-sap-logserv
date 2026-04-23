@@ -37,4 +37,4 @@ For details on which package goes where, see [Architecture](content/getting-star
 
 <br>
 
-![Host Details](images/dashboard-host-details.png "Host Details Dashboard")
+![Host Details](images/dashboard-host-details-overview.png "Host Details Dashboard")

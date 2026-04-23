@@ -53,7 +53,7 @@ Use this page as an index — click any dashboard below to see its full purpose,
 | [Linux System & Security](platform.md#linux-system-security) | Linux OS events, SAP application activity, and firewall monitoring (with Top Drop Source surface) | `linux_messages_syslog`, `syslog`, `linux_secure` |
 | [Windows Events](platform.md#windows-events) | Windows operational health — event severity trends, top event codes, service state changes, PowerShell activity | `XmlWinEventLog` |
 | [Proxy Analytics](platform.md#proxy-analytics) | Squid proxy traffic, top domains by bandwidth, cache action distribution, client diversity | `squid:access` |
-| [Host Details](platform.md#host-details) | Per-host drill-down showing event volume and sourcetype breakdown | All sourcetypes (filtered by host) |
+| [Host Details](platform.md#host-details) | Per-host drill-down with Overview, Role Activity, and Sourcetype Mapping tabs; role-specific panels auto-hide for hosts without that data | All sourcetypes (filtered by host) |
 
 !!! tip "Searching LogServ data"
     All dashboards use the `sap_logserv_idx_macro` macro to query the LogServ index. You can use this same macro in your own searches: `` `sap_logserv_idx_macro` | stats count by sourcetype ``
