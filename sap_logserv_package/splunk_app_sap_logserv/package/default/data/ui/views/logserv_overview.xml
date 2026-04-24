@@ -4,7 +4,7 @@
     <description>End-to-end ingest health — total events, sourcetype summary, source-to-sourcetype mapping, and host activity</description>
     <definition><![CDATA[{
   "title": "Data Pipeline Overview",
-  "description": "End-to-end ingest health \u2014 total events, sourcetype summary, source-to-sourcetype mapping, and host activity",
+  "description": "End-to-end ingest health — total events, sourcetype summary, source-to-sourcetype mapping, and host activity",
   "inputs": {
     "input_xV9baORe": {
       "options": {
@@ -403,6 +403,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/platform/#data-pipeline-overview",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -508,6 +531,16 @@
         "queryParameters": {
           "earliest": "$global_time.earliest$",
           "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
         }
       }
     }
@@ -695,6 +728,16 @@
               "w": 1570,
               "h": 440
             }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1450,
+              "y": 10,
+              "w": 140,
+              "h": 25
+            }
           }
         ],
         "type": "absolute"
@@ -703,7 +746,7 @@
         "options": {
           "display": "fit-to-width",
           "width": 1600,
-          "height": 1100,
+          "height": 3260,
           "backgroundColor": "#0d1117"
         },
         "structure": [
@@ -724,7 +767,7 @@
               "x": 10,
               "y": 45,
               "w": 1580,
-              "h": 1020
+              "h": 3210
             }
           },
           {
@@ -734,7 +777,17 @@
               "x": 15,
               "y": 50,
               "w": 1570,
-              "h": 1010
+              "h": 3200
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1450,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

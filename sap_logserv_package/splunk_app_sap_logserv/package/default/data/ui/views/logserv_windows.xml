@@ -4,7 +4,7 @@
     <description>Windows operational health — event severity trends, top event codes, service state changes, and PowerShell activity</description>
     <definition><![CDATA[{
   "title": "Windows Events",
-  "description": "Windows operational health \u2014 event severity trends, top event codes, service state changes, and PowerShell activity",
+  "description": "Windows operational health — event severity trends, top event codes, service state changes, and PowerShell activity",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -346,6 +346,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/platform/#windows-events",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -401,6 +424,16 @@
       "type": "ds.search",
       "options": {
         "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
         "queryParameters": {
           "earliest": "-1m",
           "latest": "now"
@@ -590,6 +623,16 @@
               "y": 966,
               "w": 938,
               "h": 330
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

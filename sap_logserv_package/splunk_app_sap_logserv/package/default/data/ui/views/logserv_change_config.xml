@@ -4,7 +4,7 @@
     <description>Cross-stack audit trail — HANA user/role/privilege changes, Windows account and group modifications, Linux sudo and user-management activity, with compliance-focused privileged and after-hours views</description>
     <definition><![CDATA[{
   "title": "Change & Configuration Activity",
-  "description": "Cross-stack audit trail \u2014 HANA user/role/privilege changes, Windows account and group modifications, Linux sudo and user-management activity, with compliance-focused privileged and after-hours views",
+  "description": "Cross-stack audit trail — HANA user/role/privilege changes, Windows account and group modifications, Linux sudo and user-management activity, with compliance-focused privileged and after-hours views",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -397,7 +397,7 @@
       },
       "showLastUpdated": false,
       "showProgressBar": false,
-      "title": "HANA Audit \u2014 Change Events (Top 50)",
+      "title": "HANA Audit — Change Events (Top 50)",
       "type": "splunk.table"
     },
     "viz_rect_windows": {
@@ -423,7 +423,7 @@
       },
       "showLastUpdated": false,
       "showProgressBar": false,
-      "title": "Windows \u2014 Account & Group Modifications (Top 50)",
+      "title": "Windows — Account & Group Modifications (Top 50)",
       "type": "splunk.table"
     },
     "viz_rect_linux": {
@@ -449,7 +449,7 @@
       },
       "showLastUpdated": false,
       "showProgressBar": false,
-      "title": "Linux \u2014 Sudo & Command Activity (Top 50)",
+      "title": "Linux — Sudo & Command Activity (Top 50)",
       "type": "splunk.table"
     },
     "viz_rect_priv": {
@@ -503,6 +503,29 @@
       "showProgressBar": false,
       "title": "Recent After-Hours Changes (Top 25, Outside Business Hours)",
       "type": "splunk.table"
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/security/#change-configuration-activity",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -655,6 +678,16 @@
         }
       },
       "type": "ds.search"
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
     }
   },
   "layout": {
@@ -959,6 +992,16 @@
               "y": 2674,
               "w": 1890,
               "h": 390
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

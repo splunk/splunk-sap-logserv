@@ -4,7 +4,7 @@
     <description>SAP Cloud Connector tunnel activity — HTTP traffic, status codes, response times, and audit log</description>
     <definition><![CDATA[{
   "title": "Cloud Connector",
-  "description": "SAP Cloud Connector tunnel activity \u2014 HTTP traffic, status codes, response times, and audit log",
+  "description": "SAP Cloud Connector tunnel activity — HTTP traffic, status codes, response times, and audit log",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -419,6 +419,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/integration/#cloud-connector",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -499,6 +522,16 @@
         "queryParameters": {
           "earliest": "$global_time.earliest$",
           "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
         }
       }
     }
@@ -745,6 +778,16 @@
               "y": 50,
               "w": 456,
               "h": 130
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

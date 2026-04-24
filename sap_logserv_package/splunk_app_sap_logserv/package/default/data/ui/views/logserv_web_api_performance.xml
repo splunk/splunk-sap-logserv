@@ -4,7 +4,7 @@
     <description>Web Dispatcher and Cloud Connector HTTP traffic performance — four-stage request timing, response-time percentiles, TLS posture, and cross-source error correlation</description>
     <definition><![CDATA[{
   "title": "Web and API Performance",
-  "description": "Web Dispatcher and Cloud Connector HTTP traffic performance \u2014 four-stage request timing, response-time percentiles, TLS posture, and cross-source error correlation",
+  "description": "Web Dispatcher and Cloud Connector HTTP traffic performance — four-stage request timing, response-time percentiles, TLS posture, and cross-source error correlation",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -531,6 +531,29 @@
           }
         }
       ]
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/integration/#web-and-api-performance",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -668,6 +691,16 @@
       "type": "ds.search",
       "options": {
         "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
         "queryParameters": {
           "earliest": "-1m",
           "latest": "now"
@@ -957,6 +990,16 @@
               "y": 2162,
               "w": 1890,
               "h": 390
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

@@ -4,7 +4,7 @@
     <description>Squid proxy traffic — request volume, status codes, top domains, and bandwidth-by-domain trends</description>
     <definition><![CDATA[{
   "title": "Proxy Analytics",
-  "description": "Squid proxy traffic \u2014 request volume, status codes, top domains, and bandwidth-by-domain trends",
+  "description": "Squid proxy traffic — request volume, status codes, top domains, and bandwidth-by-domain trends",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -452,6 +452,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/platform/#proxy-analytics",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -542,6 +565,16 @@
         "queryParameters": {
           "earliest": "$global_time.earliest$",
           "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
         }
       }
     }
@@ -808,6 +841,16 @@
               "y": 1248,
               "w": 938,
               "h": 330
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

@@ -41,6 +41,7 @@
 14. **Enhanced Web Dispatcher** — Request Volume Over Time, Top URIs by Request Count, and Recent Errors (4xx/5xx).
 15. **Host Details — 3-tab expansion** — The Host Details dashboard is now organized into three tabs. **Overview** shows a 5-KPI row (Total Events, Data Volume, Active Sourcetypes, Errors/Criticals, Auth Failures), the Host Event Count by Sourcetype timeline, a cross-source Severity Timeline, Host Inventory (CPU/RAM/EC2/OS/region from osquery), Recent Authentication Events + Recent Errors & Criticals cross-source tables, Top Sources, Activity by Hour of Day, and Data Freshness per sourcetype. **Role Activity** contains seven role-specific panels (HANA Audit Activity, ABAP Work Process Mix, Web Dispatcher Traffic by Status, SAP Router Peers, Windows Event Codes, Sudo Commands, DNS Top Queries) that auto-hide via `hideWhenNoData` when the selected host has no data for that component. **Sourcetype Mapping** houses the full-width Sankey chart that was previously inline.
 16. **Cross-dashboard navigation** — Every dashboard includes a Navigate to Dashboard dropdown with Go button that preserves the selected time range when switching between dashboards.
+17. **In-dashboard documentation link ("More Info" button)** — A cyan **More Info** button in the top-right of every dashboard's toolbar row opens the corresponding online-documentation section in a new browser tab. The link targets the dashboard's section within the appropriate category page (`.../dashboards/applications/#<dashboard-slug>`, etc.) so users can jump from a live dashboard to its narrative documentation in one click. For multi-tab dashboards (Data Pipeline Overview, Host Details) the button appears on every tab.
 
 ### :material-circle-box:{ .taiconcolor } Enhancements (per-dashboard restructures)
 
@@ -73,6 +74,7 @@
 5. **12 px panel gaps** — Exact horizontal and vertical spacing between every panel border across all dashboards.
 6. **Dashboard descriptions** — Every dashboard now displays a 1-line description below its title.
 7. **"Go >" navigation button** — Standardized: 120×25 px at top-left of every dashboard with 10 px padding above and below; majorFontSize 16.
+8. **"More Info" documentation button** — Standardized: 140×25 px at top-right of every dashboard, aligned with the right edge of the canvas (10 px padding from the right; x = canvas_width − 150). Same cyan fill `#0877a6`, white text, majorFontSize 16 as the Go button. Opens the dashboard's online-documentation section in a new browser tab via `drilldown.customUrl` with `newTab: true`.
 
 ### :material-circle-box:{ .taiconcolor } Known issues
 

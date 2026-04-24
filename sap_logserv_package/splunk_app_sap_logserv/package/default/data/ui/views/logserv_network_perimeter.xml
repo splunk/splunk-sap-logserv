@@ -4,7 +4,7 @@
     <description>Unified network-boundary view — firewall drops (inbound rejections), proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation</description>
     <definition><![CDATA[{
   "title": "Network Perimeter",
-  "description": "Unified network-boundary view \u2014 firewall drops (inbound rejections), proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation",
+  "description": "Unified network-boundary view — firewall drops (inbound rejections), proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -583,6 +583,29 @@
           }
         }
       ]
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/security/#network-perimeter",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -740,6 +763,16 @@
       "type": "ds.search",
       "options": {
         "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
         "queryParameters": {
           "earliest": "-1m",
           "latest": "now"
@@ -1069,6 +1102,16 @@
               "y": 2262,
               "w": 1890,
               "h": 440
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

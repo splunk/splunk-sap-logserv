@@ -428,6 +428,29 @@
           }
         }
       ]
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/security/#cross-stack-authentication",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -545,6 +568,16 @@
       "type": "ds.search",
       "options": {
         "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
         "queryParameters": {
           "earliest": "-1m",
           "latest": "now"
@@ -775,6 +808,16 @@
               "h": 360
             },
             "type": "block"
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
+            }
           }
         ],
         "type": "absolute"

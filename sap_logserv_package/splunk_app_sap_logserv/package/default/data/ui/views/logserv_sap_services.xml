@@ -4,7 +4,7 @@
     <description>SAP startup service and host agent — authentication events, SSL/TLS failures, and service health</description>
     <definition><![CDATA[{
   "title": "SAP Services",
-  "description": "SAP startup service and host agent \u2014 authentication events, SSL/TLS failures, and service health",
+  "description": "SAP startup service and host agent — authentication events, SSL/TLS failures, and service health",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -322,6 +322,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/integration/#sap-services",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -378,6 +401,16 @@
         "queryParameters": {
           "earliest": "$global_time.earliest$",
           "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
         }
       }
     }
@@ -544,6 +577,16 @@
               "y": 926,
               "w": 938,
               "h": 330
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

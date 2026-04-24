@@ -4,7 +4,7 @@
     <description>Linux operational signals — SAP application activity, firewall drops, kernel events, and instance distribution</description>
     <definition><![CDATA[{
   "title": "Linux System & Security",
-  "description": "Linux operational signals \u2014 SAP application activity, firewall drops, kernel events, and instance distribution",
+  "description": "Linux operational signals — SAP application activity, firewall drops, kernel events, and instance distribution",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -413,6 +413,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/platform/#linux-system-security",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -493,6 +516,16 @@
         "queryParameters": {
           "earliest": "$global_time.earliest$",
           "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
         }
       }
     }
@@ -739,6 +772,16 @@
               "y": 50,
               "w": 456,
               "h": 130
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

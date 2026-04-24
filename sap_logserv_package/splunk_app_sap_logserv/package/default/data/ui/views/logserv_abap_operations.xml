@@ -4,7 +4,7 @@
     <description>Operational health of SAP ABAP application layer — work processes, dispatcher, enqueue, and instance activity</description>
     <definition><![CDATA[{
   "title": "ABAP Operations",
-  "description": "Operational health of SAP ABAP application layer \u2014 work processes, dispatcher, enqueue, and instance activity",
+  "description": "Operational health of SAP ABAP application layer — work processes, dispatcher, enqueue, and instance activity",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -378,6 +378,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/applications/#abap-operations",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -445,6 +468,16 @@
       "type": "ds.search",
       "options": {
         "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
         "queryParameters": {
           "earliest": "-1m",
           "latest": "now"
@@ -674,6 +707,16 @@
               "y": 1026,
               "w": 918,
               "h": 320
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

@@ -4,7 +4,7 @@
     <description>Cross-cutting operational view — KPIs, error trends by category, critical events, and host health matrix</description>
     <definition><![CDATA[{
   "title": "Environment Health",
-  "description": "Cross-cutting operational view \u2014 KPIs, error trends by category, critical events, and host health matrix",
+  "description": "Cross-cutting operational view — KPIs, error trends by category, critical events, and host health matrix",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -604,7 +604,7 @@
       "dataSources": {
         "primary": "ds_pipeline_health"
       },
-      "title": "Data Pipeline \u2014 Events/Day",
+      "title": "Data Pipeline — Events/Day",
       "options": {
         "majorValue": "> primary | seriesByName('total') | lastPoint()",
         "sparklineValue": "> primary | seriesByName('daily')",
@@ -811,6 +811,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/environment-health/",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -926,6 +949,16 @@
       "type": "ds.search",
       "options": {
         "query": "| makeresults | eval label=\"Go >\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
         "queryParameters": {
           "earliest": "-1m",
           "latest": "now"
@@ -1315,6 +1348,16 @@
               "y": 1233,
               "w": 620,
               "h": 205
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

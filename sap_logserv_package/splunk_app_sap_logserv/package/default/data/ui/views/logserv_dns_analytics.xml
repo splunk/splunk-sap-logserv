@@ -4,7 +4,7 @@
     <description>BIND DNS query activity — top clients, record types, beaconing detection, and resolver health</description>
     <definition><![CDATA[{
   "title": "DNS Analytics",
-  "description": "BIND DNS query activity \u2014 top clients, record types, beaconing detection, and resolver health",
+  "description": "BIND DNS query activity — top clients, record types, beaconing detection, and resolver health",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -428,6 +428,29 @@
         "rowBackgroundColorOdd": "#0d1520",
         "headerVisibility": "fixed"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/platform/#dns-analytics",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -528,6 +551,16 @@
         "queryParameters": {
           "earliest": "$global_time.earliest$",
           "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
         }
       }
     }
@@ -774,6 +807,16 @@
               "y": 202,
               "w": 456,
               "h": 310
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],

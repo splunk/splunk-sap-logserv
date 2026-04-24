@@ -59,7 +59,10 @@ Use this page as an index — click any dashboard below to see its full purpose,
     All dashboards use the `sap_logserv_idx_macro` macro to query the LogServ index. You can use this same macro in your own searches: `` `sap_logserv_idx_macro` | stats count by sourcetype ``
 
 !!! tip "Cross-dashboard navigation"
-    Every dashboard includes a **Navigate to Dashboard** dropdown and **Go** button that preserves your selected time range when switching between dashboards.
+    Every dashboard includes a **Navigate to Dashboard** dropdown and **Go** button (top-left) that preserves your selected time range when switching between dashboards.
+
+!!! tip "In-dashboard help — the "More Info" button"
+    Every dashboard also includes a **More Info** button at the top-right of the toolbar row. Clicking it opens this online documentation in a new browser tab, jumping directly to the section for the dashboard you're looking at. For multi-tab dashboards (Data Pipeline Overview and Host Details) the button lives on every tab and always links back to the same dashboard's section in the docs.
 
 ---
 

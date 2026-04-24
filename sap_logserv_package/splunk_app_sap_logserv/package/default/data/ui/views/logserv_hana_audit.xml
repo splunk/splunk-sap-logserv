@@ -4,7 +4,7 @@
     <description>SAP HANA audit log analysis — user activity, failed operations, risk-tiered events, and after-hours access patterns</description>
     <definition><![CDATA[{
   "title": "HANA Audit",
-  "description": "SAP HANA audit log analysis \u2014 user activity, failed operations, risk-tiered events, and after-hours access patterns",
+  "description": "SAP HANA audit log analysis — user activity, failed operations, risk-tiered events, and after-hours access patterns",
   "inputs": {
     "input_global_trp": {
       "options": {
@@ -554,6 +554,29 @@
         "rx": 3,
         "strokeColor": "#0877a6"
       }
+    },
+    "viz_more_info": {
+      "type": "splunk.singlevalue",
+      "dataSources": {
+        "primary": "ds_more_info"
+      },
+      "options": {
+        "majorValue": "> primary | seriesByName('label') | lastPoint()",
+        "backgroundColor": "#0877a6",
+        "majorColor": "#ffffff",
+        "sparklineDisplay": "off",
+        "trendDisplay": "off",
+        "majorFontSize": 16
+      },
+      "eventHandlers": [
+        {
+          "type": "drilldown.customUrl",
+          "options": {
+            "url": "https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/applications/#hana-audit",
+            "newTab": true
+          }
+        }
+      ]
     }
   },
   "dataSources": {
@@ -707,6 +730,16 @@
         "queryParameters": {
           "earliest": "$global_time.earliest$",
           "latest": "$global_time.latest$"
+        }
+      }
+    },
+    "ds_more_info": {
+      "type": "ds.search",
+      "options": {
+        "query": "| makeresults | eval label=\"More Info\"",
+        "queryParameters": {
+          "earliest": "-1m",
+          "latest": "now"
         }
       }
     }
@@ -1033,6 +1066,16 @@
               "y": 1650,
               "w": 1890,
               "h": 370
+            }
+          },
+          {
+            "item": "viz_more_info",
+            "type": "block",
+            "position": {
+              "x": 1770,
+              "y": 10,
+              "w": 140,
+              "h": 25
             }
           }
         ],
