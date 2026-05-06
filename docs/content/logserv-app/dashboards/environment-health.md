@@ -26,6 +26,15 @@ The Environment Health dashboard is a single-pane-of-glass operations view that 
 - **ICM Status Codes** -- Stacked column chart of HTTP status code categories (2xx/3xx/4xx/5xx) over time. Click to drill down to ABAP Security dashboard.
 - **Data Pipeline -- Events/Day** -- Average daily event volume and daily trend line for monitoring pipeline health and detecting ingestion gaps. Click to drill down to Overview dashboard.
 
+### :material-lightning-bolt:{ .taiconcolor } v0.0.5.0 Drill-Down Behavior
+
+Every KPI card, chart panel, and table row on this dashboard is clickable and opens its drill-down destination in a new browser tab with the source dashboard's currently-selected time range pre-applied (`?earliest=...&latest=...`). The destination's `TimeRangeProvider` parses the URL and hydrates its initial time-range from those params on mount, so a click from "Last 7 days" lands you in the destination at the same window. Two destination patterns:
+
+- **Cross-dashboard drill-downs** — most KPIs and charts navigate to the relevant React dashboard (`/applications/hana-audit`, `/integration/cloud-connector`, etc.).
+- **Splunk Search drill-downs** — the **Total Errors** KPI runs a cross-cutting 11-sourcetype OR query that no single dashboard owns; it opens Splunk's universal Search app with the SPL pre-filled. Same time-range carry-through.
+
+The dashboard's title-row toolbar carries a **Refresh** picker so you can have the page tick continuously (Never / 30s / 1m / 5m / 15m / 30m / 1hr) for use as an operations wallboard.
+
 ### :material-lightning-bolt:{ .taiconcolor } What to Look For
 
 - **Rising error trend** -- An upward slope in any error category chart indicates a worsening condition. Correlate the timing with recent changes, deployments, or infrastructure events. Each chart drills directly to the relevant dashboard for investigation.

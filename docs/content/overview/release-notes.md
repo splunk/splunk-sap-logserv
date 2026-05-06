@@ -1,7 +1,115 @@
 # Release Notes
 
 
-## Version 0.0.4.2-beta (latest)
+## Version 0.0.5.0-beta (latest)
+
+!!! warning "AI Assistant LLM functionality intentionally disabled pending review"
+    The v0.0.5 release ships with the AI Assistant's **LLM-driven path disabled at compile time pending internal review** of the OWASP LLM Top 10 controls. Every customer running v0.0.5 runs the **templates-only build variant** — there is no separate "regular" build published in this release. What's still active: the predefined-prompt path (48 canned prompts via the Splunk MCP Server), tool tiles in the right pane, drill-down chips, audit log, all 20 dashboards + Environment Topology view, per-dashboard auto-refresh picker, Download PNG. What's disabled: free-form chat input, the model picker, the Power Mode toggle, the Provider Credentials Settings tab, and all vendor (Anthropic / OpenAI / Azure / Bedrock) traffic. The LLM-driven path will be re-enabled in a future release once review concludes — the type-system enforcement, privacy tiers, and OWASP Top 10 hardening are designed and implemented, just gated off via the build flag for now. See the **AI Assistant → Templates-only Build** docs page and the **AI Assistant → OWASP LLM Top 10 Compliance** page for the full picture.
+
+### :material-circle-box:{ .taiconcolor } Compatibility
+
+|                                  |                              |
+|----------------------------------|------------------------------|
+| Splunk platform versions         | 9.4.3 and later              |
+| CIM                              | 5.1.1 and later              |
+| Supported OS for data collection | Platform independent         |
+| Vendor products                  | SAP LogServ for SAP ECS in Amazon Web Services (AWS) |
+| AI Assistant prerequisite        | [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.1.0 or later, on the search head where the LogServ App is installed |
+
+### :material-circle-box:{ .taiconcolor } Major architecture change
+
+**The LogServ App is fully rewritten as a React-based application.** Dashboard Studio v2 is no longer used for any of the 20 dashboards. The app now ships as a single React bundle built on `@splunk/react-ui`, `@splunk/visualizations`, and `@xyflow/react`. The Data TA architecture is unchanged from v0.0.4.x — only the UI App tier has been rewritten.
+
+Implications for upgraders:
+
+  - **Search-time field extractions are unchanged** — your existing custom searches, alerts, and reports against `sap_logserv_logs` continue to work without modification.
+  - **Dashboard URLs have changed** — old DS v2 deep links (`/app/splunk_app_sap_logserv/<view>?form.global_time...`) are replaced with React Router hash routes (`/app/splunk_app_sap_logserv/home#/<route>?earliest=...&latest=...`). Time-range query params are preserved.
+  - **Splunk 9.4.3+ remains the minimum** version. No new floor.
+  - **No data re-ingest required** — the upgrade is UI-only.
+
+### :material-circle-box:{ .taiconcolor } New features
+
+1. **AI Assistant** — Splunk-aware chat panel with two paths:
+
+      - **Predefined prompts** (no LLM call): browse 48 saved searches across three packs (`sap_basis` 13, `security` 14, `operations` 13) plus a context-aware **Dashboard Focused** tab that auto-filters to prompts relevant to the current dashboard. Each prompt dispatches via the [Splunk MCP Server](https://splunkbase.splunk.com/app/7931) and renders a tile in the right pane with a static interpretation + suggested-next-steps card. **No vendor LLM is involved in this path.**
+      - **Free-form prompts** (LLM-driven): the same MCP tool path is available to one of four AI providers (Anthropic, OpenAI, Azure OpenAI, AWS Bedrock); the LLM picks tools, the orchestrator dispatches, and the LLM synthesizes a narrative response. **Critical privacy invariant — enforced by the TypeScript type system at build time, not by policy: no event data from your Splunk instance is ever transmitted to any AI vendor.** The compiler refuses to put any tool-result value into the outbound payload — there is no runtime check, no flag to flip.
+
+2. **Three privacy tiers** for the free-form path, admin-selectable in Settings:
+
+      - **Tier 0** — Ollama-based local-only (future release).
+      - **Tier 1 (default)** — cloud LLM as SPL generator. Tool result summary fed back is *only* `count + timing`. The AI sees no row data and no aggregates.
+      - **Tier 2 (admin opt-in)** — adds aggregated metadata: cardinality, per-column top-N values + counts, min/max/avg/sum (numeric), and time range. Still no raw rows.
+
+3. **Environment Topology** — graph-based view of SAP systems, integration partners, and endpoints. Built on `@xyflow/react` with a force-directed initial layout, self-derived IP→SID inventory drawn from multiple SAP sourcetypes (gateway L=, HANA tracelogs, ICM peer fields, saprouter peer hostnames), per-node sidebar tabs (Programs, Calls/Hr, Errors, Hosts), Live mode auto-refresh, and named saved layouts persisted via Splunk KV Store (schema v4 — viewport zoom + pan + enabled-types + selected-node + active-tab + snap-mode).
+
+4. **Drill-down chips** — every tool result tile in the AI Assistant's right pane carries a `↗ Dashboard` chip (when a related OOTB dashboard is mapped) and a `↗ Run SPL` chip that opens Splunk's Search app with the dispatched SPL pre-populated and the dispatch's exact earliest/latest pre-applied. Same chips render alongside `[→ saved_search]` citations in the chat narrative on the left pane. Dashboards themselves also got drill-downs: ~70 KPIs / charts / tables / table rows across 19 dashboards open contextual cross-cutting searches with current time range preserved.
+
+5. **Per-dashboard auto-refresh picker** — every dashboard's title row now carries a Refresh picker (Never / 30s / 1m / 5m / 15m / 30m / 1hr) with per-user-per-dashboard cadence persisted to a new KV Store collection (`logserv_dashboard_refresh`). All charts and KPIs re-run on each tick via a shared context nonce.
+
+6. **OWASP LLM Top 10 (2025) compliance** — every item has a matching control. Highlights: prompt-injection sanitization with role-marker + jailbreak-pattern filtering; type-bounded data redaction; SBOM (1416 components, CycloneDX 1.4) shipped with every build; tamper-evident audit log with optional HEC forwarder; per-user rate limit (configurable, default 30/hr); USD spend cap; SPL static-analysis guard blocking write/delete/alert operators; PII redaction for `email` / `user(name)` / `*_ip` / `mac` / `account` (hostname opt-in); session tool-call cap; jailbreak pattern detection on user input. See [OWASP LLM Top 10 Compliance](../ai-assistant/owasp-llm-compliance.md) for the full controls list per item.
+
+7. **Templates-only build variant** — a deployable variant of the LogServ App that disables the LLM-driven flow at compile time. The MCP path + 48 canned prompts + tool tiles + drill-down chips + audit log all stay fully active so the solution can be demonstrated end-to-end without enabling any LLM provider. UI cues: chat input disabled with explanatory placeholder; Send button disabled; model picker hidden; Power Mode toggle hidden; Provider Credentials Settings tab hidden; cyan info-tone banner explains the build mode. Defense in depth: the LLM dispatch entry point bails immediately with a system notice if reached at runtime.
+
+8. **Power Mode** — role-gated `✦ Power` toggle in the AI Assistant chat input. Admin assigns a list of Splunk roles (via `services/authorization/roles`) that may see the toggle; when on, every prompt forces a saved-search dispatch before LLM synthesis (forced-RAG). State persists per-tab in sessionStorage. Audit events tag the toggle state for SOC pivot analysis.
+
+9. **TIME-WINDOW REASONING primer rules** — the AI Assistant's system primer (Tier 1 + Tier 2) now teaches the LLM to: (a) identify the dispatch window before claiming severity, (b) normalize cumulative count to events/hour or events/day before ranking, (c) for any finding ranked `[severity:high]` or `[severity:critical]`, dispatch ONE additional verify query with `earliest=-24h latest=now` BEFORE writing the narrative, and (d) state the window precisely in narrative ("X events in the last 24h" vs. "X cumulative over the search's rolling window"). The result: the AI now self-corrects in one turn instead of needing a follow-up prompt to re-rank cumulative-noise findings.
+
+10. **HostDetails multi-host filter + 3-tab layout** — the Host Details dashboard's host picker is now a `Multiselect` with filter input + Select-All-Matches semantics. Multi-host scope is reflected in URL (`?hosts=h1,h2,h3`) with localStorage persistence. SPL builders splice a `host IN (...)` clause when 2+ hosts are selected. Three tabs: **Overview** (5 KPIs + charts + Host Inventory + Severity Timeline), **Role Activity** (7 role-specific panels with `hideWhenNoData`), **Sourcetype Mapping** (Sankey of source → sourcetype).
+
+11. **Data Pipeline Overview dashboard-wide host filter** — Multiselect + Top-N picker lifted from the chart-level actions slot to the dashboard's title row. Filter scope expanded from one chart to all 4 KPIs + 4 panels + the Sourcetype Mapping linked graph on the second tab.
+
+12. **Path B sourcetype migration** — the legacy `[set_srctype_for_syslog]` transform has been split into four dedicated routing transforms producing four new sourcetypes: `linux:cron`, `linux:warn`, `linux:sudolog`, `linux:slapd`. This clears the AppInspect pretrained-sourcetype warning and avoids field-extraction collisions with `Splunk_TA_nix`'s built-in `[syslog]` stanza. Existing `sourcetype=syslog` data ages out per index retention; dashboards OR both old + new during the transition.
+
+13. **Branded LS app icons** — orange "LS" mark on a dark rounded-square frame. All three apps (UI App, Data TA, Index App) ship the same icon set at 36×36 + 72×72 in regular + Alt variants.
+
+14. **Splunk-pattern legal acknowledgement** — two compile-time legal/liability modals gate the master `enabled` toggle and the audit-forwarder-disabled save (matching Splunk's `splunk_instrumentation` `optInVersion` framework). User identity, Splunk-stamped IP, timestamp, and a SHA-256 of the disclaimer revision are recorded in the audit log so subsequent acknowledgement reviews can prove which revision was acknowledged.
+
+### :material-circle-box:{ .taiconcolor } Enhancements
+
+1. **20 React-rewritten dashboards plus the new Environment Topology view** — every one of the 20 v0.0.4.2 dashboards is a fresh React implementation, and the Environment Topology view is a new graph-based surface unique to v0.0.5. All dashboards use the unified dark theme (`#0d1117` page background, `#141b2d` panel fill, `#0877a6` panel outline) and ship the per-dashboard auto-refresh picker.
+2. **Saved-Layout schema v4** — the topology view's saved layouts now persist viewport (zoom + pan), enabled integration types, selected node, active right-sidebar tab, and snap-mode in addition to the v3 node + panel positions. Schema migration is in-memory: v1 / v2 / v3 records still load.
+3. **`Multiselect` + `Top-N` picker** as a reusable title-row pattern — labelless inline cluster matching the visual idiom across HostDetails and Data Pipeline Overview.
+4. **AI Assistant prompt browser tab persistence** — the last selected pack tab is remembered across modal-open events, persisted per-tab via sessionStorage. Persists only when the user actually picked a prompt, not on casual tab-flipping.
+5. **Static guidance card per canned prompt** — each predefined prompt's intent-map entry includes an `interpretation` paragraph + bulleted `nextSteps`. Surfaced as a "How to read this result" card after the tool tile lands. Skipped on the AI-driven path (the LLM writes its own commentary). 126 next-step entries split: 64 plain · 57 canned-prompt links · 5 custom-SPL links.
+6. **Dashboard Focused prompt browser tab** — first-position tab in the prompt browser that filters the 48 prompts down to those mapped to the current dashboard. Auto-hides when no prompts match. Pack-origin chips on each card so users can find the prompt back in its home pack.
+7. **Audit Log Settings tab** — read-only browser of the `_ai_assistant_audit` index with time-range / category / user / limit filters; per-row JSON expand. Inline disclaimer covers the tamper-resistance threat model and recommends HEC-forwarder mitigation. 12 audit categories with distinct gradient-fill chip colors.
+8. **HEC audit forwarder** — admin-configurable forwarding of audit events to a separate Splunk / SIEM / S3-with-Object-Lock destination. Browser-side dual-write at flush time. Failure events captured as a separate `audit_forwarder_failure` category so disabled / down forwarders are visible in the audit log itself.
+9. **`Visible<T>` brand types** — outbound-message types are tagged `Visible` and unwrap explicitly; the type system refuses to put a `Hidden<MCPToolResult>` into an outbound vendor payload, mechanically enforcing the privacy boundary.
+10. **Dynamic timechart span** — every time-series chart's SPL passes a `timechartSpan` computed from the current time range so 30-day windows don't render with 700 data points. Helper at `utils/timechartSpan.ts`.
+
+### :material-circle-box:{ .taiconcolor } Fixed issues
+
+1. **Stale aggregate framing in AI Assistant top-N responses** — the LLM previously cited cumulative aggregates ("4,799 failed authentications") as if they were active rates, leading to misleading "lock the accounts today" recommendations. Build 171's TIME-WINDOW REASONING primer rules now force a verify query before high-severity claims, and the same cumulative number gets correctly downgraded with explicit "stale long-window aggregate, not an active brute-force" framing.
+2. **Splunk risky-command safeguard on `nextSteps.spl`** — two intent-map deep-dive strings used `| map maxsearches=1 search="..."` which Splunk flags as risky. Rewrote to first-class subsearch syntax. Intent map version bumped v0.0.8 → v0.0.9.
+3. **AZ field bleeding into next osquery section** — the Host Inventory panel's `zone` regex now stops at the `#012` osquery section separator (`[^,#]+` instead of `[^,]+`), so AZ values like `ap-south-1a` no longer carry trailing data from adjacent fields.
+4. **MCP cookie auth on same-session HTTP-only Splunk** — verified empirically that the Splunk MCP Server v1.1.0 accepts cookie auth from the same Splunk Web session that's serving the React app, so the default `mcp_server_url` works on HTTP-only Splunk with no bearer token configured. The optional bearer token layers on top via `Authorization: Bearer` and is invalidated on 401 with one retry.
+5. **Splunk `services/authorization/roles` endpoint** — Multiselect for the Power Users field reads roles from the correct path; `services/authentication/roles` (a common typo) silently 404s and produces a stuck "Loading roles..." UI.
+6. **Splunk Web static-asset cache busting** — every meaningful code change bumps `[install] build` in `app.conf` so browsers don't serve stale bytes after deploy.
+7. **Webpack `style-loader` requirement** — adding `import '@xyflow/react/dist/style.css'` exposed a latent webpack-config gap where CSS was being compiled but never reaching the DOM. Both `style-loader` AND `css-loader` are now in the webpack rules.
+
+### :material-circle-box:{ .taiconcolor } Restyled (visual conventions)
+
+1. **20 React dashboards** with the unified dark-theme card style: `#0d1117` page, `#141b2d` panel fill, `#0877a6` panel outline, 3 px rounded corners, 5 px inset, 12 px panel gaps. Equivalent to the v0.0.4.2 DS v2 look but rebuilt natively in styled-components.
+2. **Severity dots** — chat findings render with a colored dot (yellow → orange → red → dark-red for low → medium → high → critical) using a radial gradient so they read as glossy beads matching the donut-chart palette aesthetic.
+3. **Win11-style 8-dot loading spinner** — replaces the prior cyan-arc indicator in AI Assistant streaming + tool-executing states. CSS-only via single keyframe + per-dot `--angle` variable + staggered `animation-delay`. Reused in the Topology canvas loading overlay (extracted to a shared `Spinner` component).
+4. **Cyan-light dotted-underline citation links** — the AI's `[→ saved_search]` citations render as clickable scroll-to-tile spans; sibling `↗ Dashboard` and `↗ Run SPL` chips use the same visual idiom.
+5. **Compact Multiselect with Select-All-Matches** — HostDetails + Data Pipeline Overview both use `@splunk/react-ui/Multiselect` with `compact + filter + selectAllAppearance="checkbox"` so typing into the filter narrows the dropdown and the Select All control auto-renames to "Select all matches".
+6. **Glossy severity-dot gradients** — `radial-gradient(circle at 35% 30%, ...)` so dots read as 3D beads not flat circles.
+7. **Audit-log filter chips with per-category gradients** — 12 categories each get a distinct 3-stop linear gradient with mid-stop ~35–45% luminance for white-text readability, dim-when-unchecked via layered translucent-black wash so the text stays readable.
+
+### :material-circle-box:{ .taiconcolor } Known issues
+
+1. **Tier 0 (Ollama, air-gapped)** is not yet shipped. Tier 0 currently returns "not yet implemented" if selected. Planned for a future release.
+2. **Auto-mint MCP token roadmap** is not yet shipped. Bearer tokens for the Splunk MCP Server still require manual paste in Settings → Splunk MCP. Planned for a future release.
+3. **Splunk MCP TA gate is bypassed** because the dependent TA isn't yet identified on Splunkbase. The gate will be restored when a real TA is published.
+4. **`hideWhenNoData` panel-disappearance behavior** continues to apply on HostDetails Role Activity tab. Expected behavior, but empty tabs can feel sparse on hosts that only forward a single sourcetype.
+
+### :material-circle-box:{ .taiconcolor } Third-party software attributions
+
+See `THIRD-PARTY-NOTICES` shipped inside each app package; an SBOM (CycloneDX 1.4, 1416 components) is regenerated on every build and shipped inside the package.
+
+
+## Version 0.0.4.2-beta
 
 ### :material-circle-box:{ .taiconcolor } Compatibility
 

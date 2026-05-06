@@ -1,0 +1,26 @@
+# Windows Events
+
+## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
+
+The Windows Events dashboard monitors Windows hosts in the SAP landscape, which commonly run SAP application servers, database instances, and management consoles. Windows Event Logs capture service health, PowerShell execution, and system errors that indicate Windows-specific operational issues. This dashboard focuses on operational health and service state -- the authentication-failure story is owned by the [Cross-Stack Authentication](../security/cross-stack-authentication.md) dashboard so that all three layers (SAP / HANA / Windows) can be investigated together.
+
+## Panels
+
+- **Total Events** -- Aggregate Windows event count
+- **Critical / Error** -- Count of critical and error severity events
+- **Active Hosts** -- Count of distinct Windows hosts reporting data
+- **Event Volume by Log** -- Daily trend by Windows log source (Application, Security, System, PowerShell)
+- **Severity Distribution Over Time** -- Stacked column chart of severity levels
+- **Top Event Codes** -- Featured full-width table of the most frequent EventCodes with 7 enriched columns: Event Code, Description (signature), Source log, Severity, Events, Hosts (distinct count), Last Seen. Row drilldown opens the search app filtered by that event code.
+- **Service Events** -- Table of Windows service start/stop activity with latest state
+- **PowerShell Activity** -- Line chart trending PowerShell event volume
+
+## :material-lightning-bolt:{ .taiconcolor } What to Look For
+
+- **High-frequency Event Codes** -- The Top Event Codes table is the primary starting point. EventCode 7031 / 7034 (service terminated unexpectedly), 1000 (application crash), and 41 (unexpected shutdown) are high-priority. Click through to see every occurrence of a specific code.
+- **Service crashes** -- EventCode 7031 (service terminated unexpectedly) in either the Top Event Codes table or the Service Events panel indicates a critical service failure. For SAP services (sapstartsrv, SAPService), this requires immediate attention.
+- **PowerShell activity spikes** -- Sudden increases in PowerShell execution may indicate lateral movement by an attacker using PowerShell-based attack tools. Correlate with the [Cross-Stack Authentication](../security/cross-stack-authentication.md) dashboard to see whether any Windows logons were concurrent.
+- **Critical/error severity trends** -- A rising trend in critical and error events over multiple days indicates accumulating system health issues that need proactive investigation.
+- **Event Code hosts expanding** -- The Hosts column on the Top Event Codes table makes it obvious when a normally-host-isolated error starts appearing on multiple hosts -- a sign the underlying cause is environmental (failed update, domain policy change) rather than local.
+
+![Windows Events](../../../../images/dashboard-windows.png)
