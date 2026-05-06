@@ -1,10 +1,10 @@
-site_name: SAP LogServ for Splunk
+site_name: Splunk for SAP LogServ
 site_author: Splunk
 site_url: "https://splunk.github.io/splunk-sap-logserv/"
 edit_uri: "tree/main/docs/"
 remote_branch: gh-pages
 
-repo_name: SAP LogServ for Splunk
+repo_name: Splunk for SAP LogServ
 repo_url: "https://github.com/splunk/splunk-sap-logserv"
 
 # site_dir: site
@@ -72,6 +72,8 @@ nav:
     - Architecture: 'content/getting-started/architecture.md'
     - Release Notes: 'content/overview/release-notes.md'
     - Supported Log Types: 'content/getting-started/supported-log-types.md'
+    - Prerequisites: 'content/getting-started/prerequisites.md'
+    - Quick Install Reference: 'content/getting-started/quick-install-reference.md'
 - LogServ Data TA:
     - Prerequisites: 'content/install-setup/prerequisites.md'
     - Installing the Data TA: 'content/install-setup/install-ta.md'
@@ -84,14 +86,53 @@ nav:
     - AWS Setup Migrations:
         - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-walkthrough.md'
 - LogServ UI App:
+    - Prerequisites: 'content/logserv-app/prerequisites.md'
     - Installing the LogServ App: 'content/logserv-app/installation.md'
     - Dashboards Overview:
         - Overview: 'content/logserv-app/dashboards/index.md'
         - Environment Health: 'content/logserv-app/dashboards/environment-health.md'
-        - Applications: 'content/logserv-app/dashboards/applications.md'
-        - Integration: 'content/logserv-app/dashboards/integration.md'
-        - Security: 'content/logserv-app/dashboards/security.md'
-        - Platform: 'content/logserv-app/dashboards/platform.md'
+        - Environment Topology: 'content/logserv-app/dashboards/topology.md'
+        - Applications:
+            - Applications: 'content/logserv-app/dashboards/applications.md'
+            - ABAP Network & Security: 'content/logserv-app/dashboards/applications/abap-security.md'
+            - ABAP Operations: 'content/logserv-app/dashboards/applications/abap-operations.md'
+            - Work Process Performance: 'content/logserv-app/dashboards/applications/work-process-performance.md'
+            - HANA Audit: 'content/logserv-app/dashboards/applications/hana-audit.md'
+            - HANA Trace: 'content/logserv-app/dashboards/applications/hana-trace.md'
+        - Integration:
+            - Integration: 'content/logserv-app/dashboards/integration.md'
+            - SAP Services: 'content/logserv-app/dashboards/integration/sap-services.md'
+            - SAP Router: 'content/logserv-app/dashboards/integration/sap-router.md'
+            - Cloud Connector: 'content/logserv-app/dashboards/integration/cloud-connector.md'
+            - Web Dispatcher: 'content/logserv-app/dashboards/integration/web-dispatcher.md'
+            - Web and API Performance: 'content/logserv-app/dashboards/integration/web-api-performance.md'
+        - Security:
+            - Security: 'content/logserv-app/dashboards/security.md'
+            - Network Perimeter: 'content/logserv-app/dashboards/security/network-perimeter.md'
+            - Cross-Stack Authentication: 'content/logserv-app/dashboards/security/cross-stack-authentication.md'
+            - Change & Configuration Activity: 'content/logserv-app/dashboards/security/change-config.md'
+        - Platform:
+            - Platform: 'content/logserv-app/dashboards/platform.md'
+            - Data Pipeline Overview: 'content/logserv-app/dashboards/platform/data-pipeline-overview.md'
+            - DNS Analytics: 'content/logserv-app/dashboards/platform/dns-analytics.md'
+            - Linux System & Security: 'content/logserv-app/dashboards/platform/linux.md'
+            - Windows Events: 'content/logserv-app/dashboards/platform/windows.md'
+            - Proxy Analytics: 'content/logserv-app/dashboards/platform/proxy.md'
+            - Host Details: 'content/logserv-app/dashboards/platform/host-details.md'
+- AI Assistant:
+    - Overview: 'content/ai-assistant/overview.md'
+    - Privacy Tiers: 'content/ai-assistant/privacy-tiers.md'
+    - Predefined Prompts: 'content/ai-assistant/predefined-prompts.md'
+    - Free-form Prompts: 'content/ai-assistant/free-form-prompts.md'
+    - Power Mode: 'content/ai-assistant/power-mode.md'
+    - Drill-down Chips: 'content/ai-assistant/drill-down-chips.md'
+    - Splunk MCP Setup: 'content/ai-assistant/mcp-setup.md'
+    - Settings & Configuration: 'content/ai-assistant/settings.md'
+    - Audit Log: 'content/ai-assistant/audit-log.md'
+    - Time-Window Reasoning: 'content/ai-assistant/time-window-reasoning.md'
+    - Templates-only Build: 'content/ai-assistant/templates-only-build.md'
+    - OWASP LLM Top 10 Compliance: 'content/ai-assistant/owasp-llm-compliance.md'
 - Developer Reference:
     - Testing Guide: 'content/developer/testing-guide.md'
     - Architecture and Internals: 'content/developer/developer-reference.md'
+    - AI Assistant Implementation Reference: 'content/developer/ai-assistant-internals.md'
