@@ -1,0 +1,207 @@
+import React from 'react';
+import styled from 'styled-components';
+import KpiCard, { formatInteger } from '../components/KpiCard';
+import FramedPanel from '../components/FramedPanel';
+import DataTable, { ColumnDef } from '../components/DataTable';
+import TimeSeriesChart from '../components/TimeSeriesChart';
+import PieChart from '../components/PieChart';
+import { SparklineFromQuery } from '../components/Sparkline';
+import DashboardLayout from '../components/DashboardLayout';
+import { useSearch } from '../hooks/useSearch';
+import { useTimeRange } from '../state/TimeRangeProvider';
+import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
+import { logservTheme } from '../styles/logservTheme';
+
+/**
+ * SAP Router — honest port of v0.0.4.2 logserv_sap_router.xml.
+ *
+ * 4 KPIs (Total / Errors / Invalid Data / Unique Peers) + Connection Actions column +
+ * Router Errors area + Top Peer IPs table + Return Code pie + Error Detail by Function table +
+ * Recent Connection Log table.
+ */
+
+const KpiRow = styled.div`
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: ${logservTheme.elevation.panelGap};
+    margin-bottom: ${logservTheme.elevation.panelGap};
+    @media (max-width: 1100px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+`;
+const FullWidthPanel = styled.div`
+    margin-bottom: ${logservTheme.elevation.panelGap};
+`;
+const PanelGrid2 = styled.div`
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: ${logservTheme.elevation.panelGap};
+    margin-bottom: ${logservTheme.elevation.panelGap};
+    @media (max-width: 1100px) { grid-template-columns: 1fr; }
+`;
+
+const ST = 'sourcetype="sap:saprouter"';
+
+const Q = {
+    kpiTotal: `\`sap_logserv_idx_macro\` ${ST} | stats count`,
+    kpiErrors: `\`sap_logserv_idx_macro\` ${ST} is_error="true" | stats count`,
+    kpiInval: `\`sap_logserv_idx_macro\` ${ST} action="INVAL DATA" | stats count`,
+    kpiPeers: `\`sap_logserv_idx_macro\` ${ST} peer_ip=* | stats dc(peer_ip) as peers`,
+
+    sparkTotal: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count`,
+    sparkErrors: `\`sap_logserv_idx_macro\` ${ST} is_error="true" | timechart span=1d count`,
+    sparkInval: `\`sap_logserv_idx_macro\` ${ST} action="INVAL DATA" | timechart span=1d count`,
+    sparkPeers: `\`sap_logserv_idx_macro\` ${ST} peer_ip=* | timechart span=1d dc(peer_ip) as peers`,
+
+    connTrend: `\`sap_logserv_idx_macro\` ${ST} action=* | timechart span=1d count by action`,
+    errorTrend: `\`sap_logserv_idx_macro\` ${ST} is_error="true" | timechart span=1d count as "Errors"`,
+    topPeers: `\`sap_logserv_idx_macro\` ${ST} peer_ip=* | stats count as "Connections" by peer_ip | sort -Connections | rename peer_ip as "Peer IP"`,
+    // Decode SAP Router numeric return codes (from NIRC.h — Network Interface
+    // Return Codes) into "<code> = <description>" labels so the pie chart's
+    // slices are readable without external lookup. Case-default preserves any
+    // unlisted code as-is so we never silently drop data.
+    returnCodes: `\`sap_logserv_idx_macro\` ${ST} return_code=* `
+        + `| eval return_code = case(`
+        + `return_code==0, "0 = OK (Success)",`
+        + `return_code==-1, "-1 = Timeout",`
+        + `return_code==-2, "-2 = Too Many File Descriptors",`
+        + `return_code==-3, "-3 = No Free Port",`
+        + `return_code==-4, "-4 = Service Unknown",`
+        + `return_code==-5, "-5 = Service Already Used",`
+        + `return_code==-6, "-6 = No Service Definition",`
+        + `return_code==-7, "-7 = No Free Service",`
+        + `return_code==-8, "-8 = Select Direction Error",`
+        + `return_code==-9, "-9 = Internal Error",`
+        + `return_code==-10, "-10 = Ping",`
+        + `return_code==-11, "-11 = Dump",`
+        + `return_code==-90, "-90 = Connection Broken",`
+        + `return_code==-91, "-91 = Own Hostname Lookup Failed",`
+        + `return_code==-92, "-92 = Host Unknown (DNS)",`
+        + `return_code==-93, "-93 = Connection Refused",`
+        + `return_code==-94, "-94 = Host-to-Address Conversion Failed",`
+        + `return_code==-95, "-95 = No Connection",`
+        + `return_code==-96, "-96 = Select Aborted",`
+        + `return_code==-97, "-97 = Sequence Error",`
+        + `return_code==-98, "-98 = No Transport List",`
+        + `return_code==-99, "-99 = Timeout",`
+        + `1=1, return_code . " = Other"`
+        + `) `
+        + `| stats count by return_code | sort -count | rename return_code as "Return Code"`,
+    errorDetail: `\`sap_logserv_idx_macro\` ${ST} is_error="true" error_function=* | stats count as "Count", dc(peer_ip) as "Unique Peers", values(return_code) as "Return Codes", latest(error_detail) as "Last Error Detail" by error_function | sort -Count | rename error_function as "Function"`,
+    connLog: `\`sap_logserv_idx_macro\` ${ST} is_connection_event="true" | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval has_error=if(is_error="true", "Yes", "No") | table Time, action, connection_id, peer_ip, src_ip, src_port, has_error | sort -Time | rename peer_ip as "Peer IP", src_ip as "Source IP", src_port as "Source Port", has_error as "Error", connection_id as "Conn ID"`,
+};
+
+interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+const useFirstRowField = (q: string, f: string): FirstRow => {
+    const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+
+const TOP_PEERS_COLS: ColumnDef[] = [
+    { key: 'Peer IP', label: 'Peer IP' },
+    { key: 'Connections', label: 'Connections', align: 'right', render: (v) => formatInteger(v) },
+];
+const ERROR_DETAIL_COLS: ColumnDef[] = [
+    { key: 'Function', label: 'Function' },
+    { key: 'Count', label: 'Count', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Unique Peers', label: 'Unique Peers', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Return Codes', label: 'Return Codes' },
+    { key: 'Last Error Detail', label: 'Last Error Detail' },
+];
+const CONN_LOG_COLS: ColumnDef[] = [
+    { key: 'Time', label: 'Time', width: '160px' },
+    { key: 'action', label: 'Action', width: '120px' },
+    { key: 'Conn ID', label: 'Conn ID', width: '90px' },
+    { key: 'Peer IP', label: 'Peer IP', width: '140px' },
+    { key: 'Source IP', label: 'Source IP', width: '140px' },
+    { key: 'Source Port', label: 'Source Port', width: '100px' },
+    { key: 'Error', label: 'Error', width: '70px' },
+];
+
+const SapRouter: React.FC = () => {
+    const total = useFirstRowField(Q.kpiTotal, 'count');
+    const errors = useFirstRowField(Q.kpiErrors, 'count');
+    const inval = useFirstRowField(Q.kpiInval, 'count');
+    const peers = useFirstRowField(Q.kpiPeers, 'peers');
+
+    const topPeers = useSearch({ query: Q.topPeers });
+    const errorDetail = useSearch({ query: Q.errorDetail });
+    const connLog = useSearch({ query: Q.connLog });
+
+    const errorTone = Number(errors.value ?? 0) > 0 ? 'critical' : 'neutral';
+    const invalTone = Number(inval.value ?? 0) > 0 ? 'warning' : 'neutral';
+
+    /* Drilldowns (build 159 / session 027 task 6). */
+    const { timeRange } = useTimeRange();
+    const goPeerRow = (row: Record<string, unknown>): void => {
+        const ip = String(row['Peer IP'] ?? '');
+        if (!ip) return;
+        const spl = `\`sap_logserv_idx_macro\` ${ST} peer_ip="${splQuote(ip)}" | sort -_time | table _time action connection_id src_ip return_code`;
+        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+    };
+    const goErrorFunctionRow = (row: Record<string, unknown>): void => {
+        const fn = String(row.Function ?? '');
+        if (!fn) return;
+        const spl = `\`sap_logserv_idx_macro\` ${ST} is_error="true" error_function="${splQuote(fn)}" | sort -_time`;
+        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+    };
+    const goConnLogRow = (row: Record<string, unknown>): void => {
+        const peer = String(row['Peer IP'] ?? '');
+        const src = String(row['Source IP'] ?? '');
+        if (!peer && !src) return;
+        const peerClause = peer ? `peer_ip="${splQuote(peer)}" ` : '';
+        const srcClause = src ? `src_ip="${splQuote(src)}" ` : '';
+        const spl = `\`sap_logserv_idx_macro\` ${ST} ${peerClause}${srcClause}| sort -_time`;
+        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+    };
+
+    return (
+        <DashboardLayout
+            category="INTEGRATION"
+            title="SAP Router"
+            subtitle="SAP Router connection activity, error analysis, and network boundary monitoring"
+        >
+            <KpiRow>
+                <KpiCard label="Total Router Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                    sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
+                <KpiCard label="Router Errors" value={errors.value} loading={errors.loading} error={errors.error} formatValue={formatInteger} tone={errorTone}
+                    sparkline={<SparklineFromQuery query={Q.sparkErrors} valueField="count" color={logservTheme.colors.red} fill />} />
+                <KpiCard label="Invalid Data Events" value={inval.value} loading={inval.loading} error={inval.error} formatValue={formatInteger} tone={invalTone}
+                    sparkline={<SparklineFromQuery query={Q.sparkInval} valueField="count" color={logservTheme.colors.orange} fill />} />
+                <KpiCard label="Unique Peer IPs" value={peers.value} loading={peers.loading} error={peers.error} formatValue={formatInteger}
+                    sparkline={<SparklineFromQuery query={Q.sparkPeers} valueField="peers" fill />} />
+            </KpiRow>
+
+            <PanelGrid2>
+                <FramedPanel title="Connection Actions Over Time" subtitle="Daily volume by action (CONNECT/DISCONNECT/etc.)">
+                    <TimeSeriesChart query={Q.connTrend} height={280} palette="volume" />
+                </FramedPanel>
+                <FramedPanel title="Router Errors Over Time" subtitle="Daily error count">
+                    <TimeSeriesChart query={Q.errorTrend} height={280} palette="errors" />
+                </FramedPanel>
+            </PanelGrid2>
+
+            <PanelGrid2>
+                <FramedPanel title="Peer IPs by Connection Volume" subtitle="Peers ranked by connection count">
+                    <DataTable columns={TOP_PEERS_COLS} rows={topPeers.results} loading={topPeers.loading} error={topPeers.error} emptyMessage="No router events in this time range." onRowClick={goPeerRow} />
+                </FramedPanel>
+                <FramedPanel title="Return Code Distribution" subtitle="Share of router events by return code">
+                    <PieChart query={Q.returnCodes} categoryField="Return Code" valueField="count" height={280} donut />
+                </FramedPanel>
+            </PanelGrid2>
+
+            <FullWidthPanel>
+                <FramedPanel title="Error Detail by Function" subtitle="Errors grouped by error_function">
+                    <DataTable columns={ERROR_DETAIL_COLS} rows={errorDetail.results} loading={errorDetail.loading} error={errorDetail.error} emptyMessage="No router errors in this time range." initialSortKey="Count" initialSortDir="desc" pageSize={5} onRowClick={goErrorFunctionRow} />
+                </FramedPanel>
+            </FullWidthPanel>
+
+            <FullWidthPanel>
+                <FramedPanel title="Recent Connection Log" subtitle="Connection events with peer/src IPs, most-recent first">
+                    <DataTable columns={CONN_LOG_COLS} rows={connLog.results} loading={connLog.loading} error={connLog.error} emptyMessage="No connection events in this time range." initialSortKey="Time" initialSortDir="desc" onRowClick={goConnLogRow} />
+                </FramedPanel>
+            </FullWidthPanel>
+        </DashboardLayout>
+    );
+};
+
+export default SapRouter;

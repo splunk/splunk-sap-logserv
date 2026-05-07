@@ -106,7 +106,9 @@ Implications for upgraders:
 
 ### :material-circle-box:{ .taiconcolor } Third-party software attributions
 
-See `THIRD-PARTY-NOTICES` shipped inside each app package; an SBOM (CycloneDX 1.4, 1416 components) is regenerated on every build and shipped inside the package.
+The v0.0.5.0 LogServ App ships with **`THIRD-PARTY-NOTICES.md`** at the root of the installed app directory (and at the root of the GitHub release source tree). The file lists all 1235 unique top-level npm packages bundled with the React app — names, versions, declared licenses, repository URLs, and full LICENSE / NOTICE / COPYING text where available. License posture: 1012 MIT, 64 ISC, 57 Apache-2.0, 46 BSD-3-Clause, 22 BSD-2-Clause, 11 `@splunk/*` (covered as a Splunk Extension under §1.C of Splunk General Terms), plus a long tail of permissive licenses. **No GPL / AGPL / LGPL components.** See [Third-Party Software](third-party-licenses.md) for the full license-distribution summary and refresh policy.
+
+A CycloneDX 1.4 SBOM (`SBOM.json`) is also regenerated on every build and shipped inside the package alongside `THIRD-PARTY-NOTICES.md`.
 
 
 ## Version 0.0.4.2-beta

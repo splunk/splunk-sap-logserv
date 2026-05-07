@@ -1,0 +1,23 @@
+[]
+owner = nobody
+access = read : [ * ], write : [ admin, sc_admin ]
+export = system
+
+# Per-user named topology layouts (build 120 / A.4). All authenticated users
+# need write access so they can save their own layouts. Records are keyed
+# by `<username>::<slug>` as a convention — server-side ACL does NOT enforce
+# per-user isolation at the record level. Acceptable for our dev/admin use
+# cases; a server-side REST handler would be needed for strict multi-tenant
+# isolation.
+[collections/logserv_topology_layouts]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Per-user per-dashboard refresh interval (build 155 / session 027). Same
+# ACL convention as logserv_topology_layouts: all authenticated users need
+# write access for their own preference rows; per-user isolation is a
+# convention enforced via the `<username>::<dashboard_id>` key, not the
+# server-side ACL.
+[collections/logserv_dashboard_refresh]
+access = read : [ * ], write : [ * ]
+export = system

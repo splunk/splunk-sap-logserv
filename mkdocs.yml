@@ -71,6 +71,7 @@ nav:
     - About: 'index.md'
     - Architecture: 'content/getting-started/architecture.md'
     - Release Notes: 'content/overview/release-notes.md'
+    - Third-Party Software: 'content/overview/third-party-licenses.md'
     - Supported Log Types: 'content/getting-started/supported-log-types.md'
     - Prerequisites: 'content/getting-started/prerequisites.md'
     - Quick Install Reference: 'content/getting-started/quick-install-reference.md'

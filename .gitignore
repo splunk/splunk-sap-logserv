@@ -7,4 +7,18 @@
 appinspect_report.html
 /sap_docs_local/
 
+# Build artifacts — recreatable, never commit
+node_modules/
+stage/
+/sap_logserv_package/output/
+SBOM.json
+yarn-error.log
+npm-debug.log
+test-reports
+coverage_report
+
+# Editor + OS noise
+.vscode/
+*.swp
+Thumbs.db
 

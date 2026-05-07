@@ -1,0 +1,69 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "LogServ Intent Map",
+    "description": "Schema for the LogServ AI Assistant predefined-prompt registry. Validated at build time by intentMap.test.ts to enforce shape consistency between the JSON registry and the savedsearches.conf entries.",
+    "type": "object",
+    "required": ["version", "packs", "prompts"],
+    "properties": {
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "description": { "type": "string" },
+        "packs": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "required": ["label", "description"],
+                "properties": {
+                    "label": { "type": "string" },
+                    "description": { "type": "string" }
+                }
+            }
+        },
+        "prompts": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["id", "pack", "label", "description", "savedSearch", "spl", "renderHint"],
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "pattern": "^[a-z_]+\\.[a-z0-9_]+$",
+                        "description": "Stable identifier; format <pack>.<intent>"
+                    },
+                    "pack": {
+                        "type": "string",
+                        "enum": ["sap_basis", "security", "operations"]
+                    },
+                    "label": {
+                        "type": "string",
+                        "minLength": 8,
+                        "maxLength": 120
+                    },
+                    "description": {
+                        "type": "string",
+                        "minLength": 30,
+                        "description": "Sent to the AI as the tool description; should be precise enough for tool-selection."
+                    },
+                    "savedSearch": {
+                        "type": "string",
+                        "pattern": "^logserv_[a-z0-9_]+$",
+                        "description": "Must exist in default/savedsearches.conf"
+                    },
+                    "spl": {
+                        "type": "string",
+                        "minLength": 10,
+                        "description": "SPL of the saved search, duplicated for chat display. Validated to match savedsearches.conf at build time."
+                    },
+                    "renderHint": {
+                        "type": "string",
+                        "enum": ["table", "timechart", "kpi", "pie"]
+                    },
+                    "chartHint": {
+                        "type": "string",
+                        "enum": ["timechart", "kpi", "pie"],
+                        "description": "Optional companion chart type rendered above the table when renderHint='table'. Allows table-primary results to also surface a chart view of the same data without requiring a second saved search. Omit for raw-event tables where a chart would be misleading."
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@splunk/splunk-create-monorepo",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "build": "yarn workspaces run build",
+    "format": "git ls-files | grep -E \"\\.(jsx?|css)$\" | xargs prettier --write",
+    "format:verify": "git ls-files | grep -E \"\\.(jsx?|css)$\" | xargs prettier --list-different",
+    "lint": "yarn workspaces run lint",
+    "setup": "yarn && yarn build",
+    "test": "yarn workspaces run test",
+    "start": "yarn workspace @splunk/log-serv-app run start"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "resolutions": {
+    "d3-color": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

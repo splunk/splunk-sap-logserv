@@ -88,7 +88,7 @@ Live mode coexists with the [per-dashboard auto-refresh picker](index.md) — cu
 
 - The view's URL slug is `/integration-topology` (historical — the user-visible label was changed from "Integration Topology" to "Environment Topology", but the URL slug + code identifiers stayed stable so existing bookmarks + saved-layout records remain valid).
 - Layout persistence works across browser tabs and across Splunk Web sessions — your KV Store records survive Splunkd restarts.
-- The view is currently single-user-per-tab — if two users edit a layout simultaneously, last-save wins. Multi-user collaboration is planned for a future release.
+- Layouts are saved **per Splunk user** — every KV Store record is keyed by `<username>::<slug>`, so different users have completely separate records and can't overwrite each other's layouts. If the same user edits the topology in two browser tabs concurrently, the tabs race each other and last-tab-save wins (multi-tab edit-collision protection is planned for a future release).
 
 ![Environment Topology](../../../images/dashboard-environment-topology.png)
 
