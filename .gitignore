@@ -10,6 +10,7 @@ appinspect_report.html
 # Build artifacts — recreatable, never commit
 node_modules/
 stage/
+stage_es_v2/
 /sap_logserv_package/output/
 SBOM.json
 yarn-error.log
@@ -17,8 +18,26 @@ npm-debug.log
 test-reports
 coverage_report
 
+# mkdocs build output — regenerable from docs/ + mkdocs.yml
+/site/
+
+# One-off backup taken before a docs/images refresh — preserved on disk
+# under testing/ but not for GitHub.
+/docs_images_backup_pre_help_icon_refresh_2026-05-08/
+
+# Local-only working dir for build artifacts the user keeps off-repo
+# (iteration tarballs, mkdocs build output, old AppInspect reports,
+# old release_binaries, etc.). Never commit this whole tree.
+/testing/
+
 # Editor + OS noise
 .vscode/
 *.swp
 Thumbs.db
 
+# Tarballs — broad ignore so iteration / dev tarballs never accidentally
+# commit. The two final 0.0.5.0 canonical release artifacts are explicitly
+# allowed by the negation rules below.
+*.tar.gz
+!release_binaries/splunk_app_sap_logserv-0.0.5.0.tar.gz
+!release_binaries/splunk_ta_sap_logserv-0.0.5.0.tar.gz
