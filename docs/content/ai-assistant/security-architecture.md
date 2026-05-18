@@ -5,7 +5,7 @@ This page is for **customer security teams** evaluating the LogServ App's AI Ass
 !!! warning "v0.0.5 release: LLM functionality intentionally disabled pending review"
     The v0.0.5 release ships with the LLM-driven path **disabled at compile time pending internal review**. The controls described on this page are designed, implemented, and exercised by the build's CI pipeline — but the LLM dispatch pathway itself is gated off via the [Templates-only build flag](templates-only-build.md) until the review concludes. The predefined-prompt path + Splunk MCP integration + audit log remain fully active. This page documents the security architecture so reviewers can evaluate the posture for a future release that re-enables the LLM path.
 
-## :material-circle-box:{ .taiconcolor } The Privacy Boundary (TL;DR)
+## :material-circle-box:{ .taiconcolor } The Privacy Boundary
 
 The LogServ AI Assistant is designed around one flagship security property: **no event data from your Splunk indexes is ever transmitted to any AI vendor.** This isn't a policy commitment — it's enforced by the TypeScript type system at compile time.
 
@@ -157,7 +157,7 @@ Items in SAIF that don't apply to LogServ's architecture:
 
 - **Model training, fine-tuning, RAG with embedded sensitive data** — the AI Assistant does not train, fine-tune, embed, or persist any customer data into any model.
 - **Vendor model integrity and vendor data handling** — these are the LLM vendor's responsibility. Anthropic, OpenAI, Azure OpenAI, and AWS Bedrock each publish their own data-usage commitments and security posture; the customer's DPA review should confirm processor obligations.
-- **Customer Splunk infrastructure security** — Splunk's own access controls, role-based ACLs, and indexer encryption apply normally. The AI Assistant inherits whatever security posture the customer has configured for Splunk Web access.
+- **Customer Splunk infrastructure security** — Splunk's own access controls, role-based ACLs, and indexer encryption apply normally. The AI Assistant inherits the security posture the customer has configured for Splunk Web access.
 
 ---
 
