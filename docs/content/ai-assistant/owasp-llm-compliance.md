@@ -2,6 +2,9 @@
 
 This page is intended for the **customer's security team** reviewing the LogServ App's AI Assistant feature for production deployment. It covers each of the OWASP LLM Top 10 (2025) items and the controls the LogServ App ships to address them.
 
+!!! tip "Companion page"
+    For the same controls organized along Google's [Secure AI Framework (SAIF)](https://saif.google/) four-pillar structure plus a coverage matrix of SAIF's 15 Key Risks, see [SAIF Security Architecture](security-architecture.md).
+
 !!! warning "v0.0.5 release: LLM functionality intentionally disabled pending review"
     The v0.0.5 release ships with the LLM-driven path **disabled at compile time pending internal review**. The controls described on this page are designed, implemented, and exercised by the build's CI pipeline — but the LLM dispatch pathway itself is gated off via the [Templates-only build flag](templates-only-build.md) until the review concludes. The predefined-prompt path + Splunk MCP integration + audit log remain fully active. This page documents the controls so reviewers can evaluate the security posture for a future release that re-enables the LLM path.
 

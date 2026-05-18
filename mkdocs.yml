@@ -141,6 +141,7 @@ nav:
     - Time-Window Reasoning: 'content/ai-assistant/time-window-reasoning.md'
     - Templates-only Build: 'content/ai-assistant/templates-only-build.md'
     - OWASP LLM Top 10 Compliance: 'content/ai-assistant/owasp-llm-compliance.md'
+    - SAIF Security Architecture: 'content/ai-assistant/security-architecture.md'
 - Developer Reference:
     - Testing Guide: 'content/developer/testing-guide.md'
     - Architecture and Internals: 'content/developer/developer-reference.md'
