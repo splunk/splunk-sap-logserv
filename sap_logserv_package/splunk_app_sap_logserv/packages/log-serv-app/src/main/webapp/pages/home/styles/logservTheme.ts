@@ -33,6 +33,7 @@ export const logservTheme = {
         orangeLight: '#f4a535',
         yellow: '#ffcc00',
         teal: '#00d4b4', // positive / success
+        green: '#65c878', // healthy / normal — used by topology call-bucket ring (build 207)
         cyanAccent: '#0877a6',
         cyanLight: '#7ee8fa',
         purple: '#9c6aff',

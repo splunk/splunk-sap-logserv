@@ -17,6 +17,8 @@ import {
     setLocalAuditIndex,
 } from './components/ai/audit';
 import { readCredentialClear } from './utils/passwordsApi';
+import { migrateConfFileSettingsToKvStore } from './utils/aiConfigApi';
+import { migrateConfFileAcksToKvStore } from './utils/telemetryConfApi';
 
 /**
  * App root.
@@ -59,7 +61,7 @@ const App: React.FC = () => {
         setAiConfig(cfg);
         // Update the AuditWriter's destination-index name. Subsequent
         // flush() / postOneOff() calls target the new index. Empty /
-        // missing values fall back to the default `_ai_assistant_audit`
+        // missing values fall back to the default `ai_assistant_audit`
         // (handled inside `setLocalAuditIndex`).
         setLocalAuditIndex(cfg.auditIndexName);
         const hecToken = cfg.auditForwarderEnabled
@@ -98,6 +100,18 @@ const App: React.FC = () => {
     useEffect(() => {
         let cancelled = false;
         (async () => {
+            /* Session 042 / Option D — one-shot migration helpers copy
+             * pre-migration conf-file values into KV Store on first
+             * load. Idempotent: subsequent loads find the KV Store rows
+             * populated and no-op. Awaited BEFORE the initial config
+             * read so the read sees the migrated values immediately on
+             * the first post-upgrade page load. Both are best-effort —
+             * failures don't block the UI. */
+            await Promise.all([
+                migrateConfFileSettingsToKvStore(),
+                migrateConfFileAcksToKvStore(),
+            ]);
+            if (cancelled) return;
             const cfg = await loadAIAssistantConfig();
             if (cancelled) return;
             await applyAIConfig(cfg);
@@ -110,12 +124,22 @@ const App: React.FC = () => {
     return (
         <TimeRangeProvider>
             <AIAssistantProvider
+                providerName={aiConfig.provider}
+                defaultModel={aiConfig.defaultModel}
                 user={typeof splunkUsername === 'string' ? splunkUsername : ''}
             >
                 <HashRouter>
                     <AppShell
                         aiAssistantEnabled={aiConfig.enabled}
+                        aiAssistantTemplatesOnlyMode={aiConfig.templatesOnlyMode}
+                        aiAssistantTier={aiConfig.tier}
                         aiAssistantMcpRequired={aiConfig.mcpRequired}
+                        aiAssistantRateLimitPerHour={aiConfig.rateLimitPerHour}
+                        aiAssistantToolCallsPerSessionCap={aiConfig.toolCallsPerSessionCap}
+                        aiAssistantDailySpendCapUsd={aiConfig.dailySpendCapUsd}
+                        aiAssistantTier2PiiRedaction={aiConfig.tier2PiiRedaction}
+                        aiAssistantTier2RedactHostnames={aiConfig.tier2RedactHostnames}
+                        aiAssistantPowerUserRoles={aiConfig.powerUserRoles}
                         onAIConfigSaved={refreshAIConfig}
                     />
                 </HashRouter>

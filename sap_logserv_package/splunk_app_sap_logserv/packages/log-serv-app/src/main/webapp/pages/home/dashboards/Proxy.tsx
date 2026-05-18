@@ -75,6 +75,12 @@ const Q = {
     bandwidthTimeline: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d sum(bytes_out) as "Bytes Out"`,
     topDomainsByBytes: `\`sap_logserv_idx_macro\` ${ST} url_domain=* | stats sum(bytes_out) as bytes_out by url_domain | eval mb_out = round(bytes_out/1048576, 2) | sort -mb_out | table url_domain, mb_out | rename url_domain as "Domain", mb_out as "MB Out"`,
     bandwidthByDomain: `\`sap_logserv_idx_macro\` ${ST} url_domain=* | timechart span=1d sum(bytes_out) by url_domain limit=5 useother=f`,
+
+    // Squid response time (build 186 / session 034 deep-dive). The `duration` field
+    // is extracted by Splunk's pretrained squid:access sourcetype but only on the
+    // access.log subset; store.log entries share the sourcetype with no duration.
+    slowDestinations: `\`sap_logserv_idx_macro\` ${ST} source="*access.log*" duration=* | stats count AS Requests avg(duration) AS avg_ms perc95(duration) AS p95_ms max(duration) AS max_ms by dest | sort -p95_ms | head 20 | eval "Avg (ms)" = round(avg_ms, 0) | eval "p95 (ms)" = round(p95_ms, 0) | eval "Max (ms)" = round(max_ms, 0) | fields - avg_ms, p95_ms, max_ms | rename dest AS Destination`,
+    responseTimeTrend: `\`sap_logserv_idx_macro\` ${ST} source="*access.log*" duration=* | timechart span=1d perc50(duration) AS "p50 (ms)" perc95(duration) AS "p95 (ms)" max(duration) AS "Max (ms)"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -109,6 +115,15 @@ const TOP_DOM_BYTES_COLS: ColumnDef[] = [
     { key: 'MB Out', label: 'MB Out', align: 'right' },
 ];
 
+// Response time columns (build 186)
+const SLOW_DEST_COLS: ColumnDef[] = [
+    { key: 'Destination', label: 'Destination' },
+    { key: 'Requests', label: 'Requests', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Avg (ms)', label: 'Avg (ms)', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'p95 (ms)', label: 'p95 (ms)', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Max (ms)', label: 'Max (ms)', align: 'right', render: (v) => formatInteger(v) },
+];
+
 const Proxy: React.FC = () => {
     const total = useFirstRowField(Q.kpiTotal, 'count');
     const bandwidth = useFirstRowField(Q.kpiBandwidth, 'total');
@@ -119,6 +134,7 @@ const Proxy: React.FC = () => {
     const clientDiversity = useSearch({ query: Q.clientDomainDiversity });
     const cacheActions = useSearch({ query: Q.contentTypes });
     const topDomBytes = useSearch({ query: Q.topDomainsByBytes });
+    const slowDestinations = useSearch({ query: Q.slowDestinations });
 
     const deniedTone = Number(denied.value ?? 0) > 0 ? 'warning' : 'neutral';
 
@@ -187,6 +203,15 @@ const Proxy: React.FC = () => {
                 </FramedPanel>
                 <FramedPanel title="Bandwidth Over Time by Domain (Top 5)" subtitle="Daily bytes by top 5 domains">
                     <TimeSeriesChart query={Q.bandwidthByDomain} height={280} palette="volume" />
+                </FramedPanel>
+            </PanelGrid2>
+
+            <PanelGrid2>
+                <FramedPanel title="Slowest Destinations" subtitle="Top 20 destinations by p95 response time (ms) — Squid pretrained `duration` field, access.log events only">
+                    <DataTable columns={SLOW_DEST_COLS} rows={slowDestinations.results} loading={slowDestinations.loading} error={slowDestinations.error} emptyMessage="No access.log events with duration in this time range." />
+                </FramedPanel>
+                <FramedPanel title="Response Time Percentiles" subtitle="Daily p50 / p95 / max response time (ms) — Squid pretrained `duration` field, access.log events only">
+                    <TimeSeriesChart query={Q.responseTimeTrend} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>
         </DashboardLayout>

@@ -28,7 +28,7 @@ export const ACCEPTANCE_DISCLAIMER_TEXT = `Audit log forwarding is currently dis
 
 By submitting this acknowledgement you confirm:
 
-  * You will not edit, delete, modify, alter, redact, omit, fabricate, or otherwise tamper with the _ai_assistant_audit index, its bucket files on disk, or any audit event record at any time, by any means, on any host.
+  * You will not edit, delete, modify, alter, redact, omit, fabricate, or otherwise tamper with the ai_assistant_audit index, its bucket files on disk, or any audit event record at any time, by any means, on any host.
 
   * You understand that disabling audit forwarding does not relieve any compliance, regulatory, contractual, or fiduciary obligation you or your organisation may have to maintain tamper-evident audit records.
 

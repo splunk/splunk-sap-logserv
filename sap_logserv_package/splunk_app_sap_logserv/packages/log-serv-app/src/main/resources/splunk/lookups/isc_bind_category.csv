@@ -1,0 +1,6 @@
+sourcetype,vendor_category
+isc:bind:query,queries
+isc:bind:queryerror,query-errors
+isc:bind:lameserver,lame-servers
+isc:bind:network,network
+isc:bind:transfer,notify

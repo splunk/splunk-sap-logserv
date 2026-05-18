@@ -6,10 +6,10 @@ The SAP LogServ solution for Splunk is delivered as **two separately installable
 
 | Package | App ID | Purpose |
 |---------|--------|---------|
-| **Data TA** | `splunk_ta_sap_logserv` | Data collection, index-time filtering, deployment server automation, configuration UI, ships the `indexes.conf` for `sap_logserv_logs` (SAP data) and `_ai_assistant_audit` (AI Assistant audit log) |
+| **Data TA** | `splunk_ta_sap_logserv` | Data collection, index-time filtering, deployment server automation, configuration UI, ships the `indexes.conf` for `sap_logserv_logs` (SAP data) and `logserv_ai_assistant_audit` (AI Assistant audit log) |
 | **LogServ App** | `splunk_app_sap_logserv` | Dashboards, AI Assistant, Environment Topology view, search-time field extractions, macros |
 
-The **Data TA** handles everything that happens at index time: ingesting data from S3, routing events to the correct sourcetype, applying index-time filters, and defining the two indexes the solution writes to. It includes Python scripts, REST handlers, a configuration UI built with Splunk's UCC framework, and `default/indexes.conf` so Splunk auto-creates `sap_logserv_logs` and `_ai_assistant_audit` on first install. Both index names are **macro-configurable** via `sap_logserv_idx_macro` (SAP data) and `sap_logserv_audit_idx_macro` (audit log); customers who rename either index update the matching macro definition. The `_ai_assistant_audit` index is required for the AI Assistant's audit log to function — without it, audit events have no destination index.
+The **Data TA** handles everything that happens at index time: ingesting data from S3, routing events to the correct sourcetype, applying index-time filters, and defining the two indexes the solution writes to. It includes Python scripts, REST handlers, a configuration UI built with Splunk's UCC framework, and `default/indexes.conf` so Splunk auto-creates `sap_logserv_logs` and `logserv_ai_assistant_audit` on first install. Both index names are **macro-configurable** via `sap_logserv_idx_macro` (SAP data) and `sap_logserv_audit_idx_macro` (audit log); customers who rename either index update the matching macro definition. The `logserv_ai_assistant_audit` index is required for the AI Assistant's audit log to function — without it, audit events have no destination index.
 
 The **LogServ App** handles everything that happens at search time: field extractions, field aliases, computed fields, and the dashboards you use to visualize and analyze the data. It contains no Python code and no data collection components.
 
@@ -94,9 +94,9 @@ Two routing strategies are used:
 
 For the complete list of supported log types and their sourcetype mappings, see [Supported Log Types](supported-log-types.md).
 
-## :material-circle-box:{ .taiconcolor } v0.0.5.0 React App Architecture
+## :material-circle-box:{ .taiconcolor } React App Architecture
 
-The LogServ App was rewritten as a React application in v0.0.5.0. The Data TA architecture is unchanged from v0.0.4.x — only the UI tier changed.
+The LogServ App is built as a React application. The Data TA architecture is independent — only the UI tier uses React.
 
 **Stack:**
 
@@ -144,11 +144,11 @@ Tool results from the Splunk MCP Server are typed `Hidden<MCPToolResult>` in Typ
 
 **Audit log:**
 
-Every AI Assistant action — both paths — produces audit events into a dedicated `_ai_assistant_audit` index. Categories include `local_only` (canned-prompt dispatches), `vendor_tier1` / `vendor_tier2` (LLM calls with token counts + USD cost estimate), `security_blocked_spl`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, plus three legal-acknowledgement categories. The Audit Log tab in Settings provides an in-app browser; an optional HEC forwarder can stream events to a separate Splunk / SIEM destination for tamper-evidence.
+Every AI Assistant action — both paths — produces audit events into a dedicated `logserv_ai_assistant_audit` index. Categories include `local_only` (canned-prompt dispatches), `vendor_tier1` / `vendor_tier2` (LLM calls with token counts + USD cost estimate), `security_blocked_spl`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, plus three legal-acknowledgement categories. The Audit Log tab in Settings provides an in-app browser; an optional HEC forwarder can stream events to a separate Splunk / SIEM destination for tamper-evidence.
 
 **Splunk MCP Server prerequisite:**
 
-The AI Assistant requires [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.1.0 or later, installed on the same search head as the LogServ App. Cookie auth from the same Splunk Web session works by default on HTTP-only Splunk; an optional bearer token can be configured for OAuth-strict environments. See [Splunk MCP Setup](../ai-assistant/mcp-setup.md) for end-to-end configuration, troubleshooting, and the auto-mint roadmap.
+The AI Assistant requires [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.1.0 or later, installed on the same search head as the LogServ App. Cookie auth from the same Splunk Web session works by default on HTTP-only Splunk; an optional bearer token can be configured for OAuth-strict environments. See [Splunk MCP Setup](../ai-assistant/mcp-setup.md) for end-to-end configuration and troubleshooting.
 
 ## :material-circle-box:{ .taiconcolor } Environment Topology Architecture
 
@@ -173,6 +173,6 @@ The "which IP belongs to which SID" mapping is derived from a multi-source `unio
 
 User-arranged graph layouts are persisted via Splunk KV Store collection `logserv_topology_layouts`. The schema (currently v4) carries node positions, panel state, viewport zoom + pan, enabled integration types, selected node, active right-sidebar tab, and snap mode. Layouts are per-user-named (an admin can save a default layout that other users see; users can save their own variants). Schema migration is in-memory: v1 / v2 / v3 records still load.
 
-**Live mode auto-refresh:**
+**Data refresh:**
 
-The toolbar's Live mode toggle drives a 30-second auto-refresh that re-runs all SPL queries on the topology view; saved layouts are preserved across ticks. Coexists with the per-dashboard auto-refresh picker — currently both contribute additively to the refresh nonce; consolidation is planned for a future release.
+Topology data is populated by three hourly scheduled saved searches (`logserv_topology_aggregate_nodes / _edges / _inventory`, cron `5 * * * *`) that write to the KV Store collections. The view re-reads the KV Store on initial mount, on global TimeRange picker change, and whenever the user clicks the toolbar's **Refresh** button. There is no auto-polling — Splunk's hourly cron is what governs data freshness. The previous Live | Lookup toggle was removed in session 044 because the underlying data only changes hourly, so client-side polling at 30s intervals re-rendered the same data 119 times per hour. Per-node detail panels (right sidebar tabs) continue to re-fetch via on-demand SPL whenever a node is selected.

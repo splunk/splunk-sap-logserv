@@ -8,12 +8,13 @@ This page covers the prerequisites for the **LogServ Data TA** (`splunk_ta_sap_l
 
 ### :material-circle-box:{ .taiconcolor } Required Splunk Add-ons
 
-The SAP LogServ packages depend on several additional Splunk Technical Add-ons for sourcetype definitions and CIM mapping. Install these from Splunkbase before proceeding:
+The LogServ App depends on two CIM Splunk Technical Add-ons for Linux + Windows sourcetype definitions and CIM mapping. Install on the **Search Head only** (they carry only search-time content for our pipeline — see [Quick Install Reference](../getting-started/quick-install-reference.md) for the per-tier matrix):
 
 - <a href="https://splunkbase.splunk.com/app/833" target="_blank">Splunk Add-on for Unix and Linux</a>
 - <a href="https://splunkbase.splunk.com/app/742" target="_blank">Splunk Add-on for Microsoft Windows</a>
-- <a href="https://splunkbase.splunk.com/app/2965" target="_blank">Splunk Add-on for Squid Proxy</a>
-- <a href="https://splunkbase.splunk.com/app/2876" target="_blank">Splunk Add-on for ISC BIND</a>
+
+!!! note "No standalone Squid Proxy or ISC BIND add-ons needed"
+    Previous versions of this app listed the `Splunk Add-on for Squid Proxy` (Splunkbase 2965, now archived) and `Splunk Add-on for ISC BIND` (Splunkbase 2876, now archived) as additional prerequisites. Both add-ons' parsing has been **absorbed natively** into the LogServ App as of v0.0.5.0 build 184. Do not install the standalone add-ons. If either is detected at runtime, the LogServ App's home view shows a one-time dismissible banner recommending uninstall via `Settings → Manage Apps` to avoid duplicate field extraction.
 
 ### :material-circle-box:{ .taiconcolor } SAP ECS running in Amazon Web Services (AWS)
 

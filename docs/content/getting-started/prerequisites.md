@@ -9,9 +9,9 @@ Splunk for SAP LogServ ships as **two separately installable packages** with dis
 | **LogServ Data TA** | `splunk_ta_sap_logserv` | Data collection from S3, index-time filtering, deployment server automation, ships the `indexes.conf` for the two indexes the solution writes to | Single instance, OR Deployment Server + each Heavy Forwarder + Indexer |
 | **LogServ UI App** | `splunk_app_sap_logserv` | Dashboards, AI Assistant chat panel, search-time field extractions | Single instance, OR the Search Head only |
 
-For single-instance deployments, both packages install on the same instance. For distributed topologies, each package goes to its own tier — never SCP a Data TA file to the Search Head, and never SCP a UI App file to a Heavy Forwarder. The Data TA carries `indexes.conf` defining both `sap_logserv_logs` (SAP data) and `_ai_assistant_audit` (AI Assistant audit log); Splunk auto-creates them on indexer install, no separate Index App required.
+For single-instance deployments, both packages install on the same instance. For distributed topologies, each package goes to its own tier — never SCP a Data TA file to the Search Head, and never SCP a UI App file to a Heavy Forwarder. The Data TA carries `indexes.conf` defining both `sap_logserv_logs` (SAP data) and `logserv_ai_assistant_audit` (AI Assistant audit log); Splunk auto-creates them on indexer install, no separate Index App required.
 
-Both indexes are **macro-configurable** — `sap_logserv_idx_macro` (SAP data, default `index="sap_logserv_logs"`) and `sap_logserv_audit_idx_macro` (audit log, default `index="_ai_assistant_audit"`). Customers who rename either index update the matching macro definition under **Settings → Advanced search → Search macros**. See [Renaming an index](../install-setup/install-ta.md#renaming-an-index) for the full procedure (READ + WRITE paths).
+Both indexes are **macro-configurable** — `sap_logserv_idx_macro` (SAP data, default `index="sap_logserv_logs"`) and `sap_logserv_audit_idx_macro` (audit log, default `index="logserv_ai_assistant_audit"`). Customers who rename either index update the matching macro definition under **Settings → Advanced search → Search macros**. See [Renaming an index](../install-setup/install-ta.md#renaming-an-index) for the full procedure (READ + WRITE paths).
 
 ### :material-circle-box:{ .taiconcolor } Common Prerequisites (both packages)
 
@@ -23,7 +23,7 @@ Splunk 9.4.3 is the minimum because the LogServ App's React stack (`@splunk/reac
 
 Each package has its own additional prerequisites — install Splunkbase add-ons appropriate to that tier.
 
-- **[Data TA Prerequisites](../install-setup/prerequisites.md)** — CIM-aligned add-ons for the sourcetypes the Data TA produces (Unix/Linux, Windows, Squid, ISC BIND), plus the AWS Add-on for S3-based ingest. The Data TA also auto-creates the two indexes (`sap_logserv_logs` + `_ai_assistant_audit`) from its bundled `default/indexes.conf` on first startup — no separate prereq.
+- **[Data TA Prerequisites](../install-setup/prerequisites.md)** — CIM-aligned add-ons for the sourcetypes the Data TA produces (Unix/Linux, Windows, Squid, ISC BIND), plus the AWS Add-on for S3-based ingest. The Data TA also auto-creates the two indexes (`sap_logserv_logs` + `logserv_ai_assistant_audit`) from its bundled `default/indexes.conf` on first startup — no separate prereq.
 - **[LogServ App Prerequisites](../logserv-app/prerequisites.md)** — the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) for the AI Assistant's predefined-prompt dispatch path, plus the optional [Splunk AI Assistant (App 200)](https://splunkbase.splunk.com/app/200) recommended companion.
 
 ### :material-circle-box:{ .taiconcolor } Decision Tree

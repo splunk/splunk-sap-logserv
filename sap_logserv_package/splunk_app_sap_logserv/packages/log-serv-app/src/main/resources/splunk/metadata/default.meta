@@ -1,6 +1,6 @@
 []
 owner = nobody
-access = read : [ * ], write : [ admin, sc_admin ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Per-user named topology layouts (build 120 / A.4). All authenticated users
@@ -13,11 +13,63 @@ export = system
 access = read : [ * ], write : [ * ]
 export = system
 
+# Per-user per-mode default-layout pointer (build 226 / session 037 / Path F).
+# Same ACL convention as logserv_topology_layouts; per-user isolation via
+# the `<username>::<layout_mode>` key.
+[collections/logserv_topology_layout_defaults]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Per-user active layout mode preference (build 229 / session 037 / Option C).
+# Stores which layout mode (force/layered/tree) the user prefers on first nav.
+# One row per user keyed by <username>.
+[collections/logserv_topology_active_mode]
+access = read : [ * ], write : [ * ]
+export = system
+
 # Per-user per-dashboard refresh interval (build 155 / session 027). Same
 # ACL convention as logserv_topology_layouts: all authenticated users need
 # write access for their own preference rows; per-user isolation is a
 # convention enforced via the `<username>::<dashboard_id>` key, not the
 # server-side ACL.
 [collections/logserv_dashboard_refresh]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Time-bucketed topology nodes + edges (session 035 / build 188). Read by
+# the React app's authenticated session at view-render time; written by the
+# scheduled saved searches running as nobody/admin. All authenticated users
+# need read access; write access via the saved search runs in admin context.
+[collections/logserv_topology_nodes]
+access = read : [ * ], write : [ * ]
+export = system
+
+[collections/logserv_topology_edges]
+access = read : [ * ], write : [ * ]
+export = system
+
+# IP/host -> SID inventory (session 035 / build 188). Read by the React
+# app's authenticated session at view-render time to retarget raw-IP edge
+# endpoints to their owning SID node; written by the
+# logserv_topology_aggregate_inventory saved search.
+[collections/logserv_topology_inventory]
+access = read : [ * ], write : [ * ]
+export = system
+
+# AI Assistant admin-managed settings (session 042 / Option D). Read by all
+# authenticated users (the React app needs this on every page load to know
+# whether the AI Assistant button should render); admin-tier users write
+# from the Settings page. ACL allows all authenticated writes so the
+# capability-gate workaround works regardless of role mix on the deployment.
+# Server-side single-row convention: _key = "defaults".
+[collections/logserv_ai_assistant_settings]
+access = read : [ * ], write : [ * ]
+export = system
+
+# AI Assistant per-stanza T&C acknowledgements (session 042 / Option D).
+# Same ACL pattern: all authenticated read + write. Each row is keyed by
+# the stanza name (e.g. "logserv-ai-assistant-enable-tc") and the React
+# app writes on every modal Submit / Cancel interaction.
+[collections/logserv_ai_assistant_acks]
 access = read : [ * ], write : [ * ]
 export = system

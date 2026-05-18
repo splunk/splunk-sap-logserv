@@ -11,10 +11,8 @@ A single matrix mapping every Splunkbase add-on, prerequisite, and LogServ compo
 |---|---|---|:---:|:---:|:---:|:---:|
 | **LogServ Data TA** (`splunk_ta_sap_logserv`) | this repo | required | — | ✓ (indexes.conf) | ✓ (via DS) | ✓ (filter UI) |
 | **LogServ App** (`splunk_app_sap_logserv`) | this repo | required | ✓ | — | — | — |
-| **Splunk Add-on for Unix and Linux** | <a href="https://splunkbase.splunk.com/app/833" target="_blank">833</a> | required (CIM) | ✓ | ✓ | ✓ | — |
-| **Splunk Add-on for Microsoft Windows** | <a href="https://splunkbase.splunk.com/app/742" target="_blank">742</a> | required (CIM) | ✓ | ✓ | ✓ | — |
-| **Splunk Add-on for Squid Proxy** | <a href="https://splunkbase.splunk.com/app/2965" target="_blank">2965</a> | required (CIM) | ✓ | ✓ | ✓ | — |
-| **Splunk Add-on for ISC BIND** | <a href="https://splunkbase.splunk.com/app/2876" target="_blank">2876</a> | required (CIM) | ✓ | ✓ | ✓ | — |
+| **Splunk Add-on for Unix and Linux** | <a href="https://splunkbase.splunk.com/app/833" target="_blank">833</a> | required (CIM) | ✓ | — | — | — |
+| **Splunk Add-on for Microsoft Windows** | <a href="https://splunkbase.splunk.com/app/742" target="_blank">742</a> | required (CIM) | ✓ | — | — | — |
 | **Splunk Add-on for AWS** | <a href="https://splunkbase.splunk.com/app/1876" target="_blank">1876</a> | required if SAP ECS in AWS | — | — | ✓ (S3 inputs) | — |
 | **Splunk MCP Server** | <a href="https://splunkbase.splunk.com/app/7931" target="_blank">7931</a> v1.1.0+ | required for AI Assistant | ✓ | — | — | — |
 | **Splunk AI Assistant** | <a href="https://splunkbase.splunk.com/app/200" target="_blank">200</a> | recommended companion to 7931 | ✓ | — | — | — |
@@ -22,7 +20,8 @@ A single matrix mapping every Splunkbase add-on, prerequisite, and LogServ compo
 ### :material-circle-box:{ .taiconcolor } Notes
 
 - **Indexer rationale.** The Data TA goes on the indexer because it bundles `indexes.conf`. See [Why does the Data TA need to go on the Indexer?](../install-setup/install-ta.md#3-where-to-install) for the trade-off + opt-out path.
-- **CIM add-ons (Unix/Linux, Windows, Squid, ISC BIND).** Install on every tier where the Data TA installs so sourcetype definitions resolve consistently. Splunkbase's AppInspect rules require these as declared dependencies.
+- **CIM add-ons go on the SH only.** The CIM TAs (Unix/Linux, Windows) carry only search-time content (props/transforms/eventtypes/tags/lookups for the parsing the LogServ App's dashboards consume); none of them need to run on the indexer or HFs for our pipeline. If your installation **also** uses one of these TAs' scripted inputs for some other purpose (e.g., the `cpu.sh` / `vmstat.sh` modular inputs in Splunk_TA_nix), follow that TA's own installation guidance for the indexer/HF side — that usage is independent of this app.
+- **No standalone Squid Proxy or ISC BIND add-ons needed.** Their parsing was absorbed into the LogServ App in v0.0.5.0 build 184 (Squid Add-on 2965 v2.1.0 — archived on Splunkbase; ISC BIND Add-on 2876 v2.0.0 — archived). If you have either standalone TA installed alongside the LogServ App, the App's home view shows a one-time dismissible banner recommending uninstall via `Settings → Manage Apps` (otherwise both TAs' parsing applies in parallel — duplicate field extraction).
 - **AWS Add-on (1876).** Only needed when SAP ECS data lives in AWS S3. The TA owns the SQS-based S3 inputs that pull data from the dest bucket; the LogServ Data TA then sourcetype-routes events as they're parsed on HFs. The actual `index = sap_logserv_logs` setting that sends events to the right place lives in this TA's S3 input config — not in the LogServ Data TA.
 - **MCP Server (7931).** Required for the AI Assistant's predefined-prompt path even when the LLM-driven path is disabled. Without it, the AI Assistant chat panel can't dispatch saved searches.
 - **Splunk AI Assistant (200).** The LogServ App uses only the core `splunk_run_saved_search` and `splunk_run_query` MCP tools (which work standalone against 7931), but App 200 follows Splunk's documented co-install pattern and unlocks `saia_*`-prefixed MCP tools that may be used in future LogServ releases.
@@ -31,25 +30,25 @@ A single matrix mapping every Splunkbase add-on, prerequisite, and LogServ compo
 
 #### :material-crop-square:{ .taiconcolor } Single Splunk instance
 
-Install all required + recommended apps on the same instance. Splunk auto-creates both indexes (`sap_logserv_logs` + `_ai_assistant_audit`) when the Data TA loads on first start.
+Install all required + recommended apps on the same instance. Splunk auto-creates both indexes (`sap_logserv_logs` + `logserv_ai_assistant_audit`) when the Data TA loads on first start.
 
 #### :material-crop-square:{ .taiconcolor } Distributed (DS + HFs + on-prem SH+IDX)
 
 | Tier | Install |
 |---|---|
-| **Search Head** | LogServ App, MCP Server (7931), Splunk AI Assistant (200), CIM add-ons (Unix/Linux, Windows, Squid, ISC BIND) |
-| **Indexer** | LogServ Data TA (provides indexes.conf for both indexes), CIM add-ons |
-| **Deployment Server** | LogServ Data TA (manages filter UI + pushes Data TA to HFs), CIM add-ons |
-| **Heavy Forwarders** | Receive LogServ Data TA via the DS automatically. Install the AWS add-on (1876) directly + CIM add-ons. |
+| **Search Head** | LogServ App, MCP Server (7931), Splunk AI Assistant (200), CIM add-ons (Unix/Linux, Windows) |
+| **Indexer** | LogServ Data TA (provides indexes.conf for both indexes). The CIM add-ons are **not** needed here — they carry only search-time content. |
+| **Deployment Server** | LogServ Data TA (manages filter UI + pushes Data TA to HFs) |
+| **Heavy Forwarders** | Receive LogServ Data TA via the DS automatically. Install the AWS add-on (1876) directly. The CIM add-ons are **not** needed here. |
 
 #### :material-crop-square:{ .taiconcolor } Distributed (DS + HFs + Splunk Cloud SH)
 
 | Tier | Install |
 |---|---|
-| **Splunk Cloud Search Head** | LogServ App, MCP Server (7931), Splunk AI Assistant (200), CIM add-ons |
-| **Splunk Cloud Indexer tier** | Splunk Cloud admin handles. Either (a) install the LogServ Data TA there to use the bundled index defs, OR (b) the Cloud admin manually creates `sap_logserv_logs` and `_ai_assistant_audit` via the Splunk Cloud UI — see [Why does the Data TA need to go on the Indexer?](../install-setup/install-ta.md#3-where-to-install). |
-| **Deployment Server** | LogServ Data TA, CIM add-ons |
-| **Heavy Forwarders** | Receive LogServ Data TA via the DS. Install AWS add-on (1876) directly + CIM add-ons. |
+| **Splunk Cloud Search Head** | LogServ App, MCP Server (7931), Splunk AI Assistant (200), CIM add-ons (Unix/Linux, Windows) |
+| **Splunk Cloud Indexer tier** | Splunk Cloud admin handles. Either (a) install the LogServ Data TA there to use the bundled index defs, OR (b) the Cloud admin manually creates `sap_logserv_logs` and `logserv_ai_assistant_audit` via the Splunk Cloud UI — see [Why does the Data TA need to go on the Indexer?](../install-setup/install-ta.md#3-where-to-install). |
+| **Deployment Server** | LogServ Data TA |
+| **Heavy Forwarders** | Receive LogServ Data TA via the DS. Install AWS add-on (1876) directly. |
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

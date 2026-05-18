@@ -43,6 +43,30 @@ Per the licenses below, attribution is preserved. No source modifications have b
 
 ---
 
+## Absorbed Splunk add-ons
+
+The Splunk App for SAP LogServ v0.0.5.0 build 184 (session 040, 2026-05-12) absorbed parsing artifacts (props.conf / transforms.conf / eventtypes.conf / tags.conf / lookup CSVs) from two **archived** Splunkbase add-ons published by Splunk Inc. The original add-ons have been archived by Splunk and are no longer actively maintained. The absorption was performed with organizational approval to retire the standalone-TA install dependency for customers of this app.
+
+### Splunk Add-on for ISC BIND v2.0.0
+
+- **Origin:** <https://splunkbase.splunk.com/app/4878> (archived)
+- **License:** `LicenseRef-Splunk-1-2020` (full text in [`LICENSES/LicenseRef-Splunk-1-2020.txt`](LICENSES/LicenseRef-Splunk-1-2020.txt))
+- **SPDX-FileCopyrightText:** 2020 Splunk, Inc. <sales@splunk.com>
+- **Absorbed sourcetypes:** `isc:bind:query`, `isc:bind:queryerror`, `isc:bind:lameserver`, `isc:bind:network`, `isc:bind:transfer`
+- **Absorbed lookups:** `isc_bind_action.csv`, `isc_bind_category.csv`, `isc_bind_reply_code.csv`, `isc_bind_severities.csv`
+- **No source modifications** have been made to the parsing logic. The configs retain their original SPDX headers and structure; only attribution comments were added to identify the absorption boundary.
+
+### Splunk Add-on for Squid Proxy v2.1.0
+
+- **Origin:** <https://splunkbase.splunk.com/app/5159> (archived)
+- **License:** `LicenseRef-Splunk-8-2021` (full text in [`LICENSES/LicenseRef-Splunk-8-2021.txt`](LICENSES/LicenseRef-Splunk-8-2021.txt))
+- **SPDX-FileCopyrightText:** 2021 Splunk, Inc. <sales@splunk.com>
+- **Absorbed sourcetypes:** `squid:access` (the `squid:access:recommended` sourcetype was NOT absorbed — see release notes)
+- **Absorbed lookups:** `squid_actions_210.csv`, `squid_httpstatus.csv`
+- **No source modifications** have been made to the absorbed parsing logic. The configs retain their original SPDX headers and structure.
+
+---
+
 ## Components
 
 ### @adobe/css-tools@4.4.4

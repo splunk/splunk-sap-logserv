@@ -1,5 +1,5 @@
 /**
- * auditQuery — read-only fetch of `_ai_assistant_audit` events from
+ * auditQuery — read-only fetch of `ai_assistant_audit` events from
  * Splunk's search REST endpoint. Used by the Settings page's Audit Log
  * viewer (build 95, session 022).
  *

@@ -56,6 +56,12 @@ const Q = {
     sourceHotspots: `\`sap_logserv_idx_macro\` ${ST} hana_trace_source_file=*  | ${COMP_FILTER} | stats count as Events dc(hana_trace_source_line) as "Unique Lines" latest(hana_trace_severity) as "Latest Severity" by hana_trace_source_file hana_trace_component | sort -Events | rename hana_trace_source_file as "Source File" hana_trace_component as Component`,
     sidInstance: `\`sap_logserv_idx_macro\` ${ST} | stats count by sap_sid hana_instance | sort -count | rename sap_sid as SID hana_instance as Instance`,
     errorDetail: `\`sap_logserv_idx_macro\` ${ST} hana_trace_severity IN ("error", "fatal") | table _time sap_sid hana_instance hana_trace_component hana_trace_source_file hana_trace_source_line hana_trace_severity | sort -_time | rename sap_sid as SID hana_instance as Instance hana_trace_component as Component hana_trace_source_file as "Source File" hana_trace_source_line as Line hana_trace_severity as Severity`,
+
+    // SQL operation duration (build 186 / session 034 deep-dive). 14.6% of trace
+    // events carry a "<float> msec" duration field; the rex pulls the leading
+    // quoted operation name to give the table a useful first column.
+    slowestOps: `\`sap_logserv_idx_macro\` ${ST} hana_op_duration_ms=* | rex field=_raw "^\\\"(?<hana_op>[^\\\"]+)\\\"" | sort - hana_op_duration_ms | head 20 | eval Duration = round(hana_op_duration_ms, 2) | table _time host sap_sid hana_op Duration | rename sap_sid AS SID hana_op AS Operation Duration AS "Duration (ms)"`,
+    durationPercentiles: `\`sap_logserv_idx_macro\` ${ST} hana_op_duration_ms=* | timechart span=1d perc50(hana_op_duration_ms) AS "p50 (ms)" perc95(hana_op_duration_ms) AS "p95 (ms)" max(hana_op_duration_ms) AS "Max (ms)"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -88,6 +94,15 @@ const ERROR_DETAIL_COLS: ColumnDef[] = [
     { key: 'Severity', label: 'Severity', width: '90px' },
 ];
 
+// SQL operation duration columns (build 186)
+const SLOWEST_OPS_COLS: ColumnDef[] = [
+    { key: '_time', label: 'Time', width: '160px', render: (v) => v ? new Date(String(v)).toLocaleString('en-US', { hour12: false }) : '' },
+    { key: 'host', label: 'Host' },
+    { key: 'SID', label: 'SID', width: '70px' },
+    { key: 'Operation', label: 'Operation' },
+    { key: 'Duration (ms)', label: 'Duration (ms)', align: 'right' },
+];
+
 const HanaTrace: React.FC = () => {
     const total = useFirstRowField(Q.kpiTotal, 'count');
     const errors = useFirstRowField(Q.kpiErrors, 'count');
@@ -96,6 +111,7 @@ const HanaTrace: React.FC = () => {
     const topComponents = useSearch({ query: Q.topComponents });
     const sourceHotspots = useSearch({ query: Q.sourceHotspots });
     const errorDetail = useSearch({ query: Q.errorDetail });
+    const slowestOps = useSearch({ query: Q.slowestOps });
 
     const errorTone = Number(errors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
@@ -162,6 +178,15 @@ const HanaTrace: React.FC = () => {
                 </FramedPanel>
                 <FramedPanel title="Activity by SID / Instance" subtitle="Trace volume by HANA SID + instance">
                     <TimeSeriesChart query={Q.sidInstance} height={280} palette="volume" />
+                </FramedPanel>
+            </PanelGrid2>
+
+            <PanelGrid2>
+                <FramedPanel title="Slowest SQL Operations" subtitle="Top 20 trace events by reported duration (msec) — leading quoted operation name extracted via rex">
+                    <DataTable columns={SLOWEST_OPS_COLS} rows={slowestOps.results} loading={slowestOps.loading} error={slowestOps.error} emptyMessage="No trace events with duration field in this time range." />
+                </FramedPanel>
+                <FramedPanel title="Operation Duration Percentiles" subtitle="Daily p50 / p95 / max of HANA SQL operation duration (msec) — only events that carry the duration field">
+                    <TimeSeriesChart query={Q.durationPercentiles} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>
 

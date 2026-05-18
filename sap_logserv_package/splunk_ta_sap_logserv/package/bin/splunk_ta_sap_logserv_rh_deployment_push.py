@@ -8,7 +8,7 @@ Custom REST endpoint that provides:
         REST API to distribute filter configurations to heavy forwarders.
 
 This endpoint is registered in ``restmap.conf`` and requires the
-``admin_all_objects`` capability.
+``edit_deployment_server`` capability.
 """
 
 import json

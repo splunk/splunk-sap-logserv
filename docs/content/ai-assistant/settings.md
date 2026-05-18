@@ -12,7 +12,7 @@ The AI Assistant Settings page is at **`#/settings/ai-assistant`** within the Lo
 | **General** | Org-wide AI Assistant defaults (enable/disable, provider, model, tier, MCP gate, server URL, rate limit, spend cap, Power Users, audit forwarder) |
 | **Provider Credentials** | LLM provider API keys (Anthropic / OpenAI / Azure OpenAI / AWS Bedrock) |
 | **Splunk MCP** | MCP Server bearer token + Audit Forwarder HEC token |
-| **Audit Log** | Read-only browser of every audit event in the `_ai_assistant_audit` index |
+| **Audit Log** | Read-only browser of every audit event in the `logserv_ai_assistant_audit` index |
 
 In the [Templates-only build variant](templates-only-build.md), the Provider Credentials tab is hidden entirely (no LLM provider needed) and an info banner at the top of the page explains the build mode.
 
@@ -92,7 +92,7 @@ Two panels:
 |---|---|---|
 | **`bearer_token`** | `logserv_ai_assistant_mcp` | `bearer_token` |
 
-OAuth/JWT token issued by your Splunk MCP Server. The admin pastes this; a [future release](mcp-setup.md#auto-mint-mcp-token-roadmap) will mint it automatically. **Optional** — cookie auth from the same Splunk Web session works by default for HTTP-only Splunk.
+OAuth/JWT token issued by your Splunk MCP Server. The admin pastes this. **Optional** — cookie auth from the same Splunk Web session works by default for HTTP-only Splunk.
 
 ### Audit Log Forwarder
 
@@ -106,7 +106,7 @@ HEC token for tamper-evident audit forwarding to a separate Splunk / SIEM. The d
 
 ![Settings — Audit Log tab](../../images/settings-audit.png)
 
-Read-only browser of every event in the `_ai_assistant_audit` index. Filters: time range (preset Last 24h / 7d / 30d / 90d), category multi-select (12 categories — `local_only`, `vendor_tier1`, `vendor_tier2`, `security_blocked_spl`, `rate_limited_prompt`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, `vendor_tier2_elevation`, `forwarder_disabled_acceptance`, `ai_assistant_enable_acceptance`), user-contains text filter, result limit (25 / 100 / 500 / 1000).
+Read-only browser of every event in the `logserv_ai_assistant_audit` index. Filters: time range (preset Last 24h / 7d / 30d / 90d), category multi-select (12 categories — `local_only`, `vendor_tier1`, `vendor_tier2`, `security_blocked_spl`, `rate_limited_prompt`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, `vendor_tier2_elevation`, `forwarder_disabled_acceptance`, `ai_assistant_enable_acceptance`), user-contains text filter, result limit (25 / 100 / 500 / 1000).
 
 Clicking a row's **+** expand button reveals the full event JSON. The page is paginated client-side at 25 rows per page; "Showing N-M of T events" + Previous / Next buttons render below the table when T > 25.
 

@@ -22,7 +22,7 @@ The AI Assistant subsystem lives in the LogServ App's React workspace at `packag
 | `components/ai/chat/ToolResultPanel.tsx` | Renders a single tool result as table / chart / KPI / pie. Contains the actions-slot rendering for `↗ Dashboard` / `↗ Run SPL` / Clear chips. |
 | `components/ai/chat/ChatInput.tsx` | Chat input toolbar. `✦ Power` toggle visibility gating + Templates-only gating. |
 | `components/ai/chat/PrivacyBanner.tsx` | Tier banner + model picker. Templates-only hides the picker. |
-| `components/ai/audit/AuditWriter.ts` | Browser-side audit batch + flush. Dual-writes to local `_ai_assistant_audit` index AND optional HEC forwarder. |
+| `components/ai/audit/AuditWriter.ts` | Browser-side audit batch + flush. Dual-writes to local `logserv_ai_assistant_audit` index AND optional HEC forwarder. |
 | `components/ai/audit/auditTypes.ts` | All 12 audit-event TypeScript types. |
 | `dashboards/AIAssistantSettings.tsx` | The 4-tab Settings page. Templates-only hides the Provider Credentials tab. |
 | `utils/splGuard.ts` | SPL static-analysis guard. Blocks `collect`/`outputlookup`/`outputcsv`/`delete`/`sendalert`/`sendemail`/`script`/`run`/`tscollect` for AI-authored ad-hoc SPL. |
@@ -254,7 +254,7 @@ Scan all SPL — including `nextSteps.spl` deep-dive strings — for risky comma
 4. Edit `components/AuditLogViewer.tsx` — add the new category id to `AUDIT_CATEGORIES` (the filter chip set) and to `CATEGORY_GRADIENTS` (the chip gradient lookup).
 5. Bump the UI App build.
 
-The audit writer (`components/ai/audit/AuditWriter.ts`) sends events to BOTH the local `_ai_assistant_audit` index AND the optional HEC forwarder. No code change needed at the writer layer for new categories.
+The audit writer (`components/ai/audit/AuditWriter.ts`) sends events to BOTH the local `logserv_ai_assistant_audit` index AND the optional HEC forwarder. No code change needed at the writer layer for new categories.
 
 ---
 
@@ -324,25 +324,6 @@ The pure `optInVersion`-only path is what Splunk's stock telemetry uses (acknowl
 The conf-writer coerces `yes`/`no` to `'1'`/`'0'`. The audit event preserves the literal string in `_raw`, so the audit event is the canonical record while the conf is the state marker.
 
 ---
-
-## :material-circle-box:{ .taiconcolor } Auto-Mint MCP Token Roadmap
-
-The current MCP authentication relies on either cookie-based session reuse (default) or admin-paste bearer tokens. A planned future release replaces the manual paste with auto-mint via a Data TA-side Python REST handler:
-
-1. The handler reads the MCP Server's RSA public key from a local lookup.
-2. Mints a short-lived JWT using the Splunk admin's session credentials.
-3. Returns the JWT to the React app via a new endpoint at `/services/splunk_ta_sap_logserv/mint_mcp_token`.
-4. The React app caches the JWT, refreshes when nearing expiry.
-
-**Status:** roadmap, ~2-3 days of engineering effort, not yet shipped.
-
-The Python REST handler skeleton would live in the Data TA at `bin/mcp_token_minter.py`. Would require:
-
-- An `[expose:]` stanza in the TA's `web.conf` for the new endpoint
-- A `restmap.conf` entry registering the handler
-- The RSA public key in a controlled lookup or `local/passwords.conf`
-
-For implementation: see the existing `bin/splunk_ta_sap_logserv_settings.py` REST handler for the structural template (persistent endpoints require explicit `sys.path` setup; no `import_declare_test`).
 
 ---
 

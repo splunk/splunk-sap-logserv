@@ -3,6 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
 import { useAIAssistantContext } from '../../../state/AIAssistantProvider';
 import { useAIAssistant } from '../../../hooks/useAIAssistant';
+import { useIsPowerUser } from '../../../hooks/useIsPowerUser';
 import { useMCPHealth } from '../../../hooks/useMCPHealth';
 import MCPSetupWizard from '../mcp/MCPSetupWizard';
 import ChatMessage from './ChatMessage';
@@ -252,18 +253,77 @@ interface AIAssistantProps {
     /** Privacy tier from config; affects banner styling. */
     tier?: 0 | 1 | 2;
     /** When false, the MCP health gate is bypassed and the chat operates
-     *  in "MCP-less chat mode" — but in the v0.0.5.0 stripped variant
-     *  there is no LLM dispatch path, so the chat is canned-prompt-only
-     *  regardless. Default: true (gate enforced). */
+     *  in "MCP-less chat mode" — Claude streaming works, no tool dispatch.
+     *  Default: true (gate enforced). */
     mcpRequired?: boolean;
+    /** Per-user free-form prompt rate limit (rolling 1-hour window).
+     *  0 = disabled. Read by the parent (typically `index.tsx`) from
+     *  `ai_assistant_settings.conf [defaults] rate_limit_per_hour`.
+     *  Default: 30. Maps to OWASP LLM10. Build 80 / session 019. */
+    rateLimitPerHour?: number;
+    /** Per-chat-session cap on total MCP tool dispatches across all
+     *  messages. 0 = disabled. From `ai_assistant_settings.conf
+     *  [defaults] tool_calls_per_session_cap`. Default: 100. Maps to
+     *  OWASP LLM06. Build 88 / session 020. */
+    toolCallsPerSessionCap?: number;
+    /** Per-user daily vendor spend cap in USD (resets at local
+     *  midnight). 0 = disabled. From `ai_assistant_settings.conf
+     *  [defaults] daily_spend_cap_usd`. Default: 50.00. Maps to
+     *  OWASP LLM10. Build 89 / session 020. */
+    dailySpendCapUsd?: number;
+    /** Tier 2 PII column redaction. When true (default), Tier 2
+     *  categorical aggregates redact identifier-class column values
+     *  (`user`, `*_ip`, `email`, `mac`, `account`) with stable
+     *  `<redacted-XXXXXXX>` tags before they cross the privacy
+     *  boundary. From `ai_assistant_settings.conf [defaults]
+     *  tier2_pii_redaction`. Maps to OWASP LLM02. Build 94. */
+    tier2PiiRedaction?: boolean;
+    /** When true, also redact host / hostname columns. From
+     *  `ai_assistant_settings.conf [defaults] tier2_redact_hostnames`.
+     *  Default false — Splunk dashboards routinely show hostnames.
+     *  Build 94 / session 022. */
+    tier2RedactHostnames?: boolean;
+    /** Comma-separated Splunk role names whose members see the Power
+     *  Mode toggle in the chat input toolbar. From
+     *  `ai_assistant_settings.conf [defaults] power_user_roles`.
+     *  Empty (default) hides the toggle for everyone. Build 166 /
+     *  session 028. */
+    powerUserRoles?: string;
+    /** Runtime templates-only mode. When true, free-form chat is
+     *  disabled (read-only input, hidden model picker + Power toggle,
+     *  templates-only banner shown). Replaces the compile-time
+     *  TEMPLATES_ONLY build flag with admin-controlled runtime config. */
+    templatesOnlyMode?: boolean;
 }
 
 const AIAssistant: React.FC<AIAssistantProps> = ({
+    tier = 1,
     mcpRequired = true,
+    rateLimitPerHour = 30,
+    toolCallsPerSessionCap = 100,
+    dailySpendCapUsd = 50.0,
+    tier2PiiRedaction = true,
+    tier2RedactHostnames = false,
+    powerUserRoles = '',
+    templatesOnlyMode = false,
 }) => {
     const ctx = useAIAssistantContext();
+    /* Power Mode role-membership check (build 166 / session 028). The
+     * hook returns false until the async `current-context` fetch lands;
+     * non-power users never see the toggle even after it resolves. The
+     * actual toggle state lives in the AIAssistantProvider context so
+     * sendUserMessage / runCannedPrompt can read it consistently. */
+    const isPowerUser = useIsPowerUser(powerUserRoles);
     const { runCannedPrompt, sendUserMessage, abort } = useAIAssistant({
         mcpAvailable: mcpRequired,
+        tier,
+        rateLimitPerHour,
+        toolCallsPerSessionCap,
+        dailySpendCapUsd,
+        tier2PiiRedaction,
+        tier2RedactHostnames,
+        powerMode: ctx.powerMode,
+        templatesOnlyMode,
     });
     const [healthRetryNonce, setHealthRetryNonce] = useState<number>(0);
     const health = useMCPHealth({ enabled: mcpRequired, retryNonce: healthRetryNonce });
@@ -331,6 +391,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
     }
 
     const localOnlyCount = ctx.state.auditEvents.filter((e) => e.category === 'local_only').length;
+    const tier1Count = ctx.state.auditEvents.filter((e) => e.category === 'vendor_tier1').length;
+    const tier2Count = ctx.state.auditEvents.filter((e) => e.category === 'vendor_tier2').length;
 
     const toolResultsInOrder = ctx.state.messages
         .filter((m) => m.kind === 'tool_result' && m.toolResult)
@@ -370,21 +432,31 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
     return (
         <Container>
             <PrivacyBanner
+                provider={ctx.provider}
+                tier={tier}
                 localOnlyCount={localOnlyCount}
+                tier1Count={tier1Count}
+                tier2Count={tier2Count}
                 onOpenAudit={() => setShowAuditModal(true)}
+                selectedModel={ctx.selectedModel}
+                onModelChange={ctx.setSelectedModel}
+                templatesOnlyMode={templatesOnlyMode}
             />
             {!mcpRequired && (
                 <ChatOnlyBanner role="status">
                     <span aria-hidden>⚠</span>
-                    Chat-only mode — tool execution disabled (MCP not configured).
+                    Chat-only mode — tool execution disabled (MCP not configured). The AI can answer
+                    questions but cannot run searches against your Splunk data.
                 </ChatOnlyBanner>
             )}
-            <TemplatesOnlyBanner role="status">
-                <span aria-hidden>ℹ</span>
-                Templates-only build — the LLM-driven free-form path has been removed
-                from the source. Use "Browse predefined prompts" to run any of the 48
-                saved searches against your Splunk data via MCP.
-            </TemplatesOnlyBanner>
+            {templatesOnlyMode && (
+                <TemplatesOnlyBanner role="status">
+                    <span aria-hidden>ℹ</span>
+                    Templates-only mode — free-form prompts and LLM dispatch are disabled. Use
+                    "Browse predefined prompts" to run any of the 48 saved searches against your
+                    Splunk data via MCP.
+                </TemplatesOnlyBanner>
+            )}
             <TwoPane ref={twoPaneRef} $singleColumn={!mcpRequired} $leftPct={leftPct}>
                 <LeftPane $hasRightPane={mcpRequired}>
                     <ChatScroll>
@@ -422,6 +494,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
                             mcpRequired ? () => setShowPromptBrowser(true) : undefined
                         }
                         busy={busy}
+                        powerModeAvailable={isPowerUser}
+                        powerMode={ctx.powerMode}
+                        onPowerModeChange={ctx.setPowerMode}
+                        templatesOnlyMode={templatesOnlyMode}
                     />
                 </LeftPane>
                 {mcpRequired && (

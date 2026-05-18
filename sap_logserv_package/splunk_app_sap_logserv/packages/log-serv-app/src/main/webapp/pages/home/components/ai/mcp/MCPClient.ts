@@ -1,8 +1,6 @@
 import { Hidden, markHidden } from '../types/Hidden';
-import { readCredentialClear } from '../../../utils/passwordsApi';
+import { clearCredentialCache, readSecret } from '../providers/credentials';
 import { clearAIConfigCache, readAIConfig } from '../../../utils/aiConfigApi';
-
-const MCP_BEARER_REALM = 'logserv_ai_assistant_mcp';
 
 /**
  * MCP client — talks to the official Splunk MCP Server (Splunkbase App
@@ -108,6 +106,7 @@ export interface MCPHttpClientOptions {
  */
 const DEFAULT_MCP_ENDPOINT = '/en-US/splunkd/__raw/services/mcp';
 
+const MCP_PROVIDER = 'mcp';
 const MCP_FIELD_BEARER_TOKEN = 'bearer_token';
 
 /**
@@ -160,8 +159,7 @@ export class MCPClient {
      *  to cookie-only auth. */
     private async resolveBearerToken(): Promise<string | null> {
         try {
-            const v = await readCredentialClear(MCP_BEARER_REALM, MCP_FIELD_BEARER_TOKEN);
-            return v.length > 0 ? v : null;
+            return await readSecret(MCP_PROVIDER, MCP_FIELD_BEARER_TOKEN);
         } catch {
             return null;
         }
@@ -175,7 +173,7 @@ export class MCPClient {
         const result = await this.jsonrpcCall('initialize', {
             protocolVersion: '2024-11-05',
             capabilities: {},
-            clientInfo: { name: 'logserv-ai-assistant', version: '0.0.5' },
+            clientInfo: { name: 'logserv-ai-assistant', version: '0.1.1' },
         });
         if (result.error) {
             throw new MCPClientError(
@@ -342,8 +340,10 @@ export class MCPClient {
 
         let response = await sendOnce();
         if (response.status === 401) {
-            // Cached config may be stale (admin updated via Settings,
-            // or the bearer token expired). Force-refresh and retry once.
+            // Cached credentials/config may be stale (admin updated via
+            // Settings, or the bearer token expired). Force-refresh both
+            // caches and retry once.
+            clearCredentialCache();
             clearAIConfigCache();
             response = await sendOnce();
             if (response.status === 401) {

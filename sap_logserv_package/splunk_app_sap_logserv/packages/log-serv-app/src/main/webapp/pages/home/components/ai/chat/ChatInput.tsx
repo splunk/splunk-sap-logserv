@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
-import { TEMPLATES_ONLY } from '../../../buildFlags';
 
 interface ChatInputProps {
     onSend: (text: string) => void;
@@ -19,6 +18,10 @@ interface ChatInputProps {
     powerMode?: boolean;
     /** Power Mode toggle change handler. */
     onPowerModeChange?: (on: boolean) => void;
+    /** Runtime templates-only mode. When true, input is disabled +
+     *  placeholder explains why; Send + Power Mode toggle hidden /
+     *  disabled. Replaces compile-time TEMPLATES_ONLY. */
+    templatesOnlyMode?: boolean;
 }
 
 const Wrapper = styled.div`
@@ -159,6 +162,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
     powerModeAvailable = false,
     powerMode = false,
     onPowerModeChange,
+    templatesOnlyMode = false,
 }) => {
     const [text, setText] = useState<string>('');
 
@@ -179,16 +183,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
         [handleSend],
     );
 
-    // Build 173 — templates-only build disables free-form input. The
-    // text field becomes disabled with a guiding placeholder, the Send
-    // button is unconditionally disabled, and the Power Mode toggle is
-    // hidden (forced-RAG is meaningless when there's no LLM call to
-    // force a saved search before). The "Browse prompts" button stays
-    // enabled — that's the only entry point in this build.
-    const effectivePlaceholder = TEMPLATES_ONLY
-        ? 'Templates-only build — click "Browse predefined prompts" below to run a saved search.'
+    // Templates-only mode disables free-form input at runtime. The text
+    // field becomes disabled with a guiding placeholder, the Send button
+    // is unconditionally disabled, and the Power Mode toggle is hidden
+    // (forced-RAG is meaningless when there's no LLM call to force a
+    // saved search before). The "Browse prompts" button stays enabled —
+    // that's the only entry point in this mode.
+    const effectivePlaceholder = templatesOnlyMode
+        ? 'Templates-only mode — click "Browse predefined prompts" below to run a saved search.'
         : placeholder;
-    const inputDisabled = busy || TEMPLATES_ONLY;
+    const inputDisabled = busy || templatesOnlyMode;
 
     return (
         <Wrapper>
@@ -213,11 +217,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         Stop
                     </Button>
                 ) : (
-                    <Button type="button" onClick={handleSend} disabled={!text.trim() || busy || TEMPLATES_ONLY}>
+                    <Button type="button" onClick={handleSend} disabled={!text.trim() || busy || templatesOnlyMode}>
                         Send
                     </Button>
                 )}
-                {powerModeAvailable && !TEMPLATES_ONLY && (
+                {powerModeAvailable && !templatesOnlyMode && (
                     <PowerToggle
                         $on={powerMode}
                         type="button"
@@ -234,7 +238,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                         <span>Power{powerMode ? ' ON' : ''}</span>
                     </PowerToggle>
                 )}
-                {!TEMPLATES_ONLY && <HintText>⌘/Ctrl+Enter to send</HintText>}
+                {!templatesOnlyMode && <HintText>⌘/Ctrl+Enter to send</HintText>}
             </Toolbar>
         </Wrapper>
     );

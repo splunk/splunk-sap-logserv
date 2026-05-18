@@ -74,16 +74,60 @@ const SuspenseFallback = styled.div`
 interface AppShellProps {
     /** From AIAssistantConfig.enabled — gates the AI Assistant UI on/off. */
     aiAssistantEnabled?: boolean;
+    /** From AIAssistantConfig.templatesOnlyMode — when true, disables the
+     *  free-form / LLM-driven path at runtime: read-only chat input,
+     *  hidden model picker / Power Mode toggle, hidden Provider
+     *  Credentials Settings tab. Predefined-prompt path stays active.
+     *  Replaces the prior compile-time TEMPLATES_ONLY build flag. */
+    aiAssistantTemplatesOnlyMode?: boolean;
+    /** From AIAssistantConfig.tier — passed to the chat for the privacy banner. */
+    aiAssistantTier?: 0 | 1 | 2;
     /** From AIAssistantConfig.mcpRequired — when false, bypasses MCP health gate. */
     aiAssistantMcpRequired?: boolean;
+    /** From AIAssistantConfig.rateLimitPerHour — per-user free-form prompt
+     *  cap (rolling 1-hour window). 0 disables. Build 80 / session 019. */
+    aiAssistantRateLimitPerHour?: number;
+    /** From AIAssistantConfig.toolCallsPerSessionCap — per-chat-session
+     *  cap on total MCP tool dispatches across all messages. 0 disables.
+     *  Build 88 / session 020. */
+    aiAssistantToolCallsPerSessionCap?: number;
+    /** From AIAssistantConfig.dailySpendCapUsd — per-user daily vendor
+     *  spend cap in USD (resets at local midnight). 0 disables.
+     *  Build 89 / session 020. */
+    aiAssistantDailySpendCapUsd?: number;
+    /** From AIAssistantConfig.tier2PiiRedaction — when true (default),
+     *  Tier 2 categorical aggregates redact identifier-class column
+     *  values before they cross the privacy boundary. Maps to OWASP
+     *  LLM02. Build 94 / session 022. */
+    aiAssistantTier2PiiRedaction?: boolean;
+    /** From AIAssistantConfig.tier2RedactHostnames — when true, also
+     *  redact host / hostname columns. Default false. Build 94 / s022. */
+    aiAssistantTier2RedactHostnames?: boolean;
+    /** From AIAssistantConfig.powerUserRoles — CSV of Splunk role names
+     *  whose members see the Power Mode toggle in the chat input.
+     *  Build 166 / session 028. */
+    aiAssistantPowerUserRoles?: string;
     /** Callback invoked by the AI Assistant Settings page after a
-     *  successful `writeAIConfig`. */
+     *  successful `writeAIConfig`. App-level handler re-reads the
+     *  conf and updates the cached AIAssistantConfig so the
+     *  AI Assistant button + side panel react immediately to the
+     *  saved change (e.g. when admin disables the feature, the
+     *  button vanishes without a manual page refresh).
+     *  Build 101 / session 022. */
     onAIConfigSaved?: () => Promise<void> | void;
 }
 
 const AppShell: React.FC<AppShellProps> = ({
     aiAssistantEnabled = false,
+    aiAssistantTemplatesOnlyMode = false,
+    aiAssistantTier = 1,
     aiAssistantMcpRequired = true,
+    aiAssistantRateLimitPerHour = 30,
+    aiAssistantToolCallsPerSessionCap = 100,
+    aiAssistantDailySpendCapUsd = 50.0,
+    aiAssistantTier2PiiRedaction = true,
+    aiAssistantTier2RedactHostnames = false,
+    aiAssistantPowerUserRoles = '',
     onAIConfigSaved,
 }) => {
     const [aiPanelOpen, setAiPanelOpen] = useState<boolean>(() =>
@@ -109,7 +153,15 @@ const AppShell: React.FC<AppShellProps> = ({
             />
             {aiAssistantEnabled && (
                 <SidePanel
+                    templatesOnlyMode={aiAssistantTemplatesOnlyMode}
+                    tier={aiAssistantTier}
                     mcpRequired={aiAssistantMcpRequired}
+                    rateLimitPerHour={aiAssistantRateLimitPerHour}
+                    toolCallsPerSessionCap={aiAssistantToolCallsPerSessionCap}
+                    dailySpendCapUsd={aiAssistantDailySpendCapUsd}
+                    tier2PiiRedaction={aiAssistantTier2PiiRedaction}
+                    tier2RedactHostnames={aiAssistantTier2RedactHostnames}
+                    powerUserRoles={aiAssistantPowerUserRoles}
                     expanded={aiPanelOpen}
                     onClose={closeAiPanel}
                 />
@@ -137,12 +189,22 @@ const AppShell: React.FC<AppShellProps> = ({
                     <Route path="/platform/data-pipeline-overview" element={<DataPipelineOverview />} />
                     <Route path="/platform/host-details" element={<HostDetails />} />
                     <Route path="/topology/integration-topology" element={<IntegrationTopology />} />
-                    <Route path="/settings/ai-assistant" element={<AIAssistantSettings onConfigSaved={onAIConfigSaved} />} />
+                    <Route path="/settings/ai-assistant" element={<AIAssistantSettings onConfigSaved={onAIConfigSaved} templatesOnlyMode={aiAssistantTemplatesOnlyMode} />} />
                     {aiAssistantEnabled && (
                         <Route
                             path="/ai-assistant"
                             element={
-                                <AIAssistant mcpRequired={aiAssistantMcpRequired} />
+                                <AIAssistant
+                                    templatesOnlyMode={aiAssistantTemplatesOnlyMode}
+                                    tier={aiAssistantTier}
+                                    mcpRequired={aiAssistantMcpRequired}
+                                    rateLimitPerHour={aiAssistantRateLimitPerHour}
+                                    toolCallsPerSessionCap={aiAssistantToolCallsPerSessionCap}
+                                    dailySpendCapUsd={aiAssistantDailySpendCapUsd}
+                                    tier2PiiRedaction={aiAssistantTier2PiiRedaction}
+                                    tier2RedactHostnames={aiAssistantTier2RedactHostnames}
+                                    powerUserRoles={aiAssistantPowerUserRoles}
+                                />
                             }
                         />
                     )}

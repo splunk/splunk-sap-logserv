@@ -179,7 +179,7 @@ const forwardToHec = async (
 
 /**
  * Audit writer — posts events to Splunk's `services/receivers/simple`
- * REST endpoint, which forwards them into the `_ai_assistant_audit`
+ * REST endpoint, which forwards them into the `ai_assistant_audit`
  * index defined in the splunk_idx_sap_logserv app.
  *
  * The writer batches events client-side (5-second flush window or
@@ -206,7 +206,7 @@ const FLUSH_INTERVAL_MS = 5000;
 const FLUSH_BATCH_SIZE = 10;
 
 /**
- * Local audit-index name. Defaults to `_ai_assistant_audit` (matches the
+ * Local audit-index name. Defaults to `ai_assistant_audit` (matches the
  * LogServ Index App's default indexes.conf and the
  * `sap_logserv_audit_idx_macro` definition). When the admin changes the
  * `audit_index_name` field in `ai_assistant_settings.conf`, App.tsx
@@ -218,7 +218,7 @@ const FLUSH_BATCH_SIZE = 10;
  * AuditWriter call site (the buffered singleton in AIAssistantProvider
  * AND the static `postOneOff` helper).
  */
-let localAuditIndex = '_ai_assistant_audit';
+let localAuditIndex = 'logserv_ai_assistant_audit';
 
 /**
  * Update the local audit-index name. Subsequent `flush()` and

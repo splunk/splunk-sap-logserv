@@ -44,7 +44,7 @@ Recommended starting points:
 ## Requirements
 
 - **Splunk Enterprise 9.4.3 or later**, or **Splunk Cloud Platform**
-- Splunkbase CIM add-ons: [Unix and Linux (833)](https://splunkbase.splunk.com/app/833), [Microsoft Windows (742)](https://splunkbase.splunk.com/app/742), [Squid Proxy (2965)](https://splunkbase.splunk.com/app/2965), [ISC BIND (2876)](https://splunkbase.splunk.com/app/2876)
+- Splunkbase CIM add-ons (Search Head only): [Unix and Linux (833)](https://splunkbase.splunk.com/app/833), [Microsoft Windows (742)](https://splunkbase.splunk.com/app/742). The Squid Proxy and ISC BIND add-ons that were previously required are no longer needed — their parsing was absorbed natively into the LogServ App in v0.0.5.0 build 184.
 - [Splunk Add-on for AWS (1876)](https://splunkbase.splunk.com/app/1876) — if SAP ECS data lives in AWS S3
 - [Splunk MCP Server (7931)](https://splunkbase.splunk.com/app/7931) v1.1.0+ — required on the Search Head for the AI Assistant chat panel
 

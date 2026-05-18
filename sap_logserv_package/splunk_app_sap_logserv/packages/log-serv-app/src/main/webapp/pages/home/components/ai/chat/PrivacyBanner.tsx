@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
+import { PrivacyPosture, AIProvider, ModelDescriptor } from '../providers/AIProvider';
+import DocsHelpIcon from '../../DocsHelpIcon';
+import { DOCS_AI_ASSISTANT_OVERVIEW } from '../../../utils/docsLinks';
 
 /**
  * PrivacyBanner — persistent display of the user's actual outbound
@@ -18,10 +21,26 @@ import { logservTheme } from '../../../styles/logservTheme';
  */
 
 interface PrivacyBannerProps {
+    provider: AIProvider;
+    tier: 0 | 1 | 2;
     /** Number of local-only audit events this session. */
     localOnlyCount: number;
+    /** Number of Tier-1 vendor audit events this session. */
+    tier1Count: number;
+    /** Number of Tier-2 vendor audit events this session. */
+    tier2Count: number;
     /** Called when the user clicks "Audit this session". */
     onOpenAudit?: () => void;
+    /** Currently-active model id. When provided alongside `onModelChange`,
+     *  renders an inline `<select>` in the banner so the user can switch
+     *  models mid-session. */
+    selectedModel?: string;
+    /** Setter invoked when the user picks a different model. */
+    onModelChange?: (id: string) => void;
+    /** Runtime templates-only mode. When true, the model picker is
+     *  hidden (no LLM dispatch, so no model to choose). Replaces the
+     *  prior compile-time TEMPLATES_ONLY build flag. */
+    templatesOnlyMode?: boolean;
 }
 
 const Banner = styled.div<{ $tier: 0 | 1 | 2 }>`
@@ -104,26 +123,75 @@ const RightCluster = styled.div`
     margin-left: auto;
 `;
 
+const formatPosture = (p: PrivacyPosture): string => {
+    const parts: string[] = [];
+    parts.push(p.noTraining ? 'No training' : 'Training: enabled');
+    parts.push(p.zeroRetention ? 'No retention' : `${p.abuseLoggingDays}d abuse logging`);
+    return parts.join(', ');
+};
+
 const PrivacyBanner: React.FC<PrivacyBannerProps> = ({
+    provider,
+    tier,
     localOnlyCount,
+    tier1Count,
+    tier2Count,
     onOpenAudit,
+    selectedModel,
+    onModelChange,
+    templatesOnlyMode = false,
 }) => {
-    // v0.0.5.0 stripped variant — only the canned-prompt path runs.
-    // No vendor traffic ever, so the banner's privacy story is simply
-    // "all dispatches stay local."
+    // Templates-only mode hides the model picker — the model is
+    // irrelevant when no LLM call is ever made; surfacing it would be
+    // confusing.
+    const showPicker =
+        !templatesOnlyMode &&
+        typeof selectedModel === 'string' &&
+        typeof onModelChange === 'function' &&
+        provider.models.length > 1;
+
     return (
-        <Banner $tier={0}>
-            <Lock>🔒</Lock>
-            <TierLabel $tier={0}>Local-only — no AI vendor traffic</TierLabel>
+        <Banner $tier={tier}>
+            <Lock>{tier === 2 ? '⚠️' : '🔒'}</Lock>
+            <TierLabel $tier={tier}>
+                {tier === 0 && 'Tier 0 — Air-gapped local'}
+                {tier === 1 && 'Tier 1 — Cloud (queries only)'}
+                {tier === 2 && 'Tier 2 — Cloud + aggregated metadata'}
+            </TierLabel>
+            <Posture>
+                {provider.label}
+                {tier !== 0 && ` — ${formatPosture(provider.privacyPosture)}`}
+            </Posture>
             <Counter>
-                🟢 {localOnlyCount} local-only dispatches this session
+                🟢 {localOnlyCount} local-only · 🟡 {tier1Count} vendor T1 · 🟠 {tier2Count} vendor T2
             </Counter>
             <RightCluster>
+                {showPicker && (
+                    <ModelPickerWrap>
+                        Model:
+                        <ModelSelect
+                            value={selectedModel}
+                            onChange={(e) => onModelChange!(e.target.value)}
+                            aria-label="AI model"
+                        >
+                            {provider.models.map((m: ModelDescriptor) => (
+                                <option key={m.id} value={m.id}>
+                                    {m.label}
+                                </option>
+                            ))}
+                        </ModelSelect>
+                    </ModelPickerWrap>
+                )}
                 {onOpenAudit && (
                     <AuditButton type="button" onClick={onOpenAudit}>
                         Audit this session
                     </AuditButton>
                 )}
+                <DocsHelpIcon
+                    href={DOCS_AI_ASSISTANT_OVERVIEW}
+                    title="Open AI Assistant documentation in a new tab"
+                    size={26}
+                />
             </RightCluster>
         </Banner>
     );

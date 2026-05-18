@@ -130,8 +130,8 @@ const isV3 = (raw: unknown): raw is RawLegacyV3 =>
     && Array.isArray((raw as { nodes?: unknown }).nodes)
     && !!(raw as { panels?: unknown }).panels;
 
-const isV4 = (raw: unknown): raw is SavedLayout =>
-    !!raw && typeof raw === 'object' && (raw as { version?: number }).version === 4
+const isV5 = (raw: unknown): raw is SavedLayout =>
+    !!raw && typeof raw === 'object' && (raw as { version?: number }).version === 5
     && Array.isArray((raw as { nodes?: unknown }).nodes)
     && !!(raw as { panels?: unknown }).panels;
 
@@ -149,38 +149,26 @@ const parseViewport = (raw: unknown): ViewportState | undefined => {
 
 /** Synchronously read the cached active layout from localStorage. Used at
  *  component mount so the graph renders saved positions immediately rather
- *  than waiting for the KV Store async fetch. Migrates v1/v2/v3 reads to
- *  the v4 in-memory shape with the new fields undefined. */
+ *  than waiting for the KV Store async fetch.
+ *
+ *  Session 035 / build 188: schema bumped v4 → v5 (added selectedEdgeId
+ *  for the session-036 edge-data right pane). Per user direction, no
+ *  backward compat — pre-v5 records are silently wiped on read. Users
+ *  re-save once. The unused isV1/isV2/isV3 type guards are retained as
+ *  documentation but no longer dispatch into; they may be removed in a
+ *  later cleanup. */
 export const loadCachedLayout = (): SavedLayout | null => {
     try {
         const raw = window.localStorage.getItem(localStorageKey());
         if (!raw) return null;
         const parsed = JSON.parse(raw) as unknown;
-        if (isV4(parsed)) return parsed;
-        if (isV3(parsed)) {
-            return {
-                version: 4,
-                savedAt: parsed.savedAt,
-                layoutName: parsed.layoutName,
-                nodes: parsed.nodes,
-                panels: parsed.panels,
-            };
-        }
-        if (isV2(parsed)) {
-            return {
-                version: 4,
-                savedAt: parsed.savedAt,
-                nodes: parsed.nodes,
-                panels: parsed.panels,
-            };
-        }
-        if (isV1(parsed)) {
-            return {
-                version: 4,
-                savedAt: parsed.savedAt,
-                nodes: parsed.nodes,
-                panels: { ...DEFAULT_PANEL_LAYOUT },
-            };
+        if (isV5(parsed)) return parsed;
+        // Pre-v5: wipe and return null. The user re-saves.
+        if (isV1(parsed) || isV2(parsed) || isV3(parsed) ||
+            // catch any version-tagged blob we don't recognize
+            (typeof parsed === 'object' && parsed !== null &&
+             typeof (parsed as { version?: unknown }).version === 'number')) {
+            window.localStorage.removeItem(localStorageKey());
         }
         return null;
     } catch (_e) {
@@ -216,6 +204,12 @@ export interface LayoutSummary {
     slug: string;
     name: string;
     savedAt: string;
+    /* Build 216 / session 036 — layout mode the saved positions were
+     * captured under. Used by the Manage Layouts modal to group layouts
+     * by Force / Layered / Tree sections so users can pick a default
+     * for each mode. Optional for back-compat with pre-215 records;
+     * unknown modes (legacy) default to 'force'. */
+    layoutMode?: 'force' | 'layered' | 'tree';
 }
 
 export interface SavePayload {
@@ -229,6 +223,13 @@ export interface SavePayload {
     selectedNodeId?: string | null;
     rightTabId?: string;
     snapMode?: boolean;
+    /* v5 (build 188 / session 035) — selected edge id for the
+     * session-036 edge-data right pane. */
+    selectedEdgeId?: string | null;
+    /* Build 215 / session 036 — layout algorithm captured at save time.
+     * Restored on load so saved positions only apply to the matching
+     * mode. */
+    layoutMode?: 'force' | 'layered' | 'tree';
 }
 
 interface KvStoreRecord {
@@ -247,6 +248,12 @@ interface KvStoreRecord {
     selected_node_id?: string;
     right_tab_id?: string;
     snap_mode?: number;
+    /* v5 (build 188 / session 035) — edge selection for the session-036
+     * edge-data right pane. Optional. */
+    selected_edge_id?: string;
+    /* Build 215 / session 036 — layout algorithm at save time. Optional
+     * for back-compat with pre-215 records (default 'force' on load). */
+    layout_mode?: string;
 }
 
 /** Defensive JSON.parse helper — returns undefined on any failure or
@@ -260,11 +267,14 @@ const safeParseJson = <T>(raw: string | undefined | null): T | undefined => {
     }
 };
 
-const recordToSavedLayout = (rec: KvStoreRecord): SavedLayout => {
+const recordToSavedLayout = (rec: KvStoreRecord): SavedLayout | null => {
+    /* Session 035 / build 188 — wipe pre-v5 records on read (no backward
+     * compat). Caller treats null as "no saved layout"; user re-saves. */
+    if (rec.version !== 5) return null;
     const viewport = parseViewport(safeParseJson<unknown>(rec.viewport_json));
     const enabledTypes = safeParseJson<unknown>(rec.enabled_types_json);
     return {
-        version: 4,
+        version: 5,
         savedAt: rec.saved_at,
         layoutName: rec.layout_name,
         nodes: JSON.parse(rec.nodes_json) as { id: string; x: number; y: number }[],
@@ -285,6 +295,17 @@ const recordToSavedLayout = (rec: KvStoreRecord): SavedLayout => {
             typeof rec.snap_mode === 'number'
                 ? rec.snap_mode === 1
                 : undefined,
+        selectedEdgeId:
+            typeof rec.selected_edge_id === 'string' && rec.selected_edge_id.length > 0
+                ? rec.selected_edge_id
+                : undefined,
+        /* Build 215 — layout mode at save time. Validated against the
+         * known modes so a future code path can't smuggle in arbitrary
+         * strings. */
+        layoutMode:
+            rec.layout_mode === 'force' || rec.layout_mode === 'layered' || rec.layout_mode === 'tree'
+                ? rec.layout_mode
+                : undefined,
     };
 };
 
@@ -292,6 +313,10 @@ const recordToSummary = (rec: KvStoreRecord): LayoutSummary => ({
     slug: rec.layout_name_slug,
     name: rec.layout_name,
     savedAt: rec.saved_at,
+    layoutMode:
+        rec.layout_mode === 'force' || rec.layout_mode === 'layered' || rec.layout_mode === 'tree'
+            ? rec.layout_mode
+            : undefined,
 });
 
 /** List all saved layouts for the current user, sorted by saved_at desc.
@@ -314,8 +339,9 @@ export const listLayouts = async (): Promise<LayoutSummary[]> => {
     }
 };
 
-/** Load a single layout by slug. Returns null on failure. Updates the local
- *  cache so next mount renders this layout immediately. */
+/** Load a single layout by slug. Returns null on failure or pre-v5 record
+ *  (no backward compat — session 035 / build 188). Updates the local cache
+ *  on successful v5 load so next mount renders this layout immediately. */
 export const loadLayoutBySlug = async (slug: string): Promise<SavedLayout | null> => {
     if (!slug) return null;
     try {
@@ -327,6 +353,7 @@ export const loadLayoutBySlug = async (slug: string): Promise<SavedLayout | null
         if (!resp.ok) return null;
         const record = (await resp.json()) as KvStoreRecord;
         const layout = recordToSavedLayout(record);
+        if (!layout) return null;
         writeCachedLayout(layout);
         return layout;
     } catch (_e) {
@@ -351,7 +378,7 @@ export const saveLayoutNamed = async (
     const u = safeUser();
     const key = recordKey(slug);
     const layout: SavedLayout = {
-        version: 4,
+        version: 5,
         savedAt: new Date().toISOString(),
         layoutName: trimmed,
         nodes: payload.nodes.map((n) => ({ id: n.id, x: Math.round(n.x), y: Math.round(n.y) })),
@@ -361,6 +388,8 @@ export const saveLayoutNamed = async (
         selectedNodeId: payload.selectedNodeId,
         rightTabId: payload.rightTabId,
         snapMode: payload.snapMode,
+        selectedEdgeId: payload.selectedEdgeId,
+        layoutMode: payload.layoutMode,
     };
     const record: KvStoreRecord = {
         _key: key,
@@ -368,12 +397,12 @@ export const saveLayoutNamed = async (
         layout_name: trimmed,
         layout_name_slug: slug,
         saved_at: layout.savedAt,
-        version: 4,
+        version: 5,
         nodes_json: JSON.stringify(layout.nodes),
         panels_json: JSON.stringify(layout.panels),
-        // v4 fields — only include keys whose values are defined so the
+        // v4/v5 fields — only include keys whose values are defined so the
         // KV Store record stays minimal for layouts that don't yet have
-        // every field populated (e.g. a v3 record being re-saved).
+        // every field populated.
         ...(layout.viewport ? { viewport_json: JSON.stringify(layout.viewport) } : {}),
         ...(layout.enabledTypes
             ? { enabled_types_json: JSON.stringify(layout.enabledTypes) }
@@ -386,6 +415,12 @@ export const saveLayoutNamed = async (
             : {}),
         ...(typeof layout.snapMode === 'boolean'
             ? { snap_mode: layout.snapMode ? 1 : 0 }
+            : {}),
+        ...(typeof layout.selectedEdgeId === 'string'
+            ? { selected_edge_id: layout.selectedEdgeId }
+            : {}),
+        ...(typeof layout.layoutMode === 'string'
+            ? { layout_mode: layout.layoutMode }
             : {}),
     };
 
@@ -464,3 +499,391 @@ export const migrateLegacyLocalStorageLayout = async (): Promise<void> => {
 
 /** Exported for the toolbar's "saved at" indicator. */
 export const getCurrentUsername = (): string => safeUser();
+
+/* ============================================================================
+ * Per-mode default layout (build 216 / session 036, migrated to KV Store
+ * in build 226 / session 037 / Path F)
+ *
+ * Each user can designate one saved layout as the "default" for each of
+ * the three layout modes (Force / Layered / Tree). When the user opens
+ * the topology view OR switches to a different layout mode, the default
+ * for that mode (if set) auto-loads — restoring node positions, viewport,
+ * panels, etc. without an explicit Load Layout click.
+ *
+ * Storage: KV Store collection `logserv_topology_layouts` field
+ * `is_default`. Per-user-per-mode at most one record carries `is_default=1`.
+ * The writer atomically clears any prior default of the same mode before
+ * setting the new one.
+ *
+ * Cache: localStorage `logserv.topology.defaultLayout.<user>.<mode>`
+ * mirrors the chosen slug for synchronous fast-mount reads (the auto-load
+ * effect in IntegrationTopology runs against `defaultSlugs` populated from
+ * the cache before the async KV Store fetch resolves). On mount the cache
+ * is hydrated from KV Store via `fetchDefaultLayoutSlugsFromKvStore()`;
+ * pre-build-226 localStorage values stay valid as cache and are written
+ * back to KV Store on the first migration pass.
+ *
+ * Fallback: when no default is set for the active layoutMode, no auto-load
+ * fires. The dashboard opens in Force mode (the readPersistedLayoutMode
+ * fallback) with the SPL-emitted layout positions.
+ * ============================================================================ */
+
+const DEFAULT_LAYOUT_KEY_PREFIX = 'logserv.topology.defaultLayout.';
+const DEFAULT_LAYOUT_MIGRATED_KEY_PREFIX = 'logserv.topology.defaultLayout.kvstore_migrated.';
+type DefaultLayoutMode = 'force' | 'layered' | 'tree';
+
+const defaultLayoutKey = (mode: DefaultLayoutMode): string =>
+    `${DEFAULT_LAYOUT_KEY_PREFIX}${safeUser()}.${mode}`;
+
+const defaultLayoutMigratedFlagKey = (): string =>
+    `${DEFAULT_LAYOUT_MIGRATED_KEY_PREFIX}${safeUser()}`;
+
+/** Read the cached default-layout slug for the given mode (synchronous,
+ *  localStorage-backed). Used by IntegrationTopology's mount-time state
+ *  initializer so the auto-load effect has something to compare against
+ *  before the async KV Store fetch resolves. */
+export const getDefaultLayoutSlug = (mode: DefaultLayoutMode): string | null => {
+    try {
+        const raw = window.localStorage.getItem(defaultLayoutKey(mode));
+        return raw && raw.length > 0 ? raw : null;
+    } catch (_e) {
+        return null;
+    }
+};
+
+/** Write the localStorage cache (synchronous). Async KV Store updates go
+ *  through `setDefaultLayoutInKvStore`. Exported for legacy callers + the
+ *  IntegrationTopology mount-time hydration effect; new code should call
+ *  `setDefaultLayoutInKvStore` which mirrors to the cache automatically. */
+export const setDefaultLayoutSlug = (mode: DefaultLayoutMode, slug: string | null): void => {
+    try {
+        if (slug == null || slug.length === 0) {
+            window.localStorage.removeItem(defaultLayoutKey(mode));
+        } else {
+            window.localStorage.setItem(defaultLayoutKey(mode), slug);
+        }
+    } catch (_e) {
+        /* ignore */
+    }
+};
+
+/** Read all 3 mode defaults from the localStorage cache (synchronous). */
+export const getAllDefaultLayoutSlugs = (): Record<DefaultLayoutMode, string | null> => ({
+    force: getDefaultLayoutSlug('force'),
+    layered: getDefaultLayoutSlug('layered'),
+    tree: getDefaultLayoutSlug('tree'),
+});
+
+/* ----------------------------------------------------------------------
+ * Per-user per-mode default-layout pointer KV Store collection.
+ *
+ * Path F design pivot (build 226 / session 037): originally tried to
+ * extend `logserv_topology_layouts` with an `is_default` field, but
+ * Splunk KV Store treats POST to /<key> as create-or-overwrite (not
+ * partial PATCH), so a partial-field write nulled all other fields on
+ * the targeted record. Splitting defaults into a separate collection
+ * means each row is fully self-contained and POST safely replaces it
+ * idempotently.
+ *
+ * Schema: `{username, layout_mode, layout_slug}` keyed by
+ * "<username>::<layout_mode>". Set: POST a fresh record with all 3
+ * fields. Clear: DELETE /<key>.
+ * ---------------------------------------------------------------------- */
+
+const DEFAULTS_COLLECTION = 'logserv_topology_layout_defaults';
+const DEFAULTS_KV_BASE =
+    `/en-US/splunkd/__raw/servicesNS/nobody/${APP_NAMESPACE}` +
+    `/storage/collections/data/${DEFAULTS_COLLECTION}`;
+
+interface DefaultLayoutKvRecord {
+    _key: string;
+    username: string;
+    layout_mode: string;
+    layout_slug: string;
+}
+
+const defaultLayoutRecordKey = (mode: DefaultLayoutMode): string =>
+    `${safeUser()}::${mode}`;
+
+/** Async — fetch the per-mode default-layout slug map from KV Store by
+ *  reading the user's rows from `logserv_topology_layout_defaults`.
+ *  Returns null entries for modes with no record. Mirrors the result to
+ *  the localStorage cache so the next mount picks it up synchronously.
+ *  Returns null on KV Store failure (caller falls back to cache). */
+export const fetchDefaultLayoutSlugsFromKvStore = async ():
+Promise<Record<DefaultLayoutMode, string | null> | null> => {
+    try {
+        const u = safeUser();
+        const query = encodeURIComponent(JSON.stringify({ username: u }));
+        const url = `${DEFAULTS_KV_BASE}?query=${query}&output_mode=json`;
+        const resp = await fetch(url, {
+            credentials: 'same-origin',
+            headers: sharedHeaders(),
+        });
+        if (!resp.ok) return null;
+        const records = (await resp.json()) as DefaultLayoutKvRecord[];
+        const result: Record<DefaultLayoutMode, string | null> = {
+            force: null, layered: null, tree: null,
+        };
+        records.forEach((r) => {
+            if (r.layout_mode === 'force' || r.layout_mode === 'layered' || r.layout_mode === 'tree') {
+                if (typeof r.layout_slug === 'string' && r.layout_slug.length > 0) {
+                    result[r.layout_mode] = r.layout_slug;
+                }
+            }
+        });
+        // Mirror to cache.
+        (['force', 'layered', 'tree'] as DefaultLayoutMode[]).forEach((m) => {
+            setDefaultLayoutSlug(m, result[m]);
+        });
+        return result;
+    } catch (_e) {
+        return null;
+    }
+};
+
+/** Async — set (or clear if `slug == null`) the default-layout slug for
+ *  a mode in KV Store. Each row is keyed by "<user>::<mode>", so the
+ *  write is idempotent: POST replaces the row, DELETE removes it.
+ *  Returns true on success. Mirrors the chosen slug to localStorage
+ *  cache on success so the next mount picks it up synchronously. */
+export const setDefaultLayoutInKvStore = async (
+    mode: DefaultLayoutMode,
+    slug: string | null,
+): Promise<boolean> => {
+    try {
+        const key = defaultLayoutRecordKey(mode);
+        if (slug == null || slug.length === 0) {
+            // Clear: DELETE the row. 404 is fine (already absent).
+            const resp = await fetch(`${DEFAULTS_KV_BASE}/${encodeURIComponent(key)}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: mutatingHeaders(),
+            });
+            if (!resp.ok && resp.status !== 404) return false;
+            setDefaultLayoutSlug(mode, null);
+            return true;
+        }
+        // Set: POST a fresh record at /<key> (create-or-overwrite). On
+        // 404 (collection-level POST endpoint not used because we want
+        // to set the exact _key), fall through to collection-level POST.
+        const record: DefaultLayoutKvRecord = {
+            _key: key,
+            username: safeUser(),
+            layout_mode: mode,
+            layout_slug: slug,
+        };
+        let resp = await fetch(`${DEFAULTS_KV_BASE}/${encodeURIComponent(key)}`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: mutatingHeaders(),
+            body: JSON.stringify(record),
+        });
+        if (resp.status === 404) {
+            resp = await fetch(DEFAULTS_KV_BASE, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: mutatingHeaders(),
+                body: JSON.stringify(record),
+            });
+        }
+        if (!resp.ok) return false;
+        setDefaultLayoutSlug(mode, slug);
+        return true;
+    } catch (_e) {
+        return false;
+    }
+};
+
+/* ----------------------------------------------------------------------
+ * Per-user active layout mode preference KV Store collection.
+ *
+ * Build 229 / session 037 / Option C follow-on to Path F. The "which
+ * layout mode is active on first navigation" preference itself was
+ * previously localStorage-only (`logserv.topology.layoutMode`), so a
+ * user who picked Tree mode on Chrome would still open in Force on
+ * Firefox. This API mirrors the preference to KV Store so it follows
+ * the user across browsers.
+ *
+ * Schema: `{username, layout_mode}` keyed by `<username>` (single row
+ * per user). Set: POST a fresh row. Clear: DELETE /<key> (or just
+ * leave stale; the reader returns null for absent rows).
+ *
+ * The localStorage cache (`LAYOUT_MODE_STORAGE_KEY` from
+ * IntegrationTopology) stays as the synchronous fast-mount source so
+ * the initial render doesn't flicker. The async hydrate effect on
+ * mount reads from KV Store + reconciles.
+ * ---------------------------------------------------------------------- */
+
+const ACTIVE_MODE_COLLECTION = 'logserv_topology_active_mode';
+const ACTIVE_MODE_KV_BASE =
+    `/en-US/splunkd/__raw/servicesNS/nobody/${APP_NAMESPACE}` +
+    `/storage/collections/data/${ACTIVE_MODE_COLLECTION}`;
+
+const LAYOUT_MODE_LOCAL_STORAGE_KEY = 'logserv.topology.layoutMode';
+const ACTIVE_MODE_MIGRATED_KEY_PREFIX = 'logserv.topology.activeMode.kvstore_migrated.';
+
+interface ActiveModeKvRecord {
+    _key: string;
+    username: string;
+    layout_mode: string;
+}
+
+const activeModeMigratedFlagKey = (): string =>
+    `${ACTIVE_MODE_MIGRATED_KEY_PREFIX}${safeUser()}`;
+
+/** Read the localStorage cache for active mode (synchronous). Returns
+ *  null if unset OR localStorage is unavailable. The single source of
+ *  truth for the cache key is `LAYOUT_MODE_LOCAL_STORAGE_KEY` here in
+ *  persistence.ts; IntegrationTopology's `readPersistedLayoutMode`
+ *  reads the same key. */
+export const getCachedActiveLayoutMode = (): DefaultLayoutMode | null => {
+    try {
+        const v = window.localStorage.getItem(LAYOUT_MODE_LOCAL_STORAGE_KEY);
+        if (v === 'force' || v === 'layered' || v === 'tree') return v;
+    } catch (_e) { /* ignore */ }
+    return null;
+};
+
+/** Write the localStorage cache. Async write-through to KV Store goes
+ *  through `setActiveLayoutModeInKvStore`. */
+export const setCachedActiveLayoutMode = (mode: DefaultLayoutMode | null): void => {
+    try {
+        if (mode == null) {
+            window.localStorage.removeItem(LAYOUT_MODE_LOCAL_STORAGE_KEY);
+        } else {
+            window.localStorage.setItem(LAYOUT_MODE_LOCAL_STORAGE_KEY, mode);
+        }
+    } catch (_e) { /* ignore */ }
+};
+
+/** Async — fetch the active layout mode preference from KV Store.
+ *  Returns null if no row exists for the user OR on KV Store failure.
+ *  Mirrors the result to localStorage cache as a side effect. */
+export const fetchActiveLayoutModeFromKvStore = async (): Promise<DefaultLayoutMode | null> => {
+    try {
+        const u = safeUser();
+        const url = `${ACTIVE_MODE_KV_BASE}/${encodeURIComponent(u)}?output_mode=json`;
+        const resp = await fetch(url, {
+            credentials: 'same-origin',
+            headers: sharedHeaders(),
+        });
+        if (!resp.ok) {
+            // 404 (record absent) is a valid empty state; other failures
+            // also fall through to null so the localStorage fast-mount
+            // value continues to win.
+            return null;
+        }
+        const record = (await resp.json()) as ActiveModeKvRecord;
+        const mode = record.layout_mode;
+        if (mode === 'force' || mode === 'layered' || mode === 'tree') {
+            setCachedActiveLayoutMode(mode);
+            return mode;
+        }
+        return null;
+    } catch (_e) {
+        return null;
+    }
+};
+
+/** Async — write (or clear if `mode == null`) the active layout mode
+ *  preference to KV Store + mirror to localStorage cache. POST replaces
+ *  the single row; DELETE removes it. Returns true on success, false
+ *  on any failure (cache untouched on fail). Build 231 / session 037
+ *  added the `null` clear path so the Manage Layouts modal checkbox
+ *  can both set and unset the user's explicit default-mode preference. */
+export const setActiveLayoutModeInKvStore = async (mode: DefaultLayoutMode | null): Promise<boolean> => {
+    try {
+        const u = safeUser();
+        if (mode == null) {
+            const resp = await fetch(`${ACTIVE_MODE_KV_BASE}/${encodeURIComponent(u)}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+                headers: mutatingHeaders(),
+            });
+            // 404 (row already absent) is a successful clear.
+            if (!resp.ok && resp.status !== 404) return false;
+            setCachedActiveLayoutMode(null);
+            return true;
+        }
+        const record: ActiveModeKvRecord = {
+            _key: u,
+            username: u,
+            layout_mode: mode,
+        };
+        let resp = await fetch(`${ACTIVE_MODE_KV_BASE}/${encodeURIComponent(u)}`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: mutatingHeaders(),
+            body: JSON.stringify(record),
+        });
+        if (resp.status === 404) {
+            resp = await fetch(ACTIVE_MODE_KV_BASE, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: mutatingHeaders(),
+                body: JSON.stringify(record),
+            });
+        }
+        if (!resp.ok) return false;
+        setCachedActiveLayoutMode(mode);
+        return true;
+    } catch (_e) {
+        return false;
+    }
+};
+
+/** Migrate localStorage active-mode value to KV Store on first run.
+ *  Idempotent — gated by a per-user `activeMode.kvstore_migrated.<user>`
+ *  flag. If KV Store already has a row for this user, skip migration.
+ *  Best-effort: failures don't block the UI. */
+export const migrateLegacyLocalStorageActiveMode = async (): Promise<void> => {
+    try {
+        const flagKey = activeModeMigratedFlagKey();
+        if (window.localStorage.getItem(flagKey) === 'true') return;
+        // If KV Store already has a row for this user, skip migration.
+        const remote = await fetchActiveLayoutModeFromKvStore();
+        if (remote) {
+            window.localStorage.setItem(flagKey, 'true');
+            return;
+        }
+        const cached = getCachedActiveLayoutMode();
+        if (cached) {
+            await setActiveLayoutModeInKvStore(cached);
+        }
+        window.localStorage.setItem(flagKey, 'true');
+    } catch (_e) { /* ignore */ }
+};
+
+/** Migrate localStorage default-layout slugs to KV Store on first run.
+ *  Idempotent — gated by a per-user `defaultLayout.kvstore_migrated.<user>`
+ *  flag. If KV Store already has any rows in the defaults collection
+ *  for this user, skip migration. Best-effort: failures don't block UI. */
+export const migrateLegacyLocalStorageDefaultLayouts = async (): Promise<void> => {
+    try {
+        const flagKey = defaultLayoutMigratedFlagKey();
+        if (window.localStorage.getItem(flagKey) === 'true') return;
+        // If KV Store already has rows for this user, skip migration.
+        const remote = await fetchDefaultLayoutSlugsFromKvStore();
+        if (remote && (remote.force || remote.layered || remote.tree)) {
+            window.localStorage.setItem(flagKey, 'true');
+            return;
+        }
+        // Validate localStorage entries against existing layouts before
+        // writing — avoids carrying forward a stale slug for a layout
+        // that's been deleted.
+        const cached = getAllDefaultLayoutSlugs();
+        const summaries = await listLayouts();
+        const modes: DefaultLayoutMode[] = ['force', 'layered', 'tree'];
+        for (const m of modes) {
+            const slug = cached[m];
+            if (slug && summaries.some((s) => s.slug === slug && s.layoutMode === m)) {
+                // eslint-disable-next-line no-await-in-loop
+                await setDefaultLayoutInKvStore(m, slug);
+            }
+        }
+        window.localStorage.setItem(flagKey, 'true');
+    } catch (_e) {
+        /* ignore */
+    }
+};

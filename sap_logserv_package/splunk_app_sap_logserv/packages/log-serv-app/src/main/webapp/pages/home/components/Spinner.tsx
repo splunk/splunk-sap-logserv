@@ -29,11 +29,6 @@ interface SpinnerProps {
     periodSec?: number;
     /** Optional aria-label override (default "Loading"). */
     label?: string;
-    /** Pause the brightness-wave animation. Default false (running).
-     *  When true, all dots render at full opacity at their radial
-     *  position and stay still. Useful for icon contexts that activate
-     *  on hover (set to false on hover, true otherwise). */
-    paused?: boolean;
 }
 
 const DEFAULT_RADIUS = 9;
@@ -55,57 +50,27 @@ const Wrap = styled.span<{ $radius: number; $dotSize: number }>`
     vertical-align: middle;
 `;
 
-/**
- * Two separate styled-components for the Dot — one with the
- * brightness-wave animation, one stationary at full opacity. We
- * intentionally do NOT collapse these into a single styled-component
- * with conditional CSS; interpolating the `keyframes(...)` call inside
- * a function-returned string template hides the keyframes call from
- * styled-components' template processor (it never gets injected into
- * the stylesheet) and in some styled-components versions throws during
- * render — which crashes the dashboard with a white screen on the
- * paused → animated transition.
- */
-
-const DotBase = `
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #ffb785 0%, #f1813f 55%, #a04f1d 100%);
-    will-change: opacity, transform;
-`;
-
-const DotAnimated = styled.span<{
+const Dot = styled.span<{
     $angle: number;
     $delay: number;
     $radius: number;
     $dotSize: number;
     $periodSec: number;
 }>`
-    ${DotBase}
+    position: absolute;
+    top: 50%;
+    left: 50%;
     width: ${(p) => p.$dotSize}px;
     height: ${(p) => p.$dotSize}px;
     margin-left: ${(p) => -p.$dotSize / 2}px;
     margin-top: ${(p) => -p.$dotSize / 2}px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffb785 0%, #f1813f 55%, #a04f1d 100%);
     --angle: ${(p) => p.$angle}deg;
     transform: rotate(${(p) => p.$angle}deg) translateY(-${(p) => p.$radius}px);
     animation: ${(p) => dotPulse(p.$radius)} ${(p) => p.$periodSec}s ease-in-out infinite;
     animation-delay: ${(p) => p.$delay}s;
-`;
-
-const DotPaused = styled.span<{
-    $angle: number;
-    $radius: number;
-    $dotSize: number;
-}>`
-    ${DotBase}
-    width: ${(p) => p.$dotSize}px;
-    height: ${(p) => p.$dotSize}px;
-    margin-left: ${(p) => -p.$dotSize / 2}px;
-    margin-top: ${(p) => -p.$dotSize / 2}px;
-    transform: rotate(${(p) => p.$angle}deg) translateY(-${(p) => p.$radius}px);
-    opacity: 1;
+    will-change: opacity, transform;
 `;
 
 const Spinner: React.FC<SpinnerProps> = ({
@@ -113,24 +78,18 @@ const Spinner: React.FC<SpinnerProps> = ({
     dotSize = DEFAULT_DOT_SIZE,
     periodSec = DEFAULT_PERIOD_S,
     label = 'Loading',
-    paused = false,
 }) => (
     <Wrap $radius={radius} $dotSize={dotSize} aria-label={label} role="status">
-        {Array.from({ length: DOT_COUNT }).map((_, i) => {
-            const angle = i * (360 / DOT_COUNT);
-            return paused ? (
-                <DotPaused key={i} $angle={angle} $radius={radius} $dotSize={dotSize} />
-            ) : (
-                <DotAnimated
-                    key={i}
-                    $angle={angle}
-                    $delay={i * (periodSec / DOT_COUNT)}
-                    $radius={radius}
-                    $dotSize={dotSize}
-                    $periodSec={periodSec}
-                />
-            );
-        })}
+        {Array.from({ length: DOT_COUNT }).map((_, i) => (
+            <Dot
+                key={i}
+                $angle={i * (360 / DOT_COUNT)}
+                $delay={i * (periodSec / DOT_COUNT)}
+                $radius={radius}
+                $dotSize={dotSize}
+                $periodSec={periodSec}
+            />
+        ))}
     </Wrap>
 );
 

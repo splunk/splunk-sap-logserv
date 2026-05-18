@@ -1,1131 +1,1416 @@
 {
-    "$schema": "./logserv_intent_map.schema.json",
-    "version": "0.0.9",
-    "description": "LogServ AI Assistant predefined-prompt registry. Each entry maps a canonical user question to a saved search the official Splunk MCP Server (Splunkbase App 7931) can run. The chat-side time-range dropdown overrides any `earliest=`/`latest=` baked into the SPL via Splunk dispatch tokens. Entries are immutable per app release; per-customer overrides are deferred to v2 (see ai_assistant_design_v0.1_20260427.md §7.6). v0.0.6 (Build 141) upgrades nextSteps entries to support deep-dive link objects: `{text, savedSearch}` resolves at runtime to that prompt's SPL; `{text, spl}` carries an ad-hoc deep-dive query. Both open Splunk's search app in a new browser tab with the dispatch's earliest/latest applied. v0.0.7 (Build 156) adds an optional `dashboard` field per prompt: either a single OOTB dashboard slug (e.g. \"hana-audit\") or an array of slugs for cross-cutting prompts (e.g. [\"hana-audit\", \"cross-stack-authentication\"]). Slugs match `dashboardRegistry.ts`. v0.0.8 (Build 158 / session 027 task 5) adds 6 new prompts targeting thin-coverage dashboards: integration-topology (top systems by calls + RFC partner failures), sap-services (host severity breakdown), cloud-connector + web-api-performance (SCC backend latency + top destinations), and environment-health (top error categories). Powers the new \"Dashboard Focused\" tab in the prompt browser. v0.0.9 (Build 170 / session 028) rewrites two nextStep SPLs from `| map maxsearches=1 search=\"...\"` to subsearch syntax (`[ search ... | top limit=1 host | fields host ]`) so they no longer trigger Splunk's risky-command safeguard modal — `map` is on Splunk's flagged list because it spawns per-row subsearches; subsearches are equivalent here and not flagged.",
-    "packs": {
-        "sap_basis": {
-            "label": "SAP Basis",
-            "description": "Operational queries for SAP basis admins — work process health, HANA admin activity, ICM, dispatcher, gateway, enqueue, message server, trace logs, host control."
-        },
-        "security": {
-            "label": "Security",
-            "description": "Cross-stack security analytics — authentication failures, permission grants, beaconing, firewall + proxy correlation, account lifecycle, SAP Router protocol anomalies."
-        },
-        "operations": {
-            "label": "Operations",
-            "description": "Infrastructure ops queries — data freshness, volume anomalies, response-time trends, error-rate dashboards, host health, ICM mix."
-        }
+  "$schema": "./logserv_intent_map.schema.json",
+  "version": "0.0.10",
+  "description": "LogServ AI Assistant predefined-prompt registry. Each entry maps a canonical user question to a saved search the official Splunk MCP Server (Splunkbase App 7931) can run. The chat-side time-range dropdown overrides any `earliest=`/`latest=` baked into the SPL via Splunk dispatch tokens. Entries are immutable per app release; per-customer overrides are deferred to v2 (see ai_assistant_design_v0.1_20260427.md \u00a77.6). v0.0.6 (Build 141) upgrades nextSteps entries to support deep-dive link objects: `{text, savedSearch}` resolves at runtime to that prompt's SPL; `{text, spl}` carries an ad-hoc deep-dive query. Both open Splunk's search app in a new browser tab with the dispatch's earliest/latest applied. v0.0.7 (Build 156) adds an optional `dashboard` field per prompt: either a single OOTB dashboard slug (e.g. \"hana-audit\") or an array of slugs for cross-cutting prompts (e.g. [\"hana-audit\", \"cross-stack-authentication\"]). Slugs match `dashboardRegistry.ts`. v0.0.8 (Build 158 / session 027 task 5) adds 6 new prompts targeting thin-coverage dashboards: integration-topology (top systems by calls + RFC partner failures), sap-services (host severity breakdown), cloud-connector + web-api-performance (SCC backend latency + top destinations), and environment-health (top error categories). Powers the new \"Dashboard Focused\" tab in the prompt browser. v0.0.9 (Build 170 / session 028) rewrites two nextStep SPLs from `| map maxsearches=1 search=\"...\"` to subsearch syntax (`[ search ... | top limit=1 host | fields host ]`) so they no longer trigger Splunk's risky-command safeguard modal \u2014 `map` is on Splunk's flagged list because it spawns per-row subsearches; subsearches are equivalent here and not flagged.",
+  "packs": {
+    "sap_basis": {
+      "label": "SAP Basis",
+      "description": "Operational queries for SAP basis admins \u2014 work process health, HANA admin activity, ICM, dispatcher, gateway, enqueue, message server, trace logs, host control."
     },
-    "prompts": [
+    "security": {
+      "label": "Security",
+      "description": "Cross-stack security analytics \u2014 authentication failures, permission grants, beaconing, firewall + proxy correlation, account lifecycle, SAP Router protocol anomalies."
+    },
+    "operations": {
+      "label": "Operations",
+      "description": "Infrastructure ops queries \u2014 data freshness, volume anomalies, response-time trends, error-rate dashboards, host health, ICM mix."
+    }
+  },
+  "prompts": [
+    {
+      "id": "sap_basis.abap_workprocess_errors",
+      "pack": "sap_basis",
+      "label": "ABAP work process errors by SID and host",
+      "description": "Aggregates sap:abap:workprocess events whose raw text contains the keyword \"ERROR\", grouped by SAP SID and host. Useful for spotting which systems and hosts are generating the most operational error noise. Field-level severity isn't extracted on this sourcetype, so a keyword match is the most reliable signal.",
+      "savedSearch": "logserv_abap_workprocess_errors",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:workprocess \"ERROR\" | stats count by sap_sid host | sort -count",
+      "renderHint": "table",
+      "interpretation": "ABAP work process events containing the keyword ERROR, grouped by SAP SID and host. The work-process layer is where ABAP application logic actually runs, so ERROR-keyword events here often indicate ABAP dumps, RFC failures, or DB connection problems. The host that dominates is usually the one to investigate first.",
+      "nextSteps": [
         {
-            "id": "sap_basis.abap_workprocess_errors",
-            "pack": "sap_basis",
-            "label": "ABAP work process errors by SID and host",
-            "description": "Aggregates sap:abap:workprocess events whose raw text contains the keyword \"ERROR\", grouped by SAP SID and host. Useful for spotting which systems and hosts are generating the most operational error noise. Field-level severity isn't extracted on this sourcetype, so a keyword match is the most reliable signal.",
-            "savedSearch": "logserv_abap_workprocess_errors",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:workprocess \"ERROR\" | stats count by sap_sid host | sort -count",
-            "renderHint": "table",
-            "interpretation": "ABAP work process events containing the keyword ERROR, grouped by SAP SID and host. The work-process layer is where ABAP application logic actually runs, so ERROR-keyword events here often indicate ABAP dumps, RFC failures, or DB connection problems. The host that dominates is usually the one to investigate first.",
-            "nextSteps": [
-                {
-                    "text": "Drill into the busiest SID/host — pull the raw events at that bucket via free-form SPL to read the actual error text.",
-                    "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:workprocess \"ERROR\" | head 100 | table _time host sap_sid _raw"
-                },
-                {
-                    "text": "If one host dominates, cross-check with the dispatcher_softcancel_reasons prompt to see whether ICM/dialog cancels are correlated.",
-                    "savedSearch": "logserv_dispatcher_softcancel_reasons"
-                },
-                "Persistent errors on BATCH_* users typically point to a job runtime issue — review SM37 / job logs in the corresponding SAP system."
-            ],
-            "dashboard": [
-                "work-process-performance",
-                "abap-operations"
-            ]
+          "text": "Drill into the busiest SID/host \u2014 pull the raw events at that bucket via free-form SPL to read the actual error text.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:workprocess \"ERROR\" | head 100 | table _time host sap_sid _raw"
         },
         {
-            "id": "sap_basis.dispatcher_softcancel_reasons",
-            "pack": "sap_basis",
-            "label": "ABAP dispatcher soft-cancel reasons trend",
-            "description": "Per-hour count of sap:abap:dispatcher soft-cancel events broken down by reason (e.g. AUTO_LOGOFF, ICM_CANCEL_REQUEST, SAP_GUI_DISCONNECT, GW_CANCEL_BY_RFC_PEER). The reason mix shifts when frontend connectivity, ICM throttling, or RFC peer health changes — useful for diagnosing why dialog steps are being canceled.",
-            "savedSearch": "logserv_dispatcher_softcancel_reasons",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:dispatcher \"reason=\" | rex field=_raw \"reason=(?<reason>[A-Z_]+)\" | timechart span=1h count by reason limit=8 useother=t",
-            "renderHint": "timechart",
-            "chartPalette": "categorical",
-            "interpretation": "Per-hour rate of ABAP dispatcher soft-cancel events broken down by reason code. AUTO_LOGOFF and SAP_GUI_DISCONNECT are routine; spikes in ICM_CANCEL_REQUEST or ICM_PROCESSING_TIMEOUT indicate frontend load or upstream slowness; GW_CANCEL_BY_RFC_PEER means an RFC partner gave up first.",
-            "nextSteps": [
-                {
-                    "text": "If ICM_PROCESSING_TIMEOUT dominates, run the webdispatcher_5xx_rate_trend prompt to see whether load-balancer-side timeouts correlate.",
-                    "savedSearch": "logserv_webdispatcher_5xx_rate_trend"
-                },
-                {
-                    "text": "If GW_CANCEL_BY_RFC_PEER spikes, run abap_gateway_failures for the same time range to find the failing RFC partner.",
-                    "savedSearch": "logserv_abap_gateway_failures"
-                },
-                "Sustained AUTO_LOGOFF dominance is normal idle behavior — investigate only if it suddenly stops."
-            ],
-            "dashboard": [
-                "abap-operations",
-                "work-process-performance"
-            ]
+          "text": "If one host dominates, cross-check with the dispatcher_softcancel_reasons prompt to see whether ICM/dialog cancels are correlated.",
+          "savedSearch": "logserv_dispatcher_softcancel_reasons"
+        },
+        "Persistent errors on BATCH_* users typically point to a job runtime issue \u2014 review SM37 / job logs in the corresponding SAP system."
+      ],
+      "dashboard": [
+        "work-process-performance",
+        "abap-operations"
+      ]
+    },
+    {
+      "id": "sap_basis.dispatcher_softcancel_reasons",
+      "pack": "sap_basis",
+      "label": "ABAP dispatcher soft-cancel reasons trend",
+      "description": "Per-hour count of sap:abap:dispatcher soft-cancel events broken down by reason (e.g. AUTO_LOGOFF, ICM_CANCEL_REQUEST, SAP_GUI_DISCONNECT, GW_CANCEL_BY_RFC_PEER). The reason mix shifts when frontend connectivity, ICM throttling, or RFC peer health changes \u2014 useful for diagnosing why dialog steps are being canceled.",
+      "savedSearch": "logserv_dispatcher_softcancel_reasons",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:dispatcher \"reason=\" | rex field=_raw \"reason=(?<reason>[A-Z_]+)\" | timechart span=1h count by reason limit=8 useother=t",
+      "renderHint": "timechart",
+      "chartPalette": "categorical",
+      "interpretation": "Per-hour rate of ABAP dispatcher soft-cancel events broken down by reason code. AUTO_LOGOFF and SAP_GUI_DISCONNECT are routine; spikes in ICM_CANCEL_REQUEST or ICM_PROCESSING_TIMEOUT indicate frontend load or upstream slowness; GW_CANCEL_BY_RFC_PEER means an RFC partner gave up first.",
+      "nextSteps": [
+        {
+          "text": "If ICM_PROCESSING_TIMEOUT dominates, run the webdispatcher_5xx_rate_trend prompt to see whether load-balancer-side timeouts correlate.",
+          "savedSearch": "logserv_webdispatcher_5xx_rate_trend"
         },
         {
-            "id": "sap_basis.abap_gateway_failures",
-            "pack": "sap_basis",
-            "label": "ABAP gateway error events by detail",
-            "description": "Counts sap:abap:gateway error events grouped by SID, host, and the extracted gw_error_detail field (NiBufIIn invalid data, NiIRead SI_ECONN_BROKEN, partner connection broken, and ~8 other diagnostic categories). Highlights which RFC partners are repeatedly failing protocol negotiation.",
-            "savedSearch": "logserv_abap_gateway_failures",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:gateway \"*** ERROR\" | stats count by sap_sid host gw_error_detail | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "Gateway error events grouped by gw_error_detail category. NiBufIIn invalid-data = malformed RFC frame (often non-RFC traffic hitting an RFC port); SI_ECONN_BROKEN = remote peer gave up; partner-broken = sustained connection severed. The category mix tells you where the problem actually lives.",
-            "nextSteps": [
-                "NiBufIIn invalid-data spikes from a single peer indicate either a misconfigured client OR an attempted protocol probe — capture the peer IP and verify it's expected to be an RFC partner.",
-                {
-                    "text": "Repeated 'connection to partner X broken' often correlates with the peer's own dispatcher errors — if the peer is also instrumented, run abap_workprocess_errors against it.",
-                    "savedSearch": "logserv_abap_workprocess_errors"
-                },
-                {
-                    "text": "If error volume is concentrated on one local SID, check that SID's network reachability via the sap_router_volume_trend prompt.",
-                    "savedSearch": "logserv_sap_router_volume_trend"
-                }
-            ],
-            "dashboard": "abap-security"
+          "text": "If GW_CANCEL_BY_RFC_PEER spikes, run abap_gateway_failures for the same time range to find the failing RFC partner.",
+          "savedSearch": "logserv_abap_gateway_failures"
+        },
+        "Sustained AUTO_LOGOFF dominance is normal idle behavior \u2014 investigate only if it suddenly stops."
+      ],
+      "dashboard": [
+        "abap-operations",
+        "work-process-performance"
+      ]
+    },
+    {
+      "id": "sap_basis.abap_gateway_failures",
+      "pack": "sap_basis",
+      "label": "ABAP gateway error events by detail",
+      "description": "Counts sap:abap:gateway error events grouped by SID, host, and the extracted gw_error_detail field (NiBufIIn invalid data, NiIRead SI_ECONN_BROKEN, partner connection broken, and ~8 other diagnostic categories). Highlights which RFC partners are repeatedly failing protocol negotiation.",
+      "savedSearch": "logserv_abap_gateway_failures",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:gateway \"*** ERROR\" | stats count by sap_sid host gw_error_detail | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "Gateway error events grouped by gw_error_detail category. NiBufIIn invalid-data = malformed RFC frame (often non-RFC traffic hitting an RFC port); SI_ECONN_BROKEN = remote peer gave up; partner-broken = sustained connection severed. The category mix tells you where the problem actually lives.",
+      "nextSteps": [
+        "NiBufIIn invalid-data spikes from a single peer indicate either a misconfigured client OR an attempted protocol probe \u2014 capture the peer IP and verify it's expected to be an RFC partner.",
+        {
+          "text": "Repeated 'connection to partner X broken' often correlates with the peer's own dispatcher errors \u2014 if the peer is also instrumented, run abap_workprocess_errors against it.",
+          "savedSearch": "logserv_abap_workprocess_errors"
         },
         {
-            "id": "sap_basis.abap_enqueue_errors",
-            "pack": "sap_basis",
-            "label": "ABAP enqueue server errors and warnings",
-            "description": "Lists sap:abap:enqueueserver events whose raw text contains ERROR, WARNING, or FATAL keywords. Enqueue errors often indicate lock contention or replica-side problems that affect every dialog instance, but they're typically sparse — even a few entries warrant investigation.",
-            "savedSearch": "logserv_abap_enqueue_errors",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:enqueueserver (\"ERROR\" OR \"WARNING\" OR \"FATAL\") | stats count by sap_sid host | sort -count",
-            "renderHint": "table",
-            "interpretation": "Enqueue server events at ERROR/WARNING/FATAL severity. Enqueue is single-instance per system, so any error here affects every dialog instance attempting to acquire locks. Even a few entries warrant attention.",
-            "nextSteps": [
-                {
-                    "text": "Run abap_workprocess_errors for the same SID — enqueue errors usually surface there as 'lock not acquired' messages.",
-                    "savedSearch": "logserv_abap_workprocess_errors"
-                },
-                "If errors are clustered around a maintenance window, check whether enqueue replication state is healthy via SAP transaction SM12 on the system.",
-                "Persistent FATAL events on enqueue demand SAP Basis attention — escalate immediately."
-            ],
-            "dashboard": "abap-operations"
-        },
-        {
-            "id": "sap_basis.abap_message_server_errors",
-            "pack": "sap_basis",
-            "label": "ABAP message server errors and warnings",
-            "description": "Aggregates sap:abap:messageserver events containing ERROR or WARNING keywords by SID and host. Message server hiccups often precede load-balancer-visible failures.",
-            "savedSearch": "logserv_abap_message_server_errors",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:messageserver (\"ERROR\" OR \"WARNING\") | stats count by sap_sid host | sort -count",
-            "renderHint": "table",
-            "interpretation": "Message server WARNING/ERROR events. The message server orchestrates which application server gets which dialog request, so errors here often precede load-balancer-visible failures (slow logins, group lookups failing).",
-            "nextSteps": [
-                {
-                    "text": "If errors mention HTTP, run webdispatcher_5xx_rate_trend to see whether the dispatcher tier is also struggling.",
-                    "savedSearch": "logserv_webdispatcher_5xx_rate_trend"
-                },
-                {
-                    "text": "Logon-group lookup failures → check whether all dialog instances in the group are reachable via the data_freshness prompt.",
-                    "savedSearch": "logserv_data_freshness"
-                },
-                "Persistent WARNING-only events without ERRORs are typically chatter; pair-up with ABAP dump volume before declaring an incident."
-            ],
-            "dashboard": "abap-operations"
-        },
-        {
-            "id": "sap_basis.sap_host_auth_failures",
-            "pack": "sap_basis",
-            "label": "SAP host control authentication failures",
-            "description": "SAP host control (sapstartsrv) refusing OS authentication, typically from an SSL-capable client trying to reach the host control SOAP endpoint. Groups by host, target user, and remote address — useful for catching credential probing against the host control tier.",
-            "savedSearch": "logserv_sap_host_auth_failures",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:sapstartsrv \"OS Authentication failed\" | rex field=_raw \"user\\((?<sap_user>[^)]+)\\)\" | rex field=_raw \"Remote Address \\((?<remote_addr>[^)]+)\\)\" | stats count by host sap_user remote_addr | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "auth",
-            "interpretation": "SAP host control SOAP endpoint refusing OS authentication. Each row is a remote address that tried to authenticate to sapstartsrv with bad credentials. Repeated attempts from a single IP often indicate a misconfigured monitoring tool OR active credential probing against the host control tier.",
-            "nextSteps": [
-                "Map remote_addr to a known monitoring/operator IP — anything unrecognized is worth an ACL review.",
-                {
-                    "text": "Cross-reference with linux_pam_auth_failures for the same host — credential probing usually shows up at multiple auth layers simultaneously.",
-                    "savedSearch": "logserv_linux_pam_auth_failures"
-                },
-                "If the same user keeps appearing, rotate that user's credentials and update the agent that's failing."
-            ],
-            "dashboard": [
-                "sap-services",
-                "cross-stack-authentication"
-            ]
-        },
-        {
-            "id": "sap_basis.hana_failed_auth",
-            "pack": "sap_basis",
-            "label": "HANA failed CONNECT attempts by user",
-            "description": "Counts sap:hana:audit CONNECT events with status=UNSUCCESSFUL across the selected time range. Identifies HANA logins that consistently fail authentication — typically credential issues or misconfigured automation.",
-            "savedSearch": "logserv_hana_failed_auth",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_type=CONNECT status=UNSUCCESSFUL | stats count by user host | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "auth",
-            "interpretation": "Failed HANA login attempts grouped by HANA user. SYSTEM failures are usually misconfigured SCC connections or broken backup automation; named-user failures often indicate an expired password or stale automation that lost its credentials.",
-            "nextSteps": [
-                "If SYSTEM dominates, check the SCC tunnel status and the BACKUP/MONITOR agents using SYSTEM credentials.",
-                {
-                    "text": "If any named user has more than ~10 failures, run hana_admin_user_management — they may have been re-provisioned without their automation being updated.",
-                    "savedSearch": "logserv_hana_admin_user_management"
-                },
-                {
-                    "text": "Cross-reference with cross_stack_auth_failures to see whether the same user is failing on Linux/Windows too — that's a credential-stuffing pattern.",
-                    "savedSearch": "logserv_cross_stack_auth_failures"
-                }
-            ],
-            "dashboard": [
-                "hana-audit",
-                "cross-stack-authentication"
-            ]
-        },
-        {
-            "id": "sap_basis.hana_trace_severity_trend",
-            "pack": "sap_basis",
-            "label": "HANA trace event severity trend",
-            "description": "Per-hour count of sap:hana:tracelogs events broken down by hana_trace_severity (UNKNOWN / INFO / WARNING / ERROR — FATAL is not produced by the current trace configuration). Trends ERROR/WARNING over time so spikes are visible at a glance.",
-            "savedSearch": "logserv_hana_trace_severity_trend",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:tracelogs hana_trace_severity=* | timechart span=1h count by hana_trace_severity",
-            "renderHint": "timechart",
-            "chartPalette": "status",
-            "interpretation": "HANA trace event severity over time. UNKNOWN and INFO are noise; WARNING and ERROR are the diagnostic signal. Sudden ERROR spikes often correspond to query timeouts, license issues, or HSR replication state changes.",
-            "nextSteps": [
-                {
-                    "text": "If ERROR spikes, run hana_trace_errors for the same time range to see the actual messages with context.",
-                    "savedSearch": "logserv_hana_trace_errors"
-                },
-                {
-                    "text": "Sustained WARNING growth without ERRORs is usually a backup window or a long-running query — cross-check with hana_admin_user_management to see if scheduled admin work is happening.",
-                    "savedSearch": "logserv_hana_admin_user_management"
-                },
-                "Quiet periods (UNKNOWN dominating) are normal — investigate when ERROR rate persists above ~5 per hour."
-            ],
-            "dashboard": "hana-trace"
-        },
-        {
-            "id": "sap_basis.hana_trace_errors",
-            "pack": "sap_basis",
-            "label": "HANA trace ERROR events with context",
-            "description": "Lists sap:hana:tracelogs events at ERROR severity, with the SID, host, and the first 200 characters of the trace message. (FATAL is not produced by the current trace configuration; ERROR is the highest severity available in this dataset.)",
-            "savedSearch": "logserv_hana_trace_errors",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:tracelogs hana_trace_severity=ERROR | eval message_preview=substr(_raw, 1, 200) | table _time sap_sid host message_preview | sort -_time | head 50",
-            "renderHint": "table",
-            "interpretation": "Recent HANA trace events at ERROR severity, with the first 200 chars of each message. The text typically reveals the underlying cause: 'cannot allocate memory' (OOM), 'transaction abort' (lock contention), 'replication out of sync' (HSR), or 'license expired'.",
-            "nextSteps": [
-                "OOM patterns → check the busiest SID's memory consumption via HANA Studio or the HANA cockpit memory view.",
-                "License-expiry messages need SAP Basis attention immediately — the system will refuse new connections once the grace period ends.",
-                "Replication errors → check HSR state on the primary; the secondary may have fallen out of sync and need a takeover or re-init."
-            ],
-            "dashboard": "hana-trace"
-        },
-        {
-            "id": "sap_basis.icm_top_peer_ips",
-            "pack": "sap_basis",
-            "label": "ICM top peer IPs by request volume",
-            "description": "Ranks the IPs reaching ABAP ICM by request count over the selected time range. Useful for understanding which RFC clients or upstream gateways are driving ICM load.",
-            "savedSearch": "logserv_icm_top_peer_ips",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:icm icm_peer_ip=* | top limit=15 icm_peer_ip",
-            "renderHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "IPs reaching ABAP ICM, ranked by request count. Healthy distribution is a few known internal client subnets dominating with the rest as long-tail. A new IP appearing high in the list often indicates a new integration OR a misconfigured client retrying aggressively.",
-            "nextSteps": [
-                "Map the top IPs to known internal subnets — anything from outside the expected 10.x range warrants a closer look.",
-                {
-                    "text": "If one peer dominates beyond expectation, cross-check with icm_request_type_mix to see what kind of traffic it is generating.",
-                    "savedSearch": "logserv_icm_request_type_mix"
-                },
-                "Sudden appearance of a public IP in the top list = potential exposure issue; confirm via the network team before assuming it's expected."
-            ],
-            "dashboard": "abap-security"
-        },
-        {
-            "id": "sap_basis.icm_request_volume_trend",
-            "pack": "sap_basis",
-            "label": "ICM request volume trend",
-            "description": "Per-hour count of sap:abap:icm requests, broken down by host. A leading indicator of dispatcher load shifts.",
-            "savedSearch": "logserv_icm_request_volume_trend",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:icm | timechart span=1h count by host limit=8 useother=t",
-            "renderHint": "timechart",
-            "chartPalette": "categorical",
-            "interpretation": "Per-hour ICM request volume, broken down by host. Steady similar shapes across hosts indicate healthy load distribution. A sudden spike on one host usually means a runaway client, a load-balancer failover, or a stuck WP causing retries. A drop to zero on one host (while others stay steady) usually means that host crashed or was removed from the pool.",
-            "nextSteps": [
-                {
-                    "text": "If a single host shows a sudden spike, run dispatcher_softcancel_reasons for the same window — bursts of ICM_PROCESSING_TIMEOUT or ICM_CANCEL_REQUEST confirm overload.",
-                    "savedSearch": "logserv_dispatcher_softcancel_reasons"
-                },
-                {
-                    "text": "If a host drops to zero, run data_freshness to confirm the host is still emitting events at all.",
-                    "savedSearch": "logserv_data_freshness"
-                },
-                {
-                    "text": "If volume across all hosts is uniformly elevated, check cross_stack_auth_failures — auth-retry storms often surface as ICM volume spikes.",
-                    "savedSearch": "logserv_cross_stack_auth_failures"
-                }
-            ],
-            "dashboard": "abap-operations"
-        },
-        {
-            "id": "sap_basis.sap_router_failures",
-            "pack": "sap_basis",
-            "label": "SAP Router disconnect and protocol-violation events",
-            "description": "Counts sap:saprouter events with action=DISCONNECT or action=\"INVAL DATA\", grouped by peer_hostname. INVAL DATA flags malformed protocol attempts (commonly attempts to tunnel non-saprouter traffic); DISCONNECTs are routine but the breakdown by peer surfaces hosts that are repeatedly being severed.",
-            "savedSearch": "logserv_sap_router_failures",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:saprouter (action=\"DISCONNECT\" OR action=\"INVAL DATA\") | stats count by action peer_hostname | sort -count | head 50",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "SAP Router events by remote peer hostname. DISCONNECTs are routine session ends; the value is in the per-peer count — repeated DISCONNECTs from one peer suggest its TCP keepalive or proxy is unstable. INVAL DATA is the protocol-violation signal — typically a non-saprouter client probing the port.",
-            "nextSteps": [
-                "If a single peer has hundreds of DISCONNECTs, check the peer's network route stability via traceroute / mtr.",
-                {
-                    "text": "For INVAL DATA spikes, run saprouter_anomalies for the same window and capture the peer IPs for follow-up.",
-                    "savedSearch": "logserv_saprouter_anomalies"
-                },
-                "A normally-active peer that suddenly disappears (no events for 2+ hours) often means it was misconfigured or removed — confirm before flagging."
-            ],
-            "dashboard": "sap-router"
-        },
-        {
-            "id": "sap_basis.sap_router_volume_trend",
-            "pack": "sap_basis",
-            "label": "SAP Router connection volume by peer",
-            "description": "Per-hour SAP Router CONNECT FROM and CONNECT TO counts, top peer_hostnames as separate series. Spikes/drops point to peer-specific reachability or routing changes.",
-            "savedSearch": "logserv_sap_router_volume_trend",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:saprouter action IN (\"CONNECT FROM\",\"CONNECT TO\") peer_hostname=* | timechart span=1h count by peer_hostname limit=10 useother=f",
-            "renderHint": "timechart",
-            "chartPalette": "categorical",
-            "interpretation": "Per-hour SAP Router CONNECT volume by peer hostname. Each peer's curve should match its expected operational rhythm (business hours / nightly batch / continuous monitoring). Off-hours spikes from a normally-quiet peer warrant investigation.",
-            "nextSteps": [
-                {
-                    "text": "Off-hours spikes → run saprouter_anomalies to check whether INVAL DATA appeared at the same time.",
-                    "savedSearch": "logserv_saprouter_anomalies"
-                },
-                "If a peer disappears entirely, check whether the routtab still has it and whether the peer's local saprouter is alive.",
-                "Sustained growth on one peer often indicates a new integration just rolling out — confirm with the network or integration team before alarming."
-            ],
-            "dashboard": "sap-router"
-        },
-        {
-            "id": "security.cross_stack_auth_failures",
-            "pack": "security",
-            "label": "Authentication failures across HANA, SAP host, and Windows",
-            "description": "Cross-stack view of authentication failures: HANA CONNECT/UNSUCCESSFUL, SAP host control OS-auth failures, and Windows event 4625. Looks for users failing across multiple systems (a credential-stuffing signature).",
-            "savedSearch": "logserv_cross_stack_auth_failures",
-            "spl": "`sap_logserv_idx_macro` (sourcetype=sap:hana:audit action_type=CONNECT status=UNSUCCESSFUL) OR (sourcetype=sap:sapstartsrv \"OS Authentication failed\") OR (sourcetype=XmlWinEventLog EventCode=4625) | rex field=_raw \"user\\((?<sap_user>[^)]+)\\)\" | rex field=_raw \"<Data Name=.TargetUserName.>(?<win_user>[^<]+)\" | eval stack=case(sourcetype=\"sap:hana:audit\",\"HANA\",sourcetype=\"sap:sapstartsrv\",\"SAP host\",sourcetype=\"XmlWinEventLog\",\"Windows\") | eval user=coalesce(user, sap_user, win_user) | stats count by stack user | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "auth",
-            "interpretation": "Authentication failures across HANA, SAP host control, and Windows, attributed to a target user. Single-stack failures are usually mundane (expired password, broken automation). MULTI-stack failures by the same user are a credential-stuffing signature — high priority.",
-            "nextSteps": [
-                "Any user appearing in 2+ stacks → escalate immediately. Lock the account and rotate credentials.",
-                {
-                    "text": "If SYSTEM dominates the HANA column without named users elsewhere, see hana_failed_auth for SYSTEM-account specifics — usually broken SCC/backup automation.",
-                    "savedSearch": "logserv_hana_failed_auth"
-                },
-                {
-                    "text": "Run cross_stack_auth_failures_trend to see when the failures are clustered — bursts at off-hours are stronger attack signal than spread-out drift.",
-                    "savedSearch": "logserv_cross_stack_auth_failures_trend"
-                }
-            ],
-            "dashboard": "cross-stack-authentication"
-        },
-        {
-            "id": "security.cross_stack_auth_failures_trend",
-            "pack": "security",
-            "label": "Cross-stack auth failure trend",
-            "description": "Hourly trend of authentication failures across HANA, SAP host control, and Windows. Compare the three layers in a single chart to spot cross-stack attack windows.",
-            "savedSearch": "logserv_cross_stack_auth_failures_trend",
-            "spl": "`sap_logserv_idx_macro` (sourcetype=sap:hana:audit action_type=CONNECT status=UNSUCCESSFUL) OR (sourcetype=sap:sapstartsrv \"OS Authentication failed\") OR (sourcetype=XmlWinEventLog EventCode=4625) | eval stack=case(sourcetype=\"sap:hana:audit\",\"HANA\",sourcetype=\"sap:sapstartsrv\",\"SAP host\",sourcetype=\"XmlWinEventLog\",\"Windows\") | timechart span=1h count by stack",
-            "renderHint": "timechart",
-            "chartPalette": "auth",
-            "interpretation": "Hourly trend of auth failures across the three layers. Coordinated spikes across all three stacks at the same time indicate a credential-spray attack. Single-stack drift is usually a misbehaving service. Off-hours bursts (outside 06:00-18:00) merit closer attention than business-hours noise.",
-            "nextSteps": [
-                {
-                    "text": "Coordinated spike across stacks → check cross_stack_auth_failures for the failing user names and escalate.",
-                    "savedSearch": "logserv_cross_stack_auth_failures"
-                },
-                "Single-stack baseline drift → drill into the dominant stack's prompt (hana_failed_auth, sap_host_auth_failures, or windows_account_lockouts).",
-                {
-                    "text": "Off-hours spikes → cross-check with dns_beaconing — credential-spray operators often run beaconing C2 at the same time.",
-                    "savedSearch": "logserv_dns_beaconing_24h"
-                }
-            ],
-            "dashboard": "cross-stack-authentication"
-        },
-        {
-            "id": "security.dns_beaconing",
-            "pack": "security",
-            "label": "DNS queries to suspected beaconing domains",
-            "description": "Identifies isc:bind:query events whose query domain has unusually regular timing intervals (a common malware C2 beaconing signature). Returns the top suspicious domains plus the hosts that contacted them.",
-            "savedSearch": "logserv_dns_beaconing_24h",
-            "spl": "`sap_logserv_idx_macro` sourcetype=isc:bind:query | stats dc(_time) AS query_count avg(_time) AS avg_t var(_time) AS time_var by query src_ip | where query_count > 20 AND time_var < (avg_t * 0.001) | sort -query_count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "Domains whose query timing has unusually low variance, a hallmark of automated C2 beaconing. Each row is a query from a source IP that hits the suspicious threshold. False positives include NTP, AV-update domains, and CDN health-checks — verify before treating as hostile.",
-            "nextSteps": [
-                "Look up the domain — is it a known good (NTP, vendor update, telemetry)? Whitelist OR investigate.",
-                "Pivot to the src_ip — is it a server that should NOT be making external queries? That's the higher-priority signal.",
-                {
-                    "text": "Run top_external_domains for context on what else the same source IP is querying.",
-                    "savedSearch": "logserv_top_external_domains"
-                }
-            ],
-            "dashboard": [
-                "dns-analytics",
-                "network-perimeter"
-            ]
-        },
-        {
-            "id": "security.top_external_domains",
-            "pack": "security",
-            "label": "Top external DNS queries by volume",
-            "description": "Most frequently resolved external (non-internal) domains. Useful for spotting unexpected dependencies or data-exfiltration candidate domains.",
-            "savedSearch": "logserv_top_external_domains",
-            "spl": "`sap_logserv_idx_macro` sourcetype=isc:bind:query NOT (query=\"*.local\" OR query=\"*.internal\" OR query=\"*.xsd-vlab.com\") | top limit=25 query",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "Most-resolved external (non-internal) domains. Healthy patterns: known SaaS vendors, time/auth/update services, monitoring agents. Suspicious patterns: long random-looking subdomains, freshly-registered domains, or domains in non-business TLDs.",
-            "nextSteps": [
-                "Cross-check unknowns against threat-intel (DNSDB, Whois) before allowing.",
-                {
-                    "text": "Anything resembling DGA (random subdomain) → run dns_beaconing for that specific query string.",
-                    "savedSearch": "logserv_dns_beaconing_24h"
-                },
-                "Sudden appearance of a high-volume new domain often indicates a new integration just rolling out — confirm with the team that owns it."
-            ],
-            "dashboard": "dns-analytics"
-        },
-        {
-            "id": "security.firewall_proxy_correlation",
-            "pack": "security",
-            "label": "Source IPs flagged by firewall and/or proxy",
-            "description": "Cross-references linux_secure firewall drops and squid:access blocks by source IP. The `layers` column shows whether the IP appears in 1 layer (drop only or block only) or 2 layers (both — high-priority, indicates active reconnaissance or attempted egress).",
-            "savedSearch": "logserv_firewall_proxy_correlation",
-            "spl": "`sap_logserv_idx_macro` (sourcetype=linux_secure (FW_DROP OR DROP)) OR (sourcetype=squid:access action=blocked) | rex field=_raw \"SRC=(?<fw_src>\\S+)\" | eval src_ip=coalesce(src, fw_src) | eval layer=if(sourcetype=\"linux_secure\",\"firewall\",\"proxy\") | stats dc(layer) AS layers count by src_ip | sort -layers -count | head 25",
-            "renderHint": "table",
-            "interpretation": "Source IPs that appear in Linux firewall drops AND/OR Squid proxy blocks. The `layers` column is the priority signal: layers=2 means an IP was blocked at multiple network tiers (active reconnaissance or attempted egress), layers=1 means single-tier (often expected — internal scanners, monitoring fail-open).",
-            "nextSteps": [
-                "Layers=2 IPs → escalate immediately, capture the firewall + proxy event timestamps for forensics.",
-                "Internal IPs at layers=1 are usually OK — they're being filtered by design. Confirm via your IPAM / inventory.",
-                {
-                    "text": "External IPs at layers=1 → run firewall_drops_by_port for that IP to see what it was attempting.",
-                    "savedSearch": "logserv_firewall_drops_by_port"
-                }
-            ],
-            "dashboard": "network-perimeter"
-        },
-        {
-            "id": "security.firewall_drops_by_port",
-            "pack": "security",
-            "label": "Firewall drops by destination port",
-            "description": "Top destination ports being blocked by the Linux kernel firewall (linux_secure FW_DROP / IN_DROP / FWD_DROP events). Repeated hits on uncommon ports often indicate scanning.",
-            "savedSearch": "logserv_firewall_drops_by_port",
-            "spl": "`sap_logserv_idx_macro` sourcetype=linux_secure (FW_DROP OR DROP) | rex field=_raw \"DPT=(?<dest_port>\\d+)\" | top limit=15 dest_port",
-            "renderHint": "pie",
-            "chartPalette": "errors",
-            "interpretation": "Top destination ports being blocked by the Linux kernel firewall. Common scanning ports (135, 445, 3389, 22, 23, 1433) are normal background noise. Unusual ports (5900, 8080, 9090, custom DB ports) often mean a specific reconnaissance attempt.",
-            "nextSteps": [
-                "Map ports to services — are any of them ports that SHOULD be reachable but were misclassified by the firewall? (Check ipset / cgs_firewall config.)",
-                {
-                    "text": "Concentrated hits on a single non-standard port + single source IP → run firewall_proxy_correlation to see if the same IP is being blocked elsewhere.",
-                    "savedSearch": "logserv_firewall_proxy_correlation"
-                },
-                "Persistent 9995 / 50007 hits in this dataset are internal scanning agents — generally expected."
-            ],
-            "dashboard": [
-                "network-perimeter",
-                "linux"
-            ]
-        },
-        {
-            "id": "security.proxy_top_denied_urls",
-            "pack": "security",
-            "label": "Top blocked destinations from Squid proxy",
-            "description": "Most-frequently blocked outbound destinations in squid:access (action=blocked). Highlights policy hits and suspicious egress patterns.",
-            "savedSearch": "logserv_proxy_top_denied_urls",
-            "spl": "`sap_logserv_idx_macro` sourcetype=squid:access action=blocked | top limit=15 dest",
-            "renderHint": "pie",
-            "chartPalette": "errors",
-            "interpretation": "Outbound destinations the Squid proxy refused. Routine: cloud-metadata endpoints (169.254.169.254), monitoring vendors not on the allowlist (newrelic, etc.), accidentally-typoed names. Suspicious: unfamiliar domains, IP-literal URLs, anything that looks like a C2 server.",
-            "nextSteps": [
-                "169.254.169.254 = cloud metadata — interesting but routine; some apps probe it on every startup.",
-                "Unrecognized vendor domains → confirm with the team owning that host whether the request was expected; if yes, allowlist; if no, escalate.",
-                {
-                    "text": "Cross-check with firewall_proxy_correlation to see whether the same source IP is also being firewall-dropped.",
-                    "savedSearch": "logserv_firewall_proxy_correlation"
-                }
-            ],
-            "dashboard": [
-                "proxy",
-                "network-perimeter"
-            ]
-        },
-        {
-            "id": "security.hana_permission_grants",
-            "pack": "security",
-            "label": "HANA permission grants by admin",
-            "description": "Lists GRANT ROLE and GRANT PRIVILEGE statements captured in sap:hana:audit, grouped by the OS-level admin (admin_user) who issued them and the host where they ran. Critical for compliance audits and detection of unusual privilege escalations.",
-            "savedSearch": "logserv_hana_permission_grants",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_type=\"GRANT*\" | stats count by action_type admin_user host | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "auth",
-            "interpretation": "GRANT ROLE / GRANT PRIVILEGE statements captured by the HANA audit log, attributed to the OS-level admin (admin_user) who issued them. Critical for compliance — every grant should map to a known change ticket.",
-            "nextSteps": [
-                "For each admin_user entry → cross-check with the change-management ticket queue.",
-                {
-                    "text": "Unfamiliar admin on a tenant DB → potential unauthorized admin session; run hana_after_hours_admin to see the timing pattern.",
-                    "savedSearch": "logserv_hana_after_hours_admin"
-                },
-                "Sustained grant volume from a single admin during an off-hours window is the strongest 'investigate now' signal here."
-            ],
-            "dashboard": [
-                "hana-audit",
-                "change-config"
-            ]
-        },
-        {
-            "id": "security.hana_admin_user_management",
-            "pack": "security",
-            "label": "HANA admin user-management activity",
-            "description": "All actions in the HANA audit User Management category (ALTER USER, CREATE USER, etc.), grouped by target user and host. Useful for compliance review of who's been touching user records.",
-            "savedSearch": "logserv_hana_admin_user_management",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_category=\"User Management\" | stats count by action_type user host | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "auth",
-            "interpretation": "All HANA actions in the User Management category — ALTER USER (most common, often password resets and connect-attempt resets) and CREATE USER (new account provisioning). Each should map to a known change ticket.",
-            "nextSteps": [
-                "ALTER USER spikes during business hours = routine password resets — usually fine.",
-                {
-                    "text": "CREATE USER → cross-check with hana_user_creation for the specific accounts and verify provisioning tickets exist.",
-                    "savedSearch": "logserv_hana_user_creation"
-                },
-                {
-                    "text": "Off-hours user-management activity → run hana_after_hours_admin for the full timing breakdown and on-call attribution.",
-                    "savedSearch": "logserv_hana_after_hours_admin"
-                }
-            ],
-            "dashboard": [
-                "hana-audit",
-                "change-config"
-            ]
-        },
-        {
-            "id": "security.hana_after_hours_admin",
-            "pack": "security",
-            "label": "HANA admin actions outside business hours",
-            "description": "User Management, Permission Grant, User Creation, and Other-category actions in sap:hana:audit performed outside 06:00–20:00 local time. A useful tripwire for unauthorized admin sessions.",
-            "savedSearch": "logserv_hana_after_hours_admin",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_category IN (\"User Management\",\"Permission Grant\",\"User Creation\",\"Other\") | eval h=tonumber(strftime(_time, \"%H\")) | where h < 6 OR h >= 20 | stats count by user action_type action_category | sort -count",
-            "renderHint": "table",
-            "interpretation": "User Management, Permission Grant, User Creation, and Other-category actions performed outside 06:00-20:00. Routine: weekly maintenance windows (Saturday/Sunday admin work). Suspicious: weeknight activity by users not on the on-call schedule.",
-            "nextSteps": [
-                "Map each admin user to the on-call rotation — anything unexplained is high priority.",
-                {
-                    "text": "If volume is high, cross-check with cross_stack_auth_failures_trend for the same window — failed-then-successful auth from the same IP is a compromise pattern.",
-                    "savedSearch": "logserv_cross_stack_auth_failures_trend"
-                },
-                "Documented maintenance windows should be flagged whitelisted via change tickets, not investigated repeatedly."
-            ],
-            "dashboard": [
-                "hana-audit",
-                "change-config"
-            ]
-        },
-        {
-            "id": "security.windows_account_lockouts",
-            "pack": "security",
-            "label": "Windows account lockouts (event 4740)",
-            "description": "Windows Security log event 4740 (account locked out). Sudden bursts almost always indicate brute-force activity.",
-            "savedSearch": "logserv_windows_account_lockouts",
-            "spl": "`sap_logserv_idx_macro` sourcetype=XmlWinEventLog EventCode=4740 | stats count by TargetUserName Computer | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "auth",
-            "interpretation": "Windows account-locked-out events (event 4740). Sudden bursts (3+ in 10 minutes from the same source) are almost always brute-force activity. Sparse single-account lockouts are typically expired-password automation.",
-            "nextSteps": [
-                {
-                    "text": "Burst pattern → trace the source IP via the IpAddress field in the raw 4740 event; block at the firewall if external.",
-                    "spl": "`sap_logserv_idx_macro` sourcetype=XmlWinEventLog EventCode=4740 | rex field=_raw \"<Data Name=.IpAddress.>(?<IpAddress>[^<]+)\" | stats count by IpAddress TargetUserName | sort -count"
-                },
-                "Same account locked out repeatedly across days = automation that needs its credentials updated.",
-                {
-                    "text": "Cross-reference with cross_stack_auth_failures for the same TargetUserName — multi-stack pattern is the highest signal.",
-                    "savedSearch": "logserv_cross_stack_auth_failures"
-                }
-            ],
-            "dashboard": [
-                "windows",
-                "cross-stack-authentication"
-            ]
-        },
-        {
-            "id": "security.linux_pam_auth_failures",
-            "pack": "security",
-            "label": "Linux PAM authentication failures (sapuxuserchk)",
-            "description": "PAM-level authentication failures on the Linux side (sapuxuserchk module — the SAP-specific auth wrapper used during host-level login and sapstartsrv operations). Repeated failures from one user on one host often indicate a stale automation or credential-probing.",
-            "savedSearch": "logserv_linux_pam_auth_failures",
-            "spl": "`sap_logserv_idx_macro` sourcetype=linux_messages_syslog process=sapuxuserchk \"authentication failure\" | rex field=_raw \"user=(?<user>\\S+)\" | stats count by user host | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "auth",
-            "interpretation": "PAM-level auth failures via the SAP-specific sapuxuserchk module — surfaces during host-level login and sapstartsrv operations. Repeated failures from one user on one host typically indicate a stale automation that needs its credentials updated.",
-            "nextSteps": [
-                "Most rows here are sapadm — usually scheduled jobs that lost their secret in a credential refresh.",
-                {
-                    "text": "Spike on a single host → cross-check with sap_host_auth_failures to see if SOAP-tier auth is also failing (SAP host control wraps PAM).",
-                    "savedSearch": "logserv_sap_host_auth_failures"
-                },
-                {
-                    "text": "Cross-stack: any user appearing here AND in cross_stack_auth_failures is a high-priority investigate.",
-                    "savedSearch": "logserv_cross_stack_auth_failures"
-                }
-            ],
-            "dashboard": [
-                "linux",
-                "cross-stack-authentication"
-            ]
-        },
-        {
-            "id": "security.hana_user_creation",
-            "pack": "security",
-            "label": "HANA new user accounts created",
-            "description": "HANA users created via CREATE USER actions, grouped by target user and host. Useful as a periodic compliance-review sweep — anything appearing here should match a known onboarding ticket.",
-            "savedSearch": "logserv_hana_user_creation",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_type=\"CREATE USER\" | stats count by user host | sort -count",
-            "renderHint": "table",
-            "interpretation": "New HANA user accounts created in the time range. Should be sparse (most installations create a handful per quarter). Every new user should map to an onboarding or integration ticket.",
-            "nextSteps": [
-                "For each row → confirm the onboarding ticket / integration request that authorized the creation.",
-                {
-                    "text": "Sudden burst of CREATE USERs without matching tickets → escalate immediately; identify the issuing admin via hana_admin_user_management.",
-                    "savedSearch": "logserv_hana_admin_user_management"
-                },
-                "After CREATE USER comes ALTER USER (initial password set) — both should appear together for legitimate provisioning."
-            ],
-            "dashboard": [
-                "hana-audit",
-                "change-config"
-            ]
-        },
-        {
-            "id": "security.windows_logon_successes",
-            "pack": "security",
-            "label": "Windows successful logons by user",
-            "description": "Windows Security log event 4624 (successful logon), grouped by target user. Companion to windows_account_lockouts (4740) — together they sketch the auth pulse on every Windows host.",
-            "savedSearch": "logserv_windows_logon_successes",
-            "spl": "`sap_logserv_idx_macro` sourcetype=XmlWinEventLog EventCode=4624 | rex field=_raw \"<Data Name=.TargetUserName.>(?<TargetUserName>[^<]+)\" | top limit=15 TargetUserName",
-            "renderHint": "pie",
-            "chartPalette": "auth",
-            "interpretation": "Successful Windows logons by user (event 4624). Useful as the auth-pulse counterpart to lockouts (4740) and failures (4625) — sudden drops indicate hosts unreachable, sudden growth indicates new automation rolling out OR new accounts in use.",
-            "nextSteps": [
-                {
-                    "text": "Compare the user list to cross_stack_auth_failures — accounts with successful logons after recent failures = something resolved (good) OR credential-spray succeeded (bad — verify).",
-                    "savedSearch": "logserv_cross_stack_auth_failures"
-                },
-                "New accounts appearing here for the first time → cross-check with provisioning tickets.",
-                "Service accounts (svc_*, SAPService*) are normally dominant — if they suddenly drop, the service may be down."
-            ],
-            "dashboard": [
-                "windows",
-                "cross-stack-authentication"
-            ]
-        },
-        {
-            "id": "security.saprouter_anomalies",
-            "pack": "security",
-            "label": "SAP Router protocol anomalies (INVAL DATA + NiBuf)",
-            "description": "INVAL DATA action events and NiBuf invalid-data trace lines from sap:saprouter, grouped by remote peer. Indicates malformed protocol attempts — typically a misconfigured client OR an attempt to tunnel non-saprouter traffic. Top peers are the ones to investigate.",
-            "savedSearch": "logserv_saprouter_anomalies",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:saprouter (\"INVAL DATA\" OR \"NiBuf\") | rex field=_raw \"peer=(?<peer>[\\d.:]+)\" | stats count by peer | sort -count | head 30",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "errors",
-            "interpretation": "Protocol-violation events on the SAP Router — INVAL DATA action events plus NiBuf invalid-data trace lines. Each row is a remote peer that sent malformed traffic to the router. Almost always either a misconfigured client OR an attempted port probe.",
-            "nextSteps": [
-                "Identify each peer IP — internal IPs are usually misconfigured clients, external IPs are reconnaissance.",
-                "External peer → block at the perimeter firewall and notify the SOC.",
-                "Internal peer → check whether it's running a legitimate non-saprouter service that's accidentally hitting the saprouter port."
-            ],
-            "dashboard": "sap-router"
-        },
-        {
-            "id": "operations.event_volume_drop",
-            "pack": "operations",
-            "label": "Hosts with the biggest event-volume drop",
-            "description": "Compares each host's event volume in the most recent hour against its hourly average over the prior period. Hosts with a drop > 50% from baseline appear at the top — typically indicates a data-collection failure or host outage.",
-            "savedSearch": "logserv_event_volume_drop",
-            "spl": "`sap_logserv_idx_macro` | bin _time span=1h | stats count by host _time | stats latest(count) AS recent avg(count) AS baseline by host | eval drop_pct=round(100*(baseline-recent)/baseline, 1) | where drop_pct > 50 | sort -drop_pct",
-            "renderHint": "table",
-            "interpretation": "Hosts whose event volume in the last hour is more than 50% below their baseline. Most often this indicates a Splunk forwarder restart, a host outage, or a host being decommissioned. Occasionally it's a planned maintenance window.",
-            "nextSteps": [
-                {
-                    "text": "For each host, check its Splunk forwarder via `splunkforwarder` service status, or run data_freshness for sourcetype-level granularity.",
-                    "savedSearch": "logserv_data_freshness"
-                },
-                "If multiple hosts drop simultaneously, suspect an indexer-side bottleneck or a network-tier issue rather than per-host problems.",
-                "Persistent zero from a host that was previously active → confirm with the infrastructure team that it's still alive."
-            ],
-            "dashboard": "data-pipeline-overview"
-        },
-        {
-            "id": "operations.data_freshness",
-            "pack": "operations",
-            "label": "Sourcetypes that have stopped receiving events",
-            "description": "For each LogServ sourcetype, reports the timestamp of the most recent event. Sourcetypes with no events in the last 30 minutes (a fixed threshold, NOT affected by the time-range picker) are flagged. Useful as a quick canary for data-collection health, especially after a forwarder or DS reload.",
-            "savedSearch": "logserv_data_freshness",
-            "spl": "`sap_logserv_idx_macro` | stats latest(_time) AS last_seen by sourcetype | eval seconds_ago=now()-last_seen | eval last_seen=strftime(last_seen, \"%Y-%m-%d %H:%M:%S\") | where seconds_ago > 1800 | sort -seconds_ago",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "errors",
-            "interpretation": "Sourcetypes that haven't received an event in the last 30 minutes (fixed threshold, NOT relative to the time-range picker). Routine: low-cardinality sourcetypes like sap:abap:audit that genuinely emit only a handful of events per day. Suspicious: previously-active sourcetypes that suddenly went silent.",
-            "nextSteps": [
-                {
-                    "text": "Cross-reference each stale sourcetype with event_volume_drop to see if a specific host is responsible for the silence.",
-                    "savedSearch": "logserv_event_volume_drop"
-                },
-                "If a normally-busy sourcetype like sap:webdispatcher:access is here, immediately investigate the dispatcher tier.",
-                "Sourcetypes that are routinely sparse (sap:abap:audit at 1-2 events/day) are expected — whitelist them mentally."
-            ],
-            "dashboard": "data-pipeline-overview"
-        },
-        {
-            "id": "operations.event_volume_by_sourcetype_trend",
-            "pack": "operations",
-            "label": "Event volume by sourcetype trend",
-            "description": "Per-hour volume of every LogServ sourcetype, top 10 as separate series. Quick visual on which sourcetypes are loud / quiet over the time range.",
-            "savedSearch": "logserv_event_volume_by_sourcetype_trend",
-            "spl": "`sap_logserv_idx_macro` | timechart span=1h count by sourcetype limit=10 useother=t",
-            "renderHint": "timechart",
-            "chartPalette": "categorical",
-            "interpretation": "Per-hour event volume by sourcetype. Every sourcetype's curve should match its expected rhythm (business-hours ABAP traffic, continuous Linux/Windows host telemetry, batch-flavored HANA audit). Sudden growth = new integration or runaway log generator; sudden drop = ingest issue.",
-            "nextSteps": [
-                "Spike on one sourcetype only → trace via the corresponding focused prompt (abap_workprocess_errors, proxy_error_rate_trend, etc.).",
-                "Coordinated drop across multiple sourcetypes → indexer or forwarder-tier issue, not a per-source problem.",
-                {
-                    "text": "Use top_hosts_by_volume to find which host(s) are driving any unusual change.",
-                    "savedSearch": "logserv_top_hosts_by_volume"
-                }
-            ],
-            "dashboard": "data-pipeline-overview"
-        },
-        {
-            "id": "operations.top_hosts_by_volume",
-            "pack": "operations",
-            "label": "Top hosts by event volume",
-            "description": "Top 15 hosts by total event count over the time range. Useful for indexing-cost attribution and noisy-host triage.",
-            "savedSearch": "logserv_top_hosts_by_volume",
-            "spl": "`sap_logserv_idx_macro` | top limit=15 host",
-            "renderHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "Hosts ranked by total event count over the time range. Useful for indexing-cost attribution and noisy-host triage. The top 5 hosts typically account for 60-80% of volume — that's normal. Sudden new entrants or sustained growth warrant a look.",
-            "nextSteps": [
-                {
-                    "text": "Sustained outsized growth on one host → run free-form SPL filtered to that host (`host=<name> | top sourcetype`) to see WHICH sourcetype is driving it.",
-                    "spl": "`sap_logserv_idx_macro` [ search `sap_logserv_idx_macro` | top limit=1 host | fields host ] | top sourcetype"
-                },
-                "New host appearing in the top 15 → confirm with the infrastructure team that it's been provisioned legitimately.",
-                {
-                    "text": "If this list is unusually short → run event_volume_drop to check whether multiple hosts are missing.",
-                    "savedSearch": "logserv_event_volume_drop"
-                }
-            ],
-            "dashboard": [
-                "data-pipeline-overview",
-                "host-details"
-            ]
-        },
-        {
-            "id": "operations.events_by_clz_dir",
-            "pack": "operations",
-            "label": "Event share by log category (clz_dir)",
-            "description": "Distribution of all LogServ events across the top-level log categories (linux / windows / abap / hana / dns / proxy / etc.). Sanity check for ingest-balance assumptions.",
-            "savedSearch": "logserv_events_by_clz_dir",
-            "spl": "`sap_logserv_idx_macro` clz_dir=* | stats count by clz_dir | sort -count",
-            "renderHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "Distribution of LogServ events across the top-level log categories (linux / windows / abap / hana / dns / proxy / etc.). Sanity check on ingest balance. Healthy installations have several major contributors and a long tail; a single category dominating to >70% indicates the others may be missing.",
-            "nextSteps": [
-                {
-                    "text": "Run data_freshness to see if any sourcetype within the under-represented categories has gone silent.",
-                    "savedSearch": "logserv_data_freshness"
-                },
-                "Sudden dominance shift → check the deployment server has pushed the latest filter config to the heavy forwarders.",
-                "Persistent zero for a category that was historically present → check the corresponding S3 bucket and forwarder pipeline."
-            ],
-            "dashboard": "data-pipeline-overview"
-        },
-        {
-            "id": "operations.webdispatcher_slow_uris",
-            "pack": "operations",
-            "label": "Web Dispatcher URIs with the slowest p95 response times",
-            "description": "Computes the 95th-percentile response time per URI on sap:webdispatcher:access. The top of the list is where users perceive the most latency — useful for routing performance investigations.",
-            "savedSearch": "logserv_webdispatcher_slow_uris",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access response_time_ms=* | stats perc95(response_time_ms) AS p95_ms count by uri | where count > 100 | sort -p95_ms | head 50",
-            "renderHint": "table",
-            "interpretation": "URIs ranked by 95th-percentile response time on the SAP Web Dispatcher. The top 5-10 URIs are where users perceive the most latency. Any URI with p95 > 5s warrants drilling into; p95 > 15s is a hard incident threshold.",
-            "nextSteps": [
-                "Pivot to the slowest URI's backend ABAP component — typically the URL path's first segment maps to an ABAP module.",
-                {
-                    "text": "Cross-check with webdispatcher_5xx_rate_trend — slow + erroring is a different problem than slow alone.",
-                    "savedSearch": "logserv_webdispatcher_5xx_rate_trend"
-                },
-                {
-                    "text": "Persistent slow URIs are often DB-bound — check hana_trace_severity_trend for correlated WARNING/ERROR spikes.",
-                    "savedSearch": "logserv_hana_trace_severity_trend"
-                }
-            ],
-            "dashboard": [
-                "web-dispatcher",
-                "web-api-performance"
-            ]
-        },
-        {
-            "id": "operations.webdispatcher_5xx_rate_trend",
-            "pack": "operations",
-            "label": "Web Dispatcher 5xx error-rate trend",
-            "description": "Per-hour 5xx error-rate trend on sap:webdispatcher:access. A spike that persists is the canonical 'something's down behind the dispatcher' signal.",
-            "savedSearch": "logserv_webdispatcher_5xx_rate_trend",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access | bin _time span=1h | stats count(eval(status>=500)) AS errors count AS total by _time | eval error_pct=round(100*errors/total, 2) | sort _time",
-            "renderHint": "timechart",
-            "chartPalette": "errors",
-            "interpretation": "Per-hour 5xx error rate from the SAP Web Dispatcher. A sustained rate above 1-2% is a persistent backend problem. A sudden spike to 5%+ that then resolves is usually a backend restart or short outage.",
-            "nextSteps": [
-                {
-                    "text": "Persistent elevated rate → run abap_workprocess_errors and hana_trace_errors for the same time range to find the backend culprit.",
-                    "savedSearch": "logserv_abap_workprocess_errors"
-                },
-                {
-                    "text": "Sudden spike that resolved → check event_volume_drop for any host that disappeared briefly.",
-                    "savedSearch": "logserv_event_volume_drop"
-                },
-                {
-                    "text": "Slow URIs often correlate with errors — webdispatcher_slow_uris gives the per-URI view to pair with this trend.",
-                    "savedSearch": "logserv_webdispatcher_slow_uris"
-                }
-            ],
-            "dashboard": [
-                "web-dispatcher",
-                "web-api-performance"
-            ]
-        },
-        {
-            "id": "operations.cloud_connector_error_rate",
-            "pack": "operations",
-            "label": "Cloud Connector HTTP error rate trend",
-            "description": "Per-hour count and 4xx/5xx error rate from sap:scc:http_access. Spikes in the rate (regardless of absolute volume) identify times when Cloud Connector connectivity to backend systems was degraded.",
-            "savedSearch": "logserv_cloud_connector_error_rate",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:scc:http_access | bin _time span=1h | stats count(eval(status>=400)) AS errors count AS total by _time | eval error_pct=round(100*errors/total, 2) | sort _time",
-            "renderHint": "timechart",
-            "chartPalette": "errors",
-            "interpretation": "Per-hour 4xx/5xx error rate from the SAP Cloud Connector. Healthy: under 2%. Unhealthy: any sustained spike — Cloud Connector is the connectivity bridge for cloud-side SAP services so issues here cascade quickly.",
-            "nextSteps": [
-                "Pivot to the SCC tunnel logs to identify the failing target system.",
-                {
-                    "text": "Cross-check with cross_stack_auth_failures — SCC auth failures often surface as 4xx here first.",
-                    "savedSearch": "logserv_cross_stack_auth_failures"
-                },
-                "Persistent 5xx rate → check the SCC service status and tunnel state on the SCC host directly."
-            ],
-            "dashboard": [
-                "cloud-connector",
-                "web-api-performance"
-            ]
-        },
-        {
-            "id": "operations.proxy_error_rate_trend",
-            "pack": "operations",
-            "label": "Squid proxy error-rate trend",
-            "description": "Per-hour 4xx/5xx response rate from squid:access. Highlights periods of elevated client/upstream errors at the proxy layer.",
-            "savedSearch": "logserv_proxy_error_rate_trend",
-            "spl": "`sap_logserv_idx_macro` sourcetype=squid:access | bin _time span=1h | stats count(eval(status>=400)) AS errors count AS total by _time | eval error_pct=round(100*errors/total, 2) | sort _time",
-            "renderHint": "timechart",
-            "chartPalette": "errors",
-            "interpretation": "Per-hour 4xx/5xx response rate from Squid. Mostly internal client/upstream errors — a high baseline (5-10%) often indicates a misbehaving client repeatedly hitting an unreachable upstream.",
-            "nextSteps": [
-                {
-                    "text": "Run proxy_top_denied_urls to see what destinations are failing.",
-                    "savedSearch": "logserv_proxy_top_denied_urls"
-                },
-                "Sustained 5xx without 4xx → upstream availability issue (e.g., a vendor outage); check vendor status pages.",
-                {
-                    "text": "Burst of 4xx → usually a single misconfigured client; identify via the `src` field on squid:access events.",
-                    "spl": "`sap_logserv_idx_macro` sourcetype=squid:access status>=400 status<500 | top limit=15 src"
-                }
-            ],
-            "dashboard": "proxy"
-        },
-        {
-            "id": "operations.linux_firewall_agent_warnings",
-            "pack": "operations",
-            "label": "Linux ipset / firewall agent warnings",
-            "description": "WARNING-level events from the cgs_firewall agent (config validation issues, ipset update failures, etc.). Indicates Linux hosts whose firewall posture configuration may be inconsistent.",
-            "savedSearch": "logserv_linux_firewall_agent_warnings",
-            "spl": "`sap_logserv_idx_macro` sourcetype=linux_messages_syslog process=cgs_firewall WARNING | stats count by host | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "Hosts where the cgs_firewall agent emitted WARNINGs — most commonly 'configuration file doesn't contain valid data' (a CMDB feed went stale) OR 'ipset update failed'. Usually NOT a security issue, but a config-pipeline issue that may leave the host with a stale firewall posture.",
-            "nextSteps": [
-                "Check the CMDB / config feed that drives the cgs_firewall ipsets — the warnings usually quote the failing config file path.",
-                {
-                    "text": "Cross-check with event_volume_drop for the same hosts — agent issues often correlate with broader telemetry issues.",
-                    "savedSearch": "logserv_event_volume_drop"
-                },
-                "If a host has been warning for more than 24 hours, escalate to the infrastructure team before its firewall posture drifts further."
-            ],
-            "dashboard": "linux"
-        },
-        {
-            "id": "operations.noisy_hosts_trend",
-            "pack": "operations",
-            "label": "Noisiest hosts trend (top 10)",
-            "description": "Per-hour event count for the 10 noisiest hosts. Rapid changes in ranking often correspond to a runaway log generator or a degraded host generating excessive trace.",
-            "savedSearch": "logserv_noisy_hosts_trend",
-            "spl": "`sap_logserv_idx_macro` | timechart span=1h count by host limit=10 useother=f",
-            "renderHint": "timechart",
-            "chartPalette": "categorical",
-            "interpretation": "Per-hour event count for the 10 noisiest hosts. Each host's curve should match its expected operational rhythm. Rapid changes in ranking often correspond to a runaway log generator OR a degraded host emitting excessive trace.",
-            "nextSteps": [
-                {
-                    "text": "If a host suddenly jumps to top → identify the dominant sourcetype on that host via free-form SPL (`host=<name> | top sourcetype`) — usually one log file gone wrong.",
-                    "spl": "`sap_logserv_idx_macro` [ search `sap_logserv_idx_macro` | top limit=1 host | fields host ] | top sourcetype"
-                },
-                "Coordinated growth across multiple hosts = upstream change (deployment, bug roll-out).",
-                {
-                    "text": "Cross-check with event_volume_by_sourcetype_trend to see whether the volume increase is broad-based or single-sourcetype.",
-                    "savedSearch": "logserv_event_volume_by_sourcetype_trend"
-                }
-            ],
-            "dashboard": [
-                "data-pipeline-overview",
-                "host-details"
-            ]
-        },
-        {
-            "id": "operations.total_events_kpi",
-            "pack": "operations",
-            "label": "Total LogServ events ingested",
-            "description": "Single-number KPI: total event count over the chosen time range. The cheapest pulse-check on whether ingest is alive at all.",
-            "savedSearch": "logserv_total_events_kpi",
-            "spl": "`sap_logserv_idx_macro` | stats count AS total_events",
-            "renderHint": "kpi",
-            "interpretation": "Total LogServ events ingested over the selected time range. The cheapest pulse-check on whether ingest is alive. Compare to your historical baseline for the same window length — anything below ~50% of baseline warrants investigation.",
-            "nextSteps": [
-                "Compare to a same-length window 1 week ago — that's your reference baseline.",
-                {
-                    "text": "Below baseline → run event_volume_drop and data_freshness to find which hosts/sourcetypes are missing.",
-                    "savedSearch": "logserv_event_volume_drop"
-                },
-                {
-                    "text": "Above baseline by more than 2x → run noisy_hosts_trend to find the source of the spike.",
-                    "savedSearch": "logserv_noisy_hosts_trend"
-                }
-            ],
-            "dashboard": "environment-health"
-        },
-        {
-            "id": "operations.distinct_hosts_kpi",
-            "pack": "operations",
-            "label": "Distinct hosts seen",
-            "description": "Single-number KPI: distinct hosts that emitted at least one event over the time range. Sudden drops are alarming; sudden growth might indicate fleet expansion or a misnamed host.",
-            "savedSearch": "logserv_distinct_hosts_kpi",
-            "spl": "`sap_logserv_idx_macro` | stats dc(host) AS distinct_hosts",
-            "renderHint": "kpi",
-            "interpretation": "Count of distinct hosts that emitted at least one event over the time range. Sudden drops mean hosts unreachable or forwarders crashed. Sudden growth means fleet expansion OR a misnamed/duplicate host (rare but happens after a forwarder reinstall).",
-            "nextSteps": [
-                "Compare to the known fleet size from your CMDB — close match is healthy.",
-                {
-                    "text": "Drop → run event_volume_drop to find the missing hosts.",
-                    "savedSearch": "logserv_event_volume_drop"
-                },
-                {
-                    "text": "Growth → run top_hosts_by_volume to identify the new contributors and verify them against provisioning tickets.",
-                    "savedSearch": "logserv_top_hosts_by_volume"
-                }
-            ],
-            "dashboard": "environment-health"
-        },
-        {
-            "id": "operations.icm_request_type_mix",
-            "pack": "operations",
-            "label": "ICM request type mix",
-            "description": "Distribution of sap:abap:icm requests across types (ASYNC_RFC, HTTP_NORMAL, INTERNAL). Shifts in the mix often correspond to changes in workload character (e.g., more sync HTTP than usual, or new RFC clients online).",
-            "savedSearch": "logserv_icm_request_type_mix",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:icm icm_request_type=* | top limit=10 icm_request_type",
-            "renderHint": "pie",
-            "chartPalette": "categorical",
-            "interpretation": "Distribution of ABAP ICM requests across types: ASYNC_RFC (typical SAP backend RFC traffic), HTTP_NORMAL (modern web-style traffic — Fiori, OData, BTP), INTERNAL (dispatcher-level). Sudden shifts often correspond to new application rollouts or load-shape changes.",
-            "nextSteps": [
-                {
-                    "text": "If HTTP_NORMAL grows out of proportion, check webdispatcher_5xx_rate_trend — new web-tier traffic often surfaces problems first.",
-                    "savedSearch": "logserv_webdispatcher_5xx_rate_trend"
-                },
-                "If ASYNC_RFC drops → check whether scheduled batch jobs are running on time.",
-                {
-                    "text": "Cross-check with icm_top_peer_ips to see whether new traffic types come with new peer IPs.",
-                    "savedSearch": "logserv_icm_top_peer_ips"
-                }
-            ],
-            "dashboard": [
-                "abap-operations",
-                "web-api-performance"
-            ]
-        },
-        {
-            "id": "sap_basis.topology_top_systems_by_calls",
-            "pack": "sap_basis",
-            "label": "Top SAP systems by inbound call volume",
-            "description": "Counts gateway + ICM events grouped by SAP SID and sourcetype, ranked desc. Surfaces which SIDs are busiest at the integration layer — useful for capacity review and for spotting unexpected volume spikes on a system that's normally quiet.",
-            "savedSearch": "logserv_topology_top_systems_by_calls",
-            "spl": "`sap_logserv_idx_macro` (sourcetype=sap:abap:gateway OR sourcetype=sap:abap:icm) sap_sid=* | stats count by sap_sid sourcetype | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "categorical",
-            "dashboard": "integration-topology",
-            "interpretation": "Each row shows total inbound calls (gateway RFC frames + ICM HTTP/RFC requests) for one SID at one source layer. The biggest rows tell you where your integration traffic actually lives. A SID that suddenly outranks its peers is worth investigating.",
-            "nextSteps": [
-                {
-                    "text": "If one SID dominates, drill into its calls-per-hour pattern via the Environment Topology view.",
-                    "savedSearch": "logserv_icm_request_volume_trend"
-                },
-                {
-                    "text": "Check whether the busiest SID is also showing gateway error growth.",
-                    "savedSearch": "logserv_abap_gateway_failures"
-                },
-                "Capacity review heuristic: if total calls/hr have grown 30%+ over baseline without a known release, plan for sizing."
-            ]
-        },
-        {
-            "id": "sap_basis.topology_rfc_partner_failures",
-            "pack": "sap_basis",
-            "label": "RFC partner peers ranked by gateway error count",
-            "description": "Top RFC peer IPs whose connections are producing gateway errors, broken down by the gw_error_detail category. Identifies which upstream partners are repeatedly dropping connections, sending malformed frames, or timing out — helpful for narrowing a flaky-integration finger-point to a specific partner.",
-            "savedSearch": "logserv_topology_rfc_partner_failures",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:gateway gw_error_detail=* gw_error_detail!=\"\" peer_ip=* | stats count by peer_ip gw_error_detail | sort -count | head 20",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "errors",
-            "dashboard": "integration-topology",
-            "interpretation": "Peer IPs at the top with high counts on a single error category are usually the real culprit; peers with a small smattering across many categories are more likely innocent victims of upstream issues. NiBufIIn/invalid-data on a single peer often means a misconfigured client or a non-RFC service hitting the RFC port.",
-            "nextSteps": [
-                {
-                    "text": "Cross-check the peer's overall connection volume to see if errors are a small fraction or dominant.",
-                    "savedSearch": "logserv_topology_top_systems_by_calls"
-                },
-                {
-                    "text": "If multiple peers show the same error category at once, look at the local SID's workprocess errors — the issue may be local.",
-                    "savedSearch": "logserv_abap_workprocess_errors"
-                },
-                "If a peer shows hundreds of NiBufIIn invalid-data and is NOT a known RFC partner, it's almost certainly a port-scan or misdirected non-RFC client."
-            ]
-        },
-        {
-            "id": "operations.sap_host_severity_breakdown",
-            "pack": "operations",
-            "label": "SAP host control event severity by host",
-            "description": "sap:sapstartsrv events grouped by host and severity (Info / Warning / Error). Surfaces which hosts have noisy host-control activity — sustained Error volume on a single host is a leading indicator of an unstable startup-srv or persistent OS-level auth issues with the SAP service account.",
-            "savedSearch": "logserv_sap_host_severity_breakdown",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:sapstartsrv severity=* | stats count by host severity | sort -count",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "status",
-            "dashboard": "sap-services",
-            "interpretation": "A healthy host should have Info dominant; sustained Warning/Error rows mean something keeps failing in startup-srv interactions. Common causes: OS-level auth misconfig (sapadm password rotation gap), expired SSL certs, agent reload loops.",
-            "nextSteps": [
-                {
-                    "text": "If Error severity dominates on one host, drill into the auth-failure detail.",
-                    "savedSearch": "logserv_sap_host_auth_failures"
-                },
-                "Sustained Warning without Error usually means transient SSL renegotiation churn — verify cert rotation completed cleanly.",
-                "If a host has zero Info events but lots of Errors, sapstartsrv may be partially unreachable from the monitoring host."
-            ]
-        },
-        {
-            "id": "operations.scc_backend_latency",
-            "pack": "operations",
-            "label": "SCC backend round-trip time percentiles by URI",
-            "description": "Cloud Connector HTTP-access response-time percentiles (avg / p95 / p99) grouped by the first URI segment, ranked by p95 desc. Identifies which backend API surfaces are slowest end-to-end — useful for SLA review and for spotting a backend service regression after a release.",
-            "savedSearch": "logserv_scc_backend_latency",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:scc:http_access response_time_ms=* | rex field=uri \"^(?<uri_prefix>/[^/?]+)\" | stats avg(response_time_ms) as avg_ms perc95(response_time_ms) as p95_ms perc99(response_time_ms) as p99_ms count by uri_prefix | sort -p95_ms | head 20",
-            "renderHint": "table",
-            "chartPalette": "errors-2",
-            "dashboard": [
-                "cloud-connector",
-                "web-api-performance"
-            ],
-            "interpretation": "p95 is the customer-perceived slow case (1-in-20). p99 is the long-tail. Healthy backends typically run with p95 well under 1 s; p95 >2 s on a frequently-used URI means real latency that users will feel. p99 >> p95 suggests intermittent stalls rather than steady-state slowness.",
-            "nextSteps": [
-                {
-                    "text": "Cross-check the slow backend's overall error rate to see if latency comes with errors.",
-                    "savedSearch": "logserv_cloud_connector_error_rate"
-                },
-                {
-                    "text": "If a single URI dominates volume AND latency, drill into per-call status codes to look for upstream 5xx surges.",
-                    "savedSearch": "logserv_scc_top_destinations"
-                },
-                "If p99 ramped suddenly without volume change, suspect a backend resource issue (db lock, GC pause) rather than load."
-            ]
-        },
-        {
-            "id": "operations.scc_top_destinations",
-            "pack": "operations",
-            "label": "SCC top destination URI prefixes by volume",
-            "description": "Cloud Connector backend destinations ranked by request volume, broken down by HTTP status category (2xx_success / 4xx_client / 5xx_server). Tells you which backends the user community actually depends on most — useful for prioritizing monitoring alerts and for spotting an unexpected new dependency.",
-            "savedSearch": "logserv_scc_top_destinations",
-            "spl": "`sap_logserv_idx_macro` sourcetype=sap:scc:http_access | rex field=uri \"^(?<uri_prefix>/[^/?]+(?:/[^/?]+)?)\" | stats count by uri_prefix status_category | sort -count | head 30",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "status",
-            "dashboard": [
-                "cloud-connector",
-                "web-api-performance"
-            ],
-            "interpretation": "A high-volume URI with all 2xx_success rows is healthy and busy. A high-volume URI with significant 4xx/5xx is the priority finding — it's both heavily used AND frequently failing. New URIs that weren't in last month's top-10 may indicate a release that introduced a new dependency.",
-            "nextSteps": [
-                {
-                    "text": "Drill into the latency profile of the top-volume URIs to see whether high volume comes with high p95.",
-                    "savedSearch": "logserv_scc_backend_latency"
-                },
-                "If the same URI shows in top-10 with both high 2xx and high 5xx counts, the backend is partially-degraded (some ops succeed, others fail) — investigate the failing op category.",
-                "Verify the top-1 URI matches business expectations — if a non-business URI tops the list, suspect a misconfigured client or a runaway poll loop."
-            ]
-        },
-        {
-            "id": "operations.top_error_categories",
-            "pack": "operations",
-            "label": "Top error categories across the LogServ estate",
-            "description": "Cross-cutting error breakdown across all 11 sourcetype/severity tuples the Environment Health Total Errors KPI counts, grouped by Category (ABAP / HANA / Security / Web/Network / OS/Infra) and sourcetype, with affected-host counts. Mirrors the EH Total Errors KPI's drilldown — same row breakdown, available as a saved search for AI-driven analysis.",
-            "savedSearch": "logserv_top_error_categories",
-            "spl": "`sap_logserv_idx_macro` ((sourcetype=\"sap:abap:dispatcher\" (dp_severity=\"ERROR\" OR dp_severity=\"FATAL\")) OR (sourcetype=\"sap:abap:icm\" icm_is_error=1) OR (sourcetype=\"sap:abap:gateway\" gw_error_detail=* gw_error_detail!=\"\") OR (sourcetype=\"sap:hana:audit\" status!=\"SUCCESSFUL\") OR (sourcetype=\"sap:hana:tracelogs\" hana_trace_severity IN (\"error\", \"fatal\")) OR (sourcetype=\"sap:sapstartsrv\" is_auth_event=\"true\" auth_result=\"failure\") OR (sourcetype=\"sap:scc:audit\" scc_audit_type=\"ACCESS_DENIED\") OR (sourcetype=\"linux_secure\" IN_DROP) OR (sourcetype=\"XmlWinEventLog\" severity IN (\"critical\",\"error\",\"high\")) OR (sourcetype=\"sap:webdispatcher:access\" status>=400) OR (sourcetype=\"squid:access\" action=\"denied\")) | eval Category=case(match(sourcetype,\"sap:abap\"),\"ABAP\",match(sourcetype,\"sap:hana\"),\"HANA\",sourcetype IN (\"sap:sapstartsrv\",\"sap:scc:audit\",\"linux_secure\"),\"Security\",sourcetype IN (\"sap:webdispatcher:access\",\"squid:access\"),\"Web/Network\",sourcetype=\"XmlWinEventLog\",\"OS/Infra\",1=1,\"Other\") | stats count as Errors dc(host) as affected_hosts by Category sourcetype | sort -Errors",
-            "renderHint": "table",
-            "chartHint": "pie",
-            "chartPalette": "errors",
-            "dashboard": "environment-health",
-            "interpretation": "The top row is your dominant error pressure right now. Multi-category load (e.g. ABAP + HANA both at the top) usually points to a downstream SID-wide event (deployment, capacity exhaustion, network partition); single-category load is usually a layer-specific incident.",
-            "nextSteps": [
-                {
-                    "text": "If ABAP dominates, drill into the workprocess error rate by SID + host.",
-                    "savedSearch": "logserv_abap_workprocess_errors"
-                },
-                {
-                    "text": "If HANA dominates, check audit-failure detail for the failing user / action_type.",
-                    "savedSearch": "logserv_hana_failed_auth"
-                },
-                {
-                    "text": "If Security dominates, look at the cross-stack auth correlation.",
-                    "savedSearch": "logserv_cross_stack_auth_failures"
-                },
-                "A single host concentrating multiple categories' errors often means that host is the actual incident root cause (e.g., a stuck dispatcher cascading into ICM + workprocess errors at once)."
-            ]
+          "text": "If error volume is concentrated on one local SID, check that SID's network reachability via the sap_router_volume_trend prompt.",
+          "savedSearch": "logserv_sap_router_volume_trend"
         }
-    ]
+      ],
+      "dashboard": "abap-security"
+    },
+    {
+      "id": "sap_basis.abap_enqueue_errors",
+      "pack": "sap_basis",
+      "label": "ABAP enqueue server errors and warnings",
+      "description": "Lists sap:abap:enqueueserver events whose raw text contains ERROR, WARNING, or FATAL keywords. Enqueue errors often indicate lock contention or replica-side problems that affect every dialog instance, but they're typically sparse \u2014 even a few entries warrant investigation.",
+      "savedSearch": "logserv_abap_enqueue_errors",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:enqueueserver (\"ERROR\" OR \"WARNING\" OR \"FATAL\") | stats count by sap_sid host | sort -count",
+      "renderHint": "table",
+      "interpretation": "Enqueue server events at ERROR/WARNING/FATAL severity. Enqueue is single-instance per system, so any error here affects every dialog instance attempting to acquire locks. Even a few entries warrant attention.",
+      "nextSteps": [
+        {
+          "text": "Run abap_workprocess_errors for the same SID \u2014 enqueue errors usually surface there as 'lock not acquired' messages.",
+          "savedSearch": "logserv_abap_workprocess_errors"
+        },
+        "If errors are clustered around a maintenance window, check whether enqueue replication state is healthy via SAP transaction SM12 on the system.",
+        "Persistent FATAL events on enqueue demand SAP Basis attention \u2014 escalate immediately."
+      ],
+      "dashboard": "abap-operations"
+    },
+    {
+      "id": "sap_basis.abap_message_server_errors",
+      "pack": "sap_basis",
+      "label": "ABAP message server errors and warnings",
+      "description": "Aggregates sap:abap:messageserver events containing ERROR or WARNING keywords by SID and host. Message server hiccups often precede load-balancer-visible failures.",
+      "savedSearch": "logserv_abap_message_server_errors",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:messageserver (\"ERROR\" OR \"WARNING\") | stats count by sap_sid host | sort -count",
+      "renderHint": "table",
+      "interpretation": "Message server WARNING/ERROR events. The message server orchestrates which application server gets which dialog request, so errors here often precede load-balancer-visible failures (slow logins, group lookups failing).",
+      "nextSteps": [
+        {
+          "text": "If errors mention HTTP, run webdispatcher_5xx_rate_trend to see whether the dispatcher tier is also struggling.",
+          "savedSearch": "logserv_webdispatcher_5xx_rate_trend"
+        },
+        {
+          "text": "Logon-group lookup failures \u2192 check whether all dialog instances in the group are reachable via the data_freshness prompt.",
+          "savedSearch": "logserv_data_freshness"
+        },
+        "Persistent WARNING-only events without ERRORs are typically chatter; pair-up with ABAP dump volume before declaring an incident."
+      ],
+      "dashboard": "abap-operations"
+    },
+    {
+      "id": "sap_basis.sap_host_auth_failures",
+      "pack": "sap_basis",
+      "label": "SAP host control authentication failures",
+      "description": "SAP host control (sapstartsrv) refusing OS authentication, typically from an SSL-capable client trying to reach the host control SOAP endpoint. Groups by host, target user, and remote address \u2014 useful for catching credential probing against the host control tier.",
+      "savedSearch": "logserv_sap_host_auth_failures",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:sapstartsrv \"OS Authentication failed\" | rex field=_raw \"user\\((?<sap_user>[^)]+)\\)\" | rex field=_raw \"Remote Address \\((?<remote_addr>[^)]+)\\)\" | stats count by host sap_user remote_addr | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "auth",
+      "interpretation": "SAP host control SOAP endpoint refusing OS authentication. Each row is a remote address that tried to authenticate to sapstartsrv with bad credentials. Repeated attempts from a single IP often indicate a misconfigured monitoring tool OR active credential probing against the host control tier.",
+      "nextSteps": [
+        "Map remote_addr to a known monitoring/operator IP \u2014 anything unrecognized is worth an ACL review.",
+        {
+          "text": "Cross-reference with linux_pam_auth_failures for the same host \u2014 credential probing usually shows up at multiple auth layers simultaneously.",
+          "savedSearch": "logserv_linux_pam_auth_failures"
+        },
+        "If the same user keeps appearing, rotate that user's credentials and update the agent that's failing."
+      ],
+      "dashboard": [
+        "sap-services",
+        "cross-stack-authentication"
+      ]
+    },
+    {
+      "id": "sap_basis.hana_failed_auth",
+      "pack": "sap_basis",
+      "label": "HANA failed CONNECT attempts by user",
+      "description": "Counts sap:hana:audit CONNECT events with status=UNSUCCESSFUL across the selected time range. Identifies HANA logins that consistently fail authentication \u2014 typically credential issues or misconfigured automation.",
+      "savedSearch": "logserv_hana_failed_auth",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_type=CONNECT status=UNSUCCESSFUL | stats count by executing_user host | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "auth",
+      "interpretation": "Failed HANA login attempts grouped by HANA user. SYSTEM failures are usually misconfigured SCC connections or broken backup automation; named-user failures often indicate an expired password or stale automation that lost its credentials.",
+      "nextSteps": [
+        "If SYSTEM dominates, check the SCC tunnel status and the BACKUP/MONITOR agents using SYSTEM credentials.",
+        {
+          "text": "If any named user has more than ~10 failures, run hana_admin_user_management \u2014 they may have been re-provisioned without their automation being updated.",
+          "savedSearch": "logserv_hana_admin_user_management"
+        },
+        {
+          "text": "Cross-reference with cross_stack_auth_failures to see whether the same user is failing on Linux/Windows too \u2014 that's a credential-stuffing pattern.",
+          "savedSearch": "logserv_cross_stack_auth_failures"
+        }
+      ],
+      "dashboard": [
+        "hana-audit",
+        "cross-stack-authentication"
+      ]
+    },
+    {
+      "id": "sap_basis.hana_trace_severity_trend",
+      "pack": "sap_basis",
+      "label": "HANA trace event severity trend",
+      "description": "Per-hour count of sap:hana:tracelogs events broken down by hana_trace_severity (UNKNOWN / INFO / WARNING / ERROR \u2014 FATAL is not produced by the current trace configuration). Trends ERROR/WARNING over time so spikes are visible at a glance.",
+      "savedSearch": "logserv_hana_trace_severity_trend",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:tracelogs hana_trace_severity=* | timechart span=1h count by hana_trace_severity",
+      "renderHint": "timechart",
+      "chartPalette": "status",
+      "interpretation": "HANA trace event severity over time. UNKNOWN and INFO are noise; WARNING and ERROR are the diagnostic signal. Sudden ERROR spikes often correspond to query timeouts, license issues, or HSR replication state changes.",
+      "nextSteps": [
+        {
+          "text": "If ERROR spikes, run hana_trace_errors for the same time range to see the actual messages with context.",
+          "savedSearch": "logserv_hana_trace_errors"
+        },
+        {
+          "text": "Sustained WARNING growth without ERRORs is usually a backup window or a long-running query \u2014 cross-check with hana_admin_user_management to see if scheduled admin work is happening.",
+          "savedSearch": "logserv_hana_admin_user_management"
+        },
+        "Quiet periods (UNKNOWN dominating) are normal \u2014 investigate when ERROR rate persists above ~5 per hour."
+      ],
+      "dashboard": "hana-trace"
+    },
+    {
+      "id": "sap_basis.hana_trace_errors",
+      "pack": "sap_basis",
+      "label": "HANA trace ERROR events with context",
+      "description": "Lists sap:hana:tracelogs events at ERROR severity, with the SID, host, and the first 200 characters of the trace message. (FATAL is not produced by the current trace configuration; ERROR is the highest severity available in this dataset.)",
+      "savedSearch": "logserv_hana_trace_errors",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:tracelogs hana_trace_severity=ERROR | eval message_preview=substr(_raw, 1, 200) | table _time sap_sid host message_preview | sort -_time | head 50",
+      "renderHint": "table",
+      "interpretation": "Recent HANA trace events at ERROR severity, with the first 200 chars of each message. The text typically reveals the underlying cause: 'cannot allocate memory' (OOM), 'transaction abort' (lock contention), 'replication out of sync' (HSR), or 'license expired'.",
+      "nextSteps": [
+        "OOM patterns \u2192 check the busiest SID's memory consumption via HANA Studio or the HANA cockpit memory view.",
+        "License-expiry messages need SAP Basis attention immediately \u2014 the system will refuse new connections once the grace period ends.",
+        "Replication errors \u2192 check HSR state on the primary; the secondary may have fallen out of sync and need a takeover or re-init."
+      ],
+      "dashboard": "hana-trace"
+    },
+    {
+      "id": "sap_basis.icm_top_peer_ips",
+      "pack": "sap_basis",
+      "label": "ICM top peer IPs by request volume",
+      "description": "Ranks the IPs reaching ABAP ICM by request count over the selected time range. Useful for understanding which RFC clients or upstream gateways are driving ICM load.",
+      "savedSearch": "logserv_icm_top_peer_ips",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:icm icm_peer_ip=* | top limit=15 icm_peer_ip",
+      "renderHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "IPs reaching ABAP ICM, ranked by request count. Healthy distribution is a few known internal client subnets dominating with the rest as long-tail. A new IP appearing high in the list often indicates a new integration OR a misconfigured client retrying aggressively.",
+      "nextSteps": [
+        "Map the top IPs to known internal subnets \u2014 anything from outside the expected 10.x range warrants a closer look.",
+        {
+          "text": "If one peer dominates beyond expectation, cross-check with icm_request_type_mix to see what kind of traffic it is generating.",
+          "savedSearch": "logserv_icm_request_type_mix"
+        },
+        "Sudden appearance of a public IP in the top list = potential exposure issue; confirm via the network team before assuming it's expected."
+      ],
+      "dashboard": "abap-security"
+    },
+    {
+      "id": "sap_basis.icm_request_volume_trend",
+      "pack": "sap_basis",
+      "label": "ICM request volume trend",
+      "description": "Per-hour count of sap:abap:icm requests, broken down by host. A leading indicator of dispatcher load shifts.",
+      "savedSearch": "logserv_icm_request_volume_trend",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:icm | timechart span=1h count by host limit=8 useother=t",
+      "renderHint": "timechart",
+      "chartPalette": "categorical",
+      "interpretation": "Per-hour ICM request volume, broken down by host. Steady similar shapes across hosts indicate healthy load distribution. A sudden spike on one host usually means a runaway client, a load-balancer failover, or a stuck WP causing retries. A drop to zero on one host (while others stay steady) usually means that host crashed or was removed from the pool.",
+      "nextSteps": [
+        {
+          "text": "If a single host shows a sudden spike, run dispatcher_softcancel_reasons for the same window \u2014 bursts of ICM_PROCESSING_TIMEOUT or ICM_CANCEL_REQUEST confirm overload.",
+          "savedSearch": "logserv_dispatcher_softcancel_reasons"
+        },
+        {
+          "text": "If a host drops to zero, run data_freshness to confirm the host is still emitting events at all.",
+          "savedSearch": "logserv_data_freshness"
+        },
+        {
+          "text": "If volume across all hosts is uniformly elevated, check cross_stack_auth_failures \u2014 auth-retry storms often surface as ICM volume spikes.",
+          "savedSearch": "logserv_cross_stack_auth_failures"
+        }
+      ],
+      "dashboard": "abap-operations"
+    },
+    {
+      "id": "sap_basis.sap_router_failures",
+      "pack": "sap_basis",
+      "label": "SAP Router disconnect and protocol-violation events",
+      "description": "Counts sap:saprouter events with action=DISCONNECT or action=\"INVAL DATA\", grouped by peer_hostname. INVAL DATA flags malformed protocol attempts (commonly attempts to tunnel non-saprouter traffic); DISCONNECTs are routine but the breakdown by peer surfaces hosts that are repeatedly being severed.",
+      "savedSearch": "logserv_sap_router_failures",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:saprouter (action=\"DISCONNECT\" OR action=\"INVAL DATA\") | stats count by action peer_hostname | sort -count | head 50",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "SAP Router events by remote peer hostname. DISCONNECTs are routine session ends; the value is in the per-peer count \u2014 repeated DISCONNECTs from one peer suggest its TCP keepalive or proxy is unstable. INVAL DATA is the protocol-violation signal \u2014 typically a non-saprouter client probing the port.",
+      "nextSteps": [
+        "If a single peer has hundreds of DISCONNECTs, check the peer's network route stability via traceroute / mtr.",
+        {
+          "text": "For INVAL DATA spikes, run saprouter_anomalies for the same window and capture the peer IPs for follow-up.",
+          "savedSearch": "logserv_saprouter_anomalies"
+        },
+        "A normally-active peer that suddenly disappears (no events for 2+ hours) often means it was misconfigured or removed \u2014 confirm before flagging."
+      ],
+      "dashboard": "sap-router"
+    },
+    {
+      "id": "sap_basis.sap_router_volume_trend",
+      "pack": "sap_basis",
+      "label": "SAP Router connection volume by peer",
+      "description": "Per-hour SAP Router CONNECT FROM and CONNECT TO counts, top peer_hostnames as separate series. Spikes/drops point to peer-specific reachability or routing changes.",
+      "savedSearch": "logserv_sap_router_volume_trend",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:saprouter action IN (\"CONNECT FROM\",\"CONNECT TO\") peer_hostname=* | timechart span=1h count by peer_hostname limit=10 useother=f",
+      "renderHint": "timechart",
+      "chartPalette": "categorical",
+      "interpretation": "Per-hour SAP Router CONNECT volume by peer hostname. Each peer's curve should match its expected operational rhythm (business hours / nightly batch / continuous monitoring). Off-hours spikes from a normally-quiet peer warrant investigation.",
+      "nextSteps": [
+        {
+          "text": "Off-hours spikes \u2192 run saprouter_anomalies to check whether INVAL DATA appeared at the same time.",
+          "savedSearch": "logserv_saprouter_anomalies"
+        },
+        "If a peer disappears entirely, check whether the routtab still has it and whether the peer's local saprouter is alive.",
+        "Sustained growth on one peer often indicates a new integration just rolling out \u2014 confirm with the network or integration team before alarming."
+      ],
+      "dashboard": "sap-router"
+    },
+    {
+      "id": "security.cross_stack_auth_failures",
+      "pack": "security",
+      "label": "Authentication failures across HANA, SAP host, and Windows",
+      "description": "Cross-stack view of authentication failures: HANA CONNECT/UNSUCCESSFUL, SAP host control OS-auth failures, and Windows event 4625. Looks for users failing across multiple systems (a credential-stuffing signature).",
+      "savedSearch": "logserv_cross_stack_auth_failures",
+      "spl": "`sap_logserv_idx_macro` (sourcetype=sap:hana:audit action_type=CONNECT status=UNSUCCESSFUL) OR (sourcetype=sap:sapstartsrv \"OS Authentication failed\") OR (sourcetype=XmlWinEventLog EventCode=4625) | rex field=_raw \"user\\((?<sap_user>[^)]+)\\)\" | rex field=_raw \"<Data Name=.TargetUserName.>(?<win_user>[^<]+)\" | eval stack=case(sourcetype=\"sap:hana:audit\",\"HANA\",sourcetype=\"sap:sapstartsrv\",\"SAP host\",sourcetype=\"XmlWinEventLog\",\"Windows\") | eval user=coalesce(user, sap_user, win_user) | stats count by stack user | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "auth",
+      "interpretation": "Authentication failures across HANA, SAP host control, and Windows, attributed to a target user. Single-stack failures are usually mundane (expired password, broken automation). MULTI-stack failures by the same user are a credential-stuffing signature \u2014 high priority.",
+      "nextSteps": [
+        "Any user appearing in 2+ stacks \u2192 escalate immediately. Lock the account and rotate credentials.",
+        {
+          "text": "If SYSTEM dominates the HANA column without named users elsewhere, see hana_failed_auth for SYSTEM-account specifics \u2014 usually broken SCC/backup automation.",
+          "savedSearch": "logserv_hana_failed_auth"
+        },
+        {
+          "text": "Run cross_stack_auth_failures_trend to see when the failures are clustered \u2014 bursts at off-hours are stronger attack signal than spread-out drift.",
+          "savedSearch": "logserv_cross_stack_auth_failures_trend"
+        }
+      ],
+      "dashboard": "cross-stack-authentication"
+    },
+    {
+      "id": "security.cross_stack_auth_failures_trend",
+      "pack": "security",
+      "label": "Cross-stack auth failure trend",
+      "description": "Hourly trend of authentication failures across HANA, SAP host control, and Windows. Compare the three layers in a single chart to spot cross-stack attack windows.",
+      "savedSearch": "logserv_cross_stack_auth_failures_trend",
+      "spl": "`sap_logserv_idx_macro` (sourcetype=sap:hana:audit action_type=CONNECT status=UNSUCCESSFUL) OR (sourcetype=sap:sapstartsrv \"OS Authentication failed\") OR (sourcetype=XmlWinEventLog EventCode=4625) | eval stack=case(sourcetype=\"sap:hana:audit\",\"HANA\",sourcetype=\"sap:sapstartsrv\",\"SAP host\",sourcetype=\"XmlWinEventLog\",\"Windows\") | timechart span=1h count by stack",
+      "renderHint": "timechart",
+      "chartPalette": "auth",
+      "interpretation": "Hourly trend of auth failures across the three layers. Coordinated spikes across all three stacks at the same time indicate a credential-spray attack. Single-stack drift is usually a misbehaving service. Off-hours bursts (outside 06:00-18:00) merit closer attention than business-hours noise.",
+      "nextSteps": [
+        {
+          "text": "Coordinated spike across stacks \u2192 check cross_stack_auth_failures for the failing user names and escalate.",
+          "savedSearch": "logserv_cross_stack_auth_failures"
+        },
+        "Single-stack baseline drift \u2192 drill into the dominant stack's prompt (hana_failed_auth, sap_host_auth_failures, or windows_account_lockouts).",
+        {
+          "text": "Off-hours spikes \u2192 cross-check with dns_beaconing \u2014 credential-spray operators often run beaconing C2 at the same time.",
+          "savedSearch": "logserv_dns_beaconing_24h"
+        }
+      ],
+      "dashboard": "cross-stack-authentication"
+    },
+    {
+      "id": "security.dns_beaconing",
+      "pack": "security",
+      "label": "DNS queries to suspected beaconing domains",
+      "description": "Identifies isc:bind:query events whose query domain has unusually regular timing intervals (a common malware C2 beaconing signature). Returns the top suspicious domains plus the hosts that contacted them.",
+      "savedSearch": "logserv_dns_beaconing_24h",
+      "spl": "`sap_logserv_idx_macro` sourcetype=isc:bind:query | stats dc(_time) AS query_count avg(_time) AS avg_t var(_time) AS time_var by query src_ip | where query_count > 20 AND time_var < (avg_t * 0.001) | sort -query_count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "Domains whose query timing has unusually low variance, a hallmark of automated C2 beaconing. Each row is a query from a source IP that hits the suspicious threshold. False positives include NTP, AV-update domains, and CDN health-checks \u2014 verify before treating as hostile.",
+      "nextSteps": [
+        "Look up the domain \u2014 is it a known good (NTP, vendor update, telemetry)? Whitelist OR investigate.",
+        "Pivot to the src_ip \u2014 is it a server that should NOT be making external queries? That's the higher-priority signal.",
+        {
+          "text": "Run top_external_domains for context on what else the same source IP is querying.",
+          "savedSearch": "logserv_top_external_domains"
+        }
+      ],
+      "dashboard": [
+        "dns-analytics",
+        "network-perimeter"
+      ]
+    },
+    {
+      "id": "security.top_external_domains",
+      "pack": "security",
+      "label": "Top external DNS queries by volume",
+      "description": "Most frequently resolved external (non-internal) domains. Useful for spotting unexpected dependencies or data-exfiltration candidate domains.",
+      "savedSearch": "logserv_top_external_domains",
+      "spl": "`sap_logserv_idx_macro` sourcetype=isc:bind:query NOT (query=\"*.local\" OR query=\"*.internal\" OR query=\"*.xsd-vlab.com\") | top limit=25 query",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "Most-resolved external (non-internal) domains. Healthy patterns: known SaaS vendors, time/auth/update services, monitoring agents. Suspicious patterns: long random-looking subdomains, freshly-registered domains, or domains in non-business TLDs.",
+      "nextSteps": [
+        "Cross-check unknowns against threat-intel (DNSDB, Whois) before allowing.",
+        {
+          "text": "Anything resembling DGA (random subdomain) \u2192 run dns_beaconing for that specific query string.",
+          "savedSearch": "logserv_dns_beaconing_24h"
+        },
+        "Sudden appearance of a high-volume new domain often indicates a new integration just rolling out \u2014 confirm with the team that owns it."
+      ],
+      "dashboard": "dns-analytics"
+    },
+    {
+      "id": "security.firewall_proxy_correlation",
+      "pack": "security",
+      "label": "Source IPs flagged by firewall and/or proxy",
+      "description": "Cross-references linux_secure firewall drops and squid:access blocks by source IP. The `layers` column shows whether the IP appears in 1 layer (drop only or block only) or 2 layers (both \u2014 high-priority, indicates active reconnaissance or attempted egress).",
+      "savedSearch": "logserv_firewall_proxy_correlation",
+      "spl": "`sap_logserv_idx_macro` (sourcetype=linux_secure (FW_DROP OR DROP)) OR (sourcetype=squid:access action=blocked) | rex field=_raw \"SRC=(?<fw_src>\\S+)\" | eval src_ip=coalesce(src, fw_src) | eval layer=if(sourcetype=\"linux_secure\",\"firewall\",\"proxy\") | stats dc(layer) AS layers count by src_ip | sort -layers -count | head 25",
+      "renderHint": "table",
+      "interpretation": "Source IPs that appear in Linux firewall drops AND/OR Squid proxy blocks. The `layers` column is the priority signal: layers=2 means an IP was blocked at multiple network tiers (active reconnaissance or attempted egress), layers=1 means single-tier (often expected \u2014 internal scanners, monitoring fail-open).",
+      "nextSteps": [
+        "Layers=2 IPs \u2192 escalate immediately, capture the firewall + proxy event timestamps for forensics.",
+        "Internal IPs at layers=1 are usually OK \u2014 they're being filtered by design. Confirm via your IPAM / inventory.",
+        {
+          "text": "External IPs at layers=1 \u2192 run firewall_drops_by_port for that IP to see what it was attempting.",
+          "savedSearch": "logserv_firewall_drops_by_port"
+        }
+      ],
+      "dashboard": "network-perimeter"
+    },
+    {
+      "id": "security.firewall_drops_by_port",
+      "pack": "security",
+      "label": "Firewall drops by destination port",
+      "description": "Top destination ports being blocked by the Linux kernel firewall (linux_secure FW_DROP / IN_DROP / FWD_DROP events). Repeated hits on uncommon ports often indicate scanning.",
+      "savedSearch": "logserv_firewall_drops_by_port",
+      "spl": "`sap_logserv_idx_macro` sourcetype=linux_secure (FW_DROP OR DROP) | rex field=_raw \"DPT=(?<dest_port>\\d+)\" | top limit=15 dest_port",
+      "renderHint": "pie",
+      "chartPalette": "errors",
+      "interpretation": "Top destination ports being blocked by the Linux kernel firewall. Common scanning ports (135, 445, 3389, 22, 23, 1433) are normal background noise. Unusual ports (5900, 8080, 9090, custom DB ports) often mean a specific reconnaissance attempt.",
+      "nextSteps": [
+        "Map ports to services \u2014 are any of them ports that SHOULD be reachable but were misclassified by the firewall? (Check ipset / cgs_firewall config.)",
+        {
+          "text": "Concentrated hits on a single non-standard port + single source IP \u2192 run firewall_proxy_correlation to see if the same IP is being blocked elsewhere.",
+          "savedSearch": "logserv_firewall_proxy_correlation"
+        },
+        "Persistent 9995 / 50007 hits in this dataset are internal scanning agents \u2014 generally expected."
+      ],
+      "dashboard": [
+        "network-perimeter",
+        "linux"
+      ]
+    },
+    {
+      "id": "security.proxy_top_denied_urls",
+      "pack": "security",
+      "label": "Top blocked destinations from Squid proxy",
+      "description": "Most-frequently blocked outbound destinations in squid:access (action=blocked). Highlights policy hits and suspicious egress patterns.",
+      "savedSearch": "logserv_proxy_top_denied_urls",
+      "spl": "`sap_logserv_idx_macro` sourcetype=squid:access action=blocked | top limit=15 dest",
+      "renderHint": "pie",
+      "chartPalette": "errors",
+      "interpretation": "Outbound destinations the Squid proxy refused. Routine: cloud-metadata endpoints (169.254.169.254), monitoring vendors not on the allowlist (newrelic, etc.), accidentally-typoed names. Suspicious: unfamiliar domains, IP-literal URLs, anything that looks like a C2 server.",
+      "nextSteps": [
+        "169.254.169.254 = cloud metadata \u2014 interesting but routine; some apps probe it on every startup.",
+        "Unrecognized vendor domains \u2192 confirm with the team owning that host whether the request was expected; if yes, allowlist; if no, escalate.",
+        {
+          "text": "Cross-check with firewall_proxy_correlation to see whether the same source IP is also being firewall-dropped.",
+          "savedSearch": "logserv_firewall_proxy_correlation"
+        }
+      ],
+      "dashboard": [
+        "proxy",
+        "network-perimeter"
+      ]
+    },
+    {
+      "id": "security.hana_permission_grants",
+      "pack": "security",
+      "label": "HANA permission grants by admin",
+      "description": "Lists GRANT ROLE and GRANT PRIVILEGE statements captured in sap:hana:audit, grouped by the OS-level admin (admin_user) who issued them and the host where they ran. Critical for compliance audits and detection of unusual privilege escalations.",
+      "savedSearch": "logserv_hana_permission_grants",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_type=\"GRANT*\" | stats count by action_type admin_user host | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "auth",
+      "interpretation": "GRANT ROLE / GRANT PRIVILEGE statements captured by the HANA audit log, attributed to the OS-level admin (admin_user) who issued them. Critical for compliance \u2014 every grant should map to a known change ticket.",
+      "nextSteps": [
+        "For each admin_user entry \u2192 cross-check with the change-management ticket queue.",
+        {
+          "text": "Unfamiliar admin on a tenant DB \u2192 potential unauthorized admin session; run hana_after_hours_admin to see the timing pattern.",
+          "savedSearch": "logserv_hana_after_hours_admin"
+        },
+        "Sustained grant volume from a single admin during an off-hours window is the strongest 'investigate now' signal here."
+      ],
+      "dashboard": [
+        "hana-audit",
+        "change-config"
+      ]
+    },
+    {
+      "id": "security.hana_admin_user_management",
+      "pack": "security",
+      "label": "HANA admin user-management activity",
+      "description": "All actions in the HANA audit User Management category (ALTER USER, CREATE USER, etc.), grouped by target user and host. Useful for compliance review of who's been touching user records.",
+      "savedSearch": "logserv_hana_admin_user_management",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_category=\"User Management\" | stats count by action_type target_user host | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "auth",
+      "interpretation": "All HANA actions in the User Management category \u2014 ALTER USER (most common, often password resets and connect-attempt resets) and CREATE USER (new account provisioning). Each should map to a known change ticket.",
+      "nextSteps": [
+        "ALTER USER spikes during business hours = routine password resets \u2014 usually fine.",
+        {
+          "text": "CREATE USER \u2192 cross-check with hana_user_creation for the specific accounts and verify provisioning tickets exist.",
+          "savedSearch": "logserv_hana_user_creation"
+        },
+        {
+          "text": "Off-hours user-management activity \u2192 run hana_after_hours_admin for the full timing breakdown and on-call attribution.",
+          "savedSearch": "logserv_hana_after_hours_admin"
+        }
+      ],
+      "dashboard": [
+        "hana-audit",
+        "change-config"
+      ]
+    },
+    {
+      "id": "security.hana_after_hours_admin",
+      "pack": "security",
+      "label": "HANA admin actions outside business hours",
+      "description": "User Management, Permission Grant, User Creation, and Other-category actions in sap:hana:audit performed outside 06:00\u201320:00 local time. A useful tripwire for unauthorized admin sessions.",
+      "savedSearch": "logserv_hana_after_hours_admin",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_category IN (\"User Management\",\"Permission Grant\",\"User Creation\",\"Other\") | eval h=tonumber(strftime(_time, \"%H\")) | where h < 6 OR h >= 20 | stats count by executing_user action_type action_category | sort -count",
+      "renderHint": "table",
+      "interpretation": "User Management, Permission Grant, User Creation, and Other-category actions performed outside 06:00-20:00. Routine: weekly maintenance windows (Saturday/Sunday admin work). Suspicious: weeknight activity by users not on the on-call schedule.",
+      "nextSteps": [
+        "Map each admin user to the on-call rotation \u2014 anything unexplained is high priority.",
+        {
+          "text": "If volume is high, cross-check with cross_stack_auth_failures_trend for the same window \u2014 failed-then-successful auth from the same IP is a compromise pattern.",
+          "savedSearch": "logserv_cross_stack_auth_failures_trend"
+        },
+        "Documented maintenance windows should be flagged whitelisted via change tickets, not investigated repeatedly."
+      ],
+      "dashboard": [
+        "hana-audit",
+        "change-config"
+      ]
+    },
+    {
+      "id": "security.windows_account_lockouts",
+      "pack": "security",
+      "label": "Windows account lockouts (event 4740)",
+      "description": "Windows Security log event 4740 (account locked out). Sudden bursts almost always indicate brute-force activity.",
+      "savedSearch": "logserv_windows_account_lockouts",
+      "spl": "`sap_logserv_idx_macro` sourcetype=XmlWinEventLog EventCode=4740 | stats count by TargetUserName Computer | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "auth",
+      "interpretation": "Windows account-locked-out events (event 4740). Sudden bursts (3+ in 10 minutes from the same source) are almost always brute-force activity. Sparse single-account lockouts are typically expired-password automation.",
+      "nextSteps": [
+        {
+          "text": "Burst pattern \u2192 trace the source IP via the IpAddress field in the raw 4740 event; block at the firewall if external.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=XmlWinEventLog EventCode=4740 | rex field=_raw \"<Data Name=.IpAddress.>(?<IpAddress>[^<]+)\" | stats count by IpAddress TargetUserName | sort -count"
+        },
+        "Same account locked out repeatedly across days = automation that needs its credentials updated.",
+        {
+          "text": "Cross-reference with cross_stack_auth_failures for the same TargetUserName \u2014 multi-stack pattern is the highest signal.",
+          "savedSearch": "logserv_cross_stack_auth_failures"
+        }
+      ],
+      "dashboard": [
+        "windows",
+        "cross-stack-authentication"
+      ]
+    },
+    {
+      "id": "security.linux_pam_auth_failures",
+      "pack": "security",
+      "label": "Linux PAM authentication failures (sapuxuserchk)",
+      "description": "PAM-level authentication failures on the Linux side (sapuxuserchk module \u2014 the SAP-specific auth wrapper used during host-level login and sapstartsrv operations). Repeated failures from one user on one host often indicate a stale automation or credential-probing.",
+      "savedSearch": "logserv_linux_pam_auth_failures",
+      "spl": "`sap_logserv_idx_macro` sourcetype=linux_messages_syslog process=sapuxuserchk \"authentication failure\" | rex field=_raw \"user=(?<user>\\S+)\" | stats count by user host | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "auth",
+      "interpretation": "PAM-level auth failures via the SAP-specific sapuxuserchk module \u2014 surfaces during host-level login and sapstartsrv operations. Repeated failures from one user on one host typically indicate a stale automation that needs its credentials updated.",
+      "nextSteps": [
+        "Most rows here are sapadm \u2014 usually scheduled jobs that lost their secret in a credential refresh.",
+        {
+          "text": "Spike on a single host \u2192 cross-check with sap_host_auth_failures to see if SOAP-tier auth is also failing (SAP host control wraps PAM).",
+          "savedSearch": "logserv_sap_host_auth_failures"
+        },
+        {
+          "text": "Cross-stack: any user appearing here AND in cross_stack_auth_failures is a high-priority investigate.",
+          "savedSearch": "logserv_cross_stack_auth_failures"
+        }
+      ],
+      "dashboard": [
+        "linux",
+        "cross-stack-authentication"
+      ]
+    },
+    {
+      "id": "security.hana_user_creation",
+      "pack": "security",
+      "label": "HANA new user accounts created",
+      "description": "HANA users created via CREATE USER actions, grouped by target user and host. Useful as a periodic compliance-review sweep \u2014 anything appearing here should match a known onboarding ticket.",
+      "savedSearch": "logserv_hana_user_creation",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:audit action_type=\"CREATE USER\" | stats count by target_user host | sort -count",
+      "renderHint": "table",
+      "interpretation": "New HANA user accounts created in the time range. Should be sparse (most installations create a handful per quarter). Every new user should map to an onboarding or integration ticket.",
+      "nextSteps": [
+        "For each row \u2192 confirm the onboarding ticket / integration request that authorized the creation.",
+        {
+          "text": "Sudden burst of CREATE USERs without matching tickets \u2192 escalate immediately; identify the issuing admin via hana_admin_user_management.",
+          "savedSearch": "logserv_hana_admin_user_management"
+        },
+        "After CREATE USER comes ALTER USER (initial password set) \u2014 both should appear together for legitimate provisioning."
+      ],
+      "dashboard": [
+        "hana-audit",
+        "change-config"
+      ]
+    },
+    {
+      "id": "security.windows_logon_successes",
+      "pack": "security",
+      "label": "Windows successful logons by user",
+      "description": "Windows Security log event 4624 (successful logon), grouped by target user. Companion to windows_account_lockouts (4740) \u2014 together they sketch the auth pulse on every Windows host.",
+      "savedSearch": "logserv_windows_logon_successes",
+      "spl": "`sap_logserv_idx_macro` sourcetype=XmlWinEventLog EventCode=4624 | rex field=_raw \"<Data Name=.TargetUserName.>(?<TargetUserName>[^<]+)\" | top limit=15 TargetUserName",
+      "renderHint": "pie",
+      "chartPalette": "auth",
+      "interpretation": "Successful Windows logons by user (event 4624). Useful as the auth-pulse counterpart to lockouts (4740) and failures (4625) \u2014 sudden drops indicate hosts unreachable, sudden growth indicates new automation rolling out OR new accounts in use.",
+      "nextSteps": [
+        {
+          "text": "Compare the user list to cross_stack_auth_failures \u2014 accounts with successful logons after recent failures = something resolved (good) OR credential-spray succeeded (bad \u2014 verify).",
+          "savedSearch": "logserv_cross_stack_auth_failures"
+        },
+        "New accounts appearing here for the first time \u2192 cross-check with provisioning tickets.",
+        "Service accounts (svc_*, SAPService*) are normally dominant \u2014 if they suddenly drop, the service may be down."
+      ],
+      "dashboard": [
+        "windows",
+        "cross-stack-authentication"
+      ]
+    },
+    {
+      "id": "security.saprouter_anomalies",
+      "pack": "security",
+      "label": "SAP Router protocol anomalies (INVAL DATA + NiBuf)",
+      "description": "INVAL DATA action events and NiBuf invalid-data trace lines from sap:saprouter, grouped by remote peer. Indicates malformed protocol attempts \u2014 typically a misconfigured client OR an attempt to tunnel non-saprouter traffic. Top peers are the ones to investigate.",
+      "savedSearch": "logserv_saprouter_anomalies",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:saprouter (\"INVAL DATA\" OR \"NiBuf\") | rex field=_raw \"peer=(?<peer>[\\d.:]+)\" | stats count by peer | sort -count | head 30",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "errors",
+      "interpretation": "Protocol-violation events on the SAP Router \u2014 INVAL DATA action events plus NiBuf invalid-data trace lines. Each row is a remote peer that sent malformed traffic to the router. Almost always either a misconfigured client OR an attempted port probe.",
+      "nextSteps": [
+        "Identify each peer IP \u2014 internal IPs are usually misconfigured clients, external IPs are reconnaissance.",
+        "External peer \u2192 block at the perimeter firewall and notify the SOC.",
+        "Internal peer \u2192 check whether it's running a legitimate non-saprouter service that's accidentally hitting the saprouter port."
+      ],
+      "dashboard": "sap-router"
+    },
+    {
+      "id": "operations.event_volume_drop",
+      "pack": "operations",
+      "label": "Hosts with the biggest event-volume drop",
+      "description": "Compares each host's event volume in the most recent hour against its hourly average over the prior period. Hosts with a drop > 50% from baseline appear at the top \u2014 typically indicates a data-collection failure or host outage.",
+      "savedSearch": "logserv_event_volume_drop",
+      "spl": "`sap_logserv_idx_macro` | bin _time span=1h | stats count by host _time | stats latest(count) AS recent avg(count) AS baseline by host | eval drop_pct=round(100*(baseline-recent)/baseline, 1) | where drop_pct > 50 | sort -drop_pct",
+      "renderHint": "table",
+      "interpretation": "Hosts whose event volume in the last hour is more than 50% below their baseline. Most often this indicates a Splunk forwarder restart, a host outage, or a host being decommissioned. Occasionally it's a planned maintenance window.",
+      "nextSteps": [
+        {
+          "text": "For each host, check its Splunk forwarder via `splunkforwarder` service status, or run data_freshness for sourcetype-level granularity.",
+          "savedSearch": "logserv_data_freshness"
+        },
+        "If multiple hosts drop simultaneously, suspect an indexer-side bottleneck or a network-tier issue rather than per-host problems.",
+        "Persistent zero from a host that was previously active \u2192 confirm with the infrastructure team that it's still alive."
+      ],
+      "dashboard": "data-pipeline-overview"
+    },
+    {
+      "id": "operations.data_freshness",
+      "pack": "operations",
+      "label": "Sourcetypes that have stopped receiving events",
+      "description": "For each LogServ sourcetype, reports the timestamp of the most recent event. Sourcetypes with no events in the last 30 minutes (a fixed threshold, NOT affected by the time-range picker) are flagged. Useful as a quick canary for data-collection health, especially after a forwarder or DS reload.",
+      "savedSearch": "logserv_data_freshness",
+      "spl": "`sap_logserv_idx_macro` | stats latest(_time) AS last_seen by sourcetype | eval seconds_ago=now()-last_seen | eval last_seen=strftime(last_seen, \"%Y-%m-%d %H:%M:%S\") | where seconds_ago > 1800 | sort -seconds_ago",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "errors",
+      "interpretation": "Sourcetypes that haven't received an event in the last 30 minutes (fixed threshold, NOT relative to the time-range picker). Routine: low-cardinality sourcetypes like sap:abap:audit that genuinely emit only a handful of events per day. Suspicious: previously-active sourcetypes that suddenly went silent.",
+      "nextSteps": [
+        {
+          "text": "Cross-reference each stale sourcetype with event_volume_drop to see if a specific host is responsible for the silence.",
+          "savedSearch": "logserv_event_volume_drop"
+        },
+        "If a normally-busy sourcetype like sap:webdispatcher:access is here, immediately investigate the dispatcher tier.",
+        "Sourcetypes that are routinely sparse (sap:abap:audit at 1-2 events/day) are expected \u2014 whitelist them mentally."
+      ],
+      "dashboard": "data-pipeline-overview"
+    },
+    {
+      "id": "operations.event_volume_by_sourcetype_trend",
+      "pack": "operations",
+      "label": "Event volume by sourcetype trend",
+      "description": "Per-hour volume of every LogServ sourcetype, top 10 as separate series. Quick visual on which sourcetypes are loud / quiet over the time range.",
+      "savedSearch": "logserv_event_volume_by_sourcetype_trend",
+      "spl": "`sap_logserv_idx_macro` | timechart span=1h count by sourcetype limit=10 useother=t",
+      "renderHint": "timechart",
+      "chartPalette": "categorical",
+      "interpretation": "Per-hour event volume by sourcetype. Every sourcetype's curve should match its expected rhythm (business-hours ABAP traffic, continuous Linux/Windows host telemetry, batch-flavored HANA audit). Sudden growth = new integration or runaway log generator; sudden drop = ingest issue.",
+      "nextSteps": [
+        "Spike on one sourcetype only \u2192 trace via the corresponding focused prompt (abap_workprocess_errors, proxy_error_rate_trend, etc.).",
+        "Coordinated drop across multiple sourcetypes \u2192 indexer or forwarder-tier issue, not a per-source problem.",
+        {
+          "text": "Use top_hosts_by_volume to find which host(s) are driving any unusual change.",
+          "savedSearch": "logserv_top_hosts_by_volume"
+        }
+      ],
+      "dashboard": "data-pipeline-overview"
+    },
+    {
+      "id": "operations.top_hosts_by_volume",
+      "pack": "operations",
+      "label": "Top hosts by event volume",
+      "description": "Top 15 hosts by total event count over the time range. Useful for indexing-cost attribution and noisy-host triage.",
+      "savedSearch": "logserv_top_hosts_by_volume",
+      "spl": "`sap_logserv_idx_macro` | top limit=15 host",
+      "renderHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "Hosts ranked by total event count over the time range. Useful for indexing-cost attribution and noisy-host triage. The top 5 hosts typically account for 60-80% of volume \u2014 that's normal. Sudden new entrants or sustained growth warrant a look.",
+      "nextSteps": [
+        {
+          "text": "Sustained outsized growth on one host \u2192 run free-form SPL filtered to that host (`host=<name> | top sourcetype`) to see WHICH sourcetype is driving it.",
+          "spl": "`sap_logserv_idx_macro` [ search `sap_logserv_idx_macro` | top limit=1 host | fields host ] | top sourcetype"
+        },
+        "New host appearing in the top 15 \u2192 confirm with the infrastructure team that it's been provisioned legitimately.",
+        {
+          "text": "If this list is unusually short \u2192 run event_volume_drop to check whether multiple hosts are missing.",
+          "savedSearch": "logserv_event_volume_drop"
+        }
+      ],
+      "dashboard": [
+        "data-pipeline-overview",
+        "host-details"
+      ]
+    },
+    {
+      "id": "operations.events_by_clz_dir",
+      "pack": "operations",
+      "label": "Event share by log category (clz_dir)",
+      "description": "Distribution of all LogServ events across the top-level log categories (linux / windows / abap / hana / dns / proxy / etc.). Sanity check for ingest-balance assumptions.",
+      "savedSearch": "logserv_events_by_clz_dir",
+      "spl": "`sap_logserv_idx_macro` clz_dir=* | stats count by clz_dir | sort -count",
+      "renderHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "Distribution of LogServ events across the top-level log categories (linux / windows / abap / hana / dns / proxy / etc.). Sanity check on ingest balance. Healthy installations have several major contributors and a long tail; a single category dominating to >70% indicates the others may be missing.",
+      "nextSteps": [
+        {
+          "text": "Run data_freshness to see if any sourcetype within the under-represented categories has gone silent.",
+          "savedSearch": "logserv_data_freshness"
+        },
+        "Sudden dominance shift \u2192 check the deployment server has pushed the latest filter config to the heavy forwarders.",
+        "Persistent zero for a category that was historically present \u2192 check the corresponding S3 bucket and forwarder pipeline."
+      ],
+      "dashboard": "data-pipeline-overview"
+    },
+    {
+      "id": "operations.webdispatcher_slow_uris",
+      "pack": "operations",
+      "label": "Web Dispatcher URIs with the slowest p95 response times",
+      "description": "Computes the 95th-percentile response time per URI on sap:webdispatcher:access. The top of the list is where users perceive the most latency \u2014 useful for routing performance investigations.",
+      "savedSearch": "logserv_webdispatcher_slow_uris",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access response_time_ms=* | stats perc95(response_time_ms) AS p95_ms count by uri | where count > 100 | sort -p95_ms | head 50",
+      "renderHint": "table",
+      "interpretation": "URIs ranked by 95th-percentile response time on the SAP Web Dispatcher. The top 5-10 URIs are where users perceive the most latency. Any URI with p95 > 5s warrants drilling into; p95 > 15s is a hard incident threshold.",
+      "nextSteps": [
+        "Pivot to the slowest URI's backend ABAP component \u2014 typically the URL path's first segment maps to an ABAP module.",
+        {
+          "text": "Cross-check with webdispatcher_5xx_rate_trend \u2014 slow + erroring is a different problem than slow alone.",
+          "savedSearch": "logserv_webdispatcher_5xx_rate_trend"
+        },
+        {
+          "text": "Persistent slow URIs are often DB-bound \u2014 check hana_trace_severity_trend for correlated WARNING/ERROR spikes.",
+          "savedSearch": "logserv_hana_trace_severity_trend"
+        }
+      ],
+      "dashboard": [
+        "web-dispatcher",
+        "web-api-performance"
+      ]
+    },
+    {
+      "id": "operations.webdispatcher_5xx_rate_trend",
+      "pack": "operations",
+      "label": "Web Dispatcher 5xx error-rate trend",
+      "description": "Per-hour 5xx error-rate trend on sap:webdispatcher:access. A spike that persists is the canonical 'something's down behind the dispatcher' signal.",
+      "savedSearch": "logserv_webdispatcher_5xx_rate_trend",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access | bin _time span=1h | stats count(eval(status>=500)) AS errors count AS total by _time | eval error_pct=round(100*errors/total, 2) | sort _time",
+      "renderHint": "timechart",
+      "chartPalette": "errors",
+      "interpretation": "Per-hour 5xx error rate from the SAP Web Dispatcher. A sustained rate above 1-2% is a persistent backend problem. A sudden spike to 5%+ that then resolves is usually a backend restart or short outage.",
+      "nextSteps": [
+        {
+          "text": "Persistent elevated rate \u2192 run abap_workprocess_errors and hana_trace_errors for the same time range to find the backend culprit.",
+          "savedSearch": "logserv_abap_workprocess_errors"
+        },
+        {
+          "text": "Sudden spike that resolved \u2192 check event_volume_drop for any host that disappeared briefly.",
+          "savedSearch": "logserv_event_volume_drop"
+        },
+        {
+          "text": "Slow URIs often correlate with errors \u2014 webdispatcher_slow_uris gives the per-URI view to pair with this trend.",
+          "savedSearch": "logserv_webdispatcher_slow_uris"
+        }
+      ],
+      "dashboard": [
+        "web-dispatcher",
+        "web-api-performance"
+      ]
+    },
+    {
+      "id": "operations.cloud_connector_error_rate",
+      "pack": "operations",
+      "label": "Cloud Connector HTTP error rate trend",
+      "description": "Per-hour count and 4xx/5xx error rate from sap:scc:http_access. Spikes in the rate (regardless of absolute volume) identify times when Cloud Connector connectivity to backend systems was degraded.",
+      "savedSearch": "logserv_cloud_connector_error_rate",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:scc:http_access | bin _time span=1h | stats count(eval(status>=400)) AS errors count AS total by _time | eval error_pct=round(100*errors/total, 2) | sort _time",
+      "renderHint": "timechart",
+      "chartPalette": "errors",
+      "interpretation": "Per-hour 4xx/5xx error rate from the SAP Cloud Connector. Healthy: under 2%. Unhealthy: any sustained spike \u2014 Cloud Connector is the connectivity bridge for cloud-side SAP services so issues here cascade quickly.",
+      "nextSteps": [
+        "Pivot to the SCC tunnel logs to identify the failing target system.",
+        {
+          "text": "Cross-check with cross_stack_auth_failures \u2014 SCC auth failures often surface as 4xx here first.",
+          "savedSearch": "logserv_cross_stack_auth_failures"
+        },
+        "Persistent 5xx rate \u2192 check the SCC service status and tunnel state on the SCC host directly."
+      ],
+      "dashboard": [
+        "cloud-connector",
+        "web-api-performance"
+      ]
+    },
+    {
+      "id": "operations.proxy_error_rate_trend",
+      "pack": "operations",
+      "label": "Squid proxy error-rate trend",
+      "description": "Per-hour 4xx/5xx response rate from squid:access. Highlights periods of elevated client/upstream errors at the proxy layer.",
+      "savedSearch": "logserv_proxy_error_rate_trend",
+      "spl": "`sap_logserv_idx_macro` sourcetype=squid:access | bin _time span=1h | stats count(eval(status>=400)) AS errors count AS total by _time | eval error_pct=round(100*errors/total, 2) | sort _time",
+      "renderHint": "timechart",
+      "chartPalette": "errors",
+      "interpretation": "Per-hour 4xx/5xx response rate from Squid. Mostly internal client/upstream errors \u2014 a high baseline (5-10%) often indicates a misbehaving client repeatedly hitting an unreachable upstream.",
+      "nextSteps": [
+        {
+          "text": "Run proxy_top_denied_urls to see what destinations are failing.",
+          "savedSearch": "logserv_proxy_top_denied_urls"
+        },
+        "Sustained 5xx without 4xx \u2192 upstream availability issue (e.g., a vendor outage); check vendor status pages.",
+        {
+          "text": "Burst of 4xx \u2192 usually a single misconfigured client; identify via the `src` field on squid:access events.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=squid:access status>=400 status<500 | top limit=15 src"
+        }
+      ],
+      "dashboard": "proxy"
+    },
+    {
+      "id": "operations.linux_firewall_agent_warnings",
+      "pack": "operations",
+      "label": "Linux ipset / firewall agent warnings",
+      "description": "WARNING-level events from the cgs_firewall agent (config validation issues, ipset update failures, etc.). Indicates Linux hosts whose firewall posture configuration may be inconsistent.",
+      "savedSearch": "logserv_linux_firewall_agent_warnings",
+      "spl": "`sap_logserv_idx_macro` sourcetype=linux_messages_syslog process=cgs_firewall WARNING | stats count by host | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "Hosts where the cgs_firewall agent emitted WARNINGs \u2014 most commonly 'configuration file doesn't contain valid data' (a CMDB feed went stale) OR 'ipset update failed'. Usually NOT a security issue, but a config-pipeline issue that may leave the host with a stale firewall posture.",
+      "nextSteps": [
+        "Check the CMDB / config feed that drives the cgs_firewall ipsets \u2014 the warnings usually quote the failing config file path.",
+        {
+          "text": "Cross-check with event_volume_drop for the same hosts \u2014 agent issues often correlate with broader telemetry issues.",
+          "savedSearch": "logserv_event_volume_drop"
+        },
+        "If a host has been warning for more than 24 hours, escalate to the infrastructure team before its firewall posture drifts further."
+      ],
+      "dashboard": "linux"
+    },
+    {
+      "id": "operations.noisy_hosts_trend",
+      "pack": "operations",
+      "label": "Noisiest hosts trend (top 10)",
+      "description": "Per-hour event count for the 10 noisiest hosts. Rapid changes in ranking often correspond to a runaway log generator or a degraded host generating excessive trace.",
+      "savedSearch": "logserv_noisy_hosts_trend",
+      "spl": "`sap_logserv_idx_macro` | timechart span=1h count by host limit=10 useother=f",
+      "renderHint": "timechart",
+      "chartPalette": "categorical",
+      "interpretation": "Per-hour event count for the 10 noisiest hosts. Each host's curve should match its expected operational rhythm. Rapid changes in ranking often correspond to a runaway log generator OR a degraded host emitting excessive trace.",
+      "nextSteps": [
+        {
+          "text": "If a host suddenly jumps to top \u2192 identify the dominant sourcetype on that host via free-form SPL (`host=<name> | top sourcetype`) \u2014 usually one log file gone wrong.",
+          "spl": "`sap_logserv_idx_macro` [ search `sap_logserv_idx_macro` | top limit=1 host | fields host ] | top sourcetype"
+        },
+        "Coordinated growth across multiple hosts = upstream change (deployment, bug roll-out).",
+        {
+          "text": "Cross-check with event_volume_by_sourcetype_trend to see whether the volume increase is broad-based or single-sourcetype.",
+          "savedSearch": "logserv_event_volume_by_sourcetype_trend"
+        }
+      ],
+      "dashboard": [
+        "data-pipeline-overview",
+        "host-details"
+      ]
+    },
+    {
+      "id": "operations.total_events_kpi",
+      "pack": "operations",
+      "label": "Total LogServ events ingested",
+      "description": "Single-number KPI: total event count over the chosen time range. The cheapest pulse-check on whether ingest is alive at all.",
+      "savedSearch": "logserv_total_events_kpi",
+      "spl": "`sap_logserv_idx_macro` | stats count AS total_events",
+      "renderHint": "kpi",
+      "interpretation": "Total LogServ events ingested over the selected time range. The cheapest pulse-check on whether ingest is alive. Compare to your historical baseline for the same window length \u2014 anything below ~50% of baseline warrants investigation.",
+      "nextSteps": [
+        "Compare to a same-length window 1 week ago \u2014 that's your reference baseline.",
+        {
+          "text": "Below baseline \u2192 run event_volume_drop and data_freshness to find which hosts/sourcetypes are missing.",
+          "savedSearch": "logserv_event_volume_drop"
+        },
+        {
+          "text": "Above baseline by more than 2x \u2192 run noisy_hosts_trend to find the source of the spike.",
+          "savedSearch": "logserv_noisy_hosts_trend"
+        }
+      ],
+      "dashboard": "environment-health"
+    },
+    {
+      "id": "operations.distinct_hosts_kpi",
+      "pack": "operations",
+      "label": "Distinct hosts seen",
+      "description": "Single-number KPI: distinct hosts that emitted at least one event over the time range. Sudden drops are alarming; sudden growth might indicate fleet expansion or a misnamed host.",
+      "savedSearch": "logserv_distinct_hosts_kpi",
+      "spl": "`sap_logserv_idx_macro` | stats dc(host) AS distinct_hosts",
+      "renderHint": "kpi",
+      "interpretation": "Count of distinct hosts that emitted at least one event over the time range. Sudden drops mean hosts unreachable or forwarders crashed. Sudden growth means fleet expansion OR a misnamed/duplicate host (rare but happens after a forwarder reinstall).",
+      "nextSteps": [
+        "Compare to the known fleet size from your CMDB \u2014 close match is healthy.",
+        {
+          "text": "Drop \u2192 run event_volume_drop to find the missing hosts.",
+          "savedSearch": "logserv_event_volume_drop"
+        },
+        {
+          "text": "Growth \u2192 run top_hosts_by_volume to identify the new contributors and verify them against provisioning tickets.",
+          "savedSearch": "logserv_top_hosts_by_volume"
+        }
+      ],
+      "dashboard": "environment-health"
+    },
+    {
+      "id": "operations.icm_request_type_mix",
+      "pack": "operations",
+      "label": "ICM request type mix",
+      "description": "Distribution of sap:abap:icm requests across types (ASYNC_RFC, HTTP_NORMAL, INTERNAL). Shifts in the mix often correspond to changes in workload character (e.g., more sync HTTP than usual, or new RFC clients online).",
+      "savedSearch": "logserv_icm_request_type_mix",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:icm icm_request_type=* | top limit=10 icm_request_type",
+      "renderHint": "pie",
+      "chartPalette": "categorical",
+      "interpretation": "Distribution of ABAP ICM requests across types: ASYNC_RFC (typical SAP backend RFC traffic), HTTP_NORMAL (modern web-style traffic \u2014 Fiori, OData, BTP), INTERNAL (dispatcher-level). Sudden shifts often correspond to new application rollouts or load-shape changes.",
+      "nextSteps": [
+        {
+          "text": "If HTTP_NORMAL grows out of proportion, check webdispatcher_5xx_rate_trend \u2014 new web-tier traffic often surfaces problems first.",
+          "savedSearch": "logserv_webdispatcher_5xx_rate_trend"
+        },
+        "If ASYNC_RFC drops \u2192 check whether scheduled batch jobs are running on time.",
+        {
+          "text": "Cross-check with icm_top_peer_ips to see whether new traffic types come with new peer IPs.",
+          "savedSearch": "logserv_icm_top_peer_ips"
+        }
+      ],
+      "dashboard": [
+        "abap-operations",
+        "web-api-performance"
+      ]
+    },
+    {
+      "id": "sap_basis.topology_top_systems_by_calls",
+      "pack": "sap_basis",
+      "label": "Top SAP systems by inbound call volume",
+      "description": "Counts gateway + ICM events grouped by SAP SID and sourcetype, ranked desc. Surfaces which SIDs are busiest at the integration layer \u2014 useful for capacity review and for spotting unexpected volume spikes on a system that's normally quiet.",
+      "savedSearch": "logserv_topology_top_systems_by_calls",
+      "spl": "`sap_logserv_idx_macro` (sourcetype=sap:abap:gateway OR sourcetype=sap:abap:icm) sap_sid=* | stats count by sap_sid sourcetype | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "categorical",
+      "dashboard": "integration-topology",
+      "interpretation": "Each row shows total inbound calls (gateway RFC frames + ICM HTTP/RFC requests) for one SID at one source layer. The biggest rows tell you where your integration traffic actually lives. A SID that suddenly outranks its peers is worth investigating.",
+      "nextSteps": [
+        {
+          "text": "If one SID dominates, drill into its calls-per-hour pattern via the Environment Topology view.",
+          "savedSearch": "logserv_icm_request_volume_trend"
+        },
+        {
+          "text": "Check whether the busiest SID is also showing gateway error growth.",
+          "savedSearch": "logserv_abap_gateway_failures"
+        },
+        "Capacity review heuristic: if total calls/hr have grown 30%+ over baseline without a known release, plan for sizing."
+      ]
+    },
+    {
+      "id": "sap_basis.topology_rfc_partner_failures",
+      "pack": "sap_basis",
+      "label": "RFC partner peers ranked by gateway error count",
+      "description": "Top RFC peer IPs whose connections are producing gateway errors, broken down by the gw_error_detail category. Identifies which upstream partners are repeatedly dropping connections, sending malformed frames, or timing out \u2014 helpful for narrowing a flaky-integration finger-point to a specific partner.",
+      "savedSearch": "logserv_topology_rfc_partner_failures",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:abap:gateway gw_error_detail=* gw_error_detail!=\"\" peer_ip=* | stats count by peer_ip gw_error_detail | sort -count | head 20",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "errors",
+      "dashboard": "integration-topology",
+      "interpretation": "Peer IPs at the top with high counts on a single error category are usually the real culprit; peers with a small smattering across many categories are more likely innocent victims of upstream issues. NiBufIIn/invalid-data on a single peer often means a misconfigured client or a non-RFC service hitting the RFC port.",
+      "nextSteps": [
+        {
+          "text": "Cross-check the peer's overall connection volume to see if errors are a small fraction or dominant.",
+          "savedSearch": "logserv_topology_top_systems_by_calls"
+        },
+        {
+          "text": "If multiple peers show the same error category at once, look at the local SID's workprocess errors \u2014 the issue may be local.",
+          "savedSearch": "logserv_abap_workprocess_errors"
+        },
+        "If a peer shows hundreds of NiBufIIn invalid-data and is NOT a known RFC partner, it's almost certainly a port-scan or misdirected non-RFC client."
+      ]
+    },
+    {
+      "id": "operations.sap_host_severity_breakdown",
+      "pack": "operations",
+      "label": "SAP host control event severity by host",
+      "description": "sap:sapstartsrv events grouped by host and severity (Info / Warning / Error). Surfaces which hosts have noisy host-control activity \u2014 sustained Error volume on a single host is a leading indicator of an unstable startup-srv or persistent OS-level auth issues with the SAP service account.",
+      "savedSearch": "logserv_sap_host_severity_breakdown",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:sapstartsrv severity=* | stats count by host severity | sort -count",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "status",
+      "dashboard": "sap-services",
+      "interpretation": "A healthy host should have Info dominant; sustained Warning/Error rows mean something keeps failing in startup-srv interactions. Common causes: OS-level auth misconfig (sapadm password rotation gap), expired SSL certs, agent reload loops.",
+      "nextSteps": [
+        {
+          "text": "If Error severity dominates on one host, drill into the auth-failure detail.",
+          "savedSearch": "logserv_sap_host_auth_failures"
+        },
+        "Sustained Warning without Error usually means transient SSL renegotiation churn \u2014 verify cert rotation completed cleanly.",
+        "If a host has zero Info events but lots of Errors, sapstartsrv may be partially unreachable from the monitoring host."
+      ]
+    },
+    {
+      "id": "operations.scc_backend_latency",
+      "pack": "operations",
+      "label": "SCC backend round-trip time percentiles by URI",
+      "description": "Cloud Connector HTTP-access response-time percentiles (avg / p95 / p99) grouped by the first URI segment, ranked by p95 desc. Identifies which backend API surfaces are slowest end-to-end \u2014 useful for SLA review and for spotting a backend service regression after a release.",
+      "savedSearch": "logserv_scc_backend_latency",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:scc:http_access response_time_ms=* | rex field=uri \"^(?<uri_prefix>/[^/?]+)\" | stats avg(response_time_ms) as avg_ms perc95(response_time_ms) as p95_ms perc99(response_time_ms) as p99_ms count by uri_prefix | sort -p95_ms | head 20",
+      "renderHint": "table",
+      "chartPalette": "errors-2",
+      "dashboard": [
+        "cloud-connector",
+        "web-api-performance"
+      ],
+      "interpretation": "p95 is the customer-perceived slow case (1-in-20). p99 is the long-tail. Healthy backends typically run with p95 well under 1 s; p95 >2 s on a frequently-used URI means real latency that users will feel. p99 >> p95 suggests intermittent stalls rather than steady-state slowness.",
+      "nextSteps": [
+        {
+          "text": "Cross-check the slow backend's overall error rate to see if latency comes with errors.",
+          "savedSearch": "logserv_cloud_connector_error_rate"
+        },
+        {
+          "text": "If a single URI dominates volume AND latency, drill into per-call status codes to look for upstream 5xx surges.",
+          "savedSearch": "logserv_scc_top_destinations"
+        },
+        "If p99 ramped suddenly without volume change, suspect a backend resource issue (db lock, GC pause) rather than load."
+      ]
+    },
+    {
+      "id": "operations.scc_top_destinations",
+      "pack": "operations",
+      "label": "SCC top destination URI prefixes by volume",
+      "description": "Cloud Connector backend destinations ranked by request volume, broken down by HTTP status category (2xx_success / 4xx_client / 5xx_server). Tells you which backends the user community actually depends on most \u2014 useful for prioritizing monitoring alerts and for spotting an unexpected new dependency.",
+      "savedSearch": "logserv_scc_top_destinations",
+      "spl": "`sap_logserv_idx_macro` sourcetype=sap:scc:http_access | rex field=uri \"^(?<uri_prefix>/[^/?]+(?:/[^/?]+)?)\" | stats count by uri_prefix status_category | sort -count | head 30",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "status",
+      "dashboard": [
+        "cloud-connector",
+        "web-api-performance"
+      ],
+      "interpretation": "A high-volume URI with all 2xx_success rows is healthy and busy. A high-volume URI with significant 4xx/5xx is the priority finding \u2014 it's both heavily used AND frequently failing. New URIs that weren't in last month's top-10 may indicate a release that introduced a new dependency.",
+      "nextSteps": [
+        {
+          "text": "Drill into the latency profile of the top-volume URIs to see whether high volume comes with high p95.",
+          "savedSearch": "logserv_scc_backend_latency"
+        },
+        "If the same URI shows in top-10 with both high 2xx and high 5xx counts, the backend is partially-degraded (some ops succeed, others fail) \u2014 investigate the failing op category.",
+        "Verify the top-1 URI matches business expectations \u2014 if a non-business URI tops the list, suspect a misconfigured client or a runaway poll loop."
+      ]
+    },
+    {
+      "id": "operations.top_error_categories",
+      "pack": "operations",
+      "label": "Top error categories across the LogServ estate",
+      "description": "Cross-cutting error breakdown across all 11 sourcetype/severity tuples the Environment Health Total Errors KPI counts, grouped by Category (ABAP / HANA / Security / Web/Network / OS/Infra) and sourcetype, with affected-host counts. Mirrors the EH Total Errors KPI's drilldown \u2014 same row breakdown, available as a saved search for AI-driven analysis.",
+      "savedSearch": "logserv_top_error_categories",
+      "spl": "`sap_logserv_idx_macro` ((sourcetype=\"sap:abap:dispatcher\" (dp_severity=\"ERROR\" OR dp_severity=\"FATAL\")) OR (sourcetype=\"sap:abap:icm\" icm_is_error=1) OR (sourcetype=\"sap:abap:gateway\" gw_error_detail=* gw_error_detail!=\"\") OR (sourcetype=\"sap:hana:audit\" status!=\"SUCCESSFUL\") OR (sourcetype=\"sap:hana:tracelogs\" hana_trace_severity IN (\"error\", \"fatal\")) OR (sourcetype=\"sap:sapstartsrv\" is_auth_event=\"true\" auth_result=\"failure\") OR (sourcetype=\"sap:scc:audit\" scc_audit_type=\"ACCESS_DENIED\") OR (sourcetype=\"linux_secure\" IN_DROP) OR (sourcetype=\"XmlWinEventLog\" severity IN (\"critical\",\"error\",\"high\")) OR (sourcetype=\"sap:webdispatcher:access\" status>=400) OR (sourcetype=\"squid:access\" action=\"denied\")) | eval Category=case(match(sourcetype,\"sap:abap\"),\"ABAP\",match(sourcetype,\"sap:hana\"),\"HANA\",sourcetype IN (\"sap:sapstartsrv\",\"sap:scc:audit\",\"linux_secure\"),\"Security\",sourcetype IN (\"sap:webdispatcher:access\",\"squid:access\"),\"Web/Network\",sourcetype=\"XmlWinEventLog\",\"OS/Infra\",1=1,\"Other\") | stats count as Errors dc(host) as affected_hosts by Category sourcetype | sort -Errors",
+      "renderHint": "table",
+      "chartHint": "pie",
+      "chartPalette": "errors",
+      "dashboard": "environment-health",
+      "interpretation": "The top row is your dominant error pressure right now. Multi-category load (e.g. ABAP + HANA both at the top) usually points to a downstream SID-wide event (deployment, capacity exhaustion, network partition); single-category load is usually a layer-specific incident.",
+      "nextSteps": [
+        {
+          "text": "If ABAP dominates, drill into the workprocess error rate by SID + host.",
+          "savedSearch": "logserv_abap_workprocess_errors"
+        },
+        {
+          "text": "If HANA dominates, check audit-failure detail for the failing user / action_type.",
+          "savedSearch": "logserv_hana_failed_auth"
+        },
+        {
+          "text": "If Security dominates, look at the cross-stack auth correlation.",
+          "savedSearch": "logserv_cross_stack_auth_failures"
+        },
+        "A single host concentrating multiple categories' errors often means that host is the actual incident root cause (e.g., a stuck dispatcher cascading into ICM + workprocess errors at once)."
+      ]
+    },
+    {
+      "id": "security.lateral_movement",
+      "pack": "security",
+      "label": "Lateral movement: user across multiple HANA SIDs",
+      "description": "Detects when the same user authenticates successfully into 3+ SAP HANA SIDs within a 60-second window. The cross-SID hop pattern is the canonical lateral-movement signal across the SAP estate.",
+      "savedSearch": "splunk_sap_logserv_es_lateral_movement",
+      "renderHint": "table",
+      "interpretation": "Each row is a user who hopped across 3+ HANA SIDs in 60 seconds. Healthy SAP topologies show this only for monitoring service accounts (e.g., a wrapper that polls every SID). Any human-named account in the result warrants immediate investigation \u2014 start with the source IP and the timeline of what they did on each SID.",
+      "nextSteps": [
+        {
+          "text": "For each suspicious user, pull the full activity timeline across all SIDs they touched.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" executing_user=\"<user>\" | sort 0 _time | table _time host sap_sid action_type result _raw"
+        },
+        {
+          "text": "Cross-check with privilege_chain to see if the user also had auth failures or privilege changes in the same window.",
+          "savedSearch": "splunk_sap_logserv_es_privilege_chain"
+        },
+        "If the user is a known service account, confirm their service inventory and consider tagging them in the Identity feed so future events get filtered."
+      ],
+      "dashboard": [
+        "cross-stack-authentication",
+        "hana-audit"
+      ],
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" result=\"SUCCESSFUL\" | eval auth_user = coalesce(executing_user, user) | where isnotnull(auth_user) AND isnotnull(sap_sid) | bucket _time span=60s | stats dc(sap_sid) AS sid_count, values(sap_sid) AS sids, values(host) AS hosts, count by auth_user, _time | where sid_count >= 3 | sort -sid_count -count"
+    },
+    {
+      "id": "security.privilege_chain",
+      "pack": "security",
+      "label": "Privilege chain: failure -> success -> grant on same account",
+      "description": "Detects the canonical credential-stuffing-then-escalation chain on a single HANA host within a 1-hour window \u2014 same account has authentication failures AND a successful authentication AND a privilege change in the same window.",
+      "savedSearch": "splunk_sap_logserv_es_privilege_chain",
+      "renderHint": "table",
+      "interpretation": "Each row is an account showing the textbook compromise chain: failed brute-force attempts, then a successful auth, then a privilege expansion (GRANT, ALTER USER, CREATE USER/ROLE). Highest-priority investigation pattern in the SAP-side ES content. The fail count tells you how aggressive the brute-force was; the priv_change_count tells you how much damage was done after compromise.",
+      "nextSteps": [
+        {
+          "text": "Pull the full timeline for the chain to see whether the privilege change was GRANT WITH ADMIN OPTION (worst case) or a routine reset.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" executing_user=\"<user>\" host=\"<host>\" | sort 0 _time | table _time action_category action_type target_user result _raw"
+        },
+        "Cross-check with hana_privilege_escalation to see if the account is one of the 3 active CAM_CHANGE patterns. (cross-reference the existing splunk_sap_logserv_es_hana_privilege_escalation correlation search.)",
+        "Lock or rotate the credential immediately if the chain is confirmed not to map to a known change ticket."
+      ],
+      "dashboard": [
+        "cross-stack-authentication",
+        "hana-audit"
+      ],
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" | eval auth_user = coalesce(executing_user, target_user, user) | eval evt_type = case(action_category=\"Authentication\" AND result=\"UNSUCCESSFUL\", \"auth_fail\", action_category=\"Authentication\" AND result=\"SUCCESSFUL\", \"auth_success\", action_category IN (\"Permission Grant\",\"User Creation\",\"User Management\") AND action_type IN (\"GRANT PRIVILEGE\",\"GRANT ROLE\",\"ALTER USER\",\"CREATE USER\",\"CREATE ROLE\"), \"priv_change\", 1=1, null()) | where isnotnull(evt_type) AND isnotnull(auth_user) | stats count(eval(evt_type=\"auth_fail\")) AS fail_count, count(eval(evt_type=\"auth_success\")) AS success_count, count(eval(evt_type=\"priv_change\")) AS priv_change_count, latest(_time) AS last_event by auth_user, host | where fail_count > 0 AND success_count > 0 AND priv_change_count > 0 | sort -priv_change_count"
+    },
+    {
+      "id": "security.after_hours_admin_data_access",
+      "pack": "security",
+      "label": "After-hours admin data access across HANA + webdispatcher",
+      "description": "Same user is active across HANA audit + webdispatcher access logs outside business hours, on the same host. Cross-source signal indicating a potential off-hours data-extraction pattern.",
+      "savedSearch": "splunk_sap_logserv_es_after_hours_admin_data_access",
+      "renderHint": "table",
+      "interpretation": "Off-hours cross-plane activity is a leading indicator of admin-account compromise + data exfiltration. A user appearing in both HANA audit (database queries) AND webdispatcher access logs (HTTP-tier requests) outside business hours suggests coordinated activity. Healthy environments show this almost never; service accounts that legitimately do this should be tagged as such in the Identity feed.",
+      "nextSteps": [
+        {
+          "text": "For each suspicious user, pull the recent off-hours webdispatcher + HANA timeline.",
+          "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:webdispatcher:access\") (executing_user=\"<user>\" OR user=\"<user>\" OR src_user=\"<user>\") | sort 0 _time | table _time sourcetype host action_type uri _raw"
+        },
+        "Confirm the user is NOT a tagged service account; if they are, flag the Identity feed entry as misclassified.",
+        "Verify whether the activity maps to a documented late-night maintenance window or a planned data export."
+      ],
+      "dashboard": [
+        "cross-stack-authentication",
+        "hana-audit",
+        "web-dispatcher"
+      ],
+      "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:webdispatcher:access\") | eval auth_user = coalesce(executing_user, user, src_user) | eval is_off_hours_local = if(is_business_hours=\"false\" OR isnull(is_business_hours), 1, 0) | where is_off_hours_local=1 AND isnotnull(auth_user) | stats count, values(sourcetype) AS sourcetypes, dc(sourcetype) AS distinct_sourcetypes, latest(_time) AS last_seen by auth_user, host | where distinct_sourcetypes >= 2 | sort -distinct_sourcetypes -count"
+    },
+    {
+      "id": "security.service_account_interactive",
+      "pack": "security",
+      "label": "Service account interactive HANA login",
+      "description": "Service accounts (flagged via the `is_service_account` field) generated interactive HANA CONNECT events. Service accounts should run programmatic workloads \u2014 interactive sessions strongly indicate misuse or compromise.",
+      "savedSearch": "splunk_sap_logserv_es_service_account_interactive",
+      "renderHint": "table",
+      "interpretation": "Each row is a service account with interactive CONNECT activity. Healthy environments show 0 rows. Investigate the client_ip column \u2014 a workstation IP from the office subnet is a strong indicator of admin misuse; an external IP indicates compromise.",
+      "nextSteps": [
+        {
+          "text": "Check the client_ip ranges against your office / VPN / production subnets. Anything outside is high-priority.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_service_account=\"true\" action_type=\"CONNECT\" result=\"SUCCESSFUL\" | stats count by executing_user client_ip host"
+        },
+        "If the activity is legitimate (e.g., DBA emergency intervention), document the change ticket and consider reclassifying the account in the Identity feed."
+      ],
+      "dashboard": "hana-audit",
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" result=\"SUCCESSFUL\" is_service_account=\"true\" action_type=\"CONNECT\" | stats count, latest(_time) AS last_seen, values(client_ip) AS client_ips, values(host) AS hosts by executing_user | sort -count"
+    },
+    {
+      "id": "security.hana_user_creation_off_hours",
+      "pack": "security",
+      "label": "HANA user creation outside business hours",
+      "description": "CREATE USER on HANA outside business hours or on weekends. Should map to a known change ticket; off-window creation often indicates ad-hoc / unauthorized user provisioning.",
+      "savedSearch": "splunk_sap_logserv_es_hana_user_creation_off_hours",
+      "renderHint": "table",
+      "interpretation": "Each row is an admin who provisioned a HANA user outside business hours. Most healthy environments show 0 rows; planned cutovers and DR tests can produce legitimate hits, in which case they should map to a change ticket.",
+      "nextSteps": [
+        {
+          "text": "Pull the full DDL detail for each new user to see what privileges they were granted.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" target_user=\"<new_user>\" | sort 0 _time | table _time executing_user action_type sql_statement _raw"
+        },
+        "Cross-reference each new user against the change ticket system; orphan accounts (no ticket) should be reviewed and disabled if no business justification.",
+        {
+          "text": "Check whether the same admin has done an unusual number of off-hours user creations recently.",
+          "savedSearch": "splunk_sap_logserv_es_anomaly_after_hours_admin"
+        }
+      ],
+      "dashboard": [
+        "hana-audit",
+        "change-config"
+      ],
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_type=\"CREATE USER\" (is_business_hours=\"false\" OR is_weekend=\"true\") | stats count, latest(_time) AS last_seen, values(target_user) AS new_users, values(host) AS hosts by executing_user | sort -count"
+    },
+    {
+      "id": "security.hana_mass_drop",
+      "pack": "security",
+      "label": "HANA mass DROP/DELETE in 10-min window",
+      "description": "5+ DROP statements (TABLE, SCHEMA, VIEW, PROCEDURE, USER, ROLE, INDEX) by a single user on a single host within 10 minutes. Indicates either large-scale schema cleanup (which should map to a change ticket) or destructive insider activity.",
+      "savedSearch": "splunk_sap_logserv_es_hana_mass_drop",
+      "renderHint": "table",
+      "interpretation": "Each row is a user who issued 5+ DROP statements in 10 minutes. Cleanup scripts and decommissioning operations look like this; so does ransomware-style destruction. If the count is much higher than 5 (e.g., 50+) and the drop_types is diverse, the change is large enough that it should be in a documented runbook.",
+      "nextSteps": [
+        {
+          "text": "Pull every DROP for the user to see exactly what was deleted.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" executing_user=\"<user>\" action_type=\"DROP*\" | sort 0 _time | table _time host action_type object sql_statement _raw"
+        },
+        "Confirm the change ticket; without one, halt the session and engage incident response.",
+        "If recovery is needed, identify the most recent backup that pre-dates the first DROP."
+      ],
+      "dashboard": [
+        "hana-audit",
+        "change-config"
+      ],
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_type IN (\"DROP TABLE\",\"DROP SCHEMA\",\"DROP VIEW\",\"DROP PROCEDURE\",\"DROP USER\",\"DROP ROLE\",\"DROP INDEX\") | bucket _time span=10m | stats dc(action_type) AS distinct_drops, count, values(action_type) AS drop_types, latest(_time) AS last_seen by executing_user, host, _time | where count >= 5 | sort -count"
+    },
+    {
+      "id": "security.ti_dns_to_malicious_domain",
+      "pack": "security",
+      "label": "TI: DNS query to malicious domain",
+      "description": "Internal DNS clients resolved a domain in the customer-managed `logserv_ti_malicious_domains` lookup. Lookup ships empty; customer populates from their threat-intel feed. Returns 0 rows until the lookup is populated.",
+      "savedSearch": "splunk_sap_logserv_es_ti_dns_to_malicious_domain",
+      "renderHint": "table",
+      "interpretation": "Each row is a TI hit \u2014 internal hosts that queried a flagged domain. The `ti_category` and `ti_source` columns identify which threat-intel feed flagged the domain and what category (e.g., C2, malware, phishing). Investigate the source IPs immediately for potential compromise.",
+      "nextSteps": [
+        {
+          "text": "Pull the full DNS history for the source IPs to see what else they have queried recently.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"isc:bind:query\" src=\"<source_ip>\" | sort 0 _time | table _time query query_type src dest"
+        },
+        {
+          "text": "Cross-check with the proxy TI lookup to see if the source IP also made outbound connections to malicious IPs.",
+          "savedSearch": "splunk_sap_logserv_es_ti_proxy_to_malicious_ip"
+        },
+        "Verify the lookup is current: `| inputlookup logserv_ti_malicious_domains | stats count by ti_source max(added_date)`."
+      ],
+      "dashboard": [
+        "dns-analytics",
+        "network-perimeter"
+      ],
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"isc:bind:query\" query=* | eval q = lower(rtrim(query, \".\")) | lookup logserv_ti_malicious_domains domain AS q OUTPUT category AS ti_category, source AS ti_source, notes AS ti_notes | where isnotnull(ti_category) | stats count, latest(_time) AS last_seen, values(src) AS src_ips, values(q) AS queries by ti_category, ti_source, ti_notes | sort -count"
+    },
+    {
+      "id": "security.ti_proxy_to_malicious_ip",
+      "pack": "security",
+      "label": "TI: outbound proxy to malicious IP",
+      "description": "Internal hosts made outbound proxy connections to an IP in the customer-managed `logserv_ti_malicious_ips` lookup. Returns 0 rows until the lookup is populated.",
+      "savedSearch": "splunk_sap_logserv_es_ti_proxy_to_malicious_ip",
+      "renderHint": "table",
+      "interpretation": "Each row is a TI hit \u2014 internal hosts that connected outbound to a flagged IP via the squid proxy. High-signal compromise / exfiltration indicator. Investigate the source IPs immediately and block the destination at the proxy.",
+      "nextSteps": [
+        {
+          "text": "Pull the full proxy history for the source IP to see what else it connected to recently.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"squid:access\" src=\"<source_ip>\" | sort 0 _time | head 100 | table _time url dest http_method bytes_out"
+        },
+        {
+          "text": "Cross-check with the DNS TI lookup for malicious-domain queries from the same host.",
+          "savedSearch": "splunk_sap_logserv_es_ti_dns_to_malicious_domain"
+        }
+      ],
+      "dashboard": [
+        "proxy",
+        "network-perimeter"
+      ],
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"squid:access\" dest=* | lookup logserv_ti_malicious_ips ip AS dest OUTPUT category AS ti_category, source AS ti_source, notes AS ti_notes | where isnotnull(ti_category) | stats count, latest(_time) AS last_seen, values(src) AS src_ips, values(dest) AS dest_ips by ti_category, ti_source, ti_notes | sort -count"
+    },
+    {
+      "id": "security.ti_compromised_credential_use",
+      "pack": "security",
+      "label": "TI: compromised credential in use",
+      "description": "Authentication event for a username flagged in the customer-managed `logserv_ti_compromised_credentials` lookup. Customer populates from breach databases or internal compromised-account lists. Returns 0 rows until the lookup is populated.",
+      "savedSearch": "splunk_sap_logserv_es_ti_compromised_credential_use",
+      "renderHint": "table",
+      "interpretation": "Each row is a TI hit \u2014 a known-compromised credential generating live auth events. CRITICAL severity. The `added_date` tells you when the credential was flagged; if it was flagged recently AND is still being used, lockout or rotation is overdue.",
+      "nextSteps": [
+        "Lock or rotate the credential immediately. Document the action.",
+        {
+          "text": "Pull the recent auth history for the compromised credential to scope the activity.",
+          "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:abap:audit\" OR sourcetype=\"sap:sapstartsrv\") (executing_user=\"<user>\" OR user=\"<user>\" OR src_user=\"<user>\") | sort 0 _time | head 100 | table _time sourcetype host action_type result _raw"
+        },
+        "Verify the lookup is current and audit the rotation cadence: `| inputlookup logserv_ti_compromised_credentials`."
+      ],
+      "dashboard": "cross-stack-authentication",
+      "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:abap:audit\" OR sourcetype=\"sap:sapstartsrv\") | eval auth_user = lower(coalesce(executing_user, user, src_user)) | where isnotnull(auth_user) | lookup logserv_ti_compromised_credentials username AS auth_user OUTPUT added_date, notes AS ti_notes | where isnotnull(added_date) | stats count, values(sourcetype) AS sourcetypes, values(host) AS hosts, latest(_time) AS last_seen by auth_user, added_date, ti_notes | sort -count"
+    },
+    {
+      "id": "security.anomaly_user_auth_volume",
+      "pack": "security",
+      "label": "Anomaly: per-user auth volume Z-score",
+      "description": "Per-user authentication-event volume Z-score against 30-day baseline. Fires when a user generates substantially more auth events than their own historical pattern.",
+      "savedSearch": "splunk_sap_logserv_es_anomaly_user_auth_volume",
+      "renderHint": "table",
+      "interpretation": "Each row is a user whose most-recent-hour auth count is anomalous against their own 30-day baseline. Z-score > 3 indicates a statistically significant outlier (>99.7% of normal range). Combined with the `count > 10` floor, low-noise \u2014 most healthy environments show 0-2 rows.",
+      "nextSteps": [
+        {
+          "text": "For each anomalous user, pull the recent auth pattern to see what changed.",
+          "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:sapstartsrv\") action_category=\"Authentication\" (executing_user=\"<user>\" OR user=\"<user>\") earliest=-7d@h latest=now | bin _time span=1h | stats count by _time | sort -_time"
+        },
+        "Anomalous spikes correlate with: (a) brute-force attempts (most common), (b) misconfigured client polling at high frequency, (c) legitimate high-throughput batch loaders.",
+        "If batch loaders are the cause, consider creating an Identity feed entry to suppress these alerts."
+      ],
+      "dashboard": "cross-stack-authentication",
+      "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:sapstartsrv\") action_category=\"Authentication\" earliest=-30d@h latest=now | eval auth_user = coalesce(executing_user, user) | where isnotnull(auth_user) | bin _time span=1h | stats count by auth_user, _time | eventstats avg(count) AS avg_count, stdev(count) AS stdev_count by auth_user | eval z_score = round((count - avg_count) / stdev_count, 2) | where _time >= relative_time(now(), \"-1h@h\") AND z_score > 3 AND count > 10 | sort -z_score"
+    },
+    {
+      "id": "security.anomaly_webdisp_response",
+      "pack": "security",
+      "label": "Anomaly: webdispatcher P95 response time",
+      "description": "Per-host webdispatcher P95 latency Z-score against 30-day baseline. Detects latency excursions on a single host vs. its own historical pattern.",
+      "savedSearch": "splunk_sap_logserv_es_anomaly_webdisp_response",
+      "renderHint": "table",
+      "interpretation": "Each row is a host whose P95 response time in the most recent hour is statistically anomalous. Investigate backend health, network path, or cache state. Combined with the `p95_rt > 200ms` floor, this filters out noisy alerts on consistently fast hosts.",
+      "nextSteps": [
+        {
+          "text": "Pull the per-URI breakdown for the slow hour to see which endpoints dominate.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:webdispatcher:access\" host=\"<host>\" earliest=-1h@h latest=now | stats avg(response_time_ms) AS avg_rt, perc95(response_time_ms) AS p95_rt, count by uri | sort -p95_rt"
+        },
+        "Cross-check with edge-data Performance tab on the topology view for the same host to see whether RFC / HANA tenant latency is also elevated (system-wide degradation vs. webdispatcher-specific).",
+        "Check infrastructure dashboards (CPU, memory, network) for the host during the anomalous window."
+      ],
+      "dashboard": [
+        "web-dispatcher",
+        "web-api-performance"
+      ],
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:webdispatcher:access\" response_time_ms=* earliest=-30d@h latest=now | bin _time span=1h | stats avg(response_time_ms) AS avg_rt, perc95(response_time_ms) AS p95_rt, count by host, _time | eventstats avg(p95_rt) AS baseline_p95, stdev(p95_rt) AS stdev_p95 by host | eval z_score = round((p95_rt - baseline_p95) / stdev_p95, 2) | where _time >= relative_time(now(), \"-1h@h\") AND z_score > 3 AND p95_rt > 200 | sort -z_score"
+    },
+    {
+      "id": "security.anomaly_topology_edge_volume",
+      "pack": "security",
+      "label": "Anomaly: topology edge call volume",
+      "description": "Reads pre-aggregated edge bucket rows from the `logserv_topology_edges` KV Store. Detects edges whose most-recent-hour call_count is statistically anomalous vs. that edge's own 30-day baseline.",
+      "savedSearch": "splunk_sap_logserv_es_anomaly_topology_edge_volume",
+      "renderHint": "table",
+      "interpretation": "Each row is a topology edge (source -> target, with type) whose most-recent-hour call volume deviates from its own historical pattern. Surge = surge in cross-system traffic (could be brute-force or surge in legitimate workload); drop = integration outage. The Z-score sign tells you which direction. Reads from KV Store, no live SPL on raw indexes.",
+      "nextSteps": [
+        "For surge anomalies (positive Z), check whether the source system is making more requests than usual or whether the target is being targeted.",
+        "For drop anomalies (negative Z), confirm the source service is healthy on its own dashboards before declaring an integration outage.",
+        "Open the Environment Topology view, click the anomalous edge, and review the Activity tab for the historical trend visualization."
+      ],
+      "dashboard": "integration-topology",
+      "spl": "| inputlookup logserv_topology_edges where bucket_ts>=relative_time(now(), \"-30d@h\") | eventstats avg(call_count) AS baseline_avg, stdev(call_count) AS baseline_stdev by source, target, type | where bucket_ts >= relative_time(now(), \"-1h@h\") | eval z_score = round((call_count - baseline_avg) / baseline_stdev, 2) | where abs(z_score) > 3 AND call_count > 10 | sort -z_score"
+    },
+    {
+      "id": "security.anomaly_after_hours_admin",
+      "pack": "security",
+      "label": "Anomaly: per-admin off-hours activity",
+      "description": "Per-admin off-hours activity baseline vs. that admin's 30-day off-hours pattern. Z-score threshold lower (>2) than other anomaly searches because admin off-hours activity is naturally rare and low absolute counts can still be anomalous.",
+      "savedSearch": "splunk_sap_logserv_es_anomaly_after_hours_admin",
+      "renderHint": "table",
+      "interpretation": "Each row is an admin user whose yesterday-off-hours activity exceeds their own 30-day off-hours baseline. Healthy environments show 0-1 rows during normal weeks; planned weekend cutovers will produce hits that should map to documented change tickets.",
+      "nextSteps": [
+        {
+          "text": "Pull the full off-hours activity for the admin to see exactly what happened.",
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" is_business_hours=\"false\" (executing_user=\"<user>\" OR user=\"<user>\") earliest=-2d@d latest=now | sort 0 _time | table _time host action_category action_type target_user _raw"
+        },
+        "Confirm the activity maps to a change ticket; off-hours admin activity without a ticket is the canonical \"after-hours admin compromise\" indicator.",
+        {
+          "text": "Cross-check with after_hours_admin_data_access to see if the admin was active in the webdispatcher tier as well.",
+          "savedSearch": "splunk_sap_logserv_es_after_hours_admin_data_access"
+        }
+      ],
+      "dashboard": [
+        "hana-audit",
+        "change-config"
+      ],
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" is_business_hours=\"false\" earliest=-30d@d latest=now | eval auth_user = coalesce(executing_user, user) | where isnotnull(auth_user) | bin _time span=1d | stats count by auth_user, _time | eventstats avg(count) AS daily_avg, stdev(count) AS daily_stdev by auth_user | eval z_score = round((count - daily_avg) / daily_stdev, 2) | where _time >= relative_time(now(), \"-1d@d\") AND z_score > 2 AND count > 5 | sort -z_score"
+    }
+  ]
 }

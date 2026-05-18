@@ -141,7 +141,14 @@ for (const p of intentMap.prompts) {
         failed++;
         console.error(`FAIL pack ${p.pack} (used by ${p.id}) not declared in packs map`);
     }
-    if (!p.savedSearch.match(/^logserv_[a-z0-9_]+$/)) {
+    // Saved-search naming convention:
+    //   - `logserv_*` — user-facing AI Assistant prompts (the original v0.0.5
+    //     pattern: predefined SPL exposed in the prompt browser).
+    //   - `splunk_sap_logserv_es_*` — Splunk Enterprise Security correlation
+    //     searches + behavioral / threat-intel detections (session 033 +
+    //     session 038). These run on cron via `action.notable` AND can be
+    //     dispatched on demand by the AI Assistant via the intent map.
+    if (!p.savedSearch.match(/^(logserv|splunk_sap_logserv_es)_[a-z0-9_]+$/)) {
         failed++;
         console.error(`FAIL savedSearch name doesn't match pattern: ${p.savedSearch}`);
     }
@@ -270,9 +277,15 @@ for (const p of intentMap.prompts) {
     }
 }
 
-// Reverse direction: every saved search starting with `logserv_` should be referenced
+// Reverse direction: every saved search starting with `logserv_` should be
+// referenced by an intent-map prompt — EXCEPT for scheduled-aggregation
+// stanzas under the `logserv_topology_*` namespace (session 035 KV Store
+// pipeline). Those are cron-driven population searches, not user-facing
+// prompts; they intentionally don't have intent-map entries.
+const SKIP_TOPOLOGY_AGGREGATION = /^logserv_topology_(aggregate_|backfill_|retention$)/;
 for (const stanzaName of Object.keys(savedSearches)) {
     if (!stanzaName.startsWith('logserv_')) continue;
+    if (SKIP_TOPOLOGY_AGGREGATION.test(stanzaName)) continue;
     if (!seenSavedSearchNames.has(stanzaName)) {
         failed++;
         console.error(

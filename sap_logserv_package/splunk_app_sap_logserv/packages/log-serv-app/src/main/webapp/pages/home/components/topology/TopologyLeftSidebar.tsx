@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import styled from 'styled-components';
 import FramedPanel from '../FramedPanel';
 import { logservTheme } from '../../styles/logservTheme';
 import { ALL_INTEGRATION_TYPES, edgeColor, integrationTypeLabel } from '../../topology/edgeStyle';
-import type { IntegrationType, TopologyNode } from '../../topology/types';
+import type { IntegrationType, TopologyEdge, TopologyNode } from '../../topology/types';
 
 /**
  * Left sidebar — two stacked FramedPanels:
@@ -69,6 +69,7 @@ const Count = styled.span`
     color: ${logservTheme.colors.textMuted};
     font-size: ${logservTheme.fontSize.small};
     font-variant-numeric: tabular-nums;
+    text-align: right;
 `;
 
 const TypeList = styled.ul`
@@ -184,6 +185,14 @@ const CollapseChevron = styled.button`
 
 interface TopologyLeftSidebarProps {
     nodes: TopologyNode[];
+    /** All edges in the topology — used to compute per-SID edge call totals
+     *  (sum of incident edge.callCount). Build 195 / session 035: pre-KV-Store
+     *  parity — the previous on-demand SPL path summed connected-edge calls
+     *  per SID to display "5,661" for XCP; the KV Store path's per-node
+     *  event_count is a different (smaller) number. Showing both side-by-side
+     *  preserves both meanings without forcing the user to reverse-engineer
+     *  the discrepancy. */
+    edges: TopologyEdge[];
     totalCalls: number;
     /** Active integration-type filters. Empty Set = none enabled (all dimmed). */
     enabledTypes: Set<IntegrationType>;
@@ -197,6 +206,7 @@ interface TopologyLeftSidebarProps {
 
 const TopologyLeftSidebar: React.FC<TopologyLeftSidebarProps> = ({
     nodes,
+    edges,
     totalCalls,
     enabledTypes,
     onToggleType,
@@ -206,8 +216,26 @@ const TopologyLeftSidebar: React.FC<TopologyLeftSidebarProps> = ({
     onCollapse,
 }) => {
     const sidNodes = nodes.filter((n) => n.kind !== 'partner');
-    const maxEvents = sidNodes.reduce((m, n) => Math.max(m, n.eventCount), 1);
     const allTypesOn = enabledTypes.size === ALL_INTEGRATION_TYPES.length;
+
+    /** Per-SID edge call totals: sum of edge.callCount where the node is
+     *  source OR target. Mirrors the pre-KV-Store on-demand-path metric
+     *  that user reference screenshots show ("XCP=5,661"). Build 197 reverted
+     *  from the build-195 two-bar (EVT + CALL) layout back to a single bar
+     *  using only this metric — the eventCount metric was confusing and the
+     *  edge-call total IS what the original app showed. */
+    const edgeCallsByNodeId = useMemo(() => {
+        const m = new Map<string, number>();
+        edges.forEach((e) => {
+            m.set(e.source, (m.get(e.source) ?? 0) + e.callCount);
+            m.set(e.target, (m.get(e.target) ?? 0) + e.callCount);
+        });
+        return m;
+    }, [edges]);
+    const maxEdgeCalls = sidNodes.reduce(
+        (m, n) => Math.max(m, edgeCallsByNodeId.get(n.id) ?? 0),
+        1,
+    );
 
     return (
         <Stack>
@@ -224,25 +252,29 @@ const TopologyLeftSidebar: React.FC<TopologyLeftSidebarProps> = ({
                     {`${sidNodes.length} systems · ${totalCalls.toLocaleString()} calls · ${nodes.length - sidNodes.length} partners`}
                 </StatLine>
                 <SystemList>
-                    {sidNodes.map((n) => (
-                        <SystemRow
-                            key={n.id}
-                            $selected={selectedNodeId === n.id}
-                            onClick={() => onSelectNode(n.id)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectNode(n.id); }}
-                        >
-                            <SidLabel $kind={n.kind}>{n.label}</SidLabel>
-                            <BarTrack>
-                                <BarFill
-                                    $pctOfMax={(n.eventCount / maxEvents) * 100}
-                                    $color={n.kind === 'sid_focused' ? logservTheme.colors.red : logservTheme.colors.cyanLight}
-                                />
-                            </BarTrack>
-                            <Count>{n.eventCount.toLocaleString()}</Count>
-                        </SystemRow>
-                    ))}
+                    {sidNodes.map((n) => {
+                        const edgeCalls = edgeCallsByNodeId.get(n.id) ?? 0;
+                        return (
+                            <SystemRow
+                                key={n.id}
+                                $selected={selectedNodeId === n.id}
+                                onClick={() => onSelectNode(n.id)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSelectNode(n.id); }}
+                                title="Calls: sum of call_count for every edge incident to this SID (source OR target). Matches the pre-KV-Store metric."
+                            >
+                                <SidLabel $kind={n.kind}>{n.label}</SidLabel>
+                                <BarTrack>
+                                    <BarFill
+                                        $pctOfMax={(edgeCalls / maxEdgeCalls) * 100}
+                                        $color={n.kind === 'sid_focused' ? logservTheme.colors.red : logservTheme.colors.cyanLight}
+                                    />
+                                </BarTrack>
+                                <Count>{edgeCalls.toLocaleString()}</Count>
+                            </SystemRow>
+                        );
+                    })}
                 </SystemList>
             </FramedPanel>
 

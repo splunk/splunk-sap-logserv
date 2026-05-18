@@ -38,7 +38,7 @@ The table below lists the different features supported by each deployment scenar
 | Feature    | [AWS Remote S3 Connect Setup](aws-remote-s3-connect-walkthrough.md) | [AWS Remote S3 Filter Setup](aws-remote-s3-filter-walkthrough.md) | [AWS Remote S3 Copy Setup](aws-remote-s3-copy-walkthrough.md) |
 |------------------------------------------ | --------- -------------- | ------------------------- | ---------------------- |
 | Secondary Copy of Logs                    | ❌ Not Supported        | ❌ Not Supported          | ✅ Supported          |      
-| AWS Lambda-based Filtering                | ❌ Not Supported        | ✅ Supported              | ❌ Not yet, coming soon | 
+| AWS Lambda-based Filtering                | ❌ Not Supported        | ✅ Supported              | ❌ Not supported | 
 | **Native TA Index-Time Filtering**        | ✅ Supported            | ✅ Supported              | ✅ Supported          |
 
 ??? tip "Native TA Filtering vs. AWS Lambda-based Filtering"

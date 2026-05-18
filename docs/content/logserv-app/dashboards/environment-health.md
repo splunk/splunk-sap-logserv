@@ -26,7 +26,7 @@ The Environment Health dashboard is a single-pane-of-glass operations view that 
 - **ICM Status Codes** -- Stacked column chart of HTTP status code categories (2xx/3xx/4xx/5xx) over time. Click to drill down to ABAP Security dashboard.
 - **Data Pipeline -- Events/Day** -- Average daily event volume and daily trend line for monitoring pipeline health and detecting ingestion gaps. Click to drill down to Overview dashboard.
 
-### :material-lightning-bolt:{ .taiconcolor } v0.0.5.0 Drill-Down Behavior
+### :material-lightning-bolt:{ .taiconcolor } Drill-Down Behavior
 
 Every KPI card, chart panel, and table row on this dashboard is clickable and opens its drill-down destination in a new browser tab with the source dashboard's currently-selected time range pre-applied (`?earliest=...&latest=...`). The destination's `TimeRangeProvider` parses the URL and hydrates its initial time-range from those params on mount, so a click from "Last 7 days" lands you in the destination at the same window. Two destination patterns:
 

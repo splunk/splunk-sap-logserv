@@ -40,6 +40,7 @@ const PanelGrid2 = styled.div`
 
 const ST_WP = 'sourcetype="sap:abap:workprocess"';
 const ST_DP = 'sourcetype="sap:abap:dispatcher"';
+const ST_ICM = 'sourcetype="sap:abap:icm"';
 
 const Q = {
     kpiTotal: `\`sap_logserv_idx_macro\` ${ST_WP} | stats count`,
@@ -58,6 +59,13 @@ const Q = {
     severityTrend: `\`sap_logserv_idx_macro\` ${ST_DP} dp_severity=* | timechart span=1d count by dp_severity`,
     bySid: `\`sap_logserv_idx_macro\` ${ST_WP} | stats count as "Total Events", dc(wp_function) as "Unique Functions", dc(wp_category_name) as "WP Categories" by sap_sid, sap_instance | sort -"Total Events" | rename sap_sid as "SID", sap_instance as "Instance"`,
     recentErrors: `\`sap_logserv_idx_macro\` ${ST_DP} dp_severity="ERROR" | fillnull value="-" dp_function dp_reason | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | table Time, sap_sid, dp_function, dp_reason, host | sort -Time | rename sap_sid as "SID", dp_function as "Function", dp_reason as "Reason"`,
+
+    // ICM async RFC queue depth (build 186 / session 034 deep-dive). icm_tasks
+    // and icm_memory are extracted by props.conf; previously unsurfaced in any
+    // dashboard. Queue depth signals downstream-system saturation when the
+    // RFC stack can't drain to the consumer fast enough.
+    asyncRfcQueueTrend: `\`sap_logserv_idx_macro\` ${ST_ICM} icm_request_type="ASYNC_RFC" icm_tasks=* | timechart span=1d avg(icm_tasks) AS "Avg Queue Depth" max(icm_tasks) AS "Max Queue Depth"`,
+    topProgramsByTasks: `\`sap_logserv_idx_macro\` ${ST_ICM} icm_program=* icm_tasks=* | stats count AS Calls avg(icm_tasks) AS avg_tasks max(icm_tasks) AS max_tasks max(icm_memory) AS max_mem_kb by icm_program | eval Avg = round(avg_tasks, 1) | sort -max_tasks | head 20 | rename icm_program AS Program max_tasks AS "Max Tasks" max_mem_kb AS "Max Mem (KB)" | table Program Calls Avg "Max Tasks" "Max Mem (KB)"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -86,6 +94,15 @@ const RECENT_ERR_COLS: ColumnDef[] = [
     { key: 'host', label: 'Host', width: '180px' },
 ];
 
+// ICM RFC queue columns (build 186)
+const TOP_PROGRAMS_COLS: ColumnDef[] = [
+    { key: 'Program', label: 'ABAP Program' },
+    { key: 'Calls', label: 'Calls', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Avg', label: 'Avg Tasks', align: 'right' },
+    { key: 'Max Tasks', label: 'Max Tasks', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Max Mem (KB)', label: 'Max Mem (KB)', align: 'right', render: (v) => formatInteger(v) },
+];
+
 const WorkProcessPerformance: React.FC = () => {
     const total = useFirstRowField(Q.kpiTotal, 'count');
     const sids = useFirstRowField(Q.kpiSids, 'sids');
@@ -95,6 +112,7 @@ const WorkProcessPerformance: React.FC = () => {
     const topFunctions = useSearch({ query: Q.topFunctions });
     const bySid = useSearch({ query: Q.bySid });
     const recentErrors = useSearch({ query: Q.recentErrors });
+    const topPrograms = useSearch({ query: Q.topProgramsByTasks });
 
     const errorTone = Number(errors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
@@ -167,6 +185,15 @@ const WorkProcessPerformance: React.FC = () => {
                     <DataTable columns={RECENT_ERR_COLS} rows={recentErrors.results} loading={recentErrors.loading} error={recentErrors.error} emptyMessage="No dispatcher ERROR events in this time range." initialSortKey="Time" initialSortDir="desc" onRowClick={goRecentErrorRow} />
                 </FramedPanel>
             </FullWidthPanel>
+
+            <PanelGrid2>
+                <FramedPanel title="Async RFC Queue Depth" subtitle="ICM ASYNC_RFC tasks-in-queue per dispatch (sap:abap:icm `icm_tasks` field) — daily avg + max">
+                    <TimeSeriesChart query={Q.asyncRfcQueueTrend} height={280} palette="categorical" chartType="line" />
+                </FramedPanel>
+                <FramedPanel title="Top Programs by Queue Depth" subtitle="ABAP programs ranked by max queue depth at dispatch — saturated programs surface here">
+                    <DataTable columns={TOP_PROGRAMS_COLS} rows={topPrograms.results} loading={topPrograms.loading} error={topPrograms.error} emptyMessage="No ICM ASYNC_RFC events with task counts in this time range." />
+                </FramedPanel>
+            </PanelGrid2>
         </DashboardLayout>
     );
 };

@@ -1,67 +1,73 @@
 /**
- * telemetryConfApi — read + write the per-app acknowledgement state
- * tracked in `ai_assistant_acks.conf` via the standard
- * `configs/conf-ai_assistant_acks` REST endpoint.
+ * telemetryConfApi — read + write the per-app acknowledgement state for
+ * AI Assistant legal modals.
  *
- * Renamed from `telemetry.conf` in build 123 / session 024 path A.12 —
- * the original choice (using Splunk's own telemetry.conf) matched
- * Splunk's instrumentation-framework UX pattern, but failed
- * AppInspect precert (the rule reserves telemetry.conf for the
- * splunk_instrumentation app and forbids third-party stanzas). The
- * file name on this module is preserved (telemetryConfApi.ts) for
- * stable imports — only the `CONF_NAME` constant changed.
+ * Storage (session 042 / Option D — split between conf-file + KV Store):
  *
- * Each stanza tracks ONE legal-acknowledgement subject. The fields
- * within a stanza follow Splunk's optInVersion pattern verbatim:
+ *   OPERATOR-CONTROLLED `optInVersion` lives in `default/ai_assistant_acks.conf`
+ *   (read-only via the standard `configs/conf-ai_assistant_acks` REST endpoint
+ *   in `default` namespace). Operators bump this value to force everyone to
+ *   re-acknowledge after a disclaimer text change. Reads only — the app
+ *   never writes to optInVersion.
  *
- *   * `optInVersion` — current required acknowledgement version
- *     (declared in `default/ai_assistant_acks.conf`, bumped by
- *     operators when the disclaimer text changes).
- *   * `optInVersionAcknowledged` — last version the admin interacted
- *     with (lives in `local/ai_assistant_acks.conf`).
- *   * `optInChoice` — `yes` or `no`, the admin's binary answer.
- *   * `optInChoiceAt` — ISO timestamp of the interaction.
+ *   USER-CONTROLLED acknowledgement state (optInVersionAcknowledged,
+ *   optInChoice, optInChoiceAt) lives in the KV Store collection
+ *   `logserv_ai_assistant_acks`, one row per stanza name. KV Store
+ *   endpoints are gated only by the collection-level metadata ACL — no
+ *   `admin_all_objects` capability requirement — so sc_subadmin users on
+ *   locked-down Splunk Cloud Victoria deployments can save without the
+ *   capability escalation that `/configs/conf-X/` writes require.
  *
- * Per Splunk's optInVersion pattern, ANY interaction with the modal
- * (yes OR no) bumps `optInVersionAcknowledged` to current.
+ *   FALLBACK: pre-migration installs wrote everything (including the
+ *   user-controlled fields) into `local/ai_assistant_acks.conf`. The
+ *   reader tries KV Store first, then conf-file-local. The
+ *   `migrateConfFileAcksToKvStore()` helper copies any pre-migration
+ *   ack into KV Store on first load so users don't get re-prompted.
  *
- * The app currently uses two stanzas, both managed by this module:
+ * Renamed from `default/telemetry.conf` in build 123 / session 024
+ * path A.12. File name `telemetryConfApi.ts` preserved for stable
+ * imports — only the storage backend changed.
  *
- *   * `logserv-ai-assistant-tc` — the AI Assistant audit-log
- *     integrity acknowledgement (build 99). Triggered on Settings
- *     save with `audit_forwarder_enabled=false`.
+ * Two stanzas currently managed:
+ *
+ *   * `logserv-ai-assistant-tc` — the AI Assistant audit-log integrity
+ *     acknowledgement (build 99). Triggered on Settings save with
+ *     `audit_forwarder_enabled=false`.
  *   * `logserv-ai-assistant-enable-tc` — the AI Assistant feature-
  *     enablement liability acknowledgement (build 100). Triggered on
  *     Settings save when `enabled=true` and the current version of
  *     this T&C has not yet been acknowledged. This is the legal-
  *     liability waiver covering data egress to the configured LLM.
  *
- * Adding a new stanza is now a one-line constant + a new modal
- * component; the API takes stanza name as parameter.
- *
- * Auth: same Splunk Web cookie + CSRF + X-Requested-With pattern as
- * the other conf editors. Writing to `configs/conf-ai_assistant_acks`
- * requires admin role (`admin_all_objects` capability) — Splunk
- * enforces this server-side, so non-admin callers receive 403 and
- * we surface the error to the UI.
- *
- * Build 99 / session 022 (initial). Build 100 (multi-stanza).
- * Build 123 / session 024 (renamed conf for AppInspect compliance).
+ * Build 240 / session 042. Prior to build 240 this module wrote to
+ * `configs/conf-ai_assistant_acks` — see git history for the conf-file
+ * implementation.
  */
 
 const APP_NAMESPACE = 'splunk_app_sap_logserv';
 const CONF_NAME = 'ai_assistant_acks';
-const NS_BASE =
+
+// Conf-file reader for optInVersion (operator-managed) + legacy local/
+// fallback for the user-controlled fields. Reads only.
+const CONF_NS_BASE =
     `/en-US/splunkd/__raw/servicesNS/nobody/${APP_NAMESPACE}` +
     `/configs/conf-${CONF_NAME}`;
+
+// KV Store row for the user-controlled acknowledgement state.
+const COLLECTION = 'logserv_ai_assistant_acks';
+const KV_BASE =
+    `/en-US/splunkd/__raw/servicesNS/nobody/${APP_NAMESPACE}` +
+    `/storage/collections/data/${COLLECTION}`;
+
+const confStanzaUrl = (stanza: string): string =>
+    `${CONF_NS_BASE}/${encodeURIComponent(stanza)}`;
+const kvRowUrl = (stanza: string): string =>
+    `${KV_BASE}/${encodeURIComponent(stanza)}`;
 
 /** The audit-forwarder integrity T&C stanza (build 99). */
 export const STANZA_FORWARDER_TC = 'logserv-ai-assistant-tc';
 /** The AI Assistant feature-enablement liability T&C stanza (build 100). */
 export const STANZA_ENABLE_TC = 'logserv-ai-assistant-enable-tc';
-
-const stanzaUrl = (stanza: string): string =>
-    `${NS_BASE}/${encodeURIComponent(stanza)}`;
 
 export type OptInChoice = 'yes' | 'no';
 
@@ -96,45 +102,92 @@ const buildSharedHeaders = (): Record<string, string> => ({
     'X-Requested-With': 'XMLHttpRequest',
 });
 
-const buildMutatingHeaders = (): Record<string, string> => ({
+const buildKvMutatingHeaders = (): Record<string, string> => ({
     ...buildSharedHeaders(),
-    'Content-Type': 'application/x-www-form-urlencoded',
+    'Content-Type': 'application/json',
     'X-Splunk-Form-Key': readCsrfToken(),
 });
 
-const parseRawContent = (
-    raw: Record<string, unknown> | undefined,
-): TcAcknowledgementState => {
-    const r = raw ?? {};
-    const verNum = Number(r.optInVersion);
-    const ackNum = Number(r.optInVersionAcknowledged);
-    // Splunk's conf-stanza writer coerces values that look like booleans
-    // (`yes` → `'1'`, `no` → `'0'`). Accept both forms when reading so
-    // a conf written with `optInChoice=yes` still parses back as 'yes'.
-    let choice: OptInChoice | '' = '';
-    if (typeof r.optInChoice === 'string') {
-        if (r.optInChoice === 'yes' || r.optInChoice === '1' || r.optInChoice === 'true') {
-            choice = 'yes';
-        } else if (r.optInChoice === 'no' || r.optInChoice === '0' || r.optInChoice === 'false') {
-            choice = 'no';
-        }
+/** Parse the optInChoice field tolerant of all the forms Splunk's
+ *  conf-stanza writer + KV Store can produce. Splunk's conf-stanza writer
+ *  coerces `yes` → `'1'`, `no` → `'0'`; KV Store passes strings through
+ *  intact. */
+const parseChoice = (raw: unknown): OptInChoice | '' => {
+    if (typeof raw !== 'string') return '';
+    if (raw === 'yes' || raw === '1' || raw === 'true') return 'yes';
+    if (raw === 'no' || raw === '0' || raw === 'false') return 'no';
+    return '';
+};
+
+/** Parse optInVersion from the conf-file's content block. Number-coerce
+ *  defensively; bad values fall back to 1. */
+const parseOptInVersion = (raw: Record<string, unknown> | undefined): number => {
+    const n = Number(raw?.optInVersion);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : DEFAULT_STATE.optInVersion;
+};
+
+/** Read the conf-file stanza's content block. Returns undefined on any
+ *  REST failure — caller treats that as "use defaults". */
+const readConfStanza = async (
+    stanza: string,
+): Promise<Record<string, unknown> | undefined> => {
+    try {
+        const resp = await fetch(`${confStanzaUrl(stanza)}?output_mode=json`, {
+            credentials: 'same-origin',
+            headers: buildSharedHeaders(),
+        });
+        if (!resp.ok) return undefined;
+        const data = await resp.json();
+        return data?.entry?.[0]?.content as
+            | Record<string, unknown>
+            | undefined;
+    } catch {
+        return undefined;
     }
-    return {
-        optInVersion: Number.isFinite(verNum) && verNum > 0 ? Math.floor(verNum) : DEFAULT_STATE.optInVersion,
-        optInVersionAcknowledged: Number.isFinite(ackNum) && ackNum >= 0
-            ? Math.floor(ackNum)
-            : 0,
-        optInChoice: choice,
-        optInChoiceAt:
-            typeof r.optInChoiceAt === 'string' ? r.optInChoiceAt : '',
-    };
+};
+
+interface KvAckRecord {
+    _key: string;
+    /** snake_case wire field names per KV Store collection schema. */
+    opt_in_version_acknowledged?: number;
+    opt_in_choice?: string;
+    opt_in_choice_at?: string;
+    /** opt_in_version is mirrored to the KV Store row on every write
+     *  for auditability — it's still authoritative from the conf-file
+     *  reader, but storing it here too means a KV Store dump shows the
+     *  full state without joining against the conf-file. */
+    opt_in_version?: number;
+}
+
+/** Read the KV Store row for a stanza. Returns null on 404 (no row),
+ *  undefined on any other failure. */
+const readKvAckRow = async (
+    stanza: string,
+): Promise<KvAckRecord | null | undefined> => {
+    try {
+        const resp = await fetch(`${kvRowUrl(stanza)}?output_mode=json`, {
+            credentials: 'same-origin',
+            headers: buildSharedHeaders(),
+        });
+        if (resp.status === 404) return null;
+        if (!resp.ok) return undefined;
+        return (await resp.json()) as KvAckRecord;
+    } catch {
+        return undefined;
+    }
 };
 
 /**
- * Read the merged stanza state. Returns `DEFAULT_STATE` on any
- * failure (404, network, parse) so callers can always render — the
- * admin will re-prompt next save and reach a clean acknowledgement
- * state.
+ * Read the merged stanza state.
+ *
+ * `optInVersion` is read from the conf-file (operator-managed; stays in
+ * conf). User-controlled fields come from the KV Store row, with a
+ * fall-through to the conf-file's local/ override for pre-migration
+ * installs.
+ *
+ * Returns `DEFAULT_STATE` on any failure (404, network, parse) so callers
+ * can always render — the admin will re-prompt next save and reach a
+ * clean acknowledgement state.
  *
  * @param stanza the ai_assistant_acks.conf stanza name to read; use the
  *   `STANZA_*` constants exported from this module.
@@ -142,51 +195,141 @@ const parseRawContent = (
 export const readTcAcknowledgement = async (
     stanza: string,
 ): Promise<TcAcknowledgementState> => {
-    try {
-        const resp = await fetch(`${stanzaUrl(stanza)}?output_mode=json`, {
+    // optInVersion always comes from the conf-file (operator-managed).
+    const confContent = await readConfStanza(stanza);
+    const optInVersion = parseOptInVersion(confContent);
+
+    // User-controlled fields: try KV Store first, then conf-file local/
+    // override (legacy pre-migration), then defaults.
+    const kvRow = await readKvAckRow(stanza);
+    if (kvRow) {
+        const ackNum = Number(kvRow.opt_in_version_acknowledged);
+        return {
+            optInVersion,
+            optInVersionAcknowledged:
+                Number.isFinite(ackNum) && ackNum >= 0 ? Math.floor(ackNum) : 0,
+            optInChoice: parseChoice(kvRow.opt_in_choice),
+            optInChoiceAt:
+                typeof kvRow.opt_in_choice_at === 'string' ? kvRow.opt_in_choice_at : '',
+        };
+    }
+
+    // Fall back to conf-file fields (legacy pre-migration). The conf-file
+    // uses camelCase field names (optInVersionAcknowledged etc.) carried
+    // over from the previous build's wire format.
+    if (confContent) {
+        const ackNum = Number(confContent.optInVersionAcknowledged);
+        return {
+            optInVersion,
+            optInVersionAcknowledged:
+                Number.isFinite(ackNum) && ackNum >= 0 ? Math.floor(ackNum) : 0,
+            optInChoice: parseChoice(confContent.optInChoice),
+            optInChoiceAt:
+                typeof confContent.optInChoiceAt === 'string'
+                    ? confContent.optInChoiceAt
+                    : '',
+        };
+    }
+
+    return { ...DEFAULT_STATE, optInVersion };
+};
+
+/** Internal: write the KV Store row. Two-step upsert (POST to /<key>, fall
+ *  back to collection-level POST on 404). Replaces the whole row on each
+ *  call — caller passes the complete user-controlled state. */
+const writeKvAckRow = async (record: KvAckRecord): Promise<void> => {
+    const body = JSON.stringify(record);
+    let resp = await fetch(kvRowUrl(record._key), {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: buildKvMutatingHeaders(),
+        body,
+    });
+    if (resp.status === 404) {
+        resp = await fetch(KV_BASE, {
+            method: 'POST',
             credentials: 'same-origin',
-            headers: buildSharedHeaders(),
+            headers: buildKvMutatingHeaders(),
+            body,
         });
-        if (!resp.ok) return { ...DEFAULT_STATE };
-        const data = await resp.json();
-        const content = data?.entry?.[0]?.content as
-            | Record<string, unknown>
-            | undefined;
-        return parseRawContent(content);
-    } catch (_e) {
-        return { ...DEFAULT_STATE };
+    }
+    if (!resp.ok) {
+        throw new Error(`Acknowledgement KV Store write failed: HTTP ${resp.status}`);
     }
 };
 
 /**
- * Write the admin's acknowledgement to `local/ai_assistant_acks.conf` via
- * the standard Splunk REST endpoint. Per Splunk's optInVersion
- * pattern this is called for BOTH yes and no answers — the boolean
- * choice is recorded in `optInChoice` while the version bump
+ * Write the admin's acknowledgement to KV Store. Per Splunk's
+ * optInVersion pattern this is called for BOTH yes and no answers — the
+ * boolean choice is recorded in `optInChoice` while the version bump
  * indicates the prompt has been resolved for the current revision.
  *
  * @param stanza the ai_assistant_acks.conf stanza name to write; use the
  *   `STANZA_*` constants exported from this module.
  * @param choice `yes` (admin accepted) or `no` (admin declined)
  * @param version the current `optInVersion` to record as acknowledged
- *   (caller has already read this from default + any local override)
+ *   (caller has already read this from the conf-file)
  */
 export const writeTcAcknowledgement = async (
     stanza: string,
     choice: OptInChoice,
     version: number,
 ): Promise<void> => {
-    const params = new URLSearchParams();
-    params.set('optInVersionAcknowledged', String(version));
-    params.set('optInChoice', choice);
-    params.set('optInChoiceAt', new Date().toISOString());
-    const resp = await fetch(stanzaUrl(stanza), {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: buildMutatingHeaders(),
-        body: params.toString(),
-    });
-    if (!resp.ok) {
-        throw new Error(`Acknowledgement conf write failed: HTTP ${resp.status}`);
+    const record: KvAckRecord = {
+        _key: stanza,
+        opt_in_version: version,
+        opt_in_version_acknowledged: version,
+        opt_in_choice: choice,
+        opt_in_choice_at: new Date().toISOString(),
+    };
+    await writeKvAckRow(record);
+};
+
+/**
+ * One-shot migration helper called from AIAssistantProvider on mount.
+ * For each known stanza: if no KV Store row exists AND the conf-file has
+ * a non-default acknowledgement value (i.e. someone previously wrote to
+ * `local/ai_assistant_acks.conf`), copy that value into the KV Store row.
+ *
+ * Idempotent: subsequent runs find the KV Store row populated and no-op.
+ * Best-effort: failures are swallowed so the UI isn't blocked on
+ * migration.
+ *
+ * The two known stanza names are wired in here; if new stanzas get added
+ * later, extend `KNOWN_STANZAS` below.
+ */
+const KNOWN_STANZAS = [STANZA_FORWARDER_TC, STANZA_ENABLE_TC];
+
+export const migrateConfFileAcksToKvStore = async (): Promise<void> => {
+    try {
+        await Promise.all(
+            KNOWN_STANZAS.map(async (stanza) => {
+                const existing = await readKvAckRow(stanza);
+                if (existing) return; // already migrated
+                const confContent = await readConfStanza(stanza);
+                if (!confContent) return;
+                const ackNum = Number(confContent.optInVersionAcknowledged);
+                const choice = parseChoice(confContent.optInChoice);
+                // Only migrate when there's actually something to preserve
+                // (i.e., a non-zero acknowledged version OR a recorded
+                // choice). Skip the default state to avoid populating the
+                // KV Store on fresh installs.
+                if (!Number.isFinite(ackNum) || ackNum <= 0 || choice === '') return;
+                const optInVersion = parseOptInVersion(confContent);
+                const record: KvAckRecord = {
+                    _key: stanza,
+                    opt_in_version: optInVersion,
+                    opt_in_version_acknowledged: Math.floor(ackNum),
+                    opt_in_choice: choice,
+                    opt_in_choice_at:
+                        typeof confContent.optInChoiceAt === 'string'
+                            ? confContent.optInChoiceAt
+                            : '',
+                };
+                await writeKvAckRow(record);
+            }),
+        );
+    } catch {
+        // Migration is best-effort — never block the UI.
     }
 };

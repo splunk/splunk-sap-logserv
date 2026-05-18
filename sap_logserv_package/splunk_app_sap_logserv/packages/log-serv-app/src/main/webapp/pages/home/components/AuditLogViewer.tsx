@@ -15,7 +15,7 @@ import {
 const PAGE_SIZE = 25;
 
 /**
- * AuditLogViewer — read-only browser of the `_ai_assistant_audit`
+ * AuditLogViewer — read-only browser of the `ai_assistant_audit`
  * Splunk index. Rendered inside the Settings page's "Audit Log" tab.
  * Build 95 / session 022.
  *
@@ -562,7 +562,7 @@ const AuditLogViewer: React.FC = () => {
                     <strong>Read-only viewer.</strong> This panel queries
                     the audit index (resolved via the{' '}
                     <code>sap_logserv_audit_idx_macro</code> macro,
-                    default <code>_ai_assistant_audit</code>) through{' '}
+                    default <code>ai_assistant_audit</code>) through{' '}
                     <code>services/search/jobs/oneshot</code>. It cannot
                     modify, delete, or inject audit events.
                 </p>

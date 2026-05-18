@@ -79,6 +79,7 @@ nav:
     - Prerequisites: 'content/install-setup/prerequisites.md'
     - Installing the Data TA: 'content/install-setup/install-ta.md'
     - Configuring Filters: 'content/install-setup/configure-filters.md'
+    - Splunk Cloud Victoria Notes: 'content/install-setup/splunk-cloud-victoria-notes.md'
     - Setup Walkthroughs Overview: 'content/install-setup/setup-walkthroughs.md'
     - AWS Setup Walkthroughs:
         - AWS Remote S3 Connect Setup Walkthrough: 'content/install-setup/aws-remote-s3-connect-walkthrough.md'
@@ -120,6 +121,13 @@ nav:
             - Windows Events: 'content/logserv-app/dashboards/platform/windows.md'
             - Proxy Analytics: 'content/logserv-app/dashboards/platform/proxy.md'
             - Host Details: 'content/logserv-app/dashboards/platform/host-details.md'
+- Enterprise Security Integration:
+    - Overview: 'content/enterprise-security/overview.md'
+    - CIM Compliance: 'content/enterprise-security/cim-compliance.md'
+    - Correlation Searches & RBA: 'content/enterprise-security/correlation-searches.md'
+    - Asset & Identity Feed: 'content/enterprise-security/asset-identity-feed.md'
+    - Threat Intelligence Integration: 'content/enterprise-security/threat-intel.md'
+    - Behavioral & Anomaly Detections: 'content/enterprise-security/behavioral-detections.md'
 - AI Assistant:
     - Overview: 'content/ai-assistant/overview.md'
     - Privacy Tiers: 'content/ai-assistant/privacy-tiers.md'

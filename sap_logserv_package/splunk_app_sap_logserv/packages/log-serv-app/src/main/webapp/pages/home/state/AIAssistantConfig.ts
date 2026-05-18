@@ -22,6 +22,13 @@ import { PrivacyTier, ProviderName, readAIConfig } from '../utils/aiConfigApi';
 export interface AIAssistantConfig {
     /** Master switch — when false, all AI Assistant UI is hidden. */
     enabled: boolean;
+    /** Runtime templates-only mode. When true, the LLM-driven free-form
+     *  path is disabled at runtime: chat input read-only, Send button
+     *  disabled, model picker + Power Mode toggle hidden, Provider
+     *  Credentials Settings tab hidden. Predefined-prompt path + MCP +
+     *  audit log stay fully active. Replaces the compile-time
+     *  TEMPLATES_ONLY build flag with admin-controlled runtime config. */
+    templatesOnlyMode: boolean;
     /** Active provider name. Drives the chat panel's model picker. */
     provider: ProviderName;
     /** Admin-chosen default model for the active provider. The chat
@@ -52,7 +59,7 @@ export interface AIAssistantConfig {
      *  Build 94 / session 022. */
     tier2RedactHostnames: boolean;
     /** Local Splunk index that receives every audit event the AI Assistant
-     *  writes. Default `_ai_assistant_audit` matches the LogServ Index App's
+     *  writes. Default `ai_assistant_audit` matches the LogServ Index App's
      *  default indexes.conf and the `sap_logserv_audit_idx_macro` definition.
      *  Customers who rename the audit index must also update the macro
      *  definition for in-app + user-written queries to find the events. */
@@ -94,6 +101,7 @@ export const parsePowerUserRoles = (csv: string): string[] => {
  *  Mirrors `default/ai_assistant_settings.conf`. */
 export const DEFAULT_AI_ASSISTANT_CONFIG: AIAssistantConfig = {
     enabled: false,
+    templatesOnlyMode: false,
     provider: 'mock',
     defaultModel: 'mock-fast',
     tier: 1,
@@ -103,7 +111,7 @@ export const DEFAULT_AI_ASSISTANT_CONFIG: AIAssistantConfig = {
     dailySpendCapUsd: 50.0,
     tier2PiiRedaction: true,
     tier2RedactHostnames: false,
-    auditIndexName: '_ai_assistant_audit',
+    auditIndexName: 'ai_assistant_audit',
     auditForwarderEnabled: false,
     auditForwarderUrl: '',
     auditForwarderIndex: '',
@@ -123,6 +131,7 @@ export const loadAIAssistantConfig = async (): Promise<AIAssistantConfig> => {
     const stored = await readAIConfig();
     return {
         enabled: stored.enabled,
+        templatesOnlyMode: stored.templates_only_mode,
         provider: stored.provider,
         defaultModel: stored.default_model,
         tier: stored.tier,

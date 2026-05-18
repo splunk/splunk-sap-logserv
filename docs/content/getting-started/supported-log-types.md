@@ -122,7 +122,9 @@ The LogServ App provides search-time field extractions for SAP host-level servic
 | WinEventLog:Security | XmlWinEventLog | `windows/WinEventLog:Security` |
 | WinEventLog:System | XmlWinEventLog | `windows/WinEventLog:System` |
 
-### <a href="https://splunkbase.splunk.com/app/2965" target="_blank">Splunk Add-on for Squid Proxy</a>
+### Squid Proxy (`squid:access`)
+
+Parsing absorbed natively into the LogServ App in v0.0.5.0 build 184 (from the archived <a href="https://splunkbase.splunk.com/app/2965" target="_blank">Splunk Add-on for Squid Proxy v2.1.0</a> — no longer required as a separate install).
 
 | Source field value | Sourcetype assigned | Filter path |
 |-----------------------------|-------------------------|-------------|
@@ -131,7 +133,9 @@ The LogServ App provides search-time field extractions for SAP host-level servic
 | /var/log/squid/store.log | squid:access | `proxy/squid` |
 
 
-### <a href="https://splunkbase.splunk.com/app/2876" target="_blank">Splunk Add-on for ISC BIND</a>
+### ISC BIND (`isc:bind:*`)
+
+Parsing absorbed natively into the LogServ App in v0.0.5.0 build 184 (from the archived <a href="https://splunkbase.splunk.com/app/2876" target="_blank">Splunk Add-on for ISC BIND v2.0.0</a> — no longer required as a separate install).
 
 | Source field value | Sourcetype assigned | Filter path |
 |----------------------------------------------|-------------------------|-------------|

@@ -129,8 +129,33 @@ const writeToSession = (key: string, value: string): void => {
 };
 
 interface SidePanelProps {
-    /** When false, AIAssistant bypasses the MCP health gate. */
+    /** Tier from config (passed through to AIAssistant for the banner). */
+    tier?: 0 | 1 | 2;
+    /** When false, AIAssistant bypasses the MCP health gate (chat-only mode). */
     mcpRequired?: boolean;
+    /** Per-user free-form prompt rate limit (rolling 1-hour window).
+     *  0 = disabled. Threaded through to AIAssistant → useAIAssistant.
+     *  Build 80 / session 019. */
+    rateLimitPerHour?: number;
+    /** Per-chat-session cap on total MCP tool dispatches. 0 = disabled.
+     *  Threaded through to AIAssistant → useAIAssistant. Build 88. */
+    toolCallsPerSessionCap?: number;
+    /** Per-user daily vendor spend cap in USD. 0 = disabled.
+     *  Threaded through to AIAssistant → useAIAssistant. Build 89. */
+    dailySpendCapUsd?: number;
+    /** Tier 2 PII column redaction. When true (default), Tier 2
+     *  categorical aggregates redact identifier-class column values.
+     *  Threaded through to AIAssistant → useAIAssistant. Build 94. */
+    tier2PiiRedaction?: boolean;
+    /** When true, also redact host / hostname columns. Default false.
+     *  Build 94 / session 022. */
+    tier2RedactHostnames?: boolean;
+    /** CSV of Splunk role names whose members see the Power Mode toggle.
+     *  Build 166 / session 028. */
+    powerUserRoles?: string;
+    /** Runtime templates-only mode. Threaded through to AIAssistant.
+     *  Replaces the prior compile-time TEMPLATES_ONLY build flag. */
+    templatesOnlyMode?: boolean;
     /** Whether the panel is open. Owned by parent (AppShell). */
     expanded: boolean;
     /** Called when the user clicks the close button in the panel header. */
@@ -138,7 +163,15 @@ interface SidePanelProps {
 }
 
 const SidePanel: React.FC<SidePanelProps> = ({
+    tier = 1,
     mcpRequired = true,
+    rateLimitPerHour = 30,
+    toolCallsPerSessionCap = 100,
+    dailySpendCapUsd = 50.0,
+    tier2PiiRedaction = true,
+    tier2RedactHostnames = false,
+    powerUserRoles = '',
+    templatesOnlyMode = false,
     expanded,
     onClose,
 }) => {
@@ -210,7 +243,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
                 </HeaderButton>
             </HeaderBar>
             <ContentSlot>
-                <AIAssistant mcpRequired={mcpRequired} />
+                <AIAssistant tier={tier} mcpRequired={mcpRequired} rateLimitPerHour={rateLimitPerHour} toolCallsPerSessionCap={toolCallsPerSessionCap} dailySpendCapUsd={dailySpendCapUsd} tier2PiiRedaction={tier2PiiRedaction} tier2RedactHostnames={tier2RedactHostnames} powerUserRoles={powerUserRoles} templatesOnlyMode={templatesOnlyMode} />
             </ContentSlot>
         </Strip>
     );

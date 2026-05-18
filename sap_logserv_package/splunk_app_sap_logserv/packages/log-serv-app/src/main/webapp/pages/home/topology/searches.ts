@@ -296,3 +296,297 @@ ${IDX} (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR clien
 | fields host, count, sourcetypes, first_seen, last_seen
 `.trim();
 };
+
+/* ============================================================================
+ * Edge-data SPL (build 202 / session 036 — edge-data right pane)
+ *
+ * Each search composes a per-edge-type SPL query backed by:
+ *   - splSourcetype     — the canonical sourcetype that produced the edge's events
+ *   - splFilterClauses  — { field, value }[] denormalized onto the edge bucket row
+ *
+ * These were all denormalized at edge-aggregation time (build 191 KV Store
+ * rewrite) so the right pane has them instantly without dispatching a new
+ * lookup. Per-edge filter clauses are spliced into the SPL with whitelist
+ * sanitization to defend against any field/value that didn't come through
+ * the canonical pipeline.
+ *
+ * Whitelist for filter VALUES is the same `^[A-Za-z0-9._-]+$` pattern used
+ * for node IDs — covers IPs (`100.127.255.9`), hostnames (`hec53v013858`),
+ * SIDs (`XCP`), and HANA tenant SIDs. Fields are restricted to a small
+ * known set per-edge-type. Anything else returns null (treated as "no
+ * filter — query disabled").
+ * ============================================================================ */
+
+/** Allowed field names for edge filter clauses. Restricting to a known set
+ *  catches accidental schema drift in the SPL aggregator. */
+const ALLOWED_EDGE_FIELDS = new Set([
+    'sap_sid', 'hana_tenant_sid', 'host', 'hana_host',
+    'peer_ip', 'local_ip', 'icm_local_ip',
+    'client_ip', 'clientip',
+]);
+
+const sanitizeFilterValue = (v: string): string => {
+    if (!v || typeof v !== 'string') return '';
+    if (!/^[A-Za-z0-9._-]+$/.test(v)) return '';
+    if (v.length > 80) return '';
+    return v;
+};
+
+const sanitizeSourcetype = (s: string): string => {
+    if (!s || typeof s !== 'string') return '';
+    /* sourcetypes can contain colons (`sap:hana:audit`); allow letters,
+     * digits, colons, underscores, dots, hyphens. */
+    if (!/^[A-Za-z0-9:._-]+$/.test(s)) return '';
+    if (s.length > 80) return '';
+    return s;
+};
+
+/**
+ * Compose the WHERE-style filter clause string for an edge SPL search.
+ * Returns `field1="val1" field2="val2" ...` ready to splice after the
+ * sourcetype= clause. Returns null if any clause fails sanitization.
+ */
+const buildEdgeFilter = (
+    clauses: { field: string; value: string }[] | undefined,
+): string | null => {
+    if (!clauses || clauses.length === 0) return null;
+    const parts: string[] = [];
+    for (const c of clauses) {
+        if (!ALLOWED_EDGE_FIELDS.has(c.field)) return null;
+        const safe = sanitizeFilterValue(c.value);
+        if (!safe) return null;
+        parts.push(`${c.field}="${safe}"`);
+    }
+    return parts.join(' ');
+};
+
+/**
+ * Per-edge Activity Trend timechart over the global TimeRange. Returns
+ * `_time` + `count` + `error_count` per bucket so the chart can stack the
+ * two series. Uses 1h span by default — the Splunk side may collapse to
+ * fewer/more buckets depending on the dispatched range, but for typical
+ * 24h-30d windows 1h is appropriate.
+ *
+ * Per-type error definition:
+ *   - HTTP:        status >= 400
+ *   - HANA Audit:  action_status = "UNSUCCESSFUL" (or auth-fail equivalent)
+ *   - HANA Tenant: severity in {ERROR, FATAL}
+ *   - RFC:         gw_error_detail OR error_function (non-null)
+ */
+export const SEARCH_EDGE_ACTIVITY = (
+    splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    splSourcetype: string,
+    clauses: { field: string; value: string }[],
+): string | null => {
+    const safeSt = sanitizeSourcetype(splSourcetype);
+    if (!safeSt) return null;
+    const filter = buildEdgeFilter(clauses);
+    if (!filter) return null;
+
+    const errorClause =
+        splType === 'http'
+            ? 'sum(eval(if(isnum(status) AND status>=400, 1, 0))) as error_count'
+            : splType === 'hana_audit'
+              ? 'sum(eval(if(action_status="UNSUCCESSFUL", 1, 0))) as error_count'
+              : splType === 'hana_tenant'
+                ? 'sum(eval(if(hana_trace_severity="ERROR" OR hana_trace_severity="FATAL", 1, 0))) as error_count'
+                : /* rfc */ 'sum(eval(if(isnotnull(gw_error_detail) OR isnotnull(error_function), 1, 0))) as error_count';
+
+    return `
+${IDX} sourcetype=${safeSt} ${filter}
+| timechart span=1h count, ${errorClause}
+| fields _time, count, error_count
+`.trim();
+};
+
+/**
+ * Per-edge Operations: top entities traversing the edge for the current time range.
+ *
+ *   HTTP:        top `uri` (most-requested paths)
+ *   RFC:         top `icm_program` (most-active ABAP programs)
+ *   HANA Audit:  top `action_type` (CONNECT / GRANT / ALTER USER mix)
+ *   HANA Tenant: top `hana_trace_component` (most-active component)
+ *
+ * Returns rows shaped { entity, count }. Top 10. The `entity` column name
+ * is uniform so the React side can render a single donut/legend without
+ * type-specific projection.
+ */
+export const SEARCH_EDGE_OPERATIONS = (
+    splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    splSourcetype: string,
+    clauses: { field: string; value: string }[],
+): string | null => {
+    const safeSt = sanitizeSourcetype(splSourcetype);
+    if (!safeSt) return null;
+    const filter = buildEdgeFilter(clauses);
+    if (!filter) return null;
+
+    const groupField =
+        splType === 'http'
+            ? 'uri'
+            : splType === 'rfc'
+              ? 'icm_program'
+              : splType === 'hana_audit'
+                ? 'action_type'
+                : /* hana_tenant */ 'hana_trace_component';
+
+    return `
+${IDX} sourcetype=${safeSt} ${filter} ${groupField}=*
+| stats count by ${groupField}
+| sort - count
+| head 10
+| rename ${groupField} as entity
+| fields entity, count
+`.trim();
+};
+
+/**
+ * Per-edge Performance: detail breakdown for the Performance tab. Most
+ * Performance values are already pre-computed on the edge bucket row
+ * (responseTimeP50/P95/Max, icmTasksMax/Avg, hanaOpP95Ms/MaxMs, etc.) — those
+ * are surfaced INSTANT from the cached topology data with no SPL dispatch.
+ *
+ * This SPL is for the supplementary distribution / breakdown beyond the
+ * single aggregated p50/p95/max numbers:
+ *
+ *   HTTP:        per-status-class counts (2xx / 3xx / 4xx / 5xx) + bytes_out histogram
+ *   RFC:         icm_tasks distribution histogram
+ *   HANA Audit:  per-action_status counts (SUCCESSFUL / UNSUCCESSFUL)
+ *   HANA Tenant: hana_op_duration_ms percentile breakdown via stats perc(...)
+ *
+ * Returns per-type rows shaped { bucket_label, count } so the right pane
+ * can render a single bar chart per edge type without per-type rendering
+ * logic forks.
+ */
+export const SEARCH_EDGE_PERFORMANCE = (
+    splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    splSourcetype: string,
+    clauses: { field: string; value: string }[],
+): string | null => {
+    const safeSt = sanitizeSourcetype(splSourcetype);
+    if (!safeSt) return null;
+    const filter = buildEdgeFilter(clauses);
+    if (!filter) return null;
+
+    if (splType === 'http') {
+        return `
+${IDX} sourcetype=${safeSt} ${filter} status=*
+| eval bucket_label=case(
+    status>=200 AND status<300, "2xx Success",
+    status>=300 AND status<400, "3xx Redirect",
+    status>=400 AND status<500, "4xx Client Error",
+    status>=500, "5xx Server Error",
+    1==1, "other"
+)
+| stats count by bucket_label
+| sort - count
+| fields bucket_label, count
+`.trim();
+    }
+    if (splType === 'rfc') {
+        return `
+${IDX} sourcetype=${safeSt} ${filter} icm_tasks=*
+| eval bucket_label=case(
+    icm_tasks=0, "0 idle",
+    icm_tasks<=2, "1-2",
+    icm_tasks<=5, "3-5",
+    icm_tasks<=10, "6-10",
+    icm_tasks<=25, "11-25",
+    1==1, "26+"
+)
+| stats count by bucket_label
+| sort - count
+| fields bucket_label, count
+`.trim();
+    }
+    if (splType === 'hana_audit') {
+        return `
+${IDX} sourcetype=${safeSt} ${filter} action_status=*
+| stats count by action_status
+| sort - count
+| rename action_status as bucket_label
+| fields bucket_label, count
+`.trim();
+    }
+    /* hana_tenant — surface the duration percentile distribution. Splunk
+     * doesn't have a clean percentile-bucket primitive, so emit p50/p75/p95
+     * as named buckets via stats. */
+    return `
+${IDX} sourcetype=${safeSt} ${filter} hana_op_duration_ms=*
+| stats
+    perc50(hana_op_duration_ms) as "p50 ms",
+    perc75(hana_op_duration_ms) as "p75 ms",
+    perc95(hana_op_duration_ms) as "p95 ms",
+    perc99(hana_op_duration_ms) as "p99 ms",
+    max(hana_op_duration_ms) as "max ms"
+| transpose 0
+| rename column as bucket_label, "row 1" as count
+| fields bucket_label, count
+`.trim();
+};
+
+/**
+ * Per-edge Errors: top failure modes for the current time range.
+ *
+ *   HTTP:        top failing (status, uri) pairs limited to 4xx/5xx
+ *   RFC:         top (gw_error_detail, error_function) pairs
+ *   HANA Audit:  top action_type seen as UNSUCCESSFUL
+ *   HANA Tenant: top (hana_trace_severity, hana_trace_component) pairs limited to ERROR/FATAL
+ *
+ * Returns rows shaped { error_kind, error_detail, count, last_seen } so
+ * the React side can render a uniform 4-column DataTable.
+ */
+export const SEARCH_EDGE_ERRORS = (
+    splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    splSourcetype: string,
+    clauses: { field: string; value: string }[],
+): string | null => {
+    const safeSt = sanitizeSourcetype(splSourcetype);
+    if (!safeSt) return null;
+    const filter = buildEdgeFilter(clauses);
+    if (!filter) return null;
+
+    if (splType === 'http') {
+        return `
+${IDX} sourcetype=${safeSt} ${filter} status>=400
+| eval error_kind="HTTP " . tostring(status)
+| stats count, max(_time) as last_seen by error_kind, uri
+| sort - count
+| head 15
+| rename uri as error_detail
+| fields error_kind, error_detail, count, last_seen
+`.trim();
+    }
+    if (splType === 'rfc') {
+        return `
+${IDX} sourcetype=${safeSt} ${filter} (gw_error_detail=* OR error_function=*)
+| eval error_kind=coalesce(gw_error_detail, "(error)")
+| eval error_detail=coalesce(error_function, "(unknown)")
+| stats count, max(_time) as last_seen by error_kind, error_detail
+| sort - count
+| head 15
+| fields error_kind, error_detail, count, last_seen
+`.trim();
+    }
+    if (splType === 'hana_audit') {
+        return `
+${IDX} sourcetype=${safeSt} ${filter} action_status="UNSUCCESSFUL"
+| eval error_kind="UNSUCCESSFUL " . action_type
+| eval error_detail=coalesce(executing_user, "(unknown user)")
+| stats count, max(_time) as last_seen by error_kind, error_detail
+| sort - count
+| head 15
+| fields error_kind, error_detail, count, last_seen
+`.trim();
+    }
+    /* hana_tenant */
+    return `
+${IDX} sourcetype=${safeSt} ${filter} (hana_trace_severity="ERROR" OR hana_trace_severity="FATAL")
+| eval error_kind=hana_trace_severity
+| eval error_detail=coalesce(hana_trace_component, "(unknown)")
+| stats count, max(_time) as last_seen by error_kind, error_detail
+| sort - count
+| head 15
+| fields error_kind, error_detail, count, last_seen
+`.trim();
+};

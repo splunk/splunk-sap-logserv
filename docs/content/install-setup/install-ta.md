@@ -23,7 +23,7 @@ The Data TA ships with `default/indexes.conf` defining two indexes that Splunk a
 | Index | Purpose | Default name | Macro |
 |---|---|---|---|
 | **SAP data index** | Receives every event the Data TA forwards (logs ingested from S3 and routed to the appropriate sourcetype) | `sap_logserv_logs` | `sap_logserv_idx_macro` |
-| **AI Assistant audit index** | Receives every audit event the AI Assistant writes — canned-prompt dispatches, free-form vendor calls (when LLM path is enabled), security blocks, privacy-tier elevations, legal acknowledgements | `_ai_assistant_audit` | `sap_logserv_audit_idx_macro` |
+| **AI Assistant audit index** | Receives every audit event the AI Assistant writes — canned-prompt dispatches, free-form vendor calls (when LLM path is enabled), security blocks, privacy-tier elevations, legal acknowledgements | `logserv_ai_assistant_audit` | `sap_logserv_audit_idx_macro` |
 
 No customer-side index provisioning is required for the default install.
 
@@ -49,7 +49,7 @@ The Data TA's default `[sap_logserv_logs]` stanza will still create that index u
 
 1. **Pick a new name** (consider keeping the underscore prefix — Splunk uses underscore-prefixed names for internal / operational indexes, and excludes them from default-index searches).
 2. **Create the index** under that name (same options as above — local indexes.conf override, OR Splunk Web Settings UI).
-3. **Update the macro definition.** Open **Settings → Advanced search → Search macros**, find `sap_logserv_audit_idx_macro`, and edit the definition from `index="_ai_assistant_audit"` to `index="<your_new_name>"`. This controls READS — the in-app Audit Log Viewer + any user-written queries will resolve the macro to your renamed index.
+3. **Update the macro definition.** Open **Settings → Advanced search → Search macros**, find `sap_logserv_audit_idx_macro`, and edit the definition from `index="logserv_ai_assistant_audit"` to `index="<your_new_name>"`. This controls READS — the in-app Audit Log Viewer + any user-written queries will resolve the macro to your renamed index.
 4. **Update the LogServ App config.** Open **Settings → AI Assistant → General → Audit & Telemetry**, set the **Audit index name** field to your renamed index, and Save Defaults. This controls WRITES — the AuditWriter posts events to the configured index name.
 
 The conf field controls writes; the macro controls reads. They MUST point at the same index, but Splunk doesn't auto-sync them — keep them aligned manually whenever you rename.
@@ -72,18 +72,18 @@ Refer to the [Architecture](../getting-started/architecture.md) page for the ful
 | Your Topology | Install the Data TA On |
 |---------------|----------------------|
 | **Single instance** | The single Splunk instance |
-| **Deployment Server + HFs + on-prem Indexer** | Deployment Server (manages filter rules + distributes to HFs); the **Indexer** (provides `default/indexes.conf` for `sap_logserv_logs` + `_ai_assistant_audit`); HFs receive the TA automatically from the DS |
+| **Deployment Server + HFs + on-prem Indexer** | Deployment Server (manages filter rules + distributes to HFs); the **Indexer** (provides `default/indexes.conf` for `sap_logserv_logs` + `logserv_ai_assistant_audit`); HFs receive the TA automatically from the DS |
 | **Splunk Cloud Indexer** | Splunk Cloud admin manages the indexer tier — Data TA installed there provides the bundled index defs |
 
 !!! warning
     If you are using a **Deployment Server** to manage Heavy Forwarders, install the TA on the Deployment Server only. Do **not** install the TA directly on the Heavy Forwarders — the DS will distribute it automatically when you configure filters. See [Configuring Filters](configure-filters.md) for details.
 
 !!! note "Why does the Data TA need to go on the Indexer?"
-    Splunk only accepts events into an index that's **defined on the indexer that's receiving them**. The Data TA bundles `default/indexes.conf` (defining `sap_logserv_logs` + `_ai_assistant_audit`) — that file is what tells the indexer those indexes exist. Without it, Heavy Forwarders would forward events tagged `index=sap_logserv_logs` and the indexer would reject them with "no such index" errors.
+    Splunk only accepts events into an index that's **defined on the indexer that's receiving them**. The Data TA bundles `default/indexes.conf` (defining `sap_logserv_logs` + `logserv_ai_assistant_audit`) — that file is what tells the indexer those indexes exist. Without it, Heavy Forwarders would forward events tagged `index=sap_logserv_logs` and the indexer would reject them with "no such index" errors.
 
     **Honest trade-off:** the Data TA is ~9 MiB but only its `indexes.conf` actually does anything on a pure indexer (no Python is invoked there, no REST handlers fire, no transforms run on already-cooked events). The Python / REST / UCC / transforms code is dead weight on that tier. We chose this setup deliberately as a "two apps to install" simplification over a previous three-app split (Data TA + UI App + a separate Index App that was just `indexes.conf` + icons).
 
-    **Opt-out path for customers who want a clean indexer:** define both indexes manually on the indexer — either through Splunk Web (**Settings → Indexes → New Index** for `sap_logserv_logs` and `_ai_assistant_audit` with the same `homePath`/`coldPath`/`thawedPath` settings) or via your own `etc/system/local/indexes.conf` — and then **don't install the Data TA on the indexer**. Splunk Cloud customers typically take this path because their Cloud admin team provisions indexes via the Cloud UI rather than installing customer apps on the indexer tier. The Data TA still goes on the DS + HFs as usual.
+    **Opt-out path for customers who want a clean indexer:** define both indexes manually on the indexer — either through Splunk Web (**Settings → Indexes → New Index** for `sap_logserv_logs` and `logserv_ai_assistant_audit` with the same `homePath`/`coldPath`/`thawedPath` settings) or via your own `etc/system/local/indexes.conf` — and then **don't install the Data TA on the indexer**. Splunk Cloud customers typically take this path because their Cloud admin team provisions indexes via the Cloud UI rather than installing customer apps on the indexer tier. The Data TA still goes on the DS + HFs as usual.
 
 <br>
 

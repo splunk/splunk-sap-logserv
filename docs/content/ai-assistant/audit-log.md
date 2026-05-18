@@ -1,6 +1,6 @@
 # Audit Log
 
-Every action the AI Assistant takes — predefined-prompt dispatches, free-form vendor calls, security blocks, privacy-tier elevations, legal acknowledgements — produces an audit event in a dedicated `_ai_assistant_audit` index. The audit trail is the evidence layer for compliance reviews, SOC investigations, and tamper-resistance posture.
+Every action the AI Assistant takes — predefined-prompt dispatches, free-form vendor calls, security blocks, privacy-tier elevations, legal acknowledgements — produces an audit event in a dedicated `logserv_ai_assistant_audit` index. The audit trail is the evidence layer for compliance reviews, SOC investigations, and tamper-resistance posture.
 
 ## :material-circle-box:{ .taiconcolor } The Twelve Audit Categories
 
@@ -57,7 +57,7 @@ Disclaimer text shown at the top of the Audit Log tab:
 
 Optional admin-configurable forwarding of audit events to a separate Splunk / SIEM via Splunk's HTTP Event Collector. When enabled:
 
-- **Browser-side dual-write at flush.** The `AuditWriter.flush()` path (and the per-event `postOneOff()` path) sends to BOTH the local `_ai_assistant_audit` index (via the standard `services/receivers/simple` REST endpoint) AND the configured HEC URL. The two writes are independent — local-index failure doesn't block forwarder write, and vice versa.
+- **Browser-side dual-write at flush.** The `AuditWriter.flush()` path (and the per-event `postOneOff()` path) sends to BOTH the local `logserv_ai_assistant_audit` index (via the standard `services/receivers/simple` REST endpoint) AND the configured HEC URL. The two writes are independent — local-index failure doesn't block forwarder write, and vice versa.
 - **Failure visibility.** When the HEC POST fails (DNS error, network timeout, 4xx/5xx response), an `audit_forwarder_failure` event is generated locally. So a disabled / down forwarder is visible in the local audit log itself, not silently failing.
 - **Auth.** The HEC token is sent on every POST as `Authorization: Splunk <token>` header. Token is stored in Splunk's encrypted password store at realm `logserv_ai_assistant_forwarder` name `hec_token` and never displayed in cleartext.
 - **Sanitized URL in failure events.** When a forwarder failure event records the `destinationUrl`, query strings + fragments are stripped to prevent accidental exposure of any auth-bearing URL params.
@@ -82,7 +82,7 @@ A [forwarder-disabled-acceptance modal](settings.md#legal-acknowledgement-modals
 
 ## :material-circle-box:{ .taiconcolor } Audit Index Provisioning
 
-The `_ai_assistant_audit` index is defined in the Data TA's `default/indexes.conf` and created automatically when the Data TA is installed on the indexer / search head. No customer-side provisioning needed.
+The `logserv_ai_assistant_audit` index is defined in the Data TA's `default/indexes.conf` and created automatically when the Data TA is installed on the indexer / search head. No customer-side provisioning needed.
 
 The index name is **macro-configurable** — see [Renaming an index](../install-setup/install-ta.md#renaming-an-index) for the procedure (update the `sap_logserv_audit_idx_macro` macro definition for reads, plus the `audit_index_name` field in Settings → AI Assistant → General → Audit & Telemetry for writes).
 

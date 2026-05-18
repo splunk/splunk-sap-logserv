@@ -30,6 +30,9 @@ interface LayoutSelectorDropdownProps {
     currentSlug: string | null;
     onSelect: (slug: string) => void;
     onDelete: (slug: string) => void;
+    /** Build 216 / session 036 — opens the Manage Layouts modal where
+     *  the user picks a default layout for each layout mode. */
+    onManage: () => void;
 }
 
 const Wrap = styled.div`
@@ -151,6 +154,37 @@ const EmptyState = styled.div`
     text-align: center;
 `;
 
+/* Build 216 / session 036 — top-of-menu Manage Layouts entry. Stays
+ * visible regardless of saved-layout count so users can ALWAYS reach
+ * the per-mode default-picker. Visually separated from the layout
+ * rows below by a 1 px divider. */
+const ManageRow = styled.button`
+    width: 100%;
+    background: transparent;
+    color: ${logservTheme.colors.cyanLight};
+    border: none;
+    border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
+    cursor: pointer;
+    font-family: inherit;
+    font-size: ${logservTheme.fontSize.small};
+    font-weight: ${logservTheme.fontWeight.semibold};
+    text-align: left;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    &:hover {
+        background: ${logservTheme.colors.hoverBackground};
+        color: ${logservTheme.colors.cyanAccent};
+    }
+
+    .gear {
+        font-size: 11px;
+        opacity: 0.85;
+    }
+`;
+
 const formatRelative = (iso: string): string => {
     if (!iso) return '';
     const t = Date.parse(iso);
@@ -170,6 +204,7 @@ const LayoutSelectorDropdown: React.FC<LayoutSelectorDropdownProps> = ({
     currentSlug,
     onSelect,
     onDelete,
+    onManage,
 }) => {
     const [open, setOpen] = useState(false);
     const [confirmingSlug, setConfirmingSlug] = useState<string | null>(null);
@@ -222,6 +257,20 @@ const LayoutSelectorDropdown: React.FC<LayoutSelectorDropdownProps> = ({
             </Trigger>
             {open && (
                 <Popover role="listbox">
+                    {/* Build 216 / session 036 — Manage Layouts top-of-menu
+                      * entry. Always visible. Opens the per-mode default
+                      * picker modal. Closes the dropdown on click. */}
+                    <ManageRow
+                        type="button"
+                        onClick={() => {
+                            setOpen(false);
+                            onManage();
+                        }}
+                        title="Pick a default layout for each layout mode"
+                    >
+                        <span className="gear" aria-hidden>{'⚙'}</span>
+                        Manage Layouts…
+                    </ManageRow>
                     {loading && (
                         <EmptyState>Loading saved layouts…</EmptyState>
                     )}

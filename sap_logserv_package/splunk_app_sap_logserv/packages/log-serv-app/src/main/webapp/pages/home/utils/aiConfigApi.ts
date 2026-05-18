@@ -1,40 +1,61 @@
 /**
- * aiConfigApi — thin wrapper around Splunk's `configs/conf-<name>` REST
- * endpoint for reading and writing the admin-managed AI Assistant
- * defaults (provider, model, tier, enabled, mcp_required, mcp_server_url).
+ * aiConfigApi — reader/writer for the admin-managed AI Assistant defaults
+ * (provider, model, tier, enabled, mcp_required, mcp_server_url, etc.).
  *
- * Storage:
- *   `default/ai_assistant_settings.conf` ships the safe defaults
- *   (`enabled = false`, `provider = mock`, etc.). Admin writes from the
- *   Settings page land in `local/ai_assistant_settings.conf` and override
- *   per Splunk's normal default → local merge.
+ * Storage (session 042 / Option D):
+ *   PRIMARY: KV Store collection `logserv_ai_assistant_settings`, single
+ *   row keyed `defaults`. KV Store endpoints are gated only by the
+ *   collection-level metadata ACL — no `admin_all_objects` capability
+ *   requirement — so sc_subadmin users on locked-down Splunk Cloud
+ *   Victoria deployments can save without the capability escalation that
+ *   `/configs/conf-X/` writes require.
+ *
+ *   FALLBACK: `default/ai_assistant_settings.conf [defaults]` via the
+ *   standard `configs/conf-<name>` REST endpoint. Used for two purposes:
+ *     1. Fresh install before any KV Store row exists — returns the
+ *        baseline shipped values so the app renders sensibly.
+ *     2. Upgrade migration — `migrateConfFileSettingsToKvStore()` copies
+ *        the conf-file values into KV Store on first load so customers
+ *        who customized in a prior build don't lose their settings.
  *
  * Auth model:
  *   - Splunk Web session cookie via `credentials: 'same-origin'`
  *   - `X-Requested-With: XMLHttpRequest` header (always)
- *   - `X-Splunk-Form-Key: <csrf>` header on every mutating request
- *     (POST). Splunk Web rejects mutating requests without this token,
- *     even if the session cookie is valid.
- *   - Read: any user with `list_settings` (default for the `user` role
- *     in stock Splunk). The conf inherits the app's default.meta
- *     `read : [ * ]` permission, so non-admin users can fetch the
- *     active provider / tier on app load.
- *   - Write: admin only — the `configs/conf-*` endpoint requires the
- *     `admin_all_objects` capability for arbitrary conf files (admin
- *     role has it; user role does not).
+ *   - `X-Splunk-Form-Key: <csrf>` header on every mutating request (POST)
+ *   - Read: any authenticated user with read on the collection (ACL is
+ *     `read : [ * ]`), so non-admin users can fetch the active provider /
+ *     tier on app load.
+ *   - Write: any authenticated user with write on the collection (ACL is
+ *     `write : [ * ]`). Single-row convention (_key = "defaults") means
+ *     all admin saves overwrite the same row — no per-user fragmentation.
+ *     The admin-gating happens client-side via useIsAdmin; the server-
+ *     side ACL is intentionally permissive to dodge the capability gate.
  *
  * Cache: `readAIConfig()` results are memoized in-process to avoid one
  * REST round-trip per render. Call `clearAIConfigCache()` after a
  * successful write to force a re-read on the next access.
+ *
+ * Build 240 / session 042. Prior to build 240 this module wrote to
+ * `configs/conf-ai_assistant_settings` — see git history for the conf-
+ * file implementation.
  */
 
 const APP_NAMESPACE = 'splunk_app_sap_logserv';
-const CONF_NAME = 'ai_assistant_settings';
-const STANZA = 'defaults';
-const NS_BASE =
+
+// --- KV Store endpoint ---
+const COLLECTION = 'logserv_ai_assistant_settings';
+const SETTINGS_KEY = 'defaults';
+const KV_BASE =
     `/en-US/splunkd/__raw/servicesNS/nobody/${APP_NAMESPACE}` +
-    `/configs/conf-${CONF_NAME}`;
-const STANZA_URL = `${NS_BASE}/${encodeURIComponent(STANZA)}`;
+    `/storage/collections/data/${COLLECTION}`;
+const KV_ROW_URL = `${KV_BASE}/${encodeURIComponent(SETTINGS_KEY)}`;
+
+// --- Conf-file fallback endpoint (read-only) ---
+const CONF_NAME = 'ai_assistant_settings';
+const CONF_STANZA = 'defaults';
+const CONF_STANZA_URL =
+    `/en-US/splunkd/__raw/servicesNS/nobody/${APP_NAMESPACE}` +
+    `/configs/conf-${CONF_NAME}/${encodeURIComponent(CONF_STANZA)}`;
 
 export type ProviderName =
     | 'mock'
@@ -48,6 +69,13 @@ export type PrivacyTier = 0 | 1 | 2;
 
 export interface AIConfigSettings {
     enabled: boolean;
+    /** Runtime templates-only mode. When true, the LLM-driven free-form
+     *  path is disabled — chat input read-only, model picker + Power
+     *  Mode toggle hidden, Provider Credentials Settings tab hidden, an
+     *  info banner explains the mode. Replaces the previous compile-
+     *  time `TEMPLATES_ONLY` build flag. Admin-controlled via Settings
+     *  → AI Assistant → General → Templates-only mode toggle. */
+    templates_only_mode: boolean;
     provider: ProviderName;
     default_model: string;
     tier: PrivacyTier;
@@ -77,7 +105,7 @@ export interface AIConfigSettings {
      *  Splunk dashboards routinely show hostnames. Build 94. */
     tier2_redact_hostnames: boolean;
     /** Local Splunk index that receives every audit event AuditWriter
-     *  posts. Default `_ai_assistant_audit` matches the LogServ Index
+     *  posts. Default `ai_assistant_audit` matches the LogServ Index
      *  App's default indexes.conf and the `sap_logserv_audit_idx_macro`
      *  search-time macro definition. Customers who rename the audit
      *  index must update the macro definition in lockstep so the in-app
@@ -107,6 +135,7 @@ export interface AIConfigSettings {
  *  the `default/ai_assistant_settings.conf` shipped values. */
 export const DEFAULT_AI_CONFIG: AIConfigSettings = {
     enabled: false,
+    templates_only_mode: false,
     provider: 'mock',
     default_model: 'mock-fast',
     tier: 1,
@@ -117,7 +146,7 @@ export const DEFAULT_AI_CONFIG: AIConfigSettings = {
     daily_spend_cap_usd: 50.0,
     tier2_pii_redaction: true,
     tier2_redact_hostnames: false,
-    audit_index_name: '_ai_assistant_audit',
+    audit_index_name: 'ai_assistant_audit',
     audit_forwarder_enabled: false,
     audit_forwarder_url: '',
     audit_forwarder_index: '',
@@ -140,8 +169,10 @@ const isProvider = (s: unknown): s is ProviderName =>
 
 const isTier = (n: unknown): n is PrivacyTier => n === 0 || n === 1 || n === 2;
 
-/** Splunk's conf REST returns all stanza keys as strings. Coerce to the
- *  schema shape defensively — bad values fall back to the shipped default. */
+/** Coerce a raw record from EITHER source (KV Store row OR conf-file stanza
+ *  content block) into the strongly-typed `AIConfigSettings`. Both sources
+ *  return everything as strings or undefined; this normalizer is the single
+ *  source of truth for the field-by-field defaulting + validation. */
 const parseRawContent = (
     raw: Record<string, unknown> | undefined,
 ): AIConfigSettings => {
@@ -151,7 +182,18 @@ const parseRawContent = (
     const toolCapNum = Number(r.tool_calls_per_session_cap);
     const spendCapNum = Number(r.daily_spend_cap_usd);
     return {
-        enabled: r.enabled === '1' || r.enabled === 'true' || r.enabled === true,
+        enabled:
+            r.enabled === '1' ||
+            r.enabled === 'true' ||
+            r.enabled === true ||
+            r.enabled === 1,
+        templates_only_mode:
+            r.templates_only_mode === undefined
+                ? DEFAULT_AI_CONFIG.templates_only_mode
+                : r.templates_only_mode === '1' ||
+                  r.templates_only_mode === 'true' ||
+                  r.templates_only_mode === true ||
+                  r.templates_only_mode === 1,
         provider: isProvider(r.provider) ? r.provider : DEFAULT_AI_CONFIG.provider,
         default_model:
             typeof r.default_model === 'string' && r.default_model.length > 0
@@ -161,7 +203,8 @@ const parseRawContent = (
         mcp_required:
             r.mcp_required === '1' ||
             r.mcp_required === 'true' ||
-            r.mcp_required === true,
+            r.mcp_required === true ||
+            r.mcp_required === 1,
         mcp_server_url:
             typeof r.mcp_server_url === 'string' ? r.mcp_server_url : '',
         rate_limit_per_hour:
@@ -177,7 +220,7 @@ const parseRawContent = (
                 ? spendCapNum
                 : DEFAULT_AI_CONFIG.daily_spend_cap_usd,
         // Booleans default to the safe / default-secure value when the
-        // key is missing from the conf (fresh install) or unparseable.
+        // key is missing from the source (fresh install) or unparseable.
         // For tier2_pii_redaction the safe default is true (redact);
         // for tier2_redact_hostnames the default is false.
         tier2_pii_redaction:
@@ -185,13 +228,15 @@ const parseRawContent = (
                 ? DEFAULT_AI_CONFIG.tier2_pii_redaction
                 : r.tier2_pii_redaction === '1' ||
                   r.tier2_pii_redaction === 'true' ||
-                  r.tier2_pii_redaction === true,
+                  r.tier2_pii_redaction === true ||
+                  r.tier2_pii_redaction === 1,
         tier2_redact_hostnames:
             r.tier2_redact_hostnames === undefined
                 ? DEFAULT_AI_CONFIG.tier2_redact_hostnames
                 : r.tier2_redact_hostnames === '1' ||
                   r.tier2_redact_hostnames === 'true' ||
-                  r.tier2_redact_hostnames === true,
+                  r.tier2_redact_hostnames === true ||
+                  r.tier2_redact_hostnames === 1,
         audit_index_name:
             typeof r.audit_index_name === 'string' && r.audit_index_name.length > 0
                 ? r.audit_index_name
@@ -201,7 +246,8 @@ const parseRawContent = (
                 ? DEFAULT_AI_CONFIG.audit_forwarder_enabled
                 : r.audit_forwarder_enabled === '1' ||
                   r.audit_forwarder_enabled === 'true' ||
-                  r.audit_forwarder_enabled === true,
+                  r.audit_forwarder_enabled === true ||
+                  r.audit_forwarder_enabled === 1,
         audit_forwarder_url:
             typeof r.audit_forwarder_url === 'string'
                 ? r.audit_forwarder_url
@@ -232,9 +278,9 @@ const buildSharedHeaders = (): Record<string, string> => ({
     'X-Requested-With': 'XMLHttpRequest',
 });
 
-const buildMutatingHeaders = (): Record<string, string> => ({
+const buildKvMutatingHeaders = (): Record<string, string> => ({
     ...buildSharedHeaders(),
-    'Content-Type': 'application/x-www-form-urlencoded',
+    'Content-Type': 'application/json',
     'X-Splunk-Form-Key': readCsrfToken(),
 });
 
@@ -247,66 +293,196 @@ export const clearAIConfigCache = (): void => {
     inflight = null;
 };
 
-/** Read the merged ai_assistant_settings stanza. Returns DEFAULT_AI_CONFIG
- *  for any failure mode (404, network error, parse error) so callers can
- *  always proceed. */
+/** Internal: read the KV Store row. Returns parsed settings on hit, null
+ *  on absence (404), undefined on any other error (caller falls back to
+ *  the conf-file read). The three-state return distinguishes "absent"
+ *  (migration should run) from "broken" (migration would over-write the
+ *  customer's existing data if it later resurrects). */
+const readKvStoreRow = async (): Promise<AIConfigSettings | null | undefined> => {
+    try {
+        const resp = await fetch(`${KV_ROW_URL}?output_mode=json`, {
+            credentials: 'same-origin',
+            headers: buildSharedHeaders(),
+        });
+        if (resp.status === 404) return null;
+        if (!resp.ok) return undefined;
+        const record = (await resp.json()) as Record<string, unknown>;
+        return parseRawContent(record);
+    } catch {
+        return undefined;
+    }
+};
+
+/** Internal: read the conf-file stanza. Returns parsed settings on hit
+ *  (which may itself be the shipped baseline if no local/ override exists),
+ *  undefined on REST failure or missing stanza. */
+const readConfFileStanza = async (): Promise<AIConfigSettings | undefined> => {
+    try {
+        const resp = await fetch(`${CONF_STANZA_URL}?output_mode=json`, {
+            credentials: 'same-origin',
+            headers: buildSharedHeaders(),
+        });
+        if (!resp.ok) return undefined;
+        const data = await resp.json();
+        const content = data?.entry?.[0]?.content as
+            | Record<string, unknown>
+            | undefined;
+        if (!content) return undefined;
+        return parseRawContent(content);
+    } catch {
+        return undefined;
+    }
+};
+
+/** Read the AI Assistant settings. Resolution order:
+ *    1. KV Store row `defaults` (primary; admin saves land here)
+ *    2. Conf-file stanza `[defaults]` (fresh install OR pre-migration)
+ *    3. `DEFAULT_AI_CONFIG` (transient failure of both sources)
+ *
+ *  Always resolves — never rejects. Callers always get a usable config so
+ *  the app can render. */
 export const readAIConfig = async (): Promise<AIConfigSettings> => {
     if (cache) return cache;
     if (inflight) return inflight;
 
     inflight = (async () => {
-        try {
-            const resp = await fetch(`${STANZA_URL}?output_mode=json`, {
-                credentials: 'same-origin',
-                headers: buildSharedHeaders(),
-            });
-            if (!resp.ok) {
-                cache = { ...DEFAULT_AI_CONFIG };
-                return cache;
-            }
-            const data = await resp.json();
-            const content = data?.entry?.[0]?.content as
-                | Record<string, unknown>
-                | undefined;
-            cache = parseRawContent(content);
+        const fromKv = await readKvStoreRow();
+        if (fromKv) {
+            cache = fromKv;
             return cache;
-        } catch {
-            cache = { ...DEFAULT_AI_CONFIG };
-            return cache;
-        } finally {
-            inflight = null;
         }
+        const fromConf = await readConfFileStanza();
+        if (fromConf) {
+            cache = fromConf;
+            return cache;
+        }
+        cache = { ...DEFAULT_AI_CONFIG };
+        return cache;
     })();
-    return inflight;
+    try {
+        return await inflight;
+    } finally {
+        inflight = null;
+    }
 };
 
-/** Write a partial settings update to the [defaults] stanza. Splunk
- *  merges the body into the stanza — keys not in the partial keep their
- *  current values. Caller is responsible for the cache invalidation
- *  (which this function performs on success). */
+/** Convert the strongly-typed config into the wire-format record stored
+ *  in KV Store. Booleans become 0/1 numbers (KV Store coerces boolean
+ *  values inconsistently — number 0/1 is the safest representation). */
+const settingsToKvRecord = (cfg: AIConfigSettings): Record<string, unknown> => ({
+    _key: SETTINGS_KEY,
+    enabled: cfg.enabled ? 1 : 0,
+    templates_only_mode: cfg.templates_only_mode ? 1 : 0,
+    provider: cfg.provider,
+    default_model: cfg.default_model,
+    tier: cfg.tier,
+    mcp_required: cfg.mcp_required ? 1 : 0,
+    mcp_server_url: cfg.mcp_server_url,
+    rate_limit_per_hour: cfg.rate_limit_per_hour,
+    tool_calls_per_session_cap: cfg.tool_calls_per_session_cap,
+    daily_spend_cap_usd: cfg.daily_spend_cap_usd,
+    tier2_pii_redaction: cfg.tier2_pii_redaction ? 1 : 0,
+    tier2_redact_hostnames: cfg.tier2_redact_hostnames ? 1 : 0,
+    audit_index_name: cfg.audit_index_name,
+    audit_forwarder_enabled: cfg.audit_forwarder_enabled ? 1 : 0,
+    audit_forwarder_url: cfg.audit_forwarder_url,
+    audit_forwarder_index: cfg.audit_forwarder_index,
+    audit_forwarder_source: cfg.audit_forwarder_source,
+    power_user_roles: cfg.power_user_roles,
+    updated_at: new Date().toISOString(),
+});
+
+/** Internal: write a complete settings record to KV Store. Two-step
+ *  upsert: POST to /<key> first (treated as create-or-overwrite); on 404
+ *  (record doesn't yet exist) fall back to a collection-level POST that
+ *  creates a new record at the supplied `_key`. Mirrors the
+ *  `topology/persistence.ts` `saveLayoutNamed` pattern.
+ *
+ *  Note: KV Store POST to /<key> REPLACES the entire row (it is not a
+ *  partial PATCH). We always write the full settings record to avoid
+ *  nulling other fields. The `writeAIConfig` public API reads-then-
+ *  writes to preserve partial-update semantics for the caller. */
+const writeKvStoreRow = async (cfg: AIConfigSettings): Promise<void> => {
+    const record = settingsToKvRecord(cfg);
+    const body = JSON.stringify(record);
+    let resp = await fetch(KV_ROW_URL, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: buildKvMutatingHeaders(),
+        body,
+    });
+    if (resp.status === 404) {
+        resp = await fetch(KV_BASE, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: buildKvMutatingHeaders(),
+            body,
+        });
+    }
+    if (!resp.ok) {
+        throw new Error(`KV Store write failed: HTTP ${resp.status}`);
+    }
+};
+
+/** Write a partial settings update. Reads the current settings, merges
+ *  the partial on top, writes the full result back. Matches the prior
+ *  conf-file API's partial-update semantics — keys absent from the
+ *  partial keep their prior values.
+ *
+ *  Cache invalidation: after a successful write, `clearAIConfigCache()`
+ *  is called so the next `readAIConfig` re-reads from KV Store. */
 export const writeAIConfig = async (
     partial: Partial<AIConfigSettings>,
 ): Promise<void> => {
-    const params = new URLSearchParams();
-    for (const [k, v] of Object.entries(partial)) {
-        if (v === undefined) continue;
-        let s: string;
-        if (typeof v === 'boolean') s = v ? '1' : '0';
-        else if (typeof v === 'number') s = String(v);
-        else s = String(v);
-        params.set(k, s);
-    }
-    if (params.toString().length === 0) {
+    if (Object.keys(partial).length === 0) {
         throw new Error('writeAIConfig called with empty partial');
     }
-    const resp = await fetch(STANZA_URL, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: buildMutatingHeaders(),
-        body: params.toString(),
-    });
-    if (!resp.ok) {
-        throw new Error(`Write failed: HTTP ${resp.status}`);
-    }
+    // Read current (KV Store, conf-file, or default) and merge.
+    const current = await readAIConfig();
+    const merged: AIConfigSettings = { ...current, ...partial };
+    await writeKvStoreRow(merged);
     clearAIConfigCache();
+};
+
+/** One-shot migration helper called from AIAssistantProvider on mount.
+ *  Idempotent: if a KV Store row already exists, no-op. If absent, reads
+ *  the conf-file stanza and copies it into KV Store. Best-effort; any
+ *  failure is swallowed so the UI isn't blocked.
+ *
+ *  Why this is the right semantics: customers upgrading from a build
+ *  that wrote settings to `local/ai_assistant_settings.conf` would
+ *  otherwise see their customizations vanish after the upgrade (the
+ *  KV Store row is empty on first load, so reads fall through to the
+ *  default/ baseline). This helper preserves their state.
+ *
+ *  Concurrency: idempotent across multiple browser tabs opening the
+ *  Settings page simultaneously — the if-empty-then-write pattern is
+ *  naturally race-safe under KV Store upsert semantics. */
+export const migrateConfFileSettingsToKvStore = async (): Promise<void> => {
+    try {
+        const existing = await readKvStoreRow();
+        if (existing) return; // already migrated
+        const fromConf = await readConfFileStanza();
+        if (!fromConf) return; // nothing to migrate
+        // Only migrate if the conf-file represents a NON-DEFAULT state —
+        // otherwise we'd write the baseline into KV Store on every fresh
+        // install, which is harmless but wasteful. Most fields match the
+        // default on a fresh install; if any field differs, write.
+        const isDefault =
+            fromConf.enabled === DEFAULT_AI_CONFIG.enabled &&
+            fromConf.templates_only_mode === DEFAULT_AI_CONFIG.templates_only_mode &&
+            fromConf.provider === DEFAULT_AI_CONFIG.provider &&
+            fromConf.default_model === DEFAULT_AI_CONFIG.default_model &&
+            fromConf.tier === DEFAULT_AI_CONFIG.tier &&
+            fromConf.mcp_required === DEFAULT_AI_CONFIG.mcp_required &&
+            fromConf.mcp_server_url === DEFAULT_AI_CONFIG.mcp_server_url &&
+            fromConf.audit_forwarder_enabled === DEFAULT_AI_CONFIG.audit_forwarder_enabled &&
+            fromConf.audit_forwarder_url === DEFAULT_AI_CONFIG.audit_forwarder_url &&
+            fromConf.power_user_roles === DEFAULT_AI_CONFIG.power_user_roles;
+        if (isDefault) return;
+        await writeKvStoreRow(fromConf);
+        clearAIConfigCache();
+    } catch {
+        // Migration is best-effort — never block the UI.
+    }
 };

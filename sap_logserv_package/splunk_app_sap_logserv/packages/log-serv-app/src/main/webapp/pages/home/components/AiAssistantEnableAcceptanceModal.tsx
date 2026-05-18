@@ -29,25 +29,12 @@ import { logservTheme } from '../styles/logservTheme';
  */
 
 // ─────────────────────────────────────────────────────────────────────
-// EXACT DISCLAIMER TEXT — v0.0.5.0 LLM-STRIPPED VARIANT
+// EXACT DISCLAIMER TEXT
 // ─────────────────────────────────────────────────────────────────────
 //
 // Aligned to publicly available Splunk Master Subscription Agreement
-// (MSA) and Cisco End User License Agreement (EULA) language patterns.
-// REWRITTEN for the v0.0.5.0 LLM-stripped variant: the original 7-clause
-// disclaimer (build 100 / session 022) was heavy on LLM-provider data-
-// egress language that does not apply to this build, where the LLM-
-// driven flow is physically removed from source — there is no provider,
-// no API key, no data egress, and no AI-generated output. The dropped
-// material covered LLM-provider data egress (clause 1), LLM-provider
-// selection / API key handling (clause 2), AI-output reliability
-// language inside the warranty disclaimer (clause 3 partial), and LLM-
-// provider-specific indemnification (clause 4 sub-points). What remains
-// is: a feature-scope acknowledgement, customer responsibility for
-// catalog selection and access control, AS-IS warranty, indemnification
-// + limitation of liability (combined into one clause), authority, and
-// record of acknowledgement.
-//
+// (MSA) and Cisco End User License Agreement (EULA) language patterns,
+// adapted to the AI Assistant data-egress + LLM provider context.
 // Edits are a NEW REVISION — bump `optInVersion` in
 // `default/ai_assistant_acks.conf [logserv-ai-assistant-enable-tc]` whenever
 // this constant changes; existing audit events' `disclaimerHash` values
@@ -57,23 +44,26 @@ export const ENABLE_DISCLAIMER_TEXT = `LIABILITY ACKNOWLEDGEMENT — AI ASSISTAN
 
 By enabling the LogServ AI Assistant feature on this Splunk deployment, you acknowledge and agree to the following on behalf of yourself and the entity that licenses this software ("Customer"):
 
-1. WHAT THIS FEATURE PROVIDES.
-This build of the LogServ App ships with the Large Language Model ("LLM")-driven flow physically removed from source. Enabling the feature exposes the AI Assistant chat panel and a curated catalog of predefined prompts that dispatch saved searches against Customer's Splunk indexes via the Splunk MCP Server. No external LLM provider is invoked, no event data is transmitted outside this Splunk deployment, and no AI-generated narrative is produced. Every prompt dispatch and every administrative action is recorded in the \`_ai_assistant_audit\` index.
+1. DATA EGRESS ACKNOWLEDGEMENT.
+The LogServ AI Assistant transmits, by design and at Customer's direction, the following classes of data to the Large Language Model ("LLM") provider Customer configures under Settings → AI Assistant: free-form prompts entered by Customer's users; Customer-authored or AI-authored Splunk Search Processing Language ("SPL") tool-call arguments; and aggregated metadata derived from Customer's Splunk index data when Tier 2 privacy mode is selected. The destination, retention, and downstream processing of such transmissions are governed exclusively by the agreement between Customer and Customer's chosen LLM provider, to which Splunk Inc. ("Splunk") and Cisco Systems, Inc. ("Cisco") are not parties.
 
 2. CUSTOMER RESPONSIBILITY.
-Customer is solely responsible for: (a) determining whether the predefined prompt catalog and the saved searches it dispatches are appropriate for Customer's environment, data classification, and compliance posture; (b) reviewing the audit-log forwarder configuration and the per-user controls exposed by this feature; (c) the role grants and search-time access controls that govern which users can dispatch prompts and view results; and (d) any operational, investigative, compliance, or decision-making consequences arising from Customer's use of the feature.
+Customer is solely responsible for: (a) selecting an LLM provider whose terms, data handling practices, and certifications align with Customer's regulatory, contractual, and compliance obligations; (b) the contents of any prompt, query, or aggregated metadata that flows to the LLM provider as a result of Customer's configuration choices; (c) the secure provisioning, storage, rotation, and revocation of any API keys, bearer tokens, or other credentials used to authenticate with the LLM provider; (d) ensuring that the privacy tier, redaction settings, audit-log forwarder configuration, and per-user controls exposed by this feature are configured in a manner appropriate to Customer's data classification; and (e) any consequences arising from Customer's use of the feature, including the inadvertent disclosure of personally identifiable, confidential, regulated, proprietary, or otherwise sensitive information to a third-party LLM provider.
 
 3. DISCLAIMER OF WARRANTIES.
-THE AI ASSISTANT FEATURE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTY OF ANY KIND. WITHOUT LIMITING THE FOREGOING, SPLUNK INC. ("SPLUNK"), CISCO SYSTEMS, INC. ("CISCO"), AND THEIR RESPECTIVE AFFILIATES, LICENSORS, AND SUPPLIERS DISCLAIM ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING WITHOUT LIMITATION ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NONINFRINGEMENT, ABSENCE OF ERRORS OR OMISSIONS, OR UNINTERRUPTED OPERATION. CUSTOMER MUST INDEPENDENTLY VERIFY ALL OUTPUT BEFORE RELYING UPON IT FOR ANY OPERATIONAL, INVESTIGATIVE, COMPLIANCE, OR DECISION-MAKING PURPOSE.
+THE AI ASSISTANT FEATURE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS WITHOUT WARRANTY OF ANY KIND. WITHOUT LIMITING THE FOREGOING, SPLUNK, CISCO, AND THEIR RESPECTIVE AFFILIATES, LICENSORS, AND SUPPLIERS DISCLAIM ALL WARRANTIES, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING WITHOUT LIMITATION ANY IMPLIED WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NONINFRINGEMENT, ACCURACY OF AI-GENERATED OUTPUT, ABSENCE OF ERRORS OR OMISSIONS, OR UNINTERRUPTED OPERATION. AI-GENERATED OUTPUT MAY BE INCORRECT, MISLEADING, OUTDATED, FABRICATED, OR INAPPROPRIATE FOR CUSTOMER'S USE CASE; CUSTOMER MUST INDEPENDENTLY VERIFY ALL AI-GENERATED OUTPUT BEFORE RELYING UPON IT FOR ANY OPERATIONAL, INVESTIGATIVE, COMPLIANCE, OR DECISION-MAKING PURPOSE.
 
-4. INDEMNIFICATION AND LIMITATION OF LIABILITY.
-Customer agrees to defend, indemnify, and hold harmless Splunk, Cisco, and their respective affiliates, officers, directors, employees, agents, licensors, and suppliers (the "Indemnified Parties") from and against any and all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys' fees and costs of investigation) arising out of or in any way connected with Customer's enablement, configuration, or use of the AI Assistant feature, or any breach by Customer of this acknowledgement or of Customer's master agreement with Splunk or Cisco. TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE INDEMNIFIED PARTIES BE LIABLE TO CUSTOMER OR TO ANY THIRD PARTY FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT LIMITATION DAMAGES FOR LOSS OF DATA, LOSS OF PROFITS, BUSINESS INTERRUPTION, REPUTATIONAL HARM, OR THIRD-PARTY CLAIMS) ARISING FROM OR RELATING TO CUSTOMER'S ENABLEMENT, CONFIGURATION, OR USE OF THE AI ASSISTANT FEATURE, REGARDLESS OF THE LEGAL OR EQUITABLE THEORY UPON WHICH ANY SUCH CLAIM MAY BE BASED, AND EVEN IF AN INDEMNIFIED PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THE FOREGOING DISCLAIMERS APPLY IN ADDITION TO, AND DO NOT REPLACE, ANY LIMITATIONS OR DISCLAIMERS APPLICABLE UNDER CUSTOMER'S MASTER AGREEMENT WITH SPLUNK OR CISCO; WHERE A CONFLICT EXISTS, THE PROVISION MORE PROTECTIVE OF THE INDEMNIFIED PARTIES SHALL CONTROL.
+4. INDEMNIFICATION.
+Customer agrees to defend, indemnify, and hold harmless Splunk, Cisco, and their respective affiliates, officers, directors, employees, agents, licensors, and suppliers (the "Indemnified Parties") from and against any and all claims, liabilities, damages, losses, costs, and expenses (including reasonable attorneys' fees and costs of investigation) arising out of or in any way connected with: (a) Customer's enablement, configuration, or use of the AI Assistant feature; (b) any data, prompt, query, credential, or aggregated metadata that Customer (or any user authenticated against Customer's deployment) transmits to a third-party LLM provider through Customer's use of this feature; (c) any breach by Customer of this acknowledgement or of Customer's master agreement with Splunk or Cisco; or (d) any third-party claim that Customer's use of the AI Assistant violated such third party's rights, including without limitation rights of privacy, confidentiality, publicity, or intellectual property.
 
-5. AUTHORITY.
+5. LIMITATION OF LIABILITY.
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE INDEMNIFIED PARTIES BE LIABLE TO CUSTOMER OR TO ANY THIRD PARTY FOR ANY INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT LIMITATION DAMAGES FOR LOSS OF DATA, LOSS OF PROFITS, BUSINESS INTERRUPTION, REPUTATIONAL HARM, OR THIRD-PARTY CLAIMS) ARISING FROM OR RELATING TO CUSTOMER'S ENABLEMENT, CONFIGURATION, OR USE OF THE AI ASSISTANT FEATURE, REGARDLESS OF THE LEGAL OR EQUITABLE THEORY UPON WHICH ANY SUCH CLAIM MAY BE BASED, AND EVEN IF AN INDEMNIFIED PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THE FOREGOING DISCLAIMERS APPLY IN ADDITION TO, AND DO NOT REPLACE, ANY LIMITATIONS OR DISCLAIMERS APPLICABLE UNDER CUSTOMER'S MASTER AGREEMENT WITH SPLUNK OR CISCO; WHERE A CONFLICT EXISTS, THE PROVISION MORE PROTECTIVE OF THE INDEMNIFIED PARTIES SHALL CONTROL.
+
+6. AUTHORITY.
 The administrator submitting this acknowledgement represents and warrants that they have the actual authority to bind Customer to the obligations set forth herein, and that they are submitting this acknowledgement of their own volition and not under duress, coercion, or mistake.
 
-6. RECORD OF ACKNOWLEDGEMENT.
-Customer's response to this acknowledgement (yes or no) is recorded together with the administrator's account name, network address, and a precise timestamp, and is durably retained as part of the AI Assistant audit log. This record is itself an audit event subject to the same integrity expectations as the records it concerns.
+7. RECORD OF ACKNOWLEDGEMENT.
+Customer's response to this acknowledgement (yes or no) is recorded together with the administrator's account name, network address, and a precise timestamp via the standard Splunk telemetry endpoint, and is durably retained as part of the AI Assistant audit log. This record is itself an audit event subject to the same integrity expectations as the records it concerns.
 
 If Customer does not accept these terms, the administrator should select "I do not accept" below; the AI Assistant feature will remain disabled.`;
 

@@ -16,8 +16,58 @@
             __splunkd_partials__ = ${json_decode(splunkd)};
         </script>
 
-        <% page_path = "/static/app/splunk_app_sap_logserv/pages/" + page + ".js" %>
+        <script src="${make_url('/static/app/splunk_app_sap_logserv/pages/' + page + '.js')}"></script>
 
-        <script src="${make_url(page_path)}"></script>
+        <script>
+            // Compatibility check (session 040, v0.0.5.0 build 184):
+            // Detect whether the now-archived Splunk_TA_isc-bind v2.0.0 or
+            // Splunk_TA_squid v2.1.0 add-ons are co-installed alongside this app.
+            // Their parsing was absorbed into the LogServ App in build 184; running
+            // both yields duplicate field extraction. Show a one-time dismissible
+            // amber banner recommending uninstall when detected. Pure JS, no React
+            // dependency, no Splunk Cloud Victoria-restricted Mako Python code.
+            (function () {
+                if (localStorage.getItem('logserv-compat-banner-dismissed') === '1') return;
+                fetch('/en-US/splunkd/__raw/services/apps/local?count=0&output_mode=json&search=' +
+                      encodeURIComponent('disabled=0 (name=Splunk_TA_isc-bind OR name=Splunk_TA_squid)'),
+                      { credentials: 'include' })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        var entries = (d && d.entry) || [];
+                        if (entries.length === 0) return;
+                        var labels = entries.map(function (e) {
+                            return (e.content && e.content.label) || e.name;
+                        });
+                        var banner = document.createElement('div');
+                        banner.id = 'logserv-compat-banner';
+                        banner.style.cssText =
+                            'position:relative;background:#fef3c7;border-bottom:' +
+                            '2px solid #f59e0b;padding:10px 16px;color:#78350f;' +
+                            'font:13px/1.4 "Splunk Platform Sans","Helvetica Neue",' +
+                            'sans-serif;display:flex;justify-content:space-between;' +
+                            'align-items:flex-start;gap:12px;' +
+                            'box-shadow:0 2px 6px rgba(0,0,0,0.08);';
+                        banner.innerHTML =
+                            '<div><strong>&#x26A0; Compatibility notice:</strong> ' +
+                            labels.join(' and ') + ' detected alongside this app. ' +
+                            'Splunk App for SAP LogServ now includes native parsing ' +
+                            'for those sourcetypes. To avoid duplicate field ' +
+                            'extraction, please uninstall the standalone add-on(s) ' +
+                            'via <em>Settings &rarr; Manage Apps</em>.</div>' +
+                            '<button id="logserv-compat-banner-x" type="button" ' +
+                            'style="background:transparent;border:1px solid #78350f;' +
+                            'border-radius:3px;cursor:pointer;color:inherit;' +
+                            'font-size:12px;line-height:1;padding:4px 8px;' +
+                            'flex:0 0 auto;">Dismiss</button>';
+                        document.body.insertBefore(banner, document.body.firstChild);
+                        var x = document.getElementById('logserv-compat-banner-x');
+                        if (x) x.addEventListener('click', function () {
+                            localStorage.setItem('logserv-compat-banner-dismissed', '1');
+                            banner.remove();
+                        });
+                    })
+                    .catch(function () { /* silent: bad network shouldn't break the app */ });
+            })();
+        </script>
     </body>
 </html>

@@ -3,5 +3,5 @@
 
 []
 owner = nobody
-access = read : [ * ], write : [ admin, sc_admin ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system

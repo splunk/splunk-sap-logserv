@@ -2,7 +2,7 @@
  * Audit event schema for the AI Assistant.
  *
  * Every event the audit writer sends to Splunk conforms to one of these
- * shapes. Indexed in the `_ai_assistant_audit` index (defined in the
+ * shapes. Indexed in the `ai_assistant_audit` index (defined in the
  * splunk_idx_sap_logserv app — see Phase A index app changes).
  *
  * Event categorization (mirrors the chat audit modal in §6.5 of the
@@ -334,7 +334,7 @@ export interface DailySpendCapHitEvent extends AuditEventBase {
  * with `audit_forwarder_enabled = false`. The admin is required to
  * tick a checkbox confirming they understand:
  *
- *   - The local `_ai_assistant_audit` index is the only copy of audit
+ *   - The local `ai_assistant_audit` index is the only copy of audit
  *     events while the forwarder is disabled.
  *   - A host-root admin can edit bucket files directly, so the index
  *     is not tamper-evident on its own.

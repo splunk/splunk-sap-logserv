@@ -18,7 +18,7 @@ This path requires a configured [LLM provider credential](settings.md#provider-c
 
 Active provider + default model are admin-configured in [Settings → General](settings.md). Per-user model picker in the chat panel's privacy banner lets users switch within the active provider's `models[]` list.
 
-For AWS Bedrock customers using IAM-only credentials (no Bedrock API Keys available), a future release will add a server-side proxy that signs requests with SigV4. See [Auto-Mint MCP Token Roadmap](mcp-setup.md#auto-mint-mcp-token-roadmap). Currently roadmap, not yet shipped.
+AWS Bedrock support currently requires Bedrock API Keys. IAM-only credentials (no Bedrock API Key) aren't supported — the React app can't sign SigV4 requests from the browser.
 
 ## :material-circle-box:{ .taiconcolor } The Free-form Flow
 

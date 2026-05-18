@@ -48,7 +48,34 @@ This is the default and preferred configuration. No setup required beyond instal
 
 For customers with OAuth-strict MCP server configurations (where cookie auth is disabled at the server side), the LogServ App supports an optional bearer token. Admin pastes the token in [Settings → Splunk MCP](settings.md#splunk-mcp-tab) under realm `logserv_ai_assistant_mcp` name `bearer_token`. The LogServ App layers it on top of the cookie auth via `Authorization: Bearer <token>` header. On 401 the client invalidates the cached token and retries once.
 
-Roadmap: a future release will replace the manual token paste with auto-mint via OAuth/RSA on the Data TA — see [Auto-Mint MCP Token Roadmap](#auto-mint-mcp-token-roadmap) below.
+#### :material-lightning-bolt:{ .taiconcolor } Splunk Cloud — JWT `aud` (audience) claim must be `mcp`
+
+On Splunk Cloud (Victoria 10.x and later), the platform's edge proxy mints a JWT from the user's session and forwards it to splunkd as a Bearer token automatically — independent of whether you paste a bearer token in our Settings page. **The Splunk MCP Server validates the JWT's `aud` (audience) claim, and the only value it accepts is `mcp`.**
+
+If the JWT your Splunk Cloud stack stamps has any other audience (a common default is `Demo` on freshly-provisioned non-production stacks), every MCP request returns:
+
+```json
+{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+        "code": -32600,
+        "message": "Invalid token audience: <whatever-the-jwt-has>"
+    }
+}
+```
+
+…and the AI Assistant renders the **SETUP REQUIRED** banner because the health probe's `initialize` call gets that 403.
+
+**Fix:** generate (or have your Splunk Cloud admin / Splunk Support generate) an MCP token with `aud = mcp`. The exact path depends on how your Splunk Cloud stack mints tokens:
+
+- If your stack uses Splunk's `/services/authorization/tokens` endpoint, set `audience=mcp` when minting.
+- If JWTs are stamped by the Cloud edge proxy (Victoria default), open a Splunk Cloud Support ticket asking them to set the stack's MCP audience to `mcp`.
+- If your stack is fronted by an external SSO (Okta, Azure AD, etc.), configure the SSO's token-issuer to set `aud: "mcp"` on tokens destined for the MCP route.
+
+Confirm by decoding the actual JWT being sent in your browser's Network tab (paste the Bearer token value into [jwt.io](https://jwt.io)) and checking the `aud` claim. If it's `mcp`, the audience is correct and your error is something else. If it's anything else, that's the misalignment.
+
+This `aud=mcp` requirement is an App 7931 server-side configuration; the LogServ App itself is audience-agnostic — it just forwards whatever bearer token (if any) Splunk Cloud injects.
 
 ## :material-circle-box:{ .taiconcolor } Configuration in the LogServ App
 
@@ -92,6 +119,16 @@ curl -sk -u admin:<pw> https://localhost:8089/services/mcp/health
 
 If that 404s, the MCP Server app isn't installed correctly or the REST handler is misconfigured.
 
+### "Invalid token audience" (Splunk Cloud)
+
+The browser's Network tab shows the `POST /en-US/splunkd/__raw/services/mcp` request returning HTTP 403 with body:
+
+```json
+{ "jsonrpc": "2.0", "id": 1, "error": { "code": -32600, "message": "Invalid token audience: <value>" } }
+```
+
+The JWT that Splunk Cloud's edge proxy stamps onto the request has an `aud` claim that App 7931 isn't configured to accept. **App 7931 requires `aud = mcp`.** See [Splunk Cloud — JWT `aud` (audience) claim must be `mcp`](#splunk-cloud-jwt-aud-audience-claim-must-be-mcp) above for the full fix. The short version: re-mint the MCP token (or have Splunk Cloud Support do it) with `audience=mcp`.
+
 ### "401 Unauthorized on every dispatch"
 
 Cookie auth isn't working — possible causes:
@@ -104,10 +141,6 @@ Cookie auth isn't working — possible causes:
 
 The MCP Server's response format doesn't match what the LogServ App expects. Most common cause: MCP Server version mismatch (need v1.1.0 or later). Check via the Splunk Apps page; upgrade if needed.
 
-### "TA gate is blocking AI Assistant"
-
-A health-check gate for an MCP support TA exists in the code but is currently bypassed (the dependent TA isn't yet identified on Splunkbase). The gate will be restored once a real TA is published. If you see a "TA missing" error, confirm you're running a recent build that has the bypass active.
-
 ## :material-circle-box:{ .taiconcolor } MCP-less Chat Mode
 
 For debugging or for specific use cases where you want LLM streaming without MCP, set `mcp_required = false` in Settings → General. The AI Assistant then operates in **chat-only mode**:
@@ -118,9 +151,3 @@ For debugging or for specific use cases where you want LLM streaming without MCP
 - A persistent orange-warning banner at the top of the chat reads: *"Chat-only mode — tool execution disabled (MCP not configured). The AI can answer questions but cannot run searches against your Splunk data."*
 
 This mode is **distinct from the [Templates-only build variant](templates-only-build.md)**: chat-only mode has the LLM-driven path on, MCP off; templates-only has the LLM-driven path off, MCP on.
-
-## :material-circle-box:{ .taiconcolor } Auto-Mint MCP Token Roadmap
-
-The current MCP authentication relies on either cookie-based session reuse (default) or admin-paste bearer tokens. Both work today but neither is ideal for fully-automated deployments. A future release will replace the manual token paste with server-side auto-mint of short-lived JWTs.
-
-The auto-mint feature eliminates the manual token-paste step for OAuth-strict customers. **Status:** roadmap, not yet shipped. Until it lands, customers in OAuth-strict environments paste the token manually. For implementation detail, see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).

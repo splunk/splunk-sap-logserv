@@ -7,6 +7,7 @@ import { parsePowerUserRoles } from '../state/AIAssistantConfig';
 import DashboardLayout from '../components/DashboardLayout';
 import FramedPanel from '../components/FramedPanel';
 import AuditLogViewer from '../components/AuditLogViewer';
+import TopologySettingsPanel from '../components/TopologySettingsPanel';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import {
     CredentialSummary,
@@ -23,7 +24,6 @@ import {
     readAIConfig,
     writeAIConfig,
 } from '../utils/aiConfigApi';
-import { TEMPLATES_ONLY } from '../buildFlags';
 import { createProviderByName } from '../components/ai/providers';
 import {
     AiAssistantEnableAcceptanceEvent,
@@ -403,7 +403,7 @@ const AUDIT_FORWARDER_FIELDS: FieldDef[] = [
         realm: 'logserv_ai_assistant_forwarder',
         name: 'hec_token',
         label: 'HEC Token',
-        hint: 'HTTP Event Collector token issued by the destination Splunk / SIEM. Used to authenticate audit-event POSTs from this Splunk Web tab to the forwarder URL configured under General. Must be a token with `_ai_assistant_audit` (or your remote-index-of-choice) write permission. The destination must also allow CORS from this Splunk Web origin.',
+        hint: 'HTTP Event Collector token issued by the destination Splunk / SIEM. Used to authenticate audit-event POSTs from this Splunk Web tab to the forwarder URL configured under General. Must be a token with `ai_assistant_audit` (or your remote-index-of-choice) write permission. The destination must also allow CORS from this Splunk Web origin.',
         minLength: 20,
         showPrefix: true,
     },
@@ -425,11 +425,10 @@ const PROVIDER_OPTIONS: ReadonlyArray<{ id: ProviderName; label: string }> = [
  * not on construction).
  */
 const getModelOptions = (
-    _providerName: ProviderName,
+    providerName: ProviderName,
 ): ReadonlyArray<{ id: string; label: string }> => {
-    // v0.0.5.0 stripped variant — only the no-op MockProvider ships.
     try {
-        const p = createProviderByName('mock');
+        const p = createProviderByName(providerName);
         return p.models.map((m) => ({ id: m.id, label: m.label }));
     } catch {
         return [];
@@ -904,6 +903,38 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
 
             <FieldRow>
                 <div>
+                    <FieldLabel>Templates-only mode</FieldLabel>
+                    <FieldHint>
+                        When on, the free-form / LLM-driven path is disabled
+                        at runtime: chat input is read-only, the model picker
+                        and Power Mode toggle are hidden, the Provider
+                        Credentials tab is hidden, and an info banner explains
+                        the mode. The predefined-prompt path + Splunk MCP
+                        Server integration + audit log all stay fully active.
+                        Use this for demonstration environments and
+                        restricted-environment customers where LLM dispatch
+                        should not be available, without rebuilding the app.
+                    </FieldHint>
+                </div>
+                <ToggleLabel>
+                    <input
+                        type="checkbox"
+                        checked={draft.templates_only_mode}
+                        onChange={(e) =>
+                            setDraft((d) => ({
+                                ...d,
+                                templates_only_mode: e.target.checked,
+                            }))
+                        }
+                        disabled={busy}
+                    />
+                    {draft.templates_only_mode ? 'Templates-only' : 'Full LLM path'}
+                </ToggleLabel>
+                <span />
+            </FieldRow>
+
+            <FieldRow>
+                <div>
                     <FieldLabel htmlFor="ai-provider">Active Provider</FieldLabel>
                     <FieldHint>
                         The LLM vendor used by every user of this app. Per-user
@@ -1272,7 +1303,7 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                     </FieldLabel>
                     <FieldHint>
                         Splunk index that receives every audit event. The
-                        default <code>_ai_assistant_audit</code> matches the
+                        default <code>ai_assistant_audit</code> matches the
                         LogServ Index App's defaults. To rename, also update
                         the <code>sap_logserv_audit_idx_macro</code> macro
                         definition (Settings → Advanced search → Search
@@ -1285,7 +1316,7 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                     id="ai-audit-index-name"
                     type="text"
                     value={draft.audit_index_name}
-                    placeholder="_ai_assistant_audit"
+                    placeholder="logserv_ai_assistant_audit"
                     onChange={(e) =>
                         setDraft((d) => ({
                             ...d,
@@ -1369,7 +1400,7 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                         Splunk index name on the destination side. Leave
                         blank to use the HEC token's default. Common
                         practice is to mirror our local index name (
-                        <code>_ai_assistant_audit</code>).
+                        <code>ai_assistant_audit</code>).
                     </FieldHint>
                 </div>
                 <FieldInput
@@ -1603,9 +1634,17 @@ interface AIAssistantSettingsProps {
      *  reacts immediately to the saved change without a page
      *  reload. Build 101 / session 022. */
     onConfigSaved?: () => Promise<void> | void;
+    /** Runtime templates-only mode from AIAssistantConfig. When true,
+     *  the Provider Credentials tab is hidden and a top-of-page banner
+     *  explains that LLM dispatch is disabled. Updates live on Settings
+     *  save via the App.tsx → AppShell → AIAssistantSettings prop chain. */
+    templatesOnlyMode?: boolean;
 }
 
-const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({ onConfigSaved }) => {
+const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
+    onConfigSaved,
+    templatesOnlyMode = false,
+}) => {
     const { isAdmin, loading, username, error } = useIsAdmin();
     const [savedTick, setSavedTick] = useState<number>(0);
     const [globalNotice, setGlobalNotice] = useState<string | null>(null);
@@ -1674,12 +1713,13 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({ onConfigSaved
         >
             {globalNotice && <StatusBanner $tone="success">{globalNotice}</StatusBanner>}
 
-            {TEMPLATES_ONLY && (
+            {templatesOnlyMode && (
                 <StatusBanner $tone="info">
-                    Templates-only build — LLM dispatch is disabled at compile time. Provider /
-                    model / tier / Power-Mode settings on this page have NO effect in this bundle.
-                    The Provider Credentials tab is hidden. The MCP server connection (Splunk MCP
-                    tab) and the Audit Log are still fully active.
+                    Templates-only mode — LLM dispatch is disabled by admin setting. Provider /
+                    model / tier / Power-Mode fields on this page have NO effect while this mode
+                    is on. The Provider Credentials tab is hidden. The MCP server connection
+                    (Splunk MCP tab) and the Audit Log remain fully active. Toggle templates-only
+                    mode off in the General tab to re-enable LLM dispatch.
                 </StatusBanner>
             )}
 
@@ -1702,7 +1742,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({ onConfigSaved
                     </SectionGrid>
                 </TabLayout.Panel>
 
-                {!TEMPLATES_ONLY && (
+                {!templatesOnlyMode && (
                     <TabLayout.Panel
                         panelId="providers"
                         label="Provider Credentials"
@@ -1769,6 +1809,20 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({ onConfigSaved
                             subtitle="Read-only browser of every audit event recorded by the AI Assistant — local-only canned prompts, vendor calls, security blocks, and privacy-tier elevations. Filter by time range, category, and user. Click + to expand a row's full event JSON. The disclaimer below describes the tamper-resistance threat model."
                         >
                             <AuditLogViewer />
+                        </FramedPanel>
+                    </SectionGrid>
+                </TabLayout.Panel>
+
+                <TabLayout.Panel
+                    panelId="topology"
+                    label="Topology"
+                >
+                    <SectionGrid>
+                        <FramedPanel
+                            title="Environment Topology Aggregation"
+                            subtitle="Admin controls for the time-bucketed KV Store that powers the Environment Topology view. Hourly scheduled searches aggregate node + edge activity into the logserv_topology_nodes + logserv_topology_edges collections; the topology view reads from KV Store at render time, filtered by the global TimeRange picker. Built session 035 / build 188 — see topology_kvstore_design_v0.1.md for the full architecture."
+                        >
+                            <TopologySettingsPanel />
                         </FramedPanel>
                     </SectionGrid>
                 </TabLayout.Panel>

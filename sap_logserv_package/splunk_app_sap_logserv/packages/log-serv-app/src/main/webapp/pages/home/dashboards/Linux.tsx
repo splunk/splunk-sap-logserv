@@ -72,6 +72,15 @@ const Q = {
     sapInstances: `\`sap_logserv_idx_macro\` sourcetype="linux_messages_syslog" sap_sid=* | stats count as Events dc(host) as Hosts by sap_sid, sap_inst, sap_cid | sort -Events`,
     fwTopSources: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops dc(fw_dst) as Targets values(fw_proto) as Protocol by fw_src | sort -Drops`,
     fwTopPorts: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops`,
+
+    // Resource Pressure (build 186 / session 034 deep-dive). Kernel OOM/lockup/
+    // tcp-mem events live on (linux:warn) for current data + (syslog) for legacy
+    // pre-Path-B-migration data; both stanzas carry the same EXTRACTs in props.conf
+    // so the structured fields populate uniformly.
+    oomByHost: `\`sap_logserv_idx_macro\` (sourcetype="linux:warn" OR sourcetype="syslog") "Out of memory: Killed process" | stats count AS Kills, values(oom_proc) AS Victims, max(oom_rss_kb) AS MaxRssKb, max(oom_vm_kb) AS MaxVmKb by host | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | eval "Max VM (MB)" = round(MaxVmKb / 1024, 0) | fields - MaxRssKb, MaxVmKb | sort -Kills`,
+    oomByVictim: `\`sap_logserv_idx_macro\` (sourcetype="linux:warn" OR sourcetype="syslog") "Out of memory: Killed process" oom_proc=* | stats count AS Kills, dc(host) AS Hosts, max(oom_rss_kb) AS MaxRssKb by oom_proc | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | fields - MaxRssKb | sort -Kills`,
+    cpuLockups: `\`sap_logserv_idx_macro\` (sourcetype="linux:warn" OR sourcetype="syslog") "soft lockup" | stats count AS Lockups, dc(lockup_cpu) AS "CPUs", max(lockup_duration_s) AS "Max (sec)", avg(lockup_duration_s) AS avg_s by host | eval "Avg (sec)" = round(avg_s, 1) | fields - avg_s | sort -Lockups`,
+    tcpOomTimeline: `\`sap_logserv_idx_macro\` (sourcetype="linux:warn" OR sourcetype="syslog") "TCP: out of memory" | timechart span=1d count by host`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -103,6 +112,30 @@ const FW_PORT_COLS: ColumnDef[] = [
     { key: 'Hosts', label: 'Hosts', align: 'right', render: (v) => formatInteger(v) },
 ];
 
+// Resource Pressure column definitions (build 186)
+const OOM_HOST_COLS: ColumnDef[] = [
+    { key: 'host', label: 'Host' },
+    { key: 'Kills', label: 'OOM Kills', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Victims', label: 'Victim Processes' },
+    { key: 'Max RSS (MB)', label: 'Max RSS (MB)', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Max VM (MB)', label: 'Max VM (MB)', align: 'right', render: (v) => formatInteger(v) },
+];
+
+const OOM_VICTIM_COLS: ColumnDef[] = [
+    { key: 'oom_proc', label: 'Victim Process' },
+    { key: 'Kills', label: 'OOM Kills', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Hosts', label: 'Hosts', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Max RSS (MB)', label: 'Max RSS (MB)', align: 'right', render: (v) => formatInteger(v) },
+];
+
+const CPU_LOCKUP_COLS: ColumnDef[] = [
+    { key: 'host', label: 'Host' },
+    { key: 'Lockups', label: 'Lockups', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'CPUs', label: 'CPUs', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Max (sec)', label: 'Max (sec)', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Avg (sec)', label: 'Avg (sec)', align: 'right' },
+];
+
 const Linux: React.FC = () => {
     const total = useFirstRowField(Q.kpiTotal, 'count');
     const fwDrops = useFirstRowField(Q.kpiFwDrops, 'count');
@@ -112,6 +145,9 @@ const Linux: React.FC = () => {
     const sapInstances = useSearch({ query: Q.sapInstances });
     const fwTopSources = useSearch({ query: Q.fwTopSources });
     const fwTopPorts = useSearch({ query: Q.fwTopPorts });
+    const oomByHost = useSearch({ query: Q.oomByHost });
+    const oomByVictim = useSearch({ query: Q.oomByVictim });
+    const cpuLockups = useSearch({ query: Q.cpuLockups });
 
     const fwDropsNum = Number(fwDrops.value ?? 0);
     const fwTone = fwDropsNum > 1000 ? 'critical' : fwDropsNum > 0 ? 'warning' : 'neutral';
@@ -137,6 +173,22 @@ const Linux: React.FC = () => {
         if (!port) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype="linux_secure" "DPT=${splQuote(port)}" | sort -_time`;
         openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+    };
+    const goOomHostRow = (row: Record<string, unknown>): void => {
+        const h = String(row.host ?? '');
+        if (!h) return;
+        openInNewTab(buildHostDetailsUrl(h, timeRange.earliest, timeRange.latest));
+    };
+    const goOomVictimRow = (row: Record<string, unknown>): void => {
+        const p = String(row.oom_proc ?? '');
+        if (!p) return;
+        const spl = `\`sap_logserv_idx_macro\` sourcetype="linux_messages_syslog" "Killed process" "(${splQuote(p)})" | sort -_time`;
+        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+    };
+    const goLockupRow = (row: Record<string, unknown>): void => {
+        const h = String(row.host ?? '');
+        if (!h) return;
+        openInNewTab(buildHostDetailsUrl(h, timeRange.earliest, timeRange.latest));
     };
 
     return (
@@ -237,6 +289,48 @@ const Linux: React.FC = () => {
                         pageSize={5}
                         onRowClick={goFwPortRow}
                     />
+                </FramedPanel>
+            </PanelGrid2>
+
+            <PanelGrid2>
+                <FramedPanel title="OOM Kills by Host" subtitle="Kernel OOM-killer events grouped by host, with victim processes and max RSS/VM observed — click a row to drill into Host Details">
+                    <DataTable
+                        columns={OOM_HOST_COLS}
+                        rows={oomByHost.results}
+                        loading={oomByHost.loading}
+                        error={oomByHost.error}
+                        emptyMessage="No OOM-killer events in this time range."
+                        pageSize={5}
+                        onRowClick={goOomHostRow}
+                    />
+                </FramedPanel>
+                <FramedPanel title="OOM Kills by Victim Process" subtitle="Process names targeted by the OOM killer with affected host count and max RSS — click a row for that process's full kill log">
+                    <DataTable
+                        columns={OOM_VICTIM_COLS}
+                        rows={oomByVictim.results}
+                        loading={oomByVictim.loading}
+                        error={oomByVictim.error}
+                        emptyMessage="No OOM-killer events in this time range."
+                        pageSize={5}
+                        onRowClick={goOomVictimRow}
+                    />
+                </FramedPanel>
+            </PanelGrid2>
+
+            <PanelGrid2>
+                <FramedPanel title="CPU Soft-Lockups" subtitle="NMI watchdog detections of stuck kernel-space CPUs — signals VM overcommit, hypervisor starvation, or noisy-neighbor; click a row to drill into Host Details">
+                    <DataTable
+                        columns={CPU_LOCKUP_COLS}
+                        rows={cpuLockups.results}
+                        loading={cpuLockups.loading}
+                        error={cpuLockups.error}
+                        emptyMessage="No CPU soft-lockup events in this time range."
+                        pageSize={5}
+                        onRowClick={goLockupRow}
+                    />
+                </FramedPanel>
+                <FramedPanel title="TCP Memory Pressure Over Time" subtitle="Daily count of TCP socket-buffer exhaustion warnings, by host — sustained activity suggests tcp_mem tuning needed">
+                    <TimeSeriesChart query={Q.tcpOomTimeline} height={280} palette="errors" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>
         </DashboardLayout>

@@ -17,7 +17,7 @@ This view replaces the manual hand-drawn architecture diagrams that SAP admin te
 
 The view consists of three regions:
 
-- **Left toolbar** — a layout name chip showing the active saved layout, a Refresh button (re-runs all 6 underlying SPL queries while preserving the saved positions), a Live mode toggle (auto-refresh every 30 seconds), and a Save / Load Layout dropdown for named-layout management.
+- **Left toolbar** — a layout name chip showing the active saved layout, a Refresh button (re-runs the KV Store fetch while preserving the saved positions), and a Save / Load Layout dropdown for named-layout management.
 - **Center canvas** — the force-directed graph itself, rendered with [`@xyflow/react`](https://reactflow.dev/). Nodes are SAP systems (SID-tagged), HANA tenant DBs (cylinder icon), and integration partners (DB / web / external endpoints). Edges show observed call relationships, with edge thickness reflecting call volume.
 - **Right sidebar** — when a node is selected, four tabs surface that node's per-selection context:
     - **Calls/Hr** — bar chart of hourly call volume into the selected node, hardcoded to the last 24 hours regardless of the global time-range picker (this chart's purpose is "what's happening RIGHT NOW on this node," not "what happened over the picker's window").
@@ -65,15 +65,22 @@ Layouts are per-user-named — you can save your own variants ("focus on XCQ", "
 
 Schema migration is in-memory: v1 / v2 / v3 records still load (the `loadCachedLayout` helper promotes them with the new fields undefined). When you save, the record is rewritten as v4.
 
-### :material-circle-box:{ .taiconcolor } Live Mode
+### :material-circle-box:{ .taiconcolor } Data Refresh Cadence
 
-The Live mode toggle in the left toolbar drives a 30-second auto-refresh of all 6 underlying SPL queries while preserving the saved positions. Useful for:
+The topology data layer is **populated by three hourly scheduled saved searches** that write to the KV Store:
 
-- Watching a known integration come online during a deploy.
-- Confirming an integration is healthy by seeing its edge weight increase tick-over-tick.
-- Operations wallboard use — leave the topology view up on a dashboard monitor and watch the call-graph update in near-real-time.
+- `logserv_topology_aggregate_nodes` — cron `5 * * * *`, rolls up event activity per (canonical entity, hour bucket)
+- `logserv_topology_aggregate_edges` — cron `5 * * * *`, rolls up call counts + per-type aggregates (HTTP latency p50/p95/max, RFC saturation, HANA SQL latency, etc.)
+- `logserv_topology_aggregate_inventory` — cron `5 * * * *`, rebuilds the unambiguous IP/host → SID mapping
 
-Live mode coexists with the [per-dashboard auto-refresh picker](index.md) — currently both contribute additively to the refresh nonce. Consolidation is planned for a future release.
+So the KV Store gets a new bucket every hour at H+5. The view re-reads the KV Store:
+
+- On initial page load
+- On global TimeRange picker change
+- When the user clicks the toolbar's **Refresh** button (useful right after dispatching a backfill saved search)
+- When the user selects a different node (re-runs the per-node detail-panel SPL via on-demand `useSearch` — independent of the KV Store layer)
+
+There is **no client-side auto-polling**. The previous Live | Lookup mode toggle was removed in session 044 — the 30-second polling cadence was a leftover from the pre-session-035 on-demand SPL data layer, and after the move to hourly KV Store aggregation, ~119 of every 120 ticks returned byte-identical data. The hourly cron is what governs data freshness now; tightening the cron schedule (e.g., to `*/15 * * * *`) is the right lever if a customer needs sub-hour data freshness, at the cost of more search-job dispatches.
 
 ### :material-lightning-bolt:{ .taiconcolor } What to Look For
 

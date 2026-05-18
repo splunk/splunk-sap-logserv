@@ -1,0 +1,8 @@
+response_code,reply_code,reply_code_id
+REFUSED,Refused,5
+SERVFAIL,Server Failure,2
+NOERROR,No Error,0
+NOTAUTH,NotAuth,9
+timed out,BADTIME,18
+zone not loaded,NotZone,10
+failure,Server Failure,2

@@ -20,7 +20,7 @@ Use this page as an index — click any dashboard below to see its full purpose,
 
 | Dashboard | Purpose | Key Data Sources |
 |-----------|---------|-----------------|
-| [Environment Topology](topology.md) | Interactive graph view of SAP systems, integration partners, and endpoints. Force-directed initial layout, self-derived IP→SID inventory, named saved layouts via KV Store, Live mode auto-refresh. | `sap:abap:gateway`, `sap:abap:icm`, `sap:hana:tracelogs`, `sap:saprouter`, plus host inventory from `linux_messages_syslog` osquery events |
+| [Environment Topology](topology.md) | Interactive graph view of SAP systems, integration partners, and endpoints. Force-directed initial layout, self-derived IP→SID inventory, named saved layouts via KV Store. KV Store refreshed hourly by scheduled saved searches; manual Refresh button in the toolbar for on-demand re-fetch. | `sap:abap:gateway`, `sap:abap:icm`, `sap:hana:tracelogs`, `sap:saprouter`, plus host inventory from `linux_messages_syslog` osquery events |
 
 ### Applications (SAP application runtime)
 

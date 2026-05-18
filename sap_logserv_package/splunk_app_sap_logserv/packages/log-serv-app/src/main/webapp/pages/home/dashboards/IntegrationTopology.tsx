@@ -6,12 +6,14 @@ import Spinner from '../components/Spinner';
 import TopologyGraph, { type TopologyGraphHandle } from '../components/topology/TopologyGraph';
 import TopologyToolbar from '../components/topology/TopologyToolbar';
 import TopologyLeftSidebar from '../components/topology/TopologyLeftSidebar';
-import TopologyRightSidebar, { type RightTab } from '../components/topology/TopologyRightSidebar';
+import TopologyRightSidebar, { type RightTab, type EdgeRightTab } from '../components/topology/TopologyRightSidebar';
 import TopologyBottomPanel from '../components/topology/TopologyBottomPanel';
 import LayoutNameModal from '../components/topology/LayoutNameModal';
+import ManageLayoutsModal from '../components/topology/ManageLayoutsModal';
 import { logservTheme } from '../styles/logservTheme';
 import { useTopologyData } from '../hooks/useTopologyData';
 import { useNodeData } from '../hooks/useNodeData';
+import { useEdgeData } from '../hooks/useEdgeData';
 import { ALL_INTEGRATION_TYPES } from '../topology/edgeStyle';
 import {
     loadCachedLayout,
@@ -22,6 +24,15 @@ import {
     clearCachedActiveLayout,
     migrateLegacyLocalStorageLayout,
     slugifyLayoutName,
+    getDefaultLayoutSlug,
+    setDefaultLayoutSlug,
+    getAllDefaultLayoutSlugs,
+    setDefaultLayoutInKvStore,
+    fetchDefaultLayoutSlugsFromKvStore,
+    migrateLegacyLocalStorageDefaultLayouts,
+    fetchActiveLayoutModeFromKvStore,
+    setActiveLayoutModeInKvStore,
+    migrateLegacyLocalStorageActiveMode,
     type LayoutSummary,
 } from '../topology/persistence';
 import {
@@ -30,6 +41,25 @@ import {
     type SavedLayout,
     type PanelLayoutState,
 } from '../topology/types';
+import { type LayoutMode } from '../topology/layout';
+
+/* localStorage key for the user's preferred layout algorithm. Persists
+ * the toolbar's Force / Layered toggle across page loads. Build 200. */
+const LAYOUT_MODE_STORAGE_KEY = 'logserv.topology.layoutMode';
+
+const readPersistedLayoutMode = (): LayoutMode => {
+    try {
+        const v = window.localStorage.getItem(LAYOUT_MODE_STORAGE_KEY);
+        if (v === 'layered' || v === 'force' || v === 'tree') return v;
+    } catch (_e) { /* ignore */ }
+    return 'force';
+};
+
+const writePersistedLayoutMode = (mode: LayoutMode): void => {
+    try {
+        window.localStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
+    } catch (_e) { /* ignore */ }
+};
 
 /**
  * Environment Topology — Phase 1 prototype dashboard.
@@ -87,6 +117,29 @@ const ColumnRow = styled.div`
 `;
 
 const ZoneScroll = styled.div`
+    overflow: auto;
+    height: 100%;
+    /* Build 197 — reserve scrollbar gutter so the cyan FramedPanel border
+     * isn't visually clipped by the overlay scrollbar. The "stable" value
+     * adds a permanent gutter even when the scrollbar is hidden, keeping
+     * content + the panel right edge consistently positioned. Used by the
+     * left sidebar (Systems + Integration types panels), where the right
+     * edge of the cyan border sits inside the page and needs the gutter
+     * to keep it visually crisp.
+     */
+    scrollbar-gutter: stable;
+`;
+
+/* Build 233 / session 038 — variant of ZoneScroll for the right sidebar.
+ * Drops scrollbar-gutter because the right panel's right edge IS the
+ * page's right edge: a reserved gutter would push the cyan FramedPanel
+ * border inward by ~16 px, breaking right-alignment with the chrome above
+ * (Refresh-interval picker, help icon). When a scrollbar IS needed inside
+ * the right sidebar, the overlay scrollbar (macOS / Windows 10+ default)
+ * floats over the panel border without taking width — acceptable trade
+ * vs. the constant misalignment.
+ */
+const RightZoneScroll = styled.div`
     overflow: auto;
     height: 100%;
 `;
@@ -251,8 +304,10 @@ const CollapsedTab = styled.button<{ $orient: 'left' | 'right' | 'bottom' }>`
 `;
 
 const IntegrationTopology: React.FC = () => {
-    // ---- Selection ----
+    // ---- Selection (mutex: at most one of selectedNodeId / selectedEdgeId
+    //      is non-null at any time. Build 202 / session 036.) ----
     const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+    const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
     // ---- Filters ----
     const [enabledTypes, setEnabledTypes] = useState<Set<IntegrationType>>(
@@ -261,7 +316,58 @@ const IntegrationTopology: React.FC = () => {
 
     // ---- Toolbar mode flags ----
     const [snapMode, setSnapMode] = useState(false);
-    const [liveMode, setLiveMode] = useState(false);
+
+    /* Active layout algorithm — Force (d3-force), Layered (ELK Sugiyama),
+     * or Tree (ELK mrtree). Persisted to localStorage so user choice
+     * survives page reloads. Build 200 / session 035. Build 229 / Option C —
+     * also persisted to KV Store for cross-browser parity. */
+    const [layoutMode, setLayoutMode] = useState<LayoutMode>(() => readPersistedLayoutMode());
+    /* Build 229 / session 037 / Option C — gates the auto-load effect
+     * from firing until the async KV Store fetch for the active layout
+     * mode completes. Without this gate, on a fresh-browser load the
+     * auto-load effect would race the hydration and load the default
+     * for the localStorage-cached mode (typically Force fallback) before
+     * the KV Store value (e.g. Layered) had a chance to set the state.
+     * Initial value `false`; flipped to `true` once the mount effect
+     * has fetched (or attempted to fetch) the active mode from KV Store. */
+    const [activeModeHydrated, setActiveModeHydrated] = useState<boolean>(false);
+    /* Build 216 / session 036 — guards the auto-load effect from
+     * re-firing on every refreshLayouts() call after the user has
+     * already manually picked a different layout. Stores `${mode}::${defaultSlug}`
+     * for the mode whose default has been auto-attempted; reset when
+     * the user switches modes. Declared near layoutMode so it's in
+     * scope for handleSetLayoutMode below. */
+    const autoLoadAttemptedFor = useRef<string | null>(null);
+    const handleSetLayoutMode = useCallback((mode: LayoutMode) => {
+        setLayoutMode(mode);
+        writePersistedLayoutMode(mode);
+        /* Build 231 / session 037 — DROPDOWN mode changes are session-
+         * only (writes to localStorage cache for fast remount, but does
+         * NOT write to KV Store). The cross-browser default-mode is
+         * controlled explicitly via the Manage Layouts modal's
+         * "Open in this mode by default" checkbox per section. This
+         * decouples "what mode am I using right now" from "what mode
+         * should every browser default to". Build 229 had write-through
+         * here; build 231 reverted that in favor of explicit user
+         * control. */
+        /* Switching layout invalidates any drag-positions the user made
+         * under the previous algorithm — bump forceRerunKey so the graph
+         * remounts with fresh ELK/d3-force positions. */
+        setForceRerunKey((k) => k + 1);
+        setLatestPositions(null);
+        /* Build 215 / session 036 — DROP the savedLayout so its
+         * positions (captured under the OLD mode) don't get applied to
+         * the NEW mode's fresh layout pass. The auto-load effect (added
+         * in build 216) will replace it with the new mode's default
+         * layout if one is configured. */
+        setSavedLayout(null);
+        setCurrentLayoutName(null);
+        clearCachedActiveLayout();
+        /* Build 216 — reset the auto-load guard so the effect can fire
+         * for the NEW mode's default. Without this reset, switching
+         * back to a previously-loaded mode wouldn't re-load its default. */
+        autoLoadAttemptedFor.current = null;
+    }, []);
 
     /* Right-sidebar active tab — lifted from TopologyRightSidebar (build 169 /
      * session 028) so a saved layout's `rightTabId` can be applied on load.
@@ -269,18 +375,15 @@ const IntegrationTopology: React.FC = () => {
      * internal state if no `tab` prop is passed (e.g. tests or future
      * non-IntegrationTopology consumers). */
     const [rightTab, setRightTab] = useState<RightTab>('overview');
+    /* Right-sidebar edge tab — separate from the node tab so swapping
+     * selection between node and edge doesn't clobber the user's preferred
+     * tab in the OTHER mode. Defaults to 'overview'. Build 202 / session 036. */
+    const [edgeRightTab, setEdgeRightTab] = useState<EdgeRightTab>('overview');
 
     /* Imperative handle into TopologyGraph — used to capture the current
      * ReactFlow viewport on Save Layout and re-apply a saved viewport on
      * Load Layout. Build 169 / session 028. */
     const topologyGraphRef = useRef<TopologyGraphHandle | null>(null);
-
-    /** Live-mode polling interval in milliseconds. Hardcoded for v1 (build 125
-     *  / A.6) — could be made admin-configurable via ai_assistant_settings.conf
-     *  if real demand emerges. 30s balances freshness against Splunk search-job
-     *  load (each tick re-dispatches ~9 searches across the topology +
-     *  per-node hooks). */
-    const LIVE_REFRESH_MS = 30_000;
 
     // ---- Layout persistence (lazy first read from local cache) ----
     const [savedLayout, setSavedLayout] = useState<SavedLayout | null>(() => loadCachedLayout());
@@ -316,6 +419,68 @@ const IntegrationTopology: React.FC = () => {
         [availableLayouts],
     );
 
+    /** Build 216 / session 036 — Manage Layouts modal state + per-mode
+     *  default-layout slug map. Build 226 / session 037 / Path F migrated
+     *  storage from localStorage to KV Store (cross-browser persistence)
+     *  while keeping localStorage as a synchronous fast-mount cache. The
+     *  modal reads `defaultSlugs` for its radio-checked state and calls
+     *  `handleSetDefault` which writes through to BOTH the cache and the
+     *  KV Store. The async `fetchDefaultLayoutSlugsFromKvStore` mount
+     *  effect (further down) hydrates the cache from KV Store + updates
+     *  state if the two diverge — this is what gives cross-browser
+     *  defaults their "follow me" behavior. */
+    const [manageModalOpen, setManageModalOpen] = useState<boolean>(false);
+    const [defaultSlugs, setDefaultSlugs] = useState<{
+        force: string | null;
+        layered: string | null;
+        tree: string | null;
+    }>(() => getAllDefaultLayoutSlugs());
+    const handleSetDefault = useCallback(
+        (mode: 'force' | 'layered' | 'tree', slug: string | null): void => {
+            // Optimistic update — local state + cache reflect the click
+            // immediately even if the KV Store write is in flight.
+            setDefaultLayoutSlug(mode, slug);
+            setDefaultSlugs((prev) => ({ ...prev, [mode]: slug }));
+            // Async write-through to KV Store. Refresh the layouts list on
+            // success so summaries' `isDefault` flags reflect the change.
+            void (async (): Promise<void> => {
+                const ok = await setDefaultLayoutInKvStore(mode, slug);
+                if (ok) {
+                    void refreshLayouts();
+                } else {
+                    /* Best-effort: keep the local-state pick. The next mount
+                     * will reconcile from KV Store via fetchDefaultLayoutSlugsFromKvStore. */
+                }
+            })();
+        },
+        // refreshLayouts is declared in the same component scope below.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [],
+    );
+
+    /* Build 231 / session 037 — user's explicit default-mode preference,
+     *  decoupled from the active session mode. Stored in KV Store via
+     *  setActiveLayoutModeInKvStore (or null = no preference, fall back
+     *  to localStorage cache). Initial state is the localStorage value;
+     *  the mount effect's hydration overwrites with the KV Store value
+     *  if it exists. */
+    const [defaultMode, setDefaultMode] = useState<LayoutMode | null>(null);
+    const handleSetDefaultMode = useCallback((mode: LayoutMode | null): void => {
+        // Optimistic update.
+        setDefaultMode(mode);
+        // Also switch the active session mode immediately so the user
+        // sees the result of their pick. Same handler the LAYOUT
+        // dropdown uses (drops savedLayout, resets autoLoadAttemptedFor,
+        // bumps forceRerunKey). On uncheck (mode === null), leave the
+        // current session mode alone — the user is just declaring "no
+        // explicit default", not requesting a switch.
+        if (mode != null) {
+            handleSetLayoutMode(mode);
+        }
+        // Async write-through to KV Store.
+        void setActiveLayoutModeInKvStore(mode);
+    }, [handleSetLayoutMode]);
+
     /** Refresh the list of saved layouts from KV Store. Called on mount and
      *  after every successful Save / Delete. */
     const refreshLayouts = useCallback(async (): Promise<void> => {
@@ -328,33 +493,75 @@ const IntegrationTopology: React.FC = () => {
         }
     }, []);
 
-    // On mount: migrate legacy localStorage entry to KV Store (one-time per
-    // user; idempotent), then refresh the list. Best-effort — failures don't
-    // block the UI.
+    // On mount: migrate legacy localStorage entries to KV Store (one-time
+    // per user; idempotent), refresh the layouts list, hydrate per-mode
+    // default-layout slugs from KV Store, AND hydrate the active layout
+    // mode preference from KV Store. Best-effort — failures don't block
+    // the UI. Build 226 (Path F) added the default-layout migration +
+    // hydrate step; build 229 (Option C) added the active-mode migration
+    // + hydrate step.
     useEffect(() => {
         let cancelled = false;
         (async (): Promise<void> => {
             await migrateLegacyLocalStorageLayout();
             if (cancelled) return;
+            await migrateLegacyLocalStorageDefaultLayouts();
+            if (cancelled) return;
+            await migrateLegacyLocalStorageActiveMode();
+            if (cancelled) return;
             await refreshLayouts();
+            if (cancelled) return;
+            const remoteDefaults = await fetchDefaultLayoutSlugsFromKvStore();
+            if (cancelled) return;
+            if (remoteDefaults) {
+                setDefaultSlugs((prev) => {
+                    if (prev.force === remoteDefaults.force
+                        && prev.layered === remoteDefaults.layered
+                        && prev.tree === remoteDefaults.tree) {
+                        return prev;
+                    }
+                    return remoteDefaults;
+                });
+            }
+            // Build 229 — hydrate active layout mode from KV Store. The
+            // localStorage cache (`logserv.topology.layoutMode`) was used
+            // for the synchronous initial state; KV Store is the source
+            // of truth for cross-browser parity. Update mode + cache only
+            // when KV Store value differs from current state. After the
+            // fetch resolves (success OR failure), flip
+            // `activeModeHydrated` so the auto-load effect can proceed —
+            // the gate prevents auto-load from racing the hydration on a
+            // fresh-browser load.
+            const remoteMode = await fetchActiveLayoutModeFromKvStore();
+            if (cancelled) return;
+            if (remoteMode) {
+                setDefaultMode(remoteMode);
+                setLayoutMode((prev) => {
+                    if (prev === remoteMode) return prev;
+                    writePersistedLayoutMode(remoteMode);
+                    /* Reset the auto-load guard so the auto-load effect fires
+                     * once for the newly-hydrated mode (matches handleSetLayoutMode
+                     * behavior). Without this reset, the guard's previous
+                     * `${oldMode}::${slug}` key prevents the new mode's
+                     * default from auto-loading. */
+                    autoLoadAttemptedFor.current = null;
+                    return remoteMode;
+                });
+            } else {
+                /* Build 231 — null KV Store row means user has NOT picked
+                 * an explicit default mode. The session mode stays at
+                 * the localStorage-cached value (Force fallback). */
+                setDefaultMode(null);
+            }
+            // Always flip the gate, even if KV Store had no row — the
+            // auto-load effect should proceed with the localStorage-cached
+            // mode in that case (the fallback behavior).
+            setActiveModeHydrated(true);
         })();
         return () => {
             cancelled = true;
         };
     }, [refreshLayouts]);
-
-    // Live-mode polling (build 125 / A.6): when the toolbar's Live | Lookup
-    // toggle is on Live, re-run all topology queries every LIVE_REFRESH_MS
-    // by bumping refreshNonce. Uses the same nonce mechanism as the manual
-    // Refresh button — `useTopologyData` and `useNodeData` both observe it
-    // via their `useSearch` deps. Saved layout intact across ticks.
-    useEffect(() => {
-        if (!liveMode) return undefined;
-        const id = window.setInterval(() => {
-            setRefreshNonce((n) => n + 1);
-        }, LIVE_REFRESH_MS);
-        return () => window.clearInterval(id);
-    }, [liveMode]);
 
     // ---- Panel state (hydrated from saved layout if present, else defaults) ----
     const [panels, setPanels] = useState<PanelLayoutState>(
@@ -406,21 +613,129 @@ const IntegrationTopology: React.FC = () => {
 
     // ---- Real data from Splunk via useTopologyData ----
     const topology = useTopologyData(refreshNonce);
-    const liveNodes = topology.nodes;
     const liveEdges = topology.edges;
     const liveActivity = topology.activity;
     const liveCallsPerHour = topology.callsPerHour;
 
+    /* Build 206 / session 036 — augment each node with `callBuckets`
+     * derived from its incident edges. Drives the thin outer ring on
+     * SidNode showing normal / warning / error call counts.
+     *
+     * Per-edge classification rule:
+     *   - errorRate = errorCount / callCount (or 0 if no calls)
+     *   - normal_calls (always): callCount - errorCount
+     *   - errorCount routing:
+     *       errorRate <  10%  → warning (sporadic, edge mostly healthy)
+     *       errorRate >= 10%  → error   (systematic, edge degraded)
+     *
+     * Threshold = 10% chosen empirically: in our dataset HTTP error rates
+     * cluster either near 0% (healthy) or above 25% (broken backend);
+     * 10% cleanly separates "occasional 4xx noise" from "endpoint down". */
+    const liveNodes = useMemo(() => {
+        if (topology.nodes.length === 0) return topology.nodes;
+        /* Group edges by node id once so we don't re-filter the array per node
+         * (was O(N*E); now O(N+E)). */
+        const incidentByNodeId = new Map<string, typeof topology.edges>();
+        topology.edges.forEach((e) => {
+            const srcList = incidentByNodeId.get(e.source) ?? [];
+            srcList.push(e);
+            incidentByNodeId.set(e.source, srcList);
+            if (e.target !== e.source) {
+                const tgtList = incidentByNodeId.get(e.target) ?? [];
+                tgtList.push(e);
+                incidentByNodeId.set(e.target, tgtList);
+            }
+        });
+        return topology.nodes.map((n) => {
+            const incident = incidentByNodeId.get(n.id) ?? [];
+            let normal = 0;
+            let warning = 0;
+            let error = 0;
+            /* Build 224 / session 037 — HANA-tagged nodes get a vendor-
+             * specific warning signal: tenant SQL events with severity=
+             * WARNING OR duration > 1000 ms (excluding ERROR/FATAL events).
+             * Pre-computed at SPL aggregation time as `warning_count` on
+             * each hana_tenant edge bucket row; summed across the time
+             * window in useTopologyData. Replaces the build-211 heuristic
+             * (which moved 25% of clean calls to warning when hanaOpMaxMs
+             * > 1000) — that heuristic was a per-edge approximation; this
+             * is the actual count.
+             *
+             * For Oracle / MSSQL / Postgres / DB2 partner DBs there's no
+             * parallel warning_count field today (the KV Store edge
+             * schema only carries HANA Tenant duration fields). Other DB
+             * vendors fall through to the generic errorCount + 10%
+             * rate-threshold heuristic — which still routes their high-
+             * error edges to the red bucket and low-error edges to the
+             * green/orange bucket as appropriate. */
+            /* Build 224 / session 037 — replaced the build-211 "25% of clean
+             * calls move to warning when hanaOpMaxMs > 1000" heuristic with
+             * the first-class warningCount field, computed at SPL aggregation
+             * time as: count of events where hana_trace_severity="WARNING"
+             * OR (hana_op_duration_ms > 1000 AND severity not in ERROR/FATAL).
+             * The warningCount is only emitted on hana_tenant edges, but
+             * adding it unconditionally is null-safe (`?? 0`). */
+            incident.forEach((e) => {
+                const total = e.callCount;
+                const errs = e.errorCount ?? 0;
+                const tenantWarnings = e.warningCount ?? 0;
+                /* Clean calls = total minus the error+warning combined. Cap
+                 * at 0 in case the SPL emits warningCount that overlaps with
+                 * an event that's also routed elsewhere (defense-in-depth;
+                 * the SPL guards against ERROR+WARNING double-count, but
+                 * future extensions might not). */
+                const cleanCalls = Math.max(0, total - errs - tenantWarnings);
+                normal += cleanCalls;
+                warning += tenantWarnings;
+                const rate = total > 0 ? errs / total : 0;
+                if (rate < 0.10) {
+                    warning += errs;
+                } else {
+                    error += errs;
+                }
+            });
+            return { ...n, callBuckets: { normal, warning, error } };
+        });
+    }, [topology.nodes, topology.edges]);
+
     // ---- Per-node hourly call counts for the right sidebar's bar chart ----
-    const nodeData = useNodeData(selectedNodeId, refreshNonce);
+    /* Build 203 / session 036 — pass the node's CANONICAL VALUE (label),
+     * not its SHA1[:16] id. The KV Store rewrite (build 191) made node ids
+     * opaque hashes, so spliced into SPL like `sap_sid="<hash>"` they
+     * never match raw events. The label IS the canonical_value (e.g. "XCP",
+     * "10.186.72.127", "hec53v013858") which IS what gateway / hana / web
+     * dispatcher events were tagged with. */
+    const selectedNodeLabel = useMemo(
+        () => (selectedNodeId
+            ? (liveNodes.find((n) => n.id === selectedNodeId)?.label ?? null)
+            : null),
+        [selectedNodeId, liveNodes],
+    );
+    const nodeData = useNodeData(selectedNodeLabel, refreshNonce);
+
+    // ---- Per-edge data for the right sidebar's 5-tab Edge Details panel.
+    //      Lookups happen against the in-memory liveEdges array; the hook
+    //      only fires SPL searches when an edge is selected. Build 202 /
+    //      session 036. ----
+    const selectedEdge = useMemo(
+        () => (selectedEdgeId ? liveEdges.find((e) => e.id === selectedEdgeId) ?? null : null),
+        [selectedEdgeId, liveEdges],
+    );
+    const edgeData = useEdgeData(selectedEdge, refreshNonce);
 
     // ---- Stats ----
     const totalCalls = useMemo(
         () => liveEdges.reduce((s, e) => s + e.callCount, 0),
         [liveEdges],
     );
+    /* Build 205 / session 036 — collect by canonical LABEL (not SHA1[:16]
+     * id). The bottom Live Activity table compares against `sourceSid`
+     * which is also a label (see useTopologyData's labelForId resolution
+     * for the activity rows). Pre-build-205 this used `n.id` and the
+     * highlight never matched, so all focused SID rows rendered the
+     * "secondary" (cyan) pill style instead of the focused (red) style. */
     const focusedSidIds = useMemo(
-        () => new Set(liveNodes.filter((n) => n.kind === 'sid_focused').map((n) => n.id)),
+        () => new Set(liveNodes.filter((n) => n.kind === 'sid_focused').map((n) => n.label)),
         [liveNodes],
     );
     const statsLine = useMemo(() => {
@@ -435,24 +750,44 @@ const IntegrationTopology: React.FC = () => {
         return `${liveNodes.length} nodes · ${liveEdges.length} edges · ${totalCalls.toLocaleString()} calls · ${resolvedPct}% endpoints resolved to SID`;
     }, [topology.loading, liveNodes, liveEdges, totalCalls, topology.inventoryStatus]);
 
-    // ---- Selection handlers ----
+    // ---- Selection handlers (build 202 / session 036 — enforce mutex
+    //      between node + edge selection at the dashboard level so the
+    //      right sidebar always shows EITHER node-detail tabs OR
+    //      edge-detail tabs, never both.) ----
     const handleNodeClick = useCallback((nodeId: string) => {
         setSelectedNodeId(nodeId);
+        setSelectedEdgeId(null);
+    }, []);
+    const handleEdgeClick = useCallback((edgeId: string) => {
+        setSelectedEdgeId(edgeId);
+        setSelectedNodeId(null);
     }, []);
     const handlePaneClick = useCallback(() => {
         setSelectedNodeId(null);
+        setSelectedEdgeId(null);
     }, []);
 
     // ---- Filter handlers ----
+    /* Build 223 / session 037 — when the user un-toggles an integration
+     * type AND the currently-selected edge is of that type, clear
+     * `selectedEdgeId` so the right pane drops back to the empty-state
+     * prompt instead of showing stale Edge Details for a dimmed edge.
+     * Same rationale for `handleToggleAllTypes(false)` — every edge is
+     * dimmed so any selection is stale. */
     const handleToggleType = useCallback((t: IntegrationType) => {
+        const wasEnabled = enabledTypes.has(t);
         setEnabledTypes((prev) => {
             const next = new Set(prev);
             if (next.has(t)) next.delete(t); else next.add(t);
             return next;
         });
-    }, []);
+        if (wasEnabled && selectedEdge && selectedEdge.type === t) {
+            setSelectedEdgeId(null);
+        }
+    }, [enabledTypes, selectedEdge]);
     const handleToggleAllTypes = useCallback((enable: boolean) => {
         setEnabledTypes(enable ? new Set(ALL_INTEGRATION_TYPES) : new Set());
+        if (!enable) setSelectedEdgeId(null);
     }, []);
 
     // ---- Layout (graph) handlers ----
@@ -482,8 +817,13 @@ const IntegrationTopology: React.FC = () => {
                 viewport,
                 enabledTypes: enabledTypesArr,
                 selectedNodeId: selectedNodeId,
+                selectedEdgeId: selectedEdgeId,
                 rightTabId: rightTab,
                 snapMode,
+                /* Build 215 / session 036 — pin the layout mode at save
+                 * time so loading restores the right algorithm + the
+                 * saved positions only apply to that mode. */
+                layoutMode,
             });
             if (!result.ok) {
                 // KV Store write failure — log to console; keep modal open so
@@ -494,7 +834,7 @@ const IntegrationTopology: React.FC = () => {
                 return;
             }
             setSavedLayout({
-                version: 4,
+                version: 5,
                 savedAt: new Date().toISOString(),
                 layoutName,
                 nodes: positions,
@@ -502,15 +842,17 @@ const IntegrationTopology: React.FC = () => {
                 viewport,
                 enabledTypes: enabledTypesArr,
                 selectedNodeId,
+                selectedEdgeId,
                 rightTabId: rightTab,
                 snapMode,
+                layoutMode,
             });
             setCurrentLayoutName(layoutName);
             setLayoutDirty(false);
             setNameModalOpen(false);
             await refreshLayouts();
         },
-        [latestPositions, panels, savedLayout, refreshLayouts, enabledTypes, selectedNodeId, rightTab, snapMode],
+        [latestPositions, panels, savedLayout, refreshLayouts, enabledTypes, selectedNodeId, selectedEdgeId, rightTab, snapMode, layoutMode],
     );
 
     const handleCancelSaveModal = useCallback(() => {
@@ -556,6 +898,18 @@ const IntegrationTopology: React.FC = () => {
             if (layout.selectedNodeId !== undefined) {
                 setSelectedNodeId(layout.selectedNodeId);
             }
+            if (layout.selectedEdgeId !== undefined) {
+                setSelectedEdgeId(layout.selectedEdgeId);
+            }
+            /* Build 215 / session 036 — restore the layout mode the
+             * saved positions were captured under. Pre-215 records
+             * have no layoutMode field; default to 'force' since
+             * that was the only mode at the time those layouts were
+             * created (Tree mode shipped in build 200, but the v5
+             * schema didn't capture mode until build 215). */
+            const savedMode: LayoutMode = (layout.layoutMode as LayoutMode | undefined) ?? 'force';
+            setLayoutMode(savedMode);
+            writePersistedLayoutMode(savedMode);
             if (layout.rightTabId) {
                 /* Type-narrow: rightTabId is `string | undefined` on the wire
                  * but we know our own RightTab values. Trust + cast since the
@@ -579,6 +933,44 @@ const IntegrationTopology: React.FC = () => {
         },
         [],
     );
+
+    /** Build 216 / session 036 — auto-load the per-mode default layout
+     *  when (a) the layout list arrives + a default is set for the
+     *  current layoutMode, OR (b) the user switches to a different
+     *  layoutMode that has a default. The effect runs whenever
+     *  layoutMode or availableLayouts change.
+     *
+     *  Guards:
+     *   - Only runs after `availableLayouts` is non-empty (avoids racing
+     *     with the KV Store fetch on first mount).
+     *   - Skips load if the default slug doesn't exist in availableLayouts
+     *     anymore (e.g. user deleted it but the localStorage default is
+     *     stale).
+     *   - Skips if the currentLayoutSlug ALREADY matches the default
+     *     (no work needed).
+     *   - `autoLoadAttemptedFor` ref guards against re-loading on every
+     *     refreshLayouts() call after an explicit user load. Declared
+     *     up where layoutMode lives. */
+    useEffect(() => {
+        /* Build 229 / Option C — block until the async active-mode KV
+         * Store fetch has completed (success OR failure). Without this
+         * gate, the auto-load effect fires for the localStorage-cached
+         * mode FIRST, calling handleLoadLayout(forceDefault) which then
+         * writes 'force' back to localStorage via the saved-layout's
+         * mode tag — overriding any subsequent setLayoutMode('layered')
+         * from hydration. */
+        if (!activeModeHydrated) return;
+        if (availableLayouts.length === 0) return;
+        const defaultSlug = defaultSlugs[layoutMode];
+        if (!defaultSlug) return;
+        const exists = availableLayouts.some((l) => l.slug === defaultSlug);
+        if (!exists) return;
+        if (currentLayoutSlug === defaultSlug) return;
+        const attemptKey = `${layoutMode}::${defaultSlug}`;
+        if (autoLoadAttemptedFor.current === attemptKey) return;
+        autoLoadAttemptedFor.current = attemptKey;
+        handleLoadLayout(defaultSlug);
+    }, [layoutMode, availableLayouts, defaultSlugs, currentLayoutSlug, handleLoadLayout, activeModeHydrated]);
 
     /** Delete a named layout from KV Store. If the deleted layout was the
      *  currently-loaded one, also clear the local cache + chip. */
@@ -652,7 +1044,7 @@ const IntegrationTopology: React.FC = () => {
                     layoutSavedAt={savedLayout?.savedAt ?? null}
                     layoutDirty={layoutDirty}
                     snapMode={snapMode}
-                    liveMode={liveMode}
+                    layoutMode={layoutMode}
                     refreshing={topology.loading}
                     currentLayoutName={currentLayoutName}
                     currentLayoutSlug={currentLayoutSlug}
@@ -661,27 +1053,39 @@ const IntegrationTopology: React.FC = () => {
                     onOpenSaveLayoutModal={handleOpenSaveModal}
                     onRefresh={handleRefresh}
                     onToggleSnap={() => setSnapMode((s) => !s)}
-                    onToggleLiveMode={() => setLiveMode((m) => !m)}
+                    onSetLayoutMode={handleSetLayoutMode}
                     onLoadLayout={handleLoadLayout}
                     onDeleteLayout={handleDeleteLayout}
+                    onOpenManageLayouts={() => setManageModalOpen(true)}
                 />
 
                 {topology.loading && (
                     <StatusBanner $kind="loading">
                         <Spinner radius={7} dotSize={2.5} label="Loading topology" />
-                        Loading topology data from Splunk for the current time range…
+                        Loading topology data from KV Store for the current time range…
                     </StatusBanner>
                 )}
                 {!topology.loading && topology.errors.length > 0 && (
                     <StatusBanner $kind="error" role="alert">
-                        Topology query had {topology.errors.length} error(s):{' '}
+                        Topology KV Store query had {topology.errors.length} error(s):{' '}
                         {topology.errors.map((e) => `${e.search}: ${e.message}`).join(' · ')}
                     </StatusBanner>
                 )}
-                {!topology.loading && topology.errors.length === 0 && liveNodes.length === 0 && (
+                {!topology.loading && topology.errors.length === 0 && topology.isEmpty && (
                     <StatusBanner $kind="empty">
-                        No SAP integration traffic in the current time range. Try a wider window
-                        (e.g., Last 7 days) or check that the relevant sourcetypes are indexed.
+                        No topology data available for the current time range. If this is a fresh
+                        install, run the one-time 30-day backfill from
+                        Settings → AI Assistant → Topology. Otherwise the hourly aggregation may
+                        not have populated this window yet — try a wider time range, or check
+                        that the scheduled saved searches are enabled.
+                    </StatusBanner>
+                )}
+                {!topology.loading && topology.errors.length === 0 && !topology.isEmpty && topology.staleness?.isStale && (
+                    <StatusBanner $kind="empty">
+                        Topology data is stale — the most-recent bucket is{' '}
+                        {topology.staleness.ageHours.toFixed(1)} hours old (threshold: 6h).
+                        The hourly aggregation saved searches may be disabled or failing.
+                        Check Settings → AI Assistant → Topology and the Splunk Job Monitor.
                     </StatusBanner>
                 )}
 
@@ -701,6 +1105,7 @@ const IntegrationTopology: React.FC = () => {
                             <ZoneScroll>
                                 <TopologyLeftSidebar
                                     nodes={liveNodes}
+                                    edges={liveEdges}
                                     totalCalls={totalCalls}
                                     enabledTypes={enabledTypes}
                                     onToggleType={handleToggleType}
@@ -750,7 +1155,10 @@ const IntegrationTopology: React.FC = () => {
                                     snapMode={snapMode}
                                     enabledTypes={enabledTypes}
                                     selectedNodeId={selectedNodeId}
+                                    selectedEdgeId={selectedEdgeId}
+                                    layoutMode={layoutMode}
                                     onNodeClick={handleNodeClick}
+                                    onEdgeClick={handleEdgeClick}
                                     onPaneClick={handlePaneClick}
                                     onLayoutChange={handleLayoutChange}
                                 />
@@ -779,7 +1187,7 @@ const IntegrationTopology: React.FC = () => {
                                 {'‹'}
                             </CollapsedTab>
                         ) : (
-                            <ZoneScroll>
+                            <RightZoneScroll>
                                 <TopologyRightSidebar
                                     selectedNode={selectedNode}
                                     selectedNodeIncomingEdges={incomingEdges}
@@ -792,11 +1200,16 @@ const IntegrationTopology: React.FC = () => {
                                     nodeErrorsLoading={nodeData.errorsLoading}
                                     nodeHosts={nodeData.hosts}
                                     nodeHostsLoading={nodeData.hostsLoading}
+                                    selectedEdge={selectedEdge}
+                                    edgeNodes={liveNodes}
+                                    edgeData={edgeData}
                                     onCollapse={toggleRight}
                                     tab={rightTab}
                                     onTabChange={setRightTab}
+                                    edgeTab={edgeRightTab}
+                                    onEdgeTabChange={setEdgeRightTab}
                                 />
-                            </ZoneScroll>
+                            </RightZoneScroll>
                         )}
                     </RightZone>
                 </ColumnRow>
@@ -839,6 +1252,18 @@ const IntegrationTopology: React.FC = () => {
                 existingSlugs={existingLayoutSlugs}
                 onSubmit={handleConfirmSaveName}
                 onCancel={handleCancelSaveModal}
+            />
+            {/* Build 216 / session 036 — Manage Layouts modal lets the
+              * user pick a default layout for each layout mode. Defaults
+              * auto-load on mount + on mode switch via the effect below. */}
+            <ManageLayoutsModal
+                open={manageModalOpen}
+                layouts={availableLayouts}
+                defaultSlugs={defaultSlugs}
+                onSetDefault={handleSetDefault}
+                defaultMode={defaultMode}
+                onSetDefaultMode={handleSetDefaultMode}
+                onClose={() => setManageModalOpen(false)}
             />
         </DashboardLayout>
     );

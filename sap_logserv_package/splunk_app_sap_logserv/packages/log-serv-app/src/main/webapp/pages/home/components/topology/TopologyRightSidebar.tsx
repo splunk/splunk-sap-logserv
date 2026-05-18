@@ -5,7 +5,9 @@ import { logservTheme } from '../../styles/logservTheme';
 import { darken } from '../../utils/colorMath';
 import { formatCallCount } from '../../topology/edgeStyle';
 import type { TopologyNode, TopologyEdge } from '../../topology/types';
+import { isDatabaseTag } from '../../topology/types';
 import type { NodeError, NodeHost } from '../../hooks/useNodeData';
+import type { UseEdgeDataResult } from '../../hooks/useEdgeData';
 
 /**
  * Right sidebar — selected-node details.
@@ -250,16 +252,25 @@ const PARTNER_PALETTE = [
 
 /**
  * Hand-rolled SVG bar chart — calls/hour for the last 24 hours.
- * Width 240, height 60, with axis-free bars matching TimeSeriesChart's
- * "compact" aesthetic in the right sidebar.
+ * Build 203 / session 036 — converted to responsive width via viewBox so
+ * the chart scales to fit the right sidebar regardless of its current
+ * resize-handle width (220-520 px range). Same fix as ActivityTrendChart.
  */
 const HourlyChart: React.FC<{ data: number[]; color: string }> = ({ data, color }) => {
-    const W = 240;
-    const H = 64;
+    const VB_W = 240;
+    const VB_H = 64;
     const max = Math.max(...data, 1);
-    const barW = W / data.length;
+    const barW = VB_W / data.length;
     return (
-        <svg width={W} height={H} role="img" aria-label="Calls per hour, last 24h">
+        <svg
+            width="100%"
+            height={VB_H}
+            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Calls per hour, last 24h"
+            style={{ display: 'block' }}
+        >
             <defs>
                 <linearGradient id="hourly-grad" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0%" stopColor={color} stopOpacity="1" />
@@ -267,12 +278,12 @@ const HourlyChart: React.FC<{ data: number[]; color: string }> = ({ data, color 
                 </linearGradient>
             </defs>
             {data.map((v, i) => {
-                const h = Math.max(1, (v / max) * (H - 4));
+                const h = Math.max(1, (v / max) * (VB_H - 4));
                 return (
                     <rect
                         key={i}
                         x={i * barW + 0.5}
-                        y={H - h}
+                        y={VB_H - h}
                         width={Math.max(1, barW - 1)}
                         height={h}
                         fill="url(#hourly-grad)"
@@ -367,6 +378,133 @@ const ChartBlock = styled.div`
     min-width: 0;
 `;
 
+/* Build 202 / session 036 — Edge Details panel-specific styled components. */
+
+const EndpointCard = styled.div`
+    background: ${logservTheme.colors.tableHeaderBackground};
+    border: 1px solid ${logservTheme.colors.panelBorderWeak};
+    border-radius: ${logservTheme.radius.small};
+    padding: ${logservTheme.spacing.sm} ${logservTheme.spacing.md};
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+
+    .epLabel {
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 9.5px;
+        color: ${logservTheme.colors.textMuted};
+    }
+    .epValue {
+        font-size: 12px;
+        font-weight: ${logservTheme.fontWeight.semibold};
+        color: ${logservTheme.colors.textActive};
+        word-break: break-all;
+        line-height: 1.3;
+    }
+`;
+
+const EndpointArrow = styled.div`
+    align-self: center;
+    color: ${logservTheme.colors.cyanAccent};
+    font-size: 16px;
+    font-weight: bold;
+    padding: 0 4px;
+`;
+
+const EndpointRow = styled.div`
+    display: flex;
+    gap: ${logservTheme.spacing.sm};
+    align-items: stretch;
+    margin-bottom: ${logservTheme.spacing.md};
+`;
+
+const EdgeTypeBadge = styled.span<{ $color: string }>`
+    display: inline-block;
+    background: ${(p) => p.$color};
+    color: ${logservTheme.colors.textActive};
+    padding: 3px 10px;
+    border-radius: ${logservTheme.radius.small};
+    font-weight: ${logservTheme.fontWeight.bold};
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+`;
+
+const PerfMetric = styled.div`
+    background: ${logservTheme.colors.tableHeaderBackground};
+    border: 1px solid ${logservTheme.colors.panelBorderWeak};
+    border-radius: ${logservTheme.radius.small};
+    padding: 6px 10px;
+    flex: 1;
+    min-width: 0;
+
+    .perfLabel {
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 9.5px;
+        color: ${logservTheme.colors.textMuted};
+        line-height: 1.4;
+    }
+    .perfValue {
+        font-size: 14px;
+        font-weight: ${logservTheme.fontWeight.bold};
+        color: ${logservTheme.colors.cyanLight};
+        font-variant-numeric: tabular-nums;
+        margin-top: 2px;
+    }
+`;
+
+const PerfRow = styled.div`
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: ${logservTheme.spacing.sm};
+`;
+
+const ActivityChartWrap = styled.div`
+    margin-top: ${logservTheme.spacing.sm};
+    background: ${logservTheme.colors.tableHeaderBackground};
+    border: 1px solid ${logservTheme.colors.panelBorderWeak};
+    border-radius: ${logservTheme.radius.small};
+    padding: 8px;
+`;
+
+const PerfBarRow = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 0;
+    font-size: 10.5px;
+
+    .label {
+        flex: 0 0 38%;
+        color: ${logservTheme.colors.textActive};
+        font-family: monospace;
+        font-size: 10px;
+        word-break: break-all;
+    }
+    .barOuter {
+        flex: 1;
+        height: 8px;
+        background: ${logservTheme.colors.panelBackground};
+        border-radius: 1px;
+        overflow: hidden;
+    }
+    .barInner {
+        height: 100%;
+        background: ${logservTheme.colors.cyanAccent};
+    }
+    .num {
+        flex: 0 0 60px;
+        text-align: right;
+        color: ${logservTheme.colors.textMuted};
+        font-variant-numeric: tabular-nums;
+    }
+`;
+
 const CollapseChevron = styled.button`
     background: transparent;
     color: ${logservTheme.colors.textMuted};
@@ -414,6 +552,20 @@ interface TopologyRightSidebarProps {
     /** Per-node host inventory (Splunk default `host` field), follows global TimeRange. */
     nodeHosts: NodeHost[] | null;
     nodeHostsLoading: boolean;
+    /** Build 202 / session 036 — per-edge selection.
+     *  When non-null, the sidebar swaps from the 4-tab Node Details panel to
+     *  the 5-tab Edge Details panel. Mutex with selectedNode is enforced at
+     *  the IntegrationTopology dashboard level. */
+    selectedEdge?: TopologyEdge | null;
+    /** Build 202 / session 036 — full topology nodes list, used to resolve
+     *  edge.source / edge.target ids back to human-readable labels for the
+     *  Overview tab's source/target identity cards. */
+    edgeNodes?: TopologyNode[];
+    /** Build 202 / session 036 — per-edge SPL data for the Activity /
+     *  Operations / Performance / Errors tabs. Activity Trend timechart,
+     *  Operations top-10, Performance distribution, Errors top-15. Hook
+     *  returns null fields when no edge is selected. */
+    edgeData?: UseEdgeDataResult;
     /** Optional collapse handler — renders a "›" chevron in the details header. */
     onCollapse?: () => void;
     /** Optional controlled tab state (build 169 / session 028) — when provided
@@ -424,9 +576,125 @@ interface TopologyRightSidebarProps {
     tab?: RightTab;
     /** Companion setter when `tab` is controlled. */
     onTabChange?: (next: RightTab) => void;
+    /** Build 202 / session 036 — controlled edge tab state (parallel to tab/onTabChange
+     *  for nodes). When undefined, the sidebar falls back to internal edge tab state. */
+    edgeTab?: EdgeRightTab;
+    /** Companion setter when `edgeTab` is controlled. */
+    onEdgeTabChange?: (next: EdgeRightTab) => void;
 }
 
 export type RightTab = 'overview' | 'tcodes' | 'errors' | 'hosts';
+
+/** Build 202 / session 036 — Edge Details right-pane tab IDs. */
+export type EdgeRightTab = 'overview' | 'activity' | 'operations' | 'performance' | 'errors';
+
+/**
+ * Activity Trend stacked-area chart — calls + errors over time for the
+ * selected edge, in the dispatched window. Renders TWO series stacked:
+ * errors at the top (red) over successes (cyan-light) below.
+ *
+ * Build 203 / session 036 — converted from fixed 280×90 to responsive
+ * `width: 100%` + `viewBox` so the chart scales to fit the right
+ * sidebar's actual width (which can vary 220-520 px via the panel
+ * resize handle, or be even narrower when the user has the sidebar
+ * compressed). `preserveAspectRatio: none` lets the bars stretch
+ * horizontally rather than the chart letterboxing.
+ */
+const ActivityTrendChart: React.FC<{
+    data: { time: number; count: number; errorCount: number }[];
+}> = ({ data }) => {
+    const VB_W = 280;
+    const VB_H = 90;
+    if (data.length === 0) return null;
+    const maxVal = Math.max(...data.map((d) => d.count), 1);
+    const barW = VB_W / data.length;
+    return (
+        <svg
+            width="100%"
+            height={VB_H}
+            viewBox={`0 0 ${VB_W} ${VB_H}`}
+            preserveAspectRatio="none"
+            role="img"
+            aria-label="Edge activity trend"
+            style={{ display: 'block' }}
+        >
+            <defs>
+                <linearGradient id="activity-grad-success" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor={logservTheme.colors.cyanLight} stopOpacity="1" />
+                    <stop offset="100%" stopColor={darken(logservTheme.colors.cyanLight, 0.4)} stopOpacity="1" />
+                </linearGradient>
+                <linearGradient id="activity-grad-error" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor={logservTheme.colors.red} stopOpacity="1" />
+                    <stop offset="100%" stopColor={darken(logservTheme.colors.red, 0.4)} stopOpacity="1" />
+                </linearGradient>
+            </defs>
+            {data.map((d, i) => {
+                const totalH = Math.max(1, (d.count / maxVal) * (VB_H - 4));
+                const errorH = Math.max(0, (d.errorCount / maxVal) * (VB_H - 4));
+                const successH = Math.max(0, totalH - errorH);
+                const successY = VB_H - totalH;
+                const errorY = VB_H - errorH;
+                return (
+                    <g key={i}>
+                        <rect
+                            x={i * barW + 0.5}
+                            y={successY}
+                            width={Math.max(1, barW - 1)}
+                            height={successH}
+                            fill="url(#activity-grad-success)"
+                            rx={1}
+                        />
+                        {errorH > 0 && (
+                            <rect
+                                x={i * barW + 0.5}
+                                y={errorY}
+                                width={Math.max(1, barW - 1)}
+                                height={errorH}
+                                fill="url(#activity-grad-error)"
+                                rx={1}
+                            />
+                        )}
+                    </g>
+                );
+            })}
+        </svg>
+    );
+};
+
+const formatLatency = (ms: number | undefined): string => {
+    if (ms == null || !Number.isFinite(ms)) return '—';
+    if (ms < 1) return `${ms.toFixed(2)} ms`;
+    if (ms < 1000) return `${Math.round(ms)} ms`;
+    return `${(ms / 1000).toFixed(2)} s`;
+};
+
+const formatBytes = (bytes: number | undefined): string => {
+    if (bytes == null || !Number.isFinite(bytes)) return '—';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+};
+
+const edgeTypeColor = (splType: string | undefined): string => {
+    switch (splType) {
+        case 'http': return logservTheme.colors.cyanAccent;
+        case 'rfc': return logservTheme.colors.teal;
+        case 'hana_audit': return logservTheme.colors.orange;
+        case 'hana_tenant': return logservTheme.colors.purple;
+        default: return logservTheme.colors.textMuted;
+    }
+};
+
+const edgeTypeLabel = (splType: string | undefined): string => {
+    switch (splType) {
+        case 'http': return 'HTTP';
+        case 'rfc': return 'RFC';
+        case 'hana_audit': return 'HANA Audit';
+        case 'hana_tenant': return 'HANA Tenant';
+        default: return splType ?? 'unknown';
+    }
+};
 
 const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
     selectedNode,
@@ -440,9 +708,14 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
     nodeErrorsLoading,
     nodeHosts,
     nodeHostsLoading,
+    selectedEdge,
+    edgeNodes,
+    edgeData,
     onCollapse,
     tab: controlledTab,
     onTabChange,
+    edgeTab: controlledEdgeTab,
+    onEdgeTabChange,
 }) => {
     const [internalTab, setInternalTab] = useState<RightTab>('overview');
     const tab = controlledTab ?? internalTab;
@@ -453,9 +726,34 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
         },
         [onTabChange],
     );
+    const [internalEdgeTab, setInternalEdgeTab] = useState<EdgeRightTab>('overview');
+    const edgeTab = controlledEdgeTab ?? internalEdgeTab;
+    const setEdgeTab = useCallback(
+        (next: EdgeRightTab): void => {
+            if (onEdgeTabChange) onEdgeTabChange(next);
+            else setInternalEdgeTab(next);
+        },
+        [onEdgeTabChange],
+    );
+
+    /** Resolve edge endpoint id back to a human-readable label by looking
+     *  up the corresponding node in the edgeNodes list. Falls back to the
+     *  raw id (SHA1[:16]) if no match. */
+    const labelForEndpoint = useCallback(
+        (id: string): string => {
+            if (!edgeNodes) return id;
+            const node = edgeNodes.find((n) => n.id === id);
+            return node?.label ?? id;
+        },
+        [edgeNodes],
+    );
 
     /** Top partners derived from in+out edges. Group by the OTHER endpoint
-     *  (not the selected node), sum call counts, take top 4 + "OTHER". */
+     *  (not the selected node), sum call counts, take top 4 + "OTHER".
+     *  Build 205 / session 036 — resolve SHA1[:16] node ids back to human-
+     *  readable labels via labelForEndpoint (looks up edgeNodes). Without
+     *  this, the donut legend showed opaque hex strings like
+     *  `d268d4a8e9919dd4` instead of the actual SID / IP / hostname. */
     const topPartners = React.useMemo(() => {
         if (!selectedNode) return [];
         const counts = new Map<string, number>();
@@ -472,7 +770,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
         const rest = sorted.slice(4);
         const restTotal = rest.reduce((s, r) => s + r.count, 0);
         const list = top.map((p, i) => ({
-            code: p.id,
+            code: labelForEndpoint(p.id),
             count: p.count,
             color: PARTNER_PALETTE[i],
         }));
@@ -484,7 +782,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
             });
         }
         return list;
-    }, [selectedNode, selectedNodeIncomingEdges, selectedNodeOutgoingEdges]);
+    }, [selectedNode, selectedNodeIncomingEdges, selectedNodeOutgoingEdges, labelForEndpoint]);
 
     const collapseAction = onCollapse ? (
         <CollapseChevron type="button" onClick={onCollapse} title="Collapse panel" aria-label="Collapse details panel">
@@ -492,12 +790,344 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
         </CollapseChevron>
     ) : undefined;
 
+    /* Build 202 / session 036 — Edge Details branch.
+     * When an edge is selected (selectedEdge is non-null), render the 5-tab
+     * Edge Details panel. Mutex with selectedNode is enforced at the
+     * IntegrationTopology dashboard level — both can't be set at once. The
+     * edge branch is checked BEFORE the node empty-state so an edge
+     * selection without a node selection still renders the edge UI. */
+    if (selectedEdge) {
+        const sourceLabel = labelForEndpoint(selectedEdge.source);
+        const targetLabel = labelForEndpoint(selectedEdge.target);
+        const splType = selectedEdge.splType;
+        const typeColor = edgeTypeColor(splType);
+        const typeLabel = edgeTypeLabel(splType);
+        const errorRate = selectedEdge.errorCount && selectedEdge.callCount > 0
+            ? (selectedEdge.errorCount / selectedEdge.callCount) * 100
+            : 0;
+
+        return (
+            <Stack>
+                <FramedPanel title="Edge Details" actions={collapseAction}>
+                    <EndpointRow>
+                        <EndpointCard>
+                            <span className="epLabel">Source</span>
+                            <span className="epValue">{sourceLabel}</span>
+                        </EndpointCard>
+                        <EndpointArrow aria-hidden>→</EndpointArrow>
+                        <EndpointCard>
+                            <span className="epLabel">Target</span>
+                            <span className="epValue">{targetLabel}</span>
+                        </EndpointCard>
+                    </EndpointRow>
+                    <NodeIdRow>
+                        <EdgeTypeBadge $color={typeColor}>{typeLabel}</EdgeTypeBadge>
+                        <KindChip $kind="partner" style={{ color: typeColor, borderColor: typeColor }}>
+                            {selectedEdge.direction.toUpperCase()}
+                        </KindChip>
+                        <span style={{ marginLeft: 'auto', fontSize: 11, color: logservTheme.colors.textMuted }}>
+                            {selectedEdge.callCount.toLocaleString()} calls
+                        </span>
+                    </NodeIdRow>
+                    <TabBar role="tablist" aria-label="Edge detail tabs">
+                        {(['overview', 'activity', 'operations', 'performance', 'errors'] as EdgeRightTab[]).map((t) => (
+                            <Tab
+                                key={t}
+                                type="button"
+                                role="tab"
+                                aria-selected={edgeTab === t}
+                                $active={edgeTab === t}
+                                onClick={() => setEdgeTab(t)}
+                            >
+                                {t === 'overview' ? 'Overview'
+                                    : t === 'activity' ? 'Activity'
+                                    : t === 'operations' ? 'Operations'
+                                    : t === 'performance' ? 'Performance'
+                                    : 'Errors'}
+                            </Tab>
+                        ))}
+                    </TabBar>
+
+                    {edgeTab === 'overview' && (
+                        <>
+                            <FactsTable>
+                                <tbody>
+                                    <tr><td className="k">Edge type</td><td className="v">{typeLabel}</td></tr>
+                                    <tr><td className="k">Direction</td><td className="v">{selectedEdge.direction}</td></tr>
+                                    <tr><td className="k">Calls in window</td><td className="v">{selectedEdge.callCount.toLocaleString()}</td></tr>
+                                    <tr><td className="k">Errors in window</td><td className="v">{(selectedEdge.errorCount ?? 0).toLocaleString()}</td></tr>
+                                    {selectedEdge.callCount > 0 && (
+                                        <tr><td className="k">Error rate</td><td className="v">{errorRate.toFixed(2)}%</td></tr>
+                                    )}
+                                    {selectedEdge.splSourcetype && (
+                                        <tr><td className="k">Sourcetype</td><td className="v">{shortSourcetype(selectedEdge.splSourcetype)}</td></tr>
+                                    )}
+                                </tbody>
+                            </FactsTable>
+                            {edgeData?.activity && edgeData.activity.length > 0 && (
+                                <ActivityChartWrap>
+                                    <ChartCaption>Activity over current time range</ChartCaption>
+                                    <ActivityTrendChart data={edgeData.activity} />
+                                    <DonutLegend style={{ marginTop: 6 }}>
+                                        <li>
+                                            <span className="swatch" style={{ background: logservTheme.colors.cyanLight }} />
+                                            <span className="code">Successful calls</span>
+                                            <span className="count">{
+                                                edgeData.activity.reduce((s, p) => s + (p.count - p.errorCount), 0).toLocaleString()
+                                            }</span>
+                                        </li>
+                                        <li>
+                                            <span className="swatch" style={{ background: logservTheme.colors.red }} />
+                                            <span className="code">Errors</span>
+                                            <span className="count">{
+                                                edgeData.activity.reduce((s, p) => s + p.errorCount, 0).toLocaleString()
+                                            }</span>
+                                        </li>
+                                    </DonutLegend>
+                                </ActivityChartWrap>
+                            )}
+                        </>
+                    )}
+
+                    {edgeTab === 'activity' && (
+                        <>
+                            {edgeData?.activityLoading && (
+                                <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
+                                    Querying Splunk for activity timechart…
+                                </EmptyMsg>
+                            )}
+                            {!edgeData?.activityLoading && (!edgeData?.activity || edgeData.activity.length === 0) && (
+                                <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
+                                    No events for this edge in the current time range.
+                                </EmptyMsg>
+                            )}
+                            {!edgeData?.activityLoading && edgeData?.activity && edgeData.activity.length > 0 && (
+                                <ActivityChartWrap>
+                                    <ChartCaption>Calls + errors per hour · current time range</ChartCaption>
+                                    <ActivityTrendChart data={edgeData.activity} />
+                                    <DonutLegend style={{ marginTop: 6 }}>
+                                        <li>
+                                            <span className="swatch" style={{ background: logservTheme.colors.cyanLight }} />
+                                            <span className="code">Successful calls</span>
+                                            <span className="count">{
+                                                edgeData.activity.reduce((s, p) => s + (p.count - p.errorCount), 0).toLocaleString()
+                                            }</span>
+                                        </li>
+                                        <li>
+                                            <span className="swatch" style={{ background: logservTheme.colors.red }} />
+                                            <span className="code">Errors</span>
+                                            <span className="count">{
+                                                edgeData.activity.reduce((s, p) => s + p.errorCount, 0).toLocaleString()
+                                            }</span>
+                                        </li>
+                                    </DonutLegend>
+                                </ActivityChartWrap>
+                            )}
+                        </>
+                    )}
+
+                    {edgeTab === 'operations' && (
+                        <>
+                            {edgeData?.operationsLoading && (
+                                <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
+                                    Querying Splunk for top entities traversing this edge…
+                                </EmptyMsg>
+                            )}
+                            {!edgeData?.operationsLoading && (!edgeData?.operations || edgeData.operations.length === 0) && (
+                                <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
+                                    No grouping data for this edge in the current time range.
+                                </EmptyMsg>
+                            )}
+                            {!edgeData?.operationsLoading && edgeData?.operations && edgeData.operations.length > 0 && (
+                                <ChartBlock>
+                                    <ChartCaption>
+                                        {`Top ${
+                                            splType === 'http' ? 'URIs'
+                                            : splType === 'rfc' ? 'ABAP programs'
+                                            : splType === 'hana_audit' ? 'action types'
+                                            : splType === 'hana_tenant' ? 'trace components'
+                                            : 'entities'
+                                        } · current time range`}
+                                    </ChartCaption>
+                                    <DonutChart
+                                        data={edgeData.operations.map((op, i) => ({
+                                            code: op.entity,
+                                            count: op.count,
+                                            color: PARTNER_PALETTE[i % PARTNER_PALETTE.length],
+                                        }))}
+                                    />
+                                    <DonutLegend>
+                                        {edgeData.operations.map((op, i) => (
+                                            <li key={op.entity}>
+                                                <span className="swatch" style={{ background: PARTNER_PALETTE[i % PARTNER_PALETTE.length] }} />
+                                                <span className="code" title={op.entity}>{op.entity}</span>
+                                                <span className="count">{formatCallCount(op.count)}</span>
+                                            </li>
+                                        ))}
+                                    </DonutLegend>
+                                </ChartBlock>
+                            )}
+                        </>
+                    )}
+
+                    {edgeTab === 'performance' && (
+                        <>
+                            {/* Pre-computed aggregates from the cached edge object — instant, no SPL dispatch. */}
+                            <ChartCaption>Cached aggregates · current time range window</ChartCaption>
+                            <PerfRow>
+                                {splType === 'http' && (
+                                    <>
+                                        <PerfMetric>
+                                            <div className="perfLabel">p50 latency</div>
+                                            <div className="perfValue">{formatLatency(selectedEdge.responseTimeP50)}</div>
+                                        </PerfMetric>
+                                        <PerfMetric>
+                                            <div className="perfLabel">p95 latency</div>
+                                            <div className="perfValue">{formatLatency(selectedEdge.responseTimeP95)}</div>
+                                        </PerfMetric>
+                                        <PerfMetric>
+                                            <div className="perfLabel">max latency</div>
+                                            <div className="perfValue">{formatLatency(selectedEdge.responseTimeMax)}</div>
+                                        </PerfMetric>
+                                        <PerfMetric>
+                                            <div className="perfLabel">bytes out total</div>
+                                            <div className="perfValue">{formatBytes(selectedEdge.bytesOutSum)}</div>
+                                        </PerfMetric>
+                                    </>
+                                )}
+                                {splType === 'rfc' && (
+                                    <>
+                                        <PerfMetric>
+                                            <div className="perfLabel">icm_tasks max</div>
+                                            <div className="perfValue">{selectedEdge.icmTasksMax?.toLocaleString() ?? '—'}</div>
+                                        </PerfMetric>
+                                        <PerfMetric>
+                                            <div className="perfLabel">icm_tasks avg</div>
+                                            <div className="perfValue">{
+                                                selectedEdge.icmTasksAvg != null
+                                                    ? selectedEdge.icmTasksAvg.toFixed(1)
+                                                    : '—'
+                                            }</div>
+                                        </PerfMetric>
+                                    </>
+                                )}
+                                {splType === 'hana_tenant' && (
+                                    <>
+                                        <PerfMetric>
+                                            <div className="perfLabel">p95 SQL duration</div>
+                                            <div className="perfValue">{formatLatency(selectedEdge.hanaOpP95Ms)}</div>
+                                        </PerfMetric>
+                                        <PerfMetric>
+                                            <div className="perfLabel">max SQL duration</div>
+                                            <div className="perfValue">{formatLatency(selectedEdge.hanaOpMaxMs)}</div>
+                                        </PerfMetric>
+                                    </>
+                                )}
+                                {splType === 'hana_audit' && (
+                                    <>
+                                        <PerfMetric>
+                                            <div className="perfLabel">auth success</div>
+                                            <div className="perfValue">{(selectedEdge.authSuccessCount ?? 0).toLocaleString()}</div>
+                                        </PerfMetric>
+                                        <PerfMetric>
+                                            <div className="perfLabel">auth fail</div>
+                                            <div className="perfValue">{(selectedEdge.authFailCount ?? 0).toLocaleString()}</div>
+                                        </PerfMetric>
+                                    </>
+                                )}
+                            </PerfRow>
+                            {/* Distribution histogram from per-edge SPL search. */}
+                            {edgeData?.performanceLoading && (
+                                <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
+                                    Querying Splunk for distribution detail…
+                                </EmptyMsg>
+                            )}
+                            {!edgeData?.performanceLoading && edgeData?.performance && edgeData.performance.length > 0 && (
+                                <>
+                                    <ChartCaption style={{ marginTop: 12 }}>
+                                        {splType === 'http' ? 'Status class distribution'
+                                            : splType === 'rfc' ? 'icm_tasks distribution'
+                                            : splType === 'hana_audit' ? 'Action status mix'
+                                            : splType === 'hana_tenant' ? 'SQL duration percentiles'
+                                            : 'Distribution'}
+                                    </ChartCaption>
+                                    {(() => {
+                                        const maxCount = Math.max(...edgeData.performance.map((p) => p.count), 1);
+                                        return edgeData.performance.map((p) => {
+                                            const pct = (p.count / maxCount) * 100;
+                                            return (
+                                                <PerfBarRow key={p.bucketLabel}>
+                                                    <span className="label">{p.bucketLabel}</span>
+                                                    <span className="barOuter">
+                                                        <span className="barInner" style={{ width: `${pct}%` }} />
+                                                    </span>
+                                                    <span className="num">{p.count.toLocaleString()}</span>
+                                                </PerfBarRow>
+                                            );
+                                        });
+                                    })()}
+                                </>
+                            )}
+                        </>
+                    )}
+
+                    {edgeTab === 'errors' && (
+                        <>
+                            {edgeData?.errorsLoading && (
+                                <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
+                                    Querying Splunk for top failure modes on this edge…
+                                </EmptyMsg>
+                            )}
+                            {!edgeData?.errorsLoading && (!edgeData?.errors || edgeData.errors.length === 0) && (
+                                <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
+                                    No errors for this edge in the current time range.
+                                </EmptyMsg>
+                            )}
+                            {!edgeData?.errorsLoading && edgeData?.errors && edgeData.errors.length > 0 && (
+                                <>
+                                    <ChartCaption>
+                                        {`${edgeData.errors.length} error mode${edgeData.errors.length === 1 ? '' : 's'} · current time range`}
+                                    </ChartCaption>
+                                    <TableScroll>
+                                        <DataTable>
+                                            <thead>
+                                                <tr>
+                                                    <th>Kind · Detail</th>
+                                                    <th className="num">Count</th>
+                                                    <th className="num">Last seen</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {edgeData.errors.map((e, i) => (
+                                                    <tr key={`${e.errorKind}-${e.errorDetail}-${i}`}>
+                                                        <td className="primary">
+                                                            <div>{e.errorKind}</div>
+                                                            <div className="secondary">{e.errorDetail}</div>
+                                                        </td>
+                                                        <td className="num">{e.count.toLocaleString()}</td>
+                                                        <td className="relTime">{formatRelative(e.lastSeen)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </DataTable>
+                                    </TableScroll>
+                                </>
+                            )}
+                        </>
+                    )}
+                </FramedPanel>
+            </Stack>
+        );
+    }
+
     if (!selectedNode) {
         return (
-            <FramedPanel title="Details" subtitle="Click a node" actions={collapseAction}>
+            <FramedPanel title="Details" subtitle="Click a node or edge" actions={collapseAction}>
                 <EmptyMsg>
-                    Select a node in the graph to inspect its integrations,
-                    top transactions, errors, and hosts.
+                    Click a node to inspect its integrations, top programs,
+                    errors, and hosts.<br /><br />
+                    Click an edge to inspect its activity trend, top entities,
+                    performance metrics, and failure modes.
                 </EmptyMsg>
             </FramedPanel>
         );
@@ -548,6 +1178,104 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                 )}
                             </tbody>
                         </FactsTable>
+
+                        {/* Build 203 / session 036 — DB-specific roll-up.
+                          * HANA database SIDs (XHQ / XHX / XHD / XCJ in the
+                          * xsd-vlab dataset) carry tag === 'DB' but the node
+                          * panel's other tabs (Top Programs / Errors / Hosts)
+                          * surface mostly ABAP-flavored data — `icm_program`
+                          * is empty for HANA-only SIDs. Surface what we
+                          * already have on incident edges so the Overview
+                          * tab is non-sparse for DB nodes:
+                          *   - List of tenant DBs hosted (from incoming
+                          *     hana_tenant edges where target = this node)
+                          *   - Sum of HANA SQL p95 latency across tenant
+                          *     edges (max-of, since latencies don't sum)
+                          *   - Sum of HANA Audit auth success/fail counts
+                          *     across hana_audit edges incident to this node
+                          * Derived from in-memory edge data — no SPL dispatch
+                          * needed. */}
+                        {/* Build 211 / session 036 — accept any DB-vendor
+                          * tag (HANA / ORACLE / MSSQL / POSTGRES / DB2)
+                          * plus the generic DB fallback. */}
+                        {isDatabaseTag(selectedNode.tag) && (() => {
+                            const allEdges = [...selectedNodeIncomingEdges, ...selectedNodeOutgoingEdges];
+                            const tenantEdges = allEdges.filter((e) => e.splType === 'hana_tenant');
+                            const auditEdges = allEdges.filter((e) => e.splType === 'hana_audit');
+                            const tenantLabels = tenantEdges
+                                .map((e) => {
+                                    /* Tenant edges: source is the system SID,
+                                     * target is the tenant SID (or vice-versa).
+                                     * The tenant is whichever endpoint is NOT
+                                     * the currently selected node. */
+                                    const otherId = e.source === selectedNode.id ? e.target : e.source;
+                                    const otherNode = edgeNodes?.find((n) => n.id === otherId);
+                                    return otherNode?.label ?? otherId;
+                                })
+                                .filter((v, i, arr) => arr.indexOf(v) === i)
+                                .sort();
+                            const maxP95 = tenantEdges.reduce(
+                                (acc, e) => Math.max(acc, e.hanaOpP95Ms ?? 0), 0,
+                            );
+                            const maxOpMax = tenantEdges.reduce(
+                                (acc, e) => Math.max(acc, e.hanaOpMaxMs ?? 0), 0,
+                            );
+                            const tenantCalls = tenantEdges.reduce((s, e) => s + e.callCount, 0);
+                            const authSuccess = auditEdges.reduce(
+                                (s, e) => s + (e.authSuccessCount ?? 0), 0,
+                            );
+                            const authFail = auditEdges.reduce(
+                                (s, e) => s + (e.authFailCount ?? 0), 0,
+                            );
+                            const hasAnything = tenantLabels.length > 0
+                                || authSuccess > 0 || authFail > 0;
+                            if (!hasAnything) return null;
+                            return (
+                                <ActivityChartWrap>
+                                    <ChartCaption>HANA database roll-up</ChartCaption>
+                                    <FactsTable>
+                                        <tbody>
+                                            {tenantLabels.length > 0 && (
+                                                <tr>
+                                                    <td className="k">Tenant DBs</td>
+                                                    <td className="v">{tenantLabels.join(' · ')}</td>
+                                                </tr>
+                                            )}
+                                            {tenantEdges.length > 0 && (
+                                                <tr>
+                                                    <td className="k">Tenant SQL ops</td>
+                                                    <td className="v">{tenantCalls.toLocaleString()}</td>
+                                                </tr>
+                                            )}
+                                            {maxP95 > 0 && (
+                                                <tr>
+                                                    <td className="k">SQL p95 (any tenant)</td>
+                                                    <td className="v">{formatLatency(maxP95)}</td>
+                                                </tr>
+                                            )}
+                                            {maxOpMax > 0 && (
+                                                <tr>
+                                                    <td className="k">SQL max (any tenant)</td>
+                                                    <td className="v">{formatLatency(maxOpMax)}</td>
+                                                </tr>
+                                            )}
+                                            {(authSuccess > 0 || authFail > 0) && (
+                                                <>
+                                                    <tr>
+                                                        <td className="k">Auth success</td>
+                                                        <td className="v">{authSuccess.toLocaleString()}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td className="k">Auth failed</td>
+                                                        <td className="v">{authFail.toLocaleString()}</td>
+                                                    </tr>
+                                                </>
+                                            )}
+                                        </tbody>
+                                    </FactsTable>
+                                </ActivityChartWrap>
+                            );
+                        })()}
                         <ChartRow>
                             <ChartBlock>
                                 <ChartCaption>Calls / hr · last 24h{nodeHourlyLoading ? ' · loading…' : ''}</ChartCaption>
