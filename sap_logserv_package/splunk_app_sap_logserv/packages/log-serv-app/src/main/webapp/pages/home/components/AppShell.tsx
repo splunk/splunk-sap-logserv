@@ -49,6 +49,7 @@ const ChangeConfig = lazy(() => import('../dashboards/ChangeConfig'));
 const DataPipelineOverview = lazy(() => import('../dashboards/DataPipelineOverview'));
 const HostDetails = lazy(() => import('../dashboards/HostDetails'));
 const IntegrationTopology = lazy(() => import('../dashboards/IntegrationTopology'));
+const MultiCloudOverview = lazy(() => import('../dashboards/MultiCloudOverview'));
 const AIAssistantSettings = lazy(() => import('../dashboards/AIAssistantSettings'));
 
 const Page = styled.div`
@@ -189,6 +190,7 @@ const AppShell: React.FC<AppShellProps> = ({
                     <Route path="/platform/data-pipeline-overview" element={<DataPipelineOverview />} />
                     <Route path="/platform/host-details" element={<HostDetails />} />
                     <Route path="/topology/integration-topology" element={<IntegrationTopology />} />
+                    <Route path="/platform/multi-cloud-overview" element={<MultiCloudOverview />} />
                     <Route path="/settings/ai-assistant" element={<AIAssistantSettings onConfigSaved={onAIConfigSaved} templatesOnlyMode={aiAssistantTemplatesOnlyMode} />} />
                     {aiAssistantEnabled && (
                         <Route
@@ -231,7 +233,8 @@ const AppShell: React.FC<AppShellProps> = ({
                                 d.path !== '/security/change-config' &&
                                 d.path !== '/platform/data-pipeline-overview' &&
                                 d.path !== '/platform/host-details' &&
-                                d.path !== '/topology/integration-topology'
+                                d.path !== '/topology/integration-topology' &&
+                                d.path !== '/platform/multi-cloud-overview'
                         )
                         .map((d) => (
                             <Route

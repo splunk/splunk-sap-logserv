@@ -80,13 +80,15 @@ nav:
     - Installing the Data TA: 'content/install-setup/install-ta.md'
     - Configuring Filters: 'content/install-setup/configure-filters.md'
     - Splunk Cloud Victoria Notes: 'content/install-setup/splunk-cloud-victoria-notes.md'
-    - Setup Walkthroughs Overview: 'content/install-setup/setup-walkthroughs.md'
-    - AWS Setup Walkthroughs:
-        - AWS Remote S3 Connect Setup Walkthrough: 'content/install-setup/aws-remote-s3-connect-walkthrough.md'
-        - AWS Remote S3 Filter Setup Walkthrough: 'content/install-setup/aws-remote-s3-filter-walkthrough.md'
-        - AWS Remote S3 Copy Setup Walkthrough: 'content/install-setup/aws-remote-s3-copy-walkthrough.md'
-    - AWS Setup Migrations:
-        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-walkthrough.md'
+    - Setup Guides Overview: 'content/install-setup/setup-guides.md'
+    - AWS Setup Guides:
+        - AWS Remote S3 Connect Setup Guide: 'content/install-setup/aws-remote-s3-connect-guide.md'
+        - AWS Remote S3 Filter Setup Guide: 'content/install-setup/aws-remote-s3-filter-guide.md'
+        - AWS Remote S3 Copy Setup Guide: 'content/install-setup/aws-remote-s3-copy-guide.md'
+    - AWS Migrations Guide:
+        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md'
+    - Azure Setup:
+        - Azure Setup Guide: 'content/install-setup/azure-setup.md'
 - LogServ UI App:
     - Prerequisites: 'content/logserv-app/prerequisites.md'
     - Installing the LogServ App: 'content/logserv-app/installation.md'
@@ -116,6 +118,7 @@ nav:
         - Platform:
             - Platform: 'content/logserv-app/dashboards/platform.md'
             - Data Pipeline Overview: 'content/logserv-app/dashboards/platform/data-pipeline-overview.md'
+            - Multi-Cloud Overview: 'content/logserv-app/dashboards/platform/multi-cloud-overview.md'
             - DNS Analytics: 'content/logserv-app/dashboards/platform/dns-analytics.md'
             - Linux System & Security: 'content/logserv-app/dashboards/platform/linux.md'
             - Windows Events: 'content/logserv-app/dashboards/platform/windows.md'

@@ -1,4 +1,4 @@
-# AWS Remote S3 Connect to Filter Migration Walkthrough
+# AWS Remote S3 Connect to Filter Migration Guide
 
 ### :material-circle-box:{ .taiconcolor } Introduction
 
@@ -9,7 +9,7 @@ The migration adds Lambda-based S3 event filtering capabilities to your existing
 ??? tip "Also available: Native TA Index-Time Filtering"
     Starting with version 0.0.3, the TA also includes **built-in index-time filtering** that works inside Splunk itself. This can be used alongside or instead of Lambda-based filtering. After completing this migration (or with any deployment scenario), see [Configuring Filters](configure-filters.md) or the section at the bottom of this page.
 
-:material-lightning-bolt:{ .taiconcolor } This migration guide assumes you have already completed the [AWS Remote S3 Connect Setup](aws-remote-s3-connect-walkthrough.md) and have a working deployment in your **_Secondary account_**.
+:material-lightning-bolt:{ .taiconcolor } This migration guide assumes you have already completed the [AWS Remote S3 Connect Setup](aws-remote-s3-connect-guide.md) and have a working deployment in your **_Secondary account_**.
 
 <br>
 

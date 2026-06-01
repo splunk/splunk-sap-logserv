@@ -1,16 +1,16 @@
 # Correlation Searches & RBA
 
-The Splunk for SAP LogServ App ships **18 correlation searches** in three tiers:
+The Splunk for SAP LogServ App ships **19 correlation searches** in three tiers:
 
-- **5 base correlation searches** — the starter pack, signal-heavy and FP-tuned for the SAP-specific threat patterns SOC analysts encounter most.
+- **6 base correlation searches** — the starter pack, signal-heavy and FP-tuned for the SAP-specific threat patterns SOC analysts encounter most.
 - **6 extended cross-stack correlation searches** — added in the extended ES content pack. Detect cross-source chains that customers can't easily author themselves because they require SAP-specific knowledge of which sourcetype emits the auth event vs. the privilege change vs. the data event.
 - **3 threat-intel correlation searches + 4 behavioral / anomaly searches** — see [Threat Intelligence Integration](threat-intel.md) and [Behavioral & Anomaly Detections](behavioral-detections.md) for those.
 
-Plus **1 tier-2 Risk Notable** that aggregates risk events from all 18 base searches and fires when accumulated risk on a single object crosses a threshold (Risk-Based Alerting / RBA).
+Plus **1 tier-2 Risk Notable** that aggregates risk events from all 19 detection searches and fires when accumulated risk on a single object crosses a threshold (Risk-Based Alerting / RBA).
 
 All correlation searches are scheduled saved searches in `default/savedsearches.conf` with parallel ES Content Management metadata in `default/correlationsearches.conf`. They appear under **Settings → Content Management** when ES is installed.
 
-## :material-circle-box:{ .taiconcolor } The 5 base correlation searches
+## :material-circle-box:{ .taiconcolor } The 6 base correlation searches
 
 | # | Search name | What it detects | Severity | Schedule |
 |---|---|---|---|---|
@@ -19,13 +19,14 @@ All correlation searches are scheduled saved searches in `default/savedsearches.
 | 3 | `splunk_sap_logserv_es_abap_gateway_anomalous_peer` | New ABAP gateway peer IP not seen (or seen <5 times) in the prior 30 days | medium | hourly |
 | 4 | `splunk_sap_logserv_es_scc_access_denied_burst` | 3+ SCC ACCESS_DENIED events on a single host within 1h | medium | hourly |
 | 5 | `splunk_sap_logserv_es_hana_failed_connect_spike` | 5+ failed HANA CONNECT attempts by a single user on a single host within 1h | medium | every 15 min |
+| 6 | `splunk_sap_logserv_es_oom_kill_burst` | Fires on a burst of Linux OOM-killer (out-of-memory) events on a host | medium | hourly |
 
-### :material-circle-box:{ .taiconcolor } Why "5 starter, well-vetted" instead of 15-20
+### :material-circle-box:{ .taiconcolor } Why "6 starter, well-vetted" instead of 15-20
 
 The starter set is intentionally small + signal-heavy:
 
 - Each search has been dry-run on live data before shipping
-- 4 of 5 return 0 rows on healthy-environment data (low FP rate by design — they fire on real attack patterns)
+- Most return 0 rows on healthy-environment data (low FP rate by design — they fire on real attack patterns)
 - Easier to false-positive-tune in customer environments
 - Easier to document for SOC analysts during onboarding
 
@@ -112,6 +113,14 @@ Customers + community can layer additional ES correlation searches on top — se
 
 **FP profile:** Low. 5/hr threshold is above routine failure rates.
 
+#### :material-crop-square:{ .taiconcolor } 6. Linux OOM-Killer Burst
+
+Fires on a burst of Linux OOM-killer (out-of-memory) events on a host. Security domain `endpoint`.
+
+**Threat model:** A spike of kernel out-of-memory kills can indicate a memory-exhaustion attack, a runaway/compromised process, or resource-starvation that takes SAP services offline. Clustered OOM kills warrant operational + security review.
+
+**FP profile:** Low to medium. Legitimately busy hosts under memory pressure can produce bursts; correlate with known workload spikes or capacity events.
+
 ## :material-circle-box:{ .taiconcolor } Extended cross-stack pack (v2)
 
 Six additional correlation searches detect cross-source threat chains that customers can't easily author themselves. The patterns require SAP-specific knowledge of which sourcetype emits the authentication event vs. the privilege change vs. the data-tier event — knowledge that's inside the LogServ App rather than in stock Splunk content.
@@ -177,7 +186,7 @@ Service accounts (flagged via `is_service_account="true"` in the EVAL output of 
 
 ## :material-circle-box:{ .taiconcolor } RBA — Risk-Based Alerting
 
-Each of the 5 base correlation searches carries `action.risk = 1` annotations so events also feed ES's Risk Framework.
+Each of the 6 base correlation searches carries `action.risk = 1` annotations so events also feed ES's Risk Framework.
 
 ### :material-circle-box:{ .taiconcolor } Per-search risk table
 
@@ -188,6 +197,7 @@ Each of the 5 base correlation searches carries `action.risk = 1` annotations so
 | ABAP gateway anomalous peer | `peer_ip`, `host` | other, system | 40, 20 |
 | SCC ACCESS_DENIED burst | `host` | system | 50 |
 | HANA failed CONNECT spike | `executing_user`, `host` | user, system | 50, 30 |
+| Linux OOM-killer burst | `host` | system | 40 |
 | Lateral movement | `auth_user` | user | 70 |
 | Privilege chain | `auth_user`, `host` | user, system | 80, 40 |
 | After-hours admin data access | `auth_user`, `host` | user, system | 70, 30 |
@@ -218,7 +228,7 @@ ES Risk Framework correctly aggregates across the three when consumed by tier-2 
 
 ## :material-circle-box:{ .taiconcolor } Tier-2 Risk Notable
 
-The App also ships `splunk_sap_logserv_es_risk_notable_threshold` — a higher-tier correlation search that aggregates risk events from the 5 base searches and creates a critical-severity Notable when a single risk_object accumulates ≥ 100 risk_score in 24h.
+The App also ships `splunk_sap_logserv_es_risk_notable_threshold` — a higher-tier correlation search that aggregates risk events from the 6 base searches and creates a critical-severity Notable when a single risk_object accumulates ≥ 100 risk_score in 24h.
 
 ```spl
 | from datamodel:Risk.All_Risk
@@ -227,7 +237,8 @@ The App also ships `splunk_sap_logserv_es_risk_notable_threshold` — a higher-t
     "splunk_sap_logserv_es_cross_stack_auth_failure",
     "splunk_sap_logserv_es_abap_gateway_anomalous_peer",
     "splunk_sap_logserv_es_scc_access_denied_burst",
-    "splunk_sap_logserv_es_hana_failed_connect_spike")
+    "splunk_sap_logserv_es_hana_failed_connect_spike",
+    "splunk_sap_logserv_es_oom_kill_burst")
 | stats sum(All_Risk.risk_score) AS total_risk
         values(All_Risk.risk_object_type) AS risk_object_type
         values(source) AS source_searches

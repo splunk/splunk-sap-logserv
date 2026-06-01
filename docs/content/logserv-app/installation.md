@@ -3,13 +3,13 @@
 This page covers installing the **LogServ App** (`splunk_app_sap_logserv`). For the Data TA installation, see [Installing the Data TA](../install-setup/install-ta.md).
 
 !!! warning "v0.0.5 release: AI Assistant LLM functionality intentionally disabled pending review"
-    The v0.0.5 release of the LogServ App ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review**. The published v0.0.5 tarball is the **templates-only build variant** — there is no separate "regular" v0.0.5 build. The predefined-prompt path + Splunk MCP Server integration + tool tiles + drill-down chips + audit log + 20 dashboards + Environment Topology view are all fully active. The free-form chat input, the model picker, the Power Mode toggle, and the Provider Credentials Settings tab are all hidden. See [Templates-only Build](../ai-assistant/templates-only-build.md) for the build mechanism.
+    The v0.0.5 release of the LogServ App ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review**. The published v0.0.5 tarball is the **templates-only build variant** — there is no separate "regular" v0.0.5 build. The predefined-prompt path + Splunk MCP Server integration + tool tiles + drill-down chips + audit log + 21 dashboards + the Environment Topology view are all fully active. The free-form chat input, the model picker, the Power Mode toggle, and the Provider Credentials Settings tab are all hidden. See [Templates-only Build](../ai-assistant/templates-only-build.md) for the build mechanism.
 
 ### :material-circle-box:{ .taiconcolor } About the LogServ App
 
 The LogServ App provides:
 
-- **20 React-based dashboards** plus the **Environment Topology** view, organized as one top-level **Environment Health** landing page + four purpose-driven groups (Applications, Integration, Security, Platform). Built on `@splunk/react-ui` + `@splunk/visualizations` + `@xyflow/react`. See [Dashboards Overview](dashboards/index.md).
+- **21 React-based dashboards** plus the **Environment Topology** view, organized as one top-level **Environment Health** landing page + four purpose-driven groups (Applications, Integration, Security, Platform). Built on `@splunk/react-ui` + `@splunk/visualizations` + `@xyflow/react`. See [Dashboards Overview](dashboards/index.md).
 - **Built-in AI Assistant chat panel** — predefined prompts + Splunk MCP integration + audit log. (LLM-driven path disabled in v0.0.5; canned-prompt path active.) See [AI Assistant Overview](../ai-assistant/overview.md).
 - **Search-time field extractions** for all SAP-specific sourcetypes (~176 directives across EXTRACT, EVAL, FIELDALIAS).
 - **The `sap_logserv_idx_macro` macro** for searching the LogServ index.
@@ -130,4 +130,4 @@ If you used a custom index name (not `sap_logserv_logs`), update the macro:
 
 - Explore the [Dashboards Overview](dashboards/index.md) to learn about the available dashboards
 - Read [AI Assistant Overview](../ai-assistant/overview.md) to understand the chat panel + predefined-prompt path
-- If you haven't yet, complete the [AWS Setup Walkthrough](../install-setup/setup-walkthroughs.md) to configure data collection
+- If you haven't yet, complete the [AWS Setup Guide](../install-setup/setup-guides.md) to configure data collection

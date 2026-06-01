@@ -20,8 +20,12 @@ Six jobs:
    check_scripted_inputs_python_required — added session 041.)
 
 5. Patch restmap.conf [admin_external:*] stanzas to add
-   python.required = 3.13. (Cleared AppInspect Cloud future_failure
-   check_admin_external_restmap_conf_python_required — added session 041.)
+   python.required = 3.13 (cleared AppInspect Cloud future_failure
+   check_admin_external_restmap_conf_python_required — session 041) AND
+   passSystemAuth = true so the Configuration settings save writes its
+   conf in system context. Without it the save 403s ("operation
+   forbidden") for Splunk Cloud Victoria sc_subadmin users who lack
+   admin_all_objects. (Demo Gen TA pattern — added session 047.)
 
 6. Patch the UCC-generated metadata/default.meta to add `sc_subadmin`
    to the global write ACL. UCC's stock bake-in template emits
@@ -73,6 +77,17 @@ NEW_IMPORT = "from splunk_ta_sap_logserv_rh_filter_settings import FilterSetting
 
 OLD_HANDLE = "handler=AdminExternalHandler,"
 NEW_HANDLE = "handler=FilterSettingsHandler,"
+
+# ---- admin_external python.required + passSystemAuth patch ----
+# Append both right after the settings stanza's `python.version = python3`
+# line (the FIRST python.version in restmap, before the appended
+# deployment_push [script:] stanza). python.required clears the AppInspect
+# Cloud future_failure; passSystemAuth = true makes the Configuration
+# settings save (Filters + Cloud Provider tabs) write its conf in system
+# context — without it the save 403s ("This operation is forbidden") for
+# Splunk Cloud Victoria sc_subadmin users who lack admin_all_objects.
+ADMIN_EXTERNAL_OLD = "python.version = python3\n"
+ADMIN_EXTERNAL_NEW = "python.version = python3\npython.required = 3.13\npassSystemAuth = true\n"
 
 # ---- metadata/default.meta sc_subadmin write-ACL patch ----
 # UCC bakes in `write : [ admin, sc_admin ]` and ignores our source-level
@@ -154,40 +169,21 @@ def cleanup_output_files(output_path, ta_name):
         with open(inputs_path, "w") as f:
             f.writelines(out_lines)
 
-    # --- 5. Add python.required = 3.13 to [admin_external:*] stanzas in
-    # restmap.conf (cleared AppInspect Cloud future_failure
-    # check_admin_external_restmap_conf_python_required — added session 041).
+    # --- 5. Add python.required = 3.13 + passSystemAuth = true to the
+    # [admin_external:*] settings stanza in restmap.conf via string-replace.
+    # Targets the FIRST `python.version = python3` line (the settings stanza,
+    # which precedes the appended deployment_push [script:] stanza), so both
+    # lines land INSIDE the settings stanza. (The earlier line-walker approach
+    # mis-placed them past the stanza because job #2 had already appended the
+    # deployment_push stanza, extending the collected "body". session 047.)
     if os.path.isfile(restmap_path):
         with open(restmap_path, "r") as f:
-            lines = f.readlines()
-        out_lines = []
-        i = 0
-        n = len(lines)
-        while i < n:
-            line = lines[i]
-            out_lines.append(line)
-            if line.startswith("[admin_external:"):
-                j = i + 1
-                body = []
-                while j < n and not lines[j].startswith("["):
-                    body.append(lines[j])
-                    j += 1
-                body_str = "".join(body)
-                if "python.required" not in body_str:
-                    last_idx = len(body) - 1
-                    while last_idx >= 0 and not body[last_idx].strip():
-                        last_idx -= 1
-                    body = (
-                        body[: last_idx + 1]
-                        + ["python.required = 3.13\n"]
-                        + body[last_idx + 1 :]
-                    )
-                out_lines.extend(body)
-                i = j
-            else:
-                i += 1
-        with open(restmap_path, "w") as f:
-            f.writelines(out_lines)
+            content = f.read()
+        # Idempotent: only patch the admin_external section (before [script:]).
+        if "passSystemAuth" not in content.split("[script:", 1)[0]:
+            content = content.replace(ADMIN_EXTERNAL_OLD, ADMIN_EXTERNAL_NEW, 1)
+            with open(restmap_path, "w") as f:
+                f.write(content)
 
     # --- 6. Patch metadata/default.meta to add sc_subadmin write ACL ---
     patch_sc_subadmin_metadata(app_dir)

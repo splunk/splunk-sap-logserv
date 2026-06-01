@@ -41,7 +41,7 @@ Both indexes are macro-configurable, so customers who need different names (e.g.
     - Add a custom `local/indexes.conf` to the Data TA with a stanza for your new name (`[my_new_index_name]` plus the same `homePath` / `coldPath` / `thawedPath` settings), OR
     - Create the index manually through Splunk Web's **Settings → Indexes → New Index** UI. (See <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-your-indexes-and-data-in-splunk-cloud-platform/manage-splunk-cloud-platform-indexes" target="_blank">Splunk Cloud</a> or <a href="https://docs.splunk.com/Documentation/Splunk/9.4.2/Indexer/Setupmultipleindexes#Create_events_indexes" target="_blank">Splunk Enterprise</a> docs.)
 3. **Update the macro definition.** Open **Settings → Advanced search → Search macros**, find `sap_logserv_idx_macro`, and edit the definition from `index="sap_logserv_logs"` to `index="my_new_index_name"`.
-4. **Redirect the ingest pipeline** to the new index name. The actual `index = ...` setting that determines where ingested events land lives in the **Splunk_TA_aws** add-on's S3 input config (the SQS-based S3 inputs that own the data ingest path), NOT in this Data TA. Update each `filtr2_logserv_s3_*` input's `index` field to point at the new name. See [AWS Remote S3 Filter Setup Walkthrough](aws-remote-s3-filter-walkthrough.md) for where these inputs are configured.
+4. **Redirect the ingest pipeline** to the new index name. The actual `index = ...` setting that determines where ingested events land lives in the **Splunk_TA_aws** add-on's S3 input config (the SQS-based S3 inputs that own the data ingest path), NOT in this Data TA. Update each `filtr2_logserv_s3_*` input's `index` field to point at the new name. See [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md) for where these inputs are configured.
 
 The Data TA's default `[sap_logserv_logs]` stanza will still create that index unless you remove or override it via your custom `local/indexes.conf`. If your environment doesn't need the default, that's harmless; if it bothers you, override the stanza locally.
 
@@ -142,5 +142,5 @@ What the DS *does* push usefully to HFs from this Data TA: **filter rules** (whi
 
 1. Install the [LogServ App](../logserv-app/installation.md) on your Search Head
 2. Install the [Splunk MCP Server](../ai-assistant/mcp-setup.md) on your Search Head if you want to use the AI Assistant
-3. Complete the [AWS Setup Walkthrough](setup-walkthroughs.md) to configure data collection
+3. Complete the [AWS Setup Guide](setup-guides.md) to configure data collection
 4. Configure [index-time filters](configure-filters.md) to control which log types are indexed

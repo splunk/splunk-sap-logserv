@@ -30,6 +30,7 @@ from splunktaucclib.rest_handler.endpoint import (
 )
 from splunktaucclib.rest_handler import admin_external
 from splunktaucclib.rest_handler.admin_external import AdminExternalHandler
+from splunktaucclib.rest_handler.error import RestError
 
 import splunk.rest as rest
 import splunk.admin as admin
@@ -37,6 +38,8 @@ import splunk.admin as admin
 from splunk_ta_sap_logserv_filter_utils import (
     APP_NAME,
     SYSTEM_MESSAGE_NAME,
+    CLOUD_PROVIDER_MARKER_START,
+    CLOUD_PROVIDER_MARKER_END,
     discover_supported_types,
     find_uncovered_types,
     parse_comma_patterns,
@@ -44,6 +47,8 @@ from splunk_ta_sap_logserv_filter_utils import (
     generate_transforms_stanzas,
     generate_props_filter_lines,
     write_local_conf,
+    write_local_conf_section,
+    update_local_stanza,
     get_app_path,
     get_ta_version,
     is_deployment_server,
@@ -51,6 +56,9 @@ from splunk_ta_sap_logserv_filter_utils import (
     mirror_to_deployment_apps,
     ensure_serverclass,
 )
+
+# Valid cloud_provider dropdown values (must match globalConfig.json).
+VALID_CLOUD_PROVIDERS = ('aws', 'azure', 'not_set')
 
 logger = logging.getLogger(APP_NAME)
 
@@ -126,7 +134,16 @@ class FilterSettingsHandler(AdminExternalHandler):
 
         Validation runs before the save.  If any pattern is invalid, the save
         is blocked and the user sees an error message in the UI.
+
+        This single handler serves BOTH configuration tabs (the UCC
+        MultipleModel settings endpoint uses one handler class for all
+        tabs).  The Cloud Provider tab is dispatched first via an early
+        return; everything below is the original, unchanged Filters logic.
         """
+        # --- Cloud Provider tab dispatch (additive; Filters path unchanged) ---
+        if 'cloud_provider' in self.callerArgs.data:
+            return self._handle_cloud_provider_edit(confInfo)
+
         # Validate patterns before saving
         filter_enabled = self._get_arg('filter_enabled', '0') == '1'
         include_val = self._get_arg('include_filters', '')
@@ -136,7 +153,7 @@ class FilterSettingsHandler(AdminExternalHandler):
                 raise admin.ArgValidationException(errors)
 
         # Perform the default save (writes to settings conf)
-        AdminExternalHandler.handleEdit(self, confInfo)
+        self._safe_super_handle_edit(confInfo)
 
         # Read the values that were just saved
         try:
@@ -164,6 +181,153 @@ class FilterSettingsHandler(AdminExternalHandler):
             raise  # Re-raise validation errors
         except Exception as e:
             logger.error(f'Error generating filter configs: {e}', exc_info=True)
+
+    # -----------------------------------------------------------------
+    # Settings persistence (with Splunk Cloud Victoria fallback)
+    # -----------------------------------------------------------------
+
+    def _safe_super_handle_edit(self, confInfo):
+        """Run splunktaucclib's default settings-conf persist; on a 403,
+        fall back to a filesystem persist.
+
+        On Splunk Cloud Victoria, sc_subadmin (the customer's effective top
+        admin role) lacks ``admin_all_objects``, which splunkd's REST
+        framework requires for ``configs/conf-*`` writes. splunktaucclib's
+        ``AdminExternalHandler.handleEdit`` does exactly such a REST write
+        and raises ``RestError[403]`` ("This operation is forbidden"),
+        aborting the save before any of our config generation runs. We catch
+        that and persist the submitted field values straight to
+        ``local/<settings>.conf`` via the filesystem instead — the handler
+        process writes files without going through the REST capability gate.
+        The functional config (``transforms.conf``) is likewise written via
+        the filesystem downstream, so the whole save then completes. The
+        normal path (Splunk Enterprise, or any role with admin_all_objects)
+        is unchanged.
+        """
+        try:
+            AdminExternalHandler.handleEdit(self, confInfo)
+        except RestError as e:
+            msg = str(e)
+            if '403' in msg or 'forbidden' in msg.lower():
+                logger.warning(
+                    'splunktaucclib settings persist returned 403 (Splunk '
+                    'Cloud Victoria sc_subadmin without admin_all_objects); '
+                    'falling back to a filesystem persist. Detail: %s', e
+                )
+                self._persist_settings_filesystem(confInfo)
+            else:
+                raise
+
+    def _persist_settings_filesystem(self, confInfo):
+        """Filesystem fallback persist of the current tab's settings stanza.
+
+        Writes every submitted field into the settings conf stanza on disk
+        and populates ``confInfo`` so the UI reflects the saved values. Used
+        only when the REST persist is forbidden (see
+        ``_safe_super_handle_edit``).
+        """
+        stanza = getattr(self.callerArgs, 'id', None)
+        if not stanza:
+            stanza = ('cloud_provider_settings'
+                      if 'cloud_provider' in self.callerArgs.data
+                      else 'filter_settings')
+
+        values = {key: self._get_arg(key, '') for key in self.callerArgs.data}
+
+        update_local_stanza(get_app_path(), f'{APP_NAME}_settings', stanza, values)
+
+        for k, v in values.items():
+            confInfo[stanza][k] = v
+
+        # Best-effort conf reload so the REST layer sees the on-disk change.
+        try:
+            rest.simpleRequest(
+                f'/servicesNS/nobody/{APP_NAME}/configs/'
+                f'conf-{APP_NAME}_settings/_reload',
+                sessionKey=self.getSessionKey(),
+                method='POST',
+            )
+        except Exception:
+            pass
+
+        logger.info(
+            'Settings stanza [%s] persisted via filesystem fallback.', stanza
+        )
+
+    # -----------------------------------------------------------------
+    # Cloud Provider tab
+    # -----------------------------------------------------------------
+
+    def _handle_cloud_provider_edit(self, confInfo):
+        """
+        Handle a save from the Cloud Provider configuration tab.
+
+        Persists the dropdown value (default UCC save), then writes (or
+        removes) a ``local/transforms.conf`` override of the
+        ``[logserv_set_cloud_provider]`` stanza inside the CLOUD_PROVIDER
+        marker block.  When a provider is selected, the override makes the
+        otherwise no-op stamp transform stamp ``cloud_provider::<value>``
+        on every routed event.  "Not set" removes the override, reverting
+        to the no-op shipped in default/transforms.conf.
+
+        The props.conf reference (TRANSFORMS-51-cloud_provider) is static
+        in default/ and never touched here — so there is no interaction
+        with the Filters tab's local/props.conf block.
+        """
+        # Normalize + validate the dropdown value
+        cloud_provider = self._get_arg('cloud_provider', 'not_set').strip().lower()
+        if cloud_provider not in VALID_CLOUD_PROVIDERS:
+            raise admin.ArgValidationException(
+                f'cloud_provider must be one of: {", ".join(VALID_CLOUD_PROVIDERS)}'
+            )
+
+        # Perform the default save (writes to [cloud_provider_settings] stanza)
+        self._safe_super_handle_edit(confInfo)
+
+        try:
+            logger.info(f'Cloud Provider setting saved: cloud_provider={cloud_provider}')
+            self._generate_cloud_provider_config(cloud_provider)
+        except Exception as e:
+            logger.error(f'Error generating cloud_provider config: {e}', exc_info=True)
+
+    def _generate_cloud_provider_config(self, cloud_provider):
+        """
+        Write or clear the cloud_provider stamp override in local/transforms.conf.
+
+        On a deployment server the change is also mirrored to
+        deployment-apps/ (via the shared filter mirroring helper) so it is
+        staged for the next Deploy to Forwarders push.
+        """
+        app_path = get_app_path()
+
+        if cloud_provider in ('aws', 'azure'):
+            content = (
+                '[logserv_set_cloud_provider]\n'
+                'REGEX = .\n'
+                f'FORMAT = cloud_provider::{cloud_provider}\n'
+                'WRITE_META = true\n'
+            )
+            write_local_conf_section(
+                app_path, 'transforms', content,
+                CLOUD_PROVIDER_MARKER_START, CLOUD_PROVIDER_MARKER_END,
+            )
+            logger.info(
+                f'Generated cloud_provider override: stamping '
+                f'cloud_provider={cloud_provider} on all sap_logserv_logs events'
+            )
+        else:  # not_set
+            write_local_conf_section(
+                app_path, 'transforms', '',
+                CLOUD_PROVIDER_MARKER_START, CLOUD_PROVIDER_MARKER_END,
+            )
+            logger.info(
+                'cloud_provider set to "not_set" — removed override; '
+                'no Data-TA cloud_provider stamp will be applied'
+            )
+
+        # Reuse the filter handler's deployment-server mirroring + conf reload
+        self._mirror_if_deployment_server(app_path)
+        self._reload_confs()
 
     def _validate_filter_inputs(self, include_str):
         """
@@ -435,8 +599,21 @@ class FilterSettingsHandler(AdminExternalHandler):
 # ---------------------------------------------------------------------------
 # UCC handler registration
 # ---------------------------------------------------------------------------
-
-admin_external.handle(
-    endpoint,
-    handler=FilterSettingsHandler,
-)
+#
+# IMPORTANT: this module is NEVER run as __main__ — the restmap handlerfile is
+# the UCC-generated splunk_ta_sap_logserv_rh_settings.py, which IMPORTS
+# FilterSettingsHandler from here and registers it against a MultipleModel
+# covering BOTH configuration tabs (filter_settings + cloud_provider_settings).
+#
+# The module-level `endpoint = SingleModel(..., config_name='filter_settings')`
+# above only knows the Filters model. If this handle() ran at import time it
+# would dispatch the request against that filter-only SingleModel BEFORE the
+# generated rh_settings.py's MultipleModel runs — causing
+# "Argument cloud_provider is not supported by this handler" on Cloud Provider
+# tab saves. Guarding with __main__ makes this a no-op on import, so the
+# generated MultipleModel (which knows both tabs) is the sole dispatcher.
+if __name__ == '__main__':
+    admin_external.handle(
+        endpoint,
+        handler=FilterSettingsHandler,
+    )

@@ -4,14 +4,15 @@ The Splunk for SAP LogServ App tags every supported SAP-side sourcetype into the
 
 ## :material-circle-box:{ .taiconcolor } CIM models in scope
 
-The App participates in 4 CIM data models, declared in `app.manifest` under `info.commonInformationModels`:
+The App participates in these CIM data models, declared in `app.manifest` under `info.commonInformationModels`:
 
 | Model | Use case | SAP-side sourcetypes |
 |---|---|---|
 | **Authentication** | login attempts (success / failure) | `sap:hana:audit` (CONNECT events), `sap:sapstartsrv`, `sap:scc:audit` (ACCESS_DENIED), `linux:sudolog` |
 | **Change** | account / role / config modifications | `sap:hana:audit` (DDL events), `sap:scc:audit` (CONFIGURATION_CHANGED, SERVICE_*) |
 | **Network_Sessions** | TCP-level connection tracking | `sap:abap:gateway`, `sap:saprouter` |
-| **Web** | HTTP request/response | `sap:webdispatcher:access`, `sap:scc:http_access`, `sap:abap:icm` |
+| **Network / Resolution (DNS)** | DNS query / resolution activity (absorbed ISC BIND parser) | `isc:bind:query`, `isc:bind:queryerror` |
+| **Web** | HTTP request/response | `sap:webdispatcher:access`, `sap:scc:http_access`, `sap:abap:icm`, `squid:access` (absorbed Squid proxy parser) |
 
 For sourcetypes that don't fit any stock CIM model (HANA tracelogs, ABAP application-tier internal logs), the App still extracts rich search-time fields and adds `vendor_product = "SAP NetWeaver ABAP"` (or similar) for cross-cutting search consistency, but doesn't tag them into a CIM model.
 
@@ -21,7 +22,7 @@ Two configuration files drive CIM tagging:
 
 ### :material-circle-box:{ .taiconcolor } `default/eventtypes.conf`
 
-Defines 9 SAP-specific eventtypes, each filtering events that should participate in a particular CIM model. For example:
+Defines 18 eventtypes — 13 SAP-specific plus 5 from the absorbed ISC BIND + Squid parsers (`isc_bind_query`, `isc_bind_queryerror`, `isc_bind_lameserver`, `isc_bind_transfer`, `squid_access`) — each filtering events that should participate in a particular CIM model. For example:
 
 ```ini
 [sap_hana_authentication]
@@ -116,6 +117,9 @@ If `| datamodel ...` returns rows for our sourcetypes, ES can consume them — e
 | `sap:sapstartsrv` | Authentication | medium |
 | `sap:scc:audit` | Authentication (ACCESS_DENIED) + Change (CONFIGURATION_CHANGED, SERVICE_*) | medium |
 | `linux:sudolog` | Authentication + privileged | medium |
+| `isc:bind:query` | Network + Resolution (DNS) — absorbed ISC BIND parser | medium |
+| `isc:bind:queryerror` | Network + Resolution (DNS) — absorbed ISC BIND parser | medium |
+| `squid:access` | Web + Proxy — absorbed Squid proxy parser | medium |
 
 ## :material-circle-box:{ .taiconcolor } Known limitations
 

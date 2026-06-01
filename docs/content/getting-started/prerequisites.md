@@ -23,17 +23,20 @@ Splunk 9.4.3 is the minimum because the LogServ App's React stack (`@splunk/reac
 
 Each package has its own additional prerequisites — install Splunkbase add-ons appropriate to that tier.
 
-- **[Data TA Prerequisites](../install-setup/prerequisites.md)** — CIM-aligned add-ons for the sourcetypes the Data TA produces (Unix/Linux, Windows, Squid, ISC BIND), plus the AWS Add-on for S3-based ingest. The Data TA also auto-creates the two indexes (`sap_logserv_logs` + `logserv_ai_assistant_audit`) from its bundled `default/indexes.conf` on first startup — no separate prereq.
+- **[Data TA Prerequisites](../install-setup/prerequisites.md)** — CIM-aligned add-ons for the sourcetypes the Data TA produces (Unix/Linux, Windows, Squid, ISC BIND), plus the **cloud-storage ingest add-on** matching where your SAP ECS data lives: the [Splunk Add-on for AWS (Splunkbase 1876)](https://splunkbase.splunk.com/app/1876) for AWS S3 ingest, and/or the [Splunk Add-on for Microsoft Cloud Services (Splunkbase 3110)](https://splunkbase.splunk.com/app/3110) v5.0+ for Azure Blob Storage ingest. The Data TA also auto-creates the two indexes (`sap_logserv_logs` + `logserv_ai_assistant_audit`) from its bundled `default/indexes.conf` on first startup — no separate prereq.
 - **[LogServ App Prerequisites](../logserv-app/prerequisites.md)** — the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) for the AI Assistant's predefined-prompt dispatch path, plus the optional [Splunk AI Assistant (App 200)](https://splunkbase.splunk.com/app/200) recommended companion.
+
+!!! tip "Multi-cloud ingest"
+    AWS S3 and Azure Blob Storage are first-class ingest channels — install whichever add-on(s) match where your SAP LogServ data sits. The same LogServ Data TA + LogServ App handle both: events from either channel land under `sap_logserv_logs` and route to the same downstream sourcetypes. Customers running both clouds install both add-ons in parallel on the Heavy Forwarder tier. See the [Azure Setup Guide](../install-setup/azure-setup.md) for Azure-specific configuration.
 
 ### :material-circle-box:{ .taiconcolor } Decision Tree
 
 | Your situation | What you need |
 |---|---|
-| Single Splunk instance running the full LogServ solution | Both prerequisite sets — Data TA + App |
-| Distributed Splunk with on-prem Search Head | Data TA prereqs on DS + each HF + the indexer; App prereqs on the SH |
-| Distributed Splunk with Splunk Cloud Search Head | Data TA prereqs on DS + each HF; App prereqs on the Splunk Cloud SH; Splunk Cloud admin handles the indexer tier (Data TA installed there provides the index defs) |
-| Splunk Cloud Search Head only (no on-prem ingest tier) | App prereqs only — your Splunk Cloud admin handles the data tier and the indexer tier separately |
+| Single Splunk instance running the full LogServ solution | Both prerequisite sets — Data TA + App, plus the cloud-storage add-on(s) matching your SAP ECS location (AWS 1876, Azure 3110, or both) |
+| Distributed Splunk with on-prem Search Head | Data TA prereqs on DS + each HF + the indexer; App prereqs on the SH; cloud-storage add-on(s) on each HF |
+| Distributed Splunk with Splunk Cloud Search Head | Data TA prereqs on DS + each HF; App prereqs on the Splunk Cloud SH; cloud-storage add-on(s) on each HF; Splunk Cloud admin handles the indexer tier (Data TA installed there provides the index defs) |
+| Splunk Cloud Search Head only (no on-prem ingest tier) | App prereqs only — your Splunk Cloud admin handles the data tier (including the cloud-storage add-on) and the indexer tier separately |
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

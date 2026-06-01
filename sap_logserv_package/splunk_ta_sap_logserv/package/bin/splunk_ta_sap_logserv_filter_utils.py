@@ -31,6 +31,13 @@ SYSTEM_MESSAGE_NAME = 'logserv_filter_upgrade_warning'
 FILTER_MARKER_START = '### BEGIN LOGSERV FILTER CONFIG - DO NOT EDIT MANUALLY ###'
 FILTER_MARKER_END = '### END LOGSERV FILTER CONFIG ###'
 
+# Markers for the Cloud Provider attribution override (separate feature, own
+# marked block so it coexists with the filter block in the same local/ conf
+# file — the section-aware writer only touches its own marker pair, and the
+# daily time-filter refresh preserves any block outside the FILTER markers).
+CLOUD_PROVIDER_MARKER_START = '### BEGIN LOGSERV CLOUD_PROVIDER CONFIG - DO NOT EDIT MANUALLY ###'
+CLOUD_PROVIDER_MARKER_END = '### END LOGSERV CLOUD_PROVIDER CONFIG ###'
+
 
 def get_app_path():
     """
@@ -569,19 +576,27 @@ def generate_props_filter_lines(include_patterns, exclude_patterns, days_in_past
     return '\n'.join(lines) + '\n'
 
 
-def write_local_conf(app_path, conf_name, content):
+def write_local_conf_section(app_path, conf_name, content,
+                             marker_start=FILTER_MARKER_START,
+                             marker_end=FILTER_MARKER_END):
     """
-    Write generated filter content to a local/ conf file.
+    Write generated content into a marked section of a local/ conf file.
 
-    Content is wrapped in marker comments so it can be identified and replaced
-    on subsequent saves without disturbing other local/ customisations.
+    Content is wrapped in the given marker comments so it can be identified
+    and replaced on subsequent saves without disturbing other local/
+    customisations — including OTHER marked sections written by a different
+    feature (e.g. the Cloud Provider override coexists with the filter
+    block because each uses its own marker pair).
 
-    If ``content`` is empty, any existing marked section is removed.
+    If ``content`` is empty, any existing section for THIS marker pair is
+    removed; sections written under other marker pairs are preserved.
 
     Args:
         app_path: Path to the app directory.
         conf_name: Conf file name without extension (e.g. ``'transforms'``).
         content: The stanza text to write, or empty string to clear.
+        marker_start: Section-begin marker comment.
+        marker_end: Section-end marker comment.
 
     Returns:
         str: Path to the written file.
@@ -596,9 +611,9 @@ def write_local_conf(app_path, conf_name, content):
         with open(conf_path, 'r') as f:
             existing = f.read()
 
-    # Remove any previous marked section
+    # Remove any previous section for THIS marker pair only
     marker_pattern = re.compile(
-        re.escape(FILTER_MARKER_START) + r'.*?' + re.escape(FILTER_MARKER_END),
+        re.escape(marker_start) + r'.*?' + re.escape(marker_end),
         re.DOTALL,
     )
     cleaned = marker_pattern.sub('', existing).strip()
@@ -610,9 +625,9 @@ def write_local_conf(app_path, conf_name, content):
 
     if content:
         marked_content = (
-            f'{FILTER_MARKER_START}\n'
+            f'{marker_start}\n'
             f'{content}\n'
-            f'{FILTER_MARKER_END}'
+            f'{marker_end}'
         )
         parts.append(marked_content)
 
@@ -621,7 +636,105 @@ def write_local_conf(app_path, conf_name, content):
     with open(conf_path, 'w') as f:
         f.write(final)
 
-    logger.info(f'Wrote filter config to {conf_path}')
+    logger.info(f'Wrote conf section to {conf_path} (marker={marker_start[:40]}...)')
+    return conf_path
+
+
+def write_local_conf(app_path, conf_name, content):
+    """
+    Backward-compatible wrapper that writes the FILTER marked section.
+
+    Existing callers (filter REST handler + daily time refresh) use this
+    signature and expect the FILTER markers — preserved exactly.
+
+    Args:
+        app_path: Path to the app directory.
+        conf_name: Conf file name without extension (e.g. ``'transforms'``).
+        content: The stanza text to write, or empty string to clear.
+
+    Returns:
+        str: Path to the written file.
+    """
+    return write_local_conf_section(
+        app_path, conf_name, content,
+        FILTER_MARKER_START, FILTER_MARKER_END,
+    )
+
+
+def update_local_stanza(app_path, conf_name, stanza, kv):
+    """Set key/value pairs under [stanza] in local/<conf_name>.conf via a
+    plain FILESYSTEM write, preserving every other stanza.
+
+    This is the filesystem fallback used when splunktaucclib's REST-based
+    settings persist is forbidden (Splunk Cloud Victoria sc_subadmin lacks
+    admin_all_objects for configs/conf-* writes). A filesystem write by the
+    splunkd handler process is not subject to that REST capability gate.
+
+    Keys present in ``kv`` are replaced in-place (or appended if new);
+    existing keys not in ``kv`` are left untouched; other stanzas are
+    preserved verbatim.
+
+    Args:
+        app_path: Path to the app directory.
+        conf_name: Conf file name without extension (e.g. the settings conf).
+        stanza: Stanza name (without brackets), e.g. 'filter_settings'.
+        kv: dict of {key: value} to write under the stanza.
+
+    Returns:
+        str: Path to the written conf file.
+    """
+    local_dir = os.path.join(app_path, 'local')
+    os.makedirs(local_dir, exist_ok=True)
+    conf_path = os.path.join(local_dir, f'{conf_name}.conf')
+
+    lines = []
+    if os.path.isfile(conf_path):
+        with open(conf_path, 'r') as f:
+            lines = f.readlines()
+
+    target = f'[{stanza}]'
+    remaining = dict(kv)
+    out = []
+    i = 0
+    n = len(lines)
+    found = False
+    while i < n:
+        line = lines[i]
+        if line.strip() == target:
+            found = True
+            out.append(line)
+            i += 1
+            # Walk the stanza body (until the next stanza header or EOF).
+            while i < n and not lines[i].lstrip().startswith('['):
+                body_line = lines[i]
+                if '=' in body_line and not body_line.lstrip().startswith('#'):
+                    key = body_line.split('=', 1)[0].strip()
+                    if key in remaining:
+                        out.append(f'{key} = {remaining.pop(key)}\n')
+                    else:
+                        out.append(body_line)
+                else:
+                    out.append(body_line)
+                i += 1
+            # Append any keys that weren't already present in the stanza.
+            for k, v in remaining.items():
+                out.append(f'{k} = {v}\n')
+            remaining = {}
+        else:
+            out.append(line)
+            i += 1
+
+    if not found:
+        if out and out[-1].strip() != '':
+            out.append('\n')
+        out.append(f'{target}\n')
+        for k, v in kv.items():
+            out.append(f'{k} = {v}\n')
+
+    with open(conf_path, 'w') as f:
+        f.writelines(out)
+
+    logger.info(f'Updated local stanza [{stanza}] in {conf_path} (filesystem)')
     return conf_path
 
 

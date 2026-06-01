@@ -8,7 +8,7 @@ Drill-down chips are clickable affordances that appear next to AI Assistant tool
 
 ### `↗ Dashboard`
 
-Opens the related OOTB dashboard in a new browser tab. Sourced from the per-prompt dashboard mapping in the intent map — single string or array. Multi-target prompts (20 of 48 — e.g., `logserv_hana_failed_auth` → HANA Audit + Cross-Stack Authentication) render multiple chips, one per target.
+Opens the related OOTB dashboard in a new browser tab. Sourced from the per-prompt dashboard mapping in the intent map — single string or array. Multi-target prompts (20 of 61 — e.g., `logserv_hana_failed_auth` → HANA Audit + Cross-Stack Authentication) render multiple chips, one per target.
 
 The URL embeds the dispatch's exact earliest/latest as query params, and the destination dashboard hydrates its time picker from those params on mount.
 

@@ -54,7 +54,7 @@ The AI's tool definitions on every free-form request are:
 
 ### `splunk_run_saved_search`
 
-Dispatch a saved search from the LogServ App's catalog (one of the 48 prompts described in [Predefined Prompts](predefined-prompts.md)).
+Dispatch a saved search from the LogServ App's catalog (one of the 61 prompts described in [Predefined Prompts](predefined-prompts.md)).
 
 | Arg | Type | Description |
 |---|---|---|
@@ -83,7 +83,7 @@ Dispatch ad-hoc SPL written by the AI. Used when no saved search fits the user's
 A system-message prelude is sent on every free-form request. The primer teaches the AI:
 
 - A data-boundary rule that distinguishes customer data from instructions (mitigates [LLM01 / LLM04](owasp-llm-compliance.md))
-- The catalog of 48 saved searches (so the AI prefers `splunk_run_saved_search` when a saved search fits)
+- The catalog of 61 saved searches (so the AI prefers `splunk_run_saved_search` when a saved search fits)
 - The LogServ data model (sourcetypes + key fields) for ad-hoc SPL
 - The read-only-operators list for `splunk_run_query`
 - The [time-window reasoning rules](time-window-reasoning.md) that kick in for severity claims

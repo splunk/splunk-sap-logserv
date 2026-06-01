@@ -1,6 +1,6 @@
 # Predefined Prompts
 
-Predefined prompts are 48 cataloged saved searches across three packs that the AI Assistant can dispatch via the [Splunk MCP Server](mcp-setup.md) **without invoking any LLM**. They are the deterministic, vendor-traffic-free path through the AI Assistant: the user clicks a prompt card, the orchestrator dispatches the saved search, the result tile renders in the right pane, and a static interpretation + suggested-next-steps card appears in the chat.
+Predefined prompts are 61 cataloged saved searches across three packs that the AI Assistant can dispatch via the [Splunk MCP Server](mcp-setup.md) **without invoking any LLM**. They are the deterministic, vendor-traffic-free path through the AI Assistant: the user clicks a prompt card, the orchestrator dispatches the saved search, the result tile renders in the right pane, and a static interpretation + suggested-next-steps card appears in the chat.
 
 This is the **only path that's active in the [Templates-only build variant](templates-only-build.md)** — partners can demo + investigate the LogServ solution end-to-end without any LLM provider configured.
 
@@ -10,9 +10,9 @@ This is the **only path that's active in the [Templates-only build variant](temp
 
 | Pack | Count | Focus |
 |---|---|---|
-| **SAP Basis** | 13 | SAP Basis admin investigations: HANA service severity breakdown, ABAP work-process errors, integration topology call volume, RFC partner failures |
-| **Security** | 14 | Auth failures, beaconing detection, after-hours admin activity, permission grants, GRANT-to-non-managed-role detection, HANA SYSTEM logins, Windows lockouts |
-| **Operations** | 13 | Ingest health, error rate trends, error-category breakdowns, top error categories, host volume drop, freshness checks, Cloud Connector backend latency |
+| **SAP Basis** | 15 | SAP Basis admin investigations: HANA service severity breakdown, ABAP work-process errors, integration topology call volume, RFC partner failures |
+| **Security** | 28 | Auth failures, beaconing detection, after-hours admin activity, permission grants, GRANT-to-non-managed-role detection, HANA SYSTEM logins, Windows lockouts |
+| **Operations** | 18 | Ingest health, error rate trends, error-category breakdowns, top error categories, host volume drop, freshness checks, Cloud Connector backend latency |
 
 The full catalog ships inside the LogServ App as a data-driven intent map. Each prompt entry includes the saved-search name, label, description, render hint, chart hint, chart palette, dashboard mapping, interpretation, and suggested next steps.
 

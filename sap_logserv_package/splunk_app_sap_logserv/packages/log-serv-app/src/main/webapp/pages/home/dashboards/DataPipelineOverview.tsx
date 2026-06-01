@@ -105,7 +105,7 @@ const buildQueries = (HOST: string) => ({
     totalEvents: `\`sap_logserv_idx_macro\` ${HOST} | stats count`,
     activeHosts: `\`sap_logserv_idx_macro\` ${HOST} | stats dc(host) AS hosts`,
     activeSourcetypes: `\`sap_logserv_idx_macro\` ${HOST} | stats dc(sourcetype) AS st`,
-    eventsPerDay: `\`sap_logserv_idx_macro\` ${HOST} | stats count by date_mday | stats avg(count) AS perday`,
+    eventsPerDay: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d count as daily | stats avg(daily) AS perday`,
 
     sparkTotal: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d count`,
     sparkHosts: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d dc(host) AS hosts`,

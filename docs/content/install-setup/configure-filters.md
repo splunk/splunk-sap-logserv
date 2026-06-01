@@ -28,7 +28,7 @@ The Splunk TA for SAP LogServ provides two complementary approaches to filtering
 
     **Use both together** for defense-in-depth. The Lambda filters at the AWS pipeline level, and the native TA filters catch anything that slips through at the Splunk level. Since both use the same `clz_dir/clz_subdir` pattern syntax, you can keep the configurations aligned.
 
-The remainder of this page covers **Native TA Index-Time Filtering** in detail. For Lambda-based filtering setup, see the [AWS Lambda-Based Filtering](#aws-lambda-based-filtering) section at the bottom of this page or the [AWS Remote S3 Filter Setup Walkthrough](aws-remote-s3-filter-walkthrough.md).
+The remainder of this page covers **Native TA Index-Time Filtering** in detail. For Lambda-based filtering setup, see the [AWS Lambda-Based Filtering](#aws-lambda-based-filtering) section at the bottom of this page or the [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md).
 
 <br>
 
@@ -280,13 +280,13 @@ The table below lists all log types currently supported by the TA. The `clz_dir`
 | dns | binddns | `isc:bind:query`, `isc:bind:lameserver`, `isc:bind:network`, `isc:bind:transfer` |
 | hana | hanaaudit | `sap:hana:audit` |
 | hana | tracelogs | `sap:hana:tracelogs` |
-| linux | cron | `syslog` |
+| linux | cron | `linux:cron` |
 | linux | localmessages | `linux_messages_syslog` |
 | linux | messages | `linux_messages_syslog` |
-| linux | secure | `linux_secure`, `lastlog`, `who` |
-| linux | slapd | `syslog` |
-| linux | sudolog | `syslog` |
-| linux | warn | `syslog` |
+| linux | linux_secure | `linux_secure`, `lastlog`, `who` |
+| linux | slapd | `linux:slapd` |
+| linux | sudolog | `linux:sudolog` |
+| linux | warn | `linux:warn` |
 | proxy | squid | `squid:access` |
 | sap | saphostexec | `sap:saphostexec` |
 | sap | saprouter | `sap:saprouter` |
@@ -395,6 +395,71 @@ The time filter epoch cutoff is refreshed once per day by a scripted input. Afte
 
 ---
 
+## Cloud Provider Attribution
+
+### :material-circle-box:{ .taiconcolor } What It Does
+
+The **Configuration** page has two tabs: **Filters** (covered above) and **Cloud Provider**. The Cloud Provider tab controls how the Data TA attributes each event to the cloud it was ingested from.
+
+The Data TA stamps two indexed fields at index time on the bootstrap `sap_logserv_logs` sourcetype — the same `WRITE_META` mechanism it uses to preserve `clz_dir` and `clz_subdir`:
+
+| Indexed field | Value | How it's set | Configurable |
+|---|---|---|---|
+| `splunk_solution` | `splunk_for_sap_logserv` | Always stamped on every event | No — ships active, no UI control |
+| `cloud_provider` | `aws` / `azure` / *(none)* | Stamped per the Cloud Provider dropdown | Yes — **Configuration → Cloud Provider** |
+
+Both fields are written at index time on the Heavy Forwarder (or the indexer in single-instance mode), so they are available as indexed fields for `tstats`, accelerated searches, and raw-event filtering.
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } The splunk_solution Field (always-on)
+
+Every event indexed through the Data TA carries `splunk_solution = splunk_for_sap_logserv`. This is a static attribution stamp — there is no UI control and nothing to configure. It identifies events that flowed through the Splunk for SAP LogServ pipeline, which is useful when the same index or Splunk instance also receives data from other solutions.
+
+!!! note "`splunk_solution` is distinct from `vendor_product`"
+    The LogServ App also defines a per-sourcetype `vendor_product` search-time field (e.g., `SAP HANA`, `SAP NetWeaver ABAP`, `SAP Web Dispatcher`, `ISC:Bind`) that dashboards and CIM mapping rely on. That field describes *which product* produced a given event. `splunk_solution` is a separate, coarser stamp identifying the *solution* — this TA — that ingested it. The two coexist and do not collide.
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } The cloud_provider Field (dropdown-driven)
+
+On the **Cloud Provider** tab, the **Cloud Provider** dropdown has three choices:
+
+| Selection | Effect |
+|---|---|
+| **Not set** (default) | No `cloud_provider` value is stamped at index time. |
+| **AWS** | Every event this TA processes is stamped `cloud_provider = aws`. |
+| **Microsoft Azure** | Every event this TA processes is stamped `cloud_provider = azure`. |
+
+Click **Save** to apply. On a single instance the change takes effect immediately. On a Deployment Server, click **Deploy to Forwarders** (see below) to push it to the Heavy Forwarders.
+
+#### :material-crop-square:{ .taiconcolor } Relationship to the search-time default macro
+
+The LogServ App ships a search-time macro, `sap_logserv_cloud_provider_default_macro`, defined as:
+
+```spl
+eval cloud_provider=coalesce(cloud_provider, "aws")
+```
+
+This macro defaults any event WITHOUT an indexed `cloud_provider` value to `aws` at search time, so legacy events that pre-date this feature (or events from a TA left at **Not set**) still report a provider in dashboards such as [Multi-Cloud Overview](../logserv-app/dashboards/platform/multi-cloud-overview.md). Setting the dropdown to **AWS** makes that attribution explicit at index time — preferable for any new Heavy Forwarder rollout, because the indexed field can then be used directly in raw-event searches, not only in macro-wrapped dashboard panels.
+
+#### :material-crop-square:{ .taiconcolor } Relationship to the Azure add-on's `_meta`
+
+For Azure ingest, the **Splunk Add-on for Microsoft Cloud Services** can also set `cloud_provider` per input via `_meta = cloud_provider::azure` on the `mscs_storage_blob` input stanza (see the [Azure Setup Guide](azure-setup.md)). The Cloud Provider dropdown is the simpler, TA-managed equivalent: rather than editing each input's `_meta`, set the dropdown once and the TA stamps every event it processes. For a Heavy Forwarder that ingests from a single cloud, the dropdown is the recommended mechanism.
+
+!!! warning "Mixed-cloud single Heavy Forwarder"
+    The Cloud Provider dropdown is a TA-wide (per-HF) setting — it stamps the same value on every event that HF's Data TA processes. If a **single** Heavy Forwarder ingests from BOTH AWS S3 AND Azure Blob Storage, the dropdown cannot tell the two channels apart. In that case, leave the dropdown at **Not set** and attribute per input instead: set `_meta = cloud_provider::aws` on the `Splunk_TA_aws` SQS-based S3 input(s) and `_meta = cloud_provider::azure` on the `mscs_storage_blob` input(s). With the dropdown at **Not set** the TA adds no `cloud_provider` stamp of its own, so the per-input `_meta` value is the only one written.
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } Deploy to Forwarders (Deployment Server)
+
+The Cloud Provider tab uses the same deployment flow as the Filters tab. When you Save on a Deployment Server, the TA writes the selection into its `local/transforms.conf` and mirrors it to the `deployment-apps/` copy. Click **Deploy to Forwarders** to trigger a scoped reload of the `SAP_LogServ_HeavyForwarders` server class; the Heavy Forwarders pick up the change on their next phone-home (typically 30–60 seconds). This is identical to the Filters-tab deploy procedure described earlier on this page — same server class, same button.
+
+<br>
+
+---
+
 ## AWS Lambda-Based Filtering
 
 ### :material-circle-box:{ .taiconcolor } Overview
@@ -431,11 +496,11 @@ There are two ways to deploy Lambda-based filtering:
 
 #### :material-crop-square:{ .taiconcolor } New Deployment (S3 Filter Setup)
 
-If you are setting up from scratch, follow the [AWS Remote S3 Filter Setup Walkthrough](aws-remote-s3-filter-walkthrough.md). The CloudFormation template creates all required AWS resources (Lambda, local SQS queue, DLQ, IAM permissions) in a single deployment.
+If you are setting up from scratch, follow the [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md). The CloudFormation template creates all required AWS resources (Lambda, local SQS queue, DLQ, IAM permissions) in a single deployment.
 
 #### :material-crop-square:{ .taiconcolor } Migration from Existing S3 Connect Deployment
 
-If you already have a working **S3 Connect** deployment and want to add Lambda-based filtering, follow the [AWS Remote S3 Connect to Filter Migration](aws-remote-s3-connect-to-filter-migration-walkthrough.md). The Python migration script adds the Lambda resources to your existing IAM infrastructure without recreating it.
+If you already have a working **S3 Connect** deployment and want to add Lambda-based filtering, follow the [AWS Remote S3 Connect to Filter Migration](aws-remote-s3-connect-to-filter-migration-guide.md). The Python migration script adds the Lambda resources to your existing IAM infrastructure without recreating it.
 
 <br>
 
@@ -479,4 +544,4 @@ Consider a scenario where you want to ingest only `hana/*` and `linux/messages` 
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 
-Return to the [Setup Walkthroughs Overview](setup-walkthroughs.md) for AWS data pipeline configuration, or see the [Developer Reference](../developer/developer-reference.md) for technical internals.
+Return to the [Setup Guides Overview](setup-guides.md) for AWS data pipeline configuration, or see the [Developer Reference](../developer/developer-reference.md) for technical internals.

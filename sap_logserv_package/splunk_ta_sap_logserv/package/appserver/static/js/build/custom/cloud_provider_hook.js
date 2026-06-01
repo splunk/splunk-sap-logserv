@@ -1,17 +1,18 @@
 /**
- * SAP LogServ TA - Filter Settings UCC Hook
+ * SAP LogServ TA - Cloud Provider UCC Hook
  *
- * This hook enhances the Filters configuration tab with deployment server
- * awareness.  When the TA is running on a deployment server:
+ * Enhances the Cloud Provider configuration tab with deployment server
+ * awareness, mirroring the Filters tab hook.  When the TA runs on a
+ * deployment server:
  *
  *   1. A "Deploy to Forwarders" button is rendered below the form
  *   2. Server class status is shown with guidance for initial setup
  *   3. After each save, the page reloads to reflect persisted values
  *   4. The button triggers a confirmation dialog before deploying
  *
- * The hook communicates with the custom REST endpoint at
- * /services/splunk_ta_sap_logserv/deployment_push for DS detection and
- * deployment execution.
+ * The cloud_provider stamp override is written to local/transforms.conf on
+ * Save; the deploy push (shared /services/splunk_ta_sap_logserv/deployment_push
+ * endpoint) distributes the staged deployment-apps/ copy to heavy forwarders.
  */
 
 const PUSH_ENDPOINT =
@@ -22,12 +23,12 @@ const PUSH_ENDPOINT =
 // -------------------------------------------------------------------------
 
 function createDeployUI(serverclass) {
-    if (document.getElementById('logserv-deploy-push-container')) {
+    if (document.getElementById('logserv-cp-deploy-push-container')) {
         return;
     }
 
     const container = document.createElement('div');
-    container.id = 'logserv-deploy-push-container';
+    container.id = 'logserv-cp-deploy-push-container';
     container.style.cssText =
         'margin-top: 20px; padding: 16px; background: #fef9e7; ' +
         'border: 1px solid #f0c36d; border-radius: 4px; ' +
@@ -36,7 +37,7 @@ function createDeployUI(serverclass) {
     let serverclassHtml = '';
     if (serverclass && serverclass.exists && serverclass.disabled) {
         serverclassHtml =
-            '<div id="logserv-sc-notice" style="margin-bottom: 12px; padding: 10px; ' +
+            '<div style="margin-bottom: 12px; padding: 10px; ' +
             'background: #fff3cd; border: 1px solid #ffc107; border-radius: 3px; ' +
             'font-size: 13px; color: #664d03; ' +
             'font-family: \'Proxima Nova\', \'Helvetica Neue\', Helvetica, Arial, sans-serif;">' +
@@ -50,7 +51,7 @@ function createDeployUI(serverclass) {
             '</div>';
     } else if (serverclass && serverclass.exists && !serverclass.disabled && !serverclass.has_clients) {
         serverclassHtml =
-            '<div id="logserv-sc-notice" style="margin-bottom: 12px; padding: 10px; ' +
+            '<div style="margin-bottom: 12px; padding: 10px; ' +
             'background: #fff3cd; border: 1px solid #ffc107; border-radius: 3px; ' +
             'font-size: 13px; color: #664d03; ' +
             'font-family: \'Proxima Nova\', \'Helvetica Neue\', Helvetica, Arial, sans-serif;">' +
@@ -67,24 +68,26 @@ function createDeployUI(serverclass) {
         '⚠ Deployment Server Detected' +
         '</div>' +
         '<div style="margin-bottom: 12px; color: #333; font-size: 13px;">' +
-        'Filter configurations have been staged to <code>deployment-apps/</code>. ' +
-        'Deploy to distribute changes to heavy forwarders.' +
+        'The cloud_provider attribution override has been staged to ' +
+        '<code>deployment-apps/</code>. Deploy to distribute the change to ' +
+        'heavy forwarders.' +
         '</div>' +
         serverclassHtml +
-        '<button id="logserv-deploy-btn" type="button" ' +
+        '<button id="logserv-cp-deploy-btn" type="button" ' +
         'style="padding: 8px 16px; background: #5c6773; color: #fff; ' +
         'border: none; border-radius: 3px; cursor: pointer; font-size: 13px;">' +
         'Deploy to Forwarders' +
         '</button>' +
-        '<span id="logserv-deploy-status" style="margin-left: 12px; font-size: 13px;"></span>';
+        '<span id="logserv-cp-deploy-status" style="margin-left: 12px; font-size: 13px;"></span>';
 
     // Scope the banner to THIS tab's panel. Both Configuration tab panels
     // (Filters + Cloud Provider) are mounted in the DOM at once — only the
     // active one is visible — so any document-global [data-test=...] query
-    // resolves to the first/active tab. Anchor on a field unique to the
-    // Filters tab, walk up to the nearest ancestor that also contains a Save
+    // resolves to the first/active tab. That is why this banner previously
+    // landed on the Filters tab. Anchor on a field unique to the Cloud
+    // Provider tab, walk up to the nearest ancestor that also contains a Save
     // button (that ancestor is this tab's own form), and insert there.
-    const anchorField = document.querySelector('[data-name="days_in_past"]');
+    const anchorField = document.querySelector('[data-name="cloud_provider"]');
     let tabRoot = null;
     let node = anchorField;
     while (node && node !== document.body) {
@@ -96,28 +99,27 @@ function createDeployUI(serverclass) {
     }
 
     if (!tabRoot) {
-        // Filters tab not rendered yet — don't risk injecting into the wrong
-        // tab. A later onRender will retry once the panel is in the DOM.
+        // Cloud Provider tab not rendered yet — don't risk injecting into the
+        // wrong tab. A later onRender will retry once the panel is in the DOM.
         return;
     }
 
     const saveBtn = tabRoot.querySelector('[data-test="button"]');
     if (saveBtn) {
-        // Place right after the Save button's parent row
         const saveBtnRow = saveBtn.closest('.formRow') || saveBtn.parentNode;
         saveBtnRow.parentNode.insertBefore(container, saveBtnRow.nextSibling);
     } else {
         tabRoot.appendChild(container);
     }
 
-    const btn = document.getElementById('logserv-deploy-btn');
+    const btn = document.getElementById('logserv-cp-deploy-btn');
     if (btn) {
         btn.addEventListener('click', handleDeployClick);
     }
 }
 
 function removeDeployUI() {
-    const el = document.getElementById('logserv-deploy-push-container');
+    const el = document.getElementById('logserv-cp-deploy-push-container');
     if (el) el.remove();
 }
 
@@ -127,17 +129,17 @@ function removeDeployUI() {
 
 async function handleDeployClick() {
     const confirmed = window.confirm(
-        'Deploy filter configurations to all heavy forwarders?\n\n' +
+        'Deploy the cloud_provider attribution to all heavy forwarders?\n\n' +
         'This triggers a reload of the app on the deployment server. ' +
-        'Forwarders will pick up the updated configurations on their ' +
+        'Forwarders will pick up the updated configuration on their ' +
         'next phone-home interval.\n\n' +
         'Proceed?'
     );
 
     if (!confirmed) return;
 
-    const btn = document.getElementById('logserv-deploy-btn');
-    const status = document.getElementById('logserv-deploy-status');
+    const btn = document.getElementById('logserv-cp-deploy-btn');
+    const status = document.getElementById('logserv-cp-deploy-status');
 
     btn.disabled = true;
     btn.textContent = 'Deploying…';
@@ -206,7 +208,7 @@ async function checkDeploymentServer() {
 // UCC Hook class
 // -------------------------------------------------------------------------
 
-class FilterSettingsHook {
+class CloudProviderHook {
     constructor(globalConfig, serviceName, model, util) {
         this._isDeploymentServer = false;
     }
@@ -224,9 +226,6 @@ class FilterSettingsHook {
     }
 
     onSaveSuccess() {
-        // Reload the page so server-side changes (e.g. validation,
-        // deployment-apps sync) are reflected in the form fields.
-        // Short delay lets UCC finish its own post-save housekeeping.
         setTimeout(() => {
             window.location.reload();
         }, 500);
@@ -255,4 +254,4 @@ class FilterSettingsHook {
     }
 }
 
-export default FilterSettingsHook;
+export default CloudProviderHook;

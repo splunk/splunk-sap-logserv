@@ -100,6 +100,6 @@ Each should return 0 rows (the lookups ship empty). The fact that the queries DI
 
 ## :material-circle-box:{ .taiconcolor } See also
 
-- [Correlation Searches & RBA](correlation-searches.md) — Full list of the 18 correlation searches across the App
+- [Correlation Searches & RBA](correlation-searches.md) — Full list of the 19 correlation searches across the App
 - [Behavioral & Anomaly Detections](behavioral-detections.md) — Statistically-baselined detections that complement TI matching
 - [Asset & Identity Feed](asset-identity-feed.md) — Customer-managed asset and identity context (similar customer-side population workflow)

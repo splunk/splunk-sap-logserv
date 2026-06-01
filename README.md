@@ -37,7 +37,7 @@ Recommended starting points:
 - [Architecture](https://splunk.github.io/splunk-sap-logserv/content/getting-started/architecture/) — package split, install topologies, why-two-packages rationale
 - [Installing the Data TA](https://splunk.github.io/splunk-sap-logserv/content/install-setup/install-ta/) — step-by-step including the indexer-tier rationale, Macros and Deployment Server behavior, and rename-an-index procedure
 - [Installing the LogServ App](https://splunk.github.io/splunk-sap-logserv/content/logserv-app/installation/)
-- [Configuring Filters](https://splunk.github.io/splunk-sap-logserv/content/install-setup/configure-filters/) — index-time filter rules + DS deploy walkthrough
+- [Configuring Filters](https://splunk.github.io/splunk-sap-logserv/content/install-setup/configure-filters/) — index-time filter rules + DS deploy guide
 - [AI Assistant Overview](https://splunk.github.io/splunk-sap-logserv/content/ai-assistant/overview/)
 - [Release Notes](https://splunk.github.io/splunk-sap-logserv/content/overview/release-notes/)
 

@@ -23,7 +23,16 @@ If you have SAP ECS running in Amazon Web Services (AWS) you need to install thi
 - <a href="https://splunkbase.splunk.com/app/1876" target="_blank">Splunk Add-on for Amazon Web Services (AWS) Download</a>
 - <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/Installationandconfiguration/" target="_blank">Splunk Add-on for Amazon Web Services (AWS) Documentation</a>
 
-Additional configuration instructions for the Splunk Add-on for Amazon Web Services (AWS) are provided in the [Setup walkthroughs](../install-setup/setup-walkthroughs.md) after the prerequisite steps have been completed so just install for now.
+Additional configuration instructions for the Splunk Add-on for Amazon Web Services (AWS) are provided in the [Setup guides](../install-setup/setup-guides.md) after the prerequisite steps have been completed so just install for now.
+
+### :material-circle-box:{ .taiconcolor } SAP ECS running in Microsoft Azure
+
+If you have SAP ECS running in Microsoft Azure you need to install this additional Splunk Technical Add-on as well. Minimum version **5.0+** (for KV Store checkpoint + horizontal scaling).
+
+- <a href="https://splunkbase.splunk.com/app/3110" target="_blank">Splunk Add-on for Microsoft Cloud Services Download</a>
+- <a href="https://splunk.github.io/splunk-add-on-for-microsoft-cloud-services/" target="_blank">Splunk Add-on for Microsoft Cloud Services Documentation</a>
+
+Configuration instructions are provided in the [Azure Setup Guide](azure-setup.md). The architecture is symmetric with AWS — LogServ Data TA + one cloud-provider-specific add-on — and the downstream pipeline (sourcetype routing, dashboards, ES integration) is identical between AWS and Azure deployments.
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

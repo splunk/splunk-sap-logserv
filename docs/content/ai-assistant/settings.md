@@ -25,7 +25,7 @@ The General tab is divided into four semantic subsections: **Feature**, **Limits
 | Field | Default | Description |
 |---|---|---|
 | **`enabled`** | `false` | Master switch. When false, the `✦ AI Assistant` button in the nav is hidden and no AI traffic flows. The first time an admin flips this to `true`, an [enable-acceptance modal](#legal-acknowledgement-modals) blocks the save until acknowledged. |
-| **`provider`** | `anthropic` | Active LLM vendor: `mock` / `anthropic` / `openai` / `azure_openai` / `bedrock` / `ollama` (future release). |
+| **`provider`** | `mock` | Active LLM vendor: `mock` / `anthropic` / `openai` / `azure_openai` / `bedrock` / `ollama` (future release). |
 | **`default_model`** | per-provider | Default model id for the active provider. Per-user model picker in the chat panel can switch within the same provider's `models[]`. |
 | **`tier`** | `1` | Privacy tier 0 / 1 / 2. See [Privacy Tiers](privacy-tiers.md). Elevating to Tier 2 records a `vendor_tier2_elevation` audit event. |
 | **`mcp_required`** | `true` | When false, runs MCP-less chat mode (streaming-only, no tool dispatch). |

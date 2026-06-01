@@ -14,7 +14,7 @@ export interface DashboardInfo {
 }
 
 /**
- * The 20 LogServ dashboards, organized into 4 navigation categories
+ * The 21 LogServ dashboards, organized into 4 navigation categories
  * plus one default-landing entry (Environment Health).
  *
  * Each entry is a route in the React SPA. Phase 0 ships them as
@@ -47,6 +47,7 @@ export const dashboards: DashboardInfo[] = [
     { slug: 'windows', name: 'Windows', category: 'platform', path: '/platform/windows' },
     { slug: 'proxy', name: 'Proxy', category: 'platform', path: '/platform/proxy' },
     { slug: 'host-details', name: 'Host Details', category: 'platform', path: '/platform/host-details' },
+    { slug: 'multi-cloud-overview', name: 'Multi-Cloud Overview', category: 'platform', path: '/platform/multi-cloud-overview' },
 ];
 
 export const dashboardsByCategory: Record<DashboardCategory, DashboardInfo[]> = {

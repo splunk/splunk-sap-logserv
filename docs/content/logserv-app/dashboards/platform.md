@@ -8,6 +8,7 @@ The **Platform** category covers the infrastructure underneath SAP — data pipe
 | Dashboard | Purpose | Key Data Sources |
 |-----------|---------|-----------------|
 | [Data Pipeline Overview](platform/data-pipeline-overview.md) | Ingest pipeline view: 5 KPIs, Sourcetype Summary table, host activity, and source-to-sourcetype link graph (in second tab). Two tabs (Overview + Linked Graph). Dashboard-wide host filter in title row scopes every panel + the linked graph. | All sourcetypes |
+| [Multi-Cloud Overview](platform/multi-cloud-overview.md) | Per-cloud-provider ingest split: AWS vs Azure event counts, sourcetype distribution per provider, recent activity. Built on the indexed `cloud_provider` field with the `sap_logserv_cloud_provider_default_macro` for legacy AWS defaulting. See [Azure Setup Guide](../../install-setup/azure-setup.md) for Azure-side configuration. | All sourcetypes (filtered by `cloud_provider`) |
 | [DNS Analytics](platform/dns-analytics.md) | DNS query analysis, top resolvers, beaconing detection, and client activity | `isc:bind:query`, `isc:bind:network`, `isc:bind:transfer` |
 | [Linux System & Security](platform/linux.md) | Linux OS events, SAP application activity, and firewall monitoring (with Top Drop Source surface) | `linux_messages_syslog`, `linux:cron`, `linux:warn`, `linux:sudolog`, `linux:slapd`, `linux_secure` |
 | [Windows Events](platform/windows.md) | Windows operational health — event severity trends, top event codes, service state changes, PowerShell activity | `XmlWinEventLog` |

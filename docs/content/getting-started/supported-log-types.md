@@ -10,11 +10,16 @@ For a streamlined data ingestion process, all selected logs are ingested under o
 
 All events are in NDJSON format with metadata (like _time, host, source, etc.) and the _raw field containing the event contents.
 To limit index size, only the _raw field is ingested from each event -- metadata fields are either mapped to Splunk's native metadata fields or dropped.
-However `clz_dir` and `clz_subdir` fields are preserved to maintain backtracking capabilities. These fields correspond to the directory tree of the original data in S3.
+However `clz_dir` and `clz_subdir` fields are preserved to maintain backtracking capabilities. These fields correspond to the directory tree of the original data in object storage.
 
-### :material-circle-box:{ .taiconcolor } LogServ S3 Path Structure
+The Data TA also stamps two attribution fields at index time on every event: `splunk_solution` (always `splunk_for_sap_logserv`, identifying events that flowed through this solution) and `cloud_provider` (`aws` or `azure`, identifying the cloud the data was ingested from). The `cloud_provider` value is controlled by the Data TA's **Configuration → Cloud Provider** tab; see [Configuring Filters → Cloud Provider Attribution](../install-setup/configure-filters.md#cloud-provider-attribution) for details.
 
-The log files in the SAP LogServ S3 bucket follow this path pattern:
+!!! note "Ingest channel: AWS S3 or Azure Blob Storage"
+    The sourcetype mappings below apply identically to both ingest channels — **AWS S3** (via the Splunk Add-on for AWS) and **Azure Blob Storage** (via the Splunk Add-on for Microsoft Cloud Services). The Data TA's index-time routing transforms key on the `source` field's `clz_dir/clz_subdir` segments, which the SAP LogServ collector writes the same way regardless of object-storage destination. See [Azure Setup Guide](../install-setup/azure-setup.md) for Azure-specific configuration; AWS S3 is covered under [Prerequisites](../install-setup/prerequisites.md). Events from either channel carry an indexed `cloud_provider` field (`aws` or `azure`) for cross-cloud reporting.
+
+### :material-circle-box:{ .taiconcolor } LogServ Object Storage Path Structure
+
+The log files in the SAP LogServ object storage location (AWS S3 bucket OR Azure Blob Storage container) follow this path pattern:
 
 ```
 logserv/<clz_dir>/<clz_subdir>/<YYYY>/<MM>/<DD>/<filename>.json.gz
@@ -100,16 +105,16 @@ The LogServ App provides search-time field extractions for SAP host-level servic
 | Source field value | Sourcetype assigned | Filter path |
 |----------------------------|-------------------------|-------------|
 | /lastlog | lastlog | `linux/linux_secure` |
-| /var/log/cron | syslog | `linux/cron` |
+| /var/log/cron | linux:cron | `linux/cron` |
 | /var/log/firewall | linux_secure | `linux/linux_secure` |
 | /var/log/kernel | linux_secure | `linux/linux_secure` |
 | /var/log/localmessages | linux_messages_syslog | `linux/localmessages` |
 | /var/log/messages | linux_messages_syslog | `linux/messages` |
-| /var/log/pacemaker(.log) | syslog | `linux/warn` |
-| /var/log/slapd.log | syslog | `linux/slapd` |
+| /var/log/pacemaker(.log) | linux:slapd | `linux/slapd` |
+| /var/log/slapd.log | linux:slapd | `linux/slapd` |
 | /var/log/sssd(.log) | linux_secure | `linux/linux_secure` |
-| /var/log/sudolog | syslog | `linux/sudolog` |
-| /var/log/warn | syslog | `linux/warn` |
+| /var/log/sudolog | linux:sudolog | `linux/sudolog` |
+| /var/log/warn | linux:warn | `linux/warn` |
 | /who | who | `linux/linux_secure` |
 
 
