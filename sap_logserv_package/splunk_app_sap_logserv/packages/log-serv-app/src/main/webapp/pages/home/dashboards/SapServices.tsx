@@ -37,19 +37,37 @@ const PanelGrid2Wide = styled.div`
     @media (max-width: 1100px) { grid-template-columns: 1fr; }
 `;
 
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 053 / build 225).
+ *
+ * 8 panels read from the `logserv_sapservices_rollup` KV Store collection (hourly
+ * [logserv_sapservices_aggregate], one-time [logserv_sapservices_backfill]). 2 metrics:
+ *  - main: grain (sourcetype, is_auth_event, auth_result, is_ssl_event, severity) fillnull
+ *    "(none)" + count. Serves KPIs/sparks/volumeByType (case-at-read)/hostexecSeverity.
+ *  - ssl: grain (remote_ip, auth_user) over sapstartsrv SSL auth failures + count +
+ *    first_ts(=min _time)/last_ts(=max _time). min/max merge byte-exact across buckets
+ *    (unlike percentiles). Serves the SSL failure-source table (first/last/span).
+ * authEvents stays RAW (event listing). dc()/values() over fillnull'd auth_user nullify
+ * the sentinel; hostexecSeverity excludes "(none)" (raw `severity=*`, 94% null on saphostexec).
+ */
+const ROLL = 'logserv_sapservices_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
+const SSL = `| inputlookup ${ROLL} where metric="ssl" ${RANGE}`;
+
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` sourcetype IN ("sap:sapstartsrv", "sap:saphostexec") | stats count`,
-    kpiAuthFail: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | stats count`,
-    kpiSslEvents: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_ssl_event="true" | stats count`,
+    kpiTotal: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiAuthFail: `${MAIN} | search sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiSslEvents: `${MAIN} | search sourcetype="sap:sapstartsrv" is_ssl_event="true" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` sourcetype IN ("sap:sapstartsrv", "sap:saphostexec") | timechart span=1d count`,
-    sparkAuthFail: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | timechart span=1d count`,
-    sparkSslEvents: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_ssl_event="true" | timechart span=1d count`,
+    sparkTotal: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkAuthFail: `${MAIN} | search sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkSslEvents: `${MAIN} | search sourcetype="sap:sapstartsrv" is_ssl_event="true" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
-    volumeByType: `\`sap_logserv_idx_macro\` sourcetype IN ("sap:sapstartsrv", "sap:saphostexec") | eval is_error_event = case(sourcetype="sap:sapstartsrv" AND is_auth_event="true" AND auth_result="failure", 1, sourcetype="sap:saphostexec" AND severity IN ("ERROR", "WARNING"), 1, 1=1, 0) | eval series = case(sourcetype="sap:sapstartsrv" AND is_error_event=1, "sapstartsrv (errors)", sourcetype="sap:sapstartsrv", "sapstartsrv (normal)", sourcetype="sap:saphostexec" AND is_error_event=1, "saphostexec (errors)", sourcetype="sap:saphostexec", "saphostexec (normal)") | timechart span=1d count by series`,
-    authEvents: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_auth_event="true" | table _time auth_user remote_ip webmethod auth_result | sort -_time | rename auth_user as User remote_ip as "Remote IP" webmethod as Method auth_result as Result`,
-    sslEvents: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_ssl_event="true" auth_result="failure" | stats count as failures, dc(auth_user) as users, values(auth_user) as user_list, latest(_time) as last_seen_ts, earliest(_time) as first_seen_ts by remote_ip | eval first_seen = strftime(first_seen_ts, "%Y-%m-%d %H:%M:%S") | eval last_seen = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | eval span_h = round((last_seen_ts - first_seen_ts)/3600, 1) | sort -failures | table remote_ip, failures, users, user_list, first_seen, last_seen, span_h | rename remote_ip as "Source IP", failures as "Failures", users as "Distinct Users", user_list as "Users Tried", first_seen as "First Seen", last_seen as "Last Seen", span_h as "Activity Span (h)"`,
-    hostexecSeverity: `\`sap_logserv_idx_macro\` sourcetype="sap:saphostexec" severity=* | stats count by severity | sort -count`,
+    volumeByType: `${MAIN} | eval is_error_event = case(sourcetype="sap:sapstartsrv" AND is_auth_event="true" AND auth_result="failure", 1, sourcetype="sap:saphostexec" AND severity IN ("ERROR", "WARNING"), 1, 1=1, 0) | eval series = case(sourcetype="sap:sapstartsrv" AND is_error_event=1, "sapstartsrv (errors)", sourcetype="sap:sapstartsrv", "sapstartsrv (normal)", sourcetype="sap:saphostexec" AND is_error_event=1, "saphostexec (errors)", sourcetype="sap:saphostexec", "saphostexec (normal)") | eval _time=bucket_ts | timechart span=1d sum(count) by series | fillnull value=0`,
+    authEvents: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_auth_event="true" | head 200 | table _time auth_user remote_ip webmethod auth_result | sort -_time | rename auth_user as User remote_ip as "Remote IP" webmethod as Method auth_result as Result`,
+    sslEvents: `${SSL} | search remote_ip!="(none)" | stats sum(count) as failures, dc(eval(if(auth_user="(none)",null(),auth_user))) as users, values(eval(if(auth_user="(none)",null(),auth_user))) as user_list, max(last_ts) as last_seen_ts, min(first_ts) as first_seen_ts by remote_ip | eval first_seen = strftime(first_seen_ts, "%Y-%m-%d %H:%M:%S") | eval last_seen = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | eval span_h = round((last_seen_ts - first_seen_ts)/3600, 1) | sort -failures | table remote_ip, failures, users, user_list, first_seen, last_seen, span_h | rename remote_ip as "Source IP", failures as "Failures", users as "Distinct Users", user_list as "Users Tried", first_seen as "First Seen", last_seen as "Last Seen", span_h as "Activity Span (h)"`,
+    hostexecSeverity: `${MAIN} | search sourcetype="sap:saphostexec" severity!="(none)" | stats sum(count) as count by severity | sort -count`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -137,7 +155,7 @@ const SapServices: React.FC = () => {
             </FullWidthPanel>
 
             <PanelGrid2Wide>
-                <FramedPanel title="Sapstartsrv Authentication Events" subtitle="SOAP auth attempts, most-recent first — click a row for that remote IP's full auth log">
+                <FramedPanel search={authEvents} title="Sapstartsrv Authentication Events" subtitle="SOAP auth attempts, most-recent first — click a row for that remote IP's full auth log">
                     <DataTable columns={AUTH_COLS} rows={authEvents.results} loading={authEvents.loading} error={authEvents.error} emptyMessage="No authentication events in this time range." onRowClick={goAuthRow} />
                 </FramedPanel>
                 <FramedPanel title="Host Agent Severity" subtitle="saphostexec severity distribution"
@@ -147,7 +165,7 @@ const SapServices: React.FC = () => {
             </PanelGrid2Wide>
 
             <FullWidthPanel>
-                <FramedPanel title="SSL Authentication Failure Sources" subtitle="Source IPs failing SSL auth, ranked by failure count — click a row for that IP's full SSL event log">
+                <FramedPanel search={sslSources} title="SSL Authentication Failure Sources" subtitle="Source IPs failing SSL auth, ranked by failure count — click a row for that IP's full SSL event log">
                     <DataTable columns={SSL_COLS} rows={sslSources.results} loading={sslSources.loading} error={sslSources.error} emptyMessage="No SSL auth failures in this time range." onRowClick={goSslRow} />
                 </FramedPanel>
             </FullWidthPanel>

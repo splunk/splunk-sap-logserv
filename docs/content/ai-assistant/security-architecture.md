@@ -2,8 +2,8 @@
 
 This page is for **customer security teams** evaluating the LogServ App's AI Assistant feature against Google's [Secure AI Framework (SAIF)](https://saif.google/). It complements the [OWASP LLM Top 10 Compliance](owasp-llm-compliance.md) page — same set of controls, organized along SAIF's four-pillar structure and mapped to SAIF's 15 Key Risks catalog.
 
-!!! warning "v0.0.5 release: LLM functionality intentionally disabled pending review"
-    The v0.0.5 release ships with the LLM-driven path **disabled at compile time pending internal review**. The controls described on this page are designed, implemented, and exercised by the build's CI pipeline — but the LLM dispatch pathway itself is gated off via the [Templates-only build flag](templates-only-build.md) until the review concludes. The predefined-prompt path + Splunk MCP integration + audit log remain fully active. This page documents the security architecture so reviewers can evaluate the posture for a future release that re-enables the LLM path.
+!!! warning "Current release: LLM functionality intentionally disabled pending review"
+    The current release ships with the LLM-driven path **disabled at compile time pending internal review**. The controls described on this page are designed, implemented, and exercised by the build's CI pipeline — but the LLM dispatch pathway itself is gated off via the [Templates-only build flag](templates-only-build.md) until the review concludes. The predefined-prompt path + Splunk MCP integration + audit log remain fully active. This page documents the security architecture so reviewers can evaluate the posture for a future release that re-enables the LLM path.
 
 ## :material-circle-box:{ .taiconcolor } The Privacy Boundary
 
@@ -49,7 +49,7 @@ SAIF's Model pillar covers model integrity, exfiltration risk, and supply chain.
 
 **Model Source Tampering — partial coverage:**
 
-- **Our supply chain:** every CI build runs a dependency audit at the `high` advisory level. A Software Bill of Materials (`SBOM.json`, CycloneDX 1.4) ships in every release with per-dependency `purl` + sha-512 hashes. The v0.0.5.0 SBOM contains 1,416 components.
+- **Our supply chain:** every CI build runs a dependency audit at the `high` advisory level. A Software Bill of Materials (`SBOM.json`, CycloneDX 1.4) ships in every release with per-dependency `purl` + sha-512 hashes. The SBOM enumerates every bundled dependency.
 - **Distribution integrity:** the released tarball is precert-validated by Splunkbase AppInspect before publication. The Splunk deployment server distributes the Data TA to Heavy Forwarders over Splunk's mutually-authenticated channel.
 - **Vendor model weight integrity** is the LLM vendor's responsibility. The customer's DPA review should confirm vendor-side controls.
 
@@ -190,5 +190,5 @@ Concrete actions a customer's security team can take to validate or strengthen t
 - [Settings](settings.md) — admin-controlled toggles and configuration
 - [Audit Log](audit-log.md) — viewer + filter conventions + tamper-evidence model
 - [Free-Form Prompts](free-form-prompts.md) — system primer + tool catalog
-- [Templates-only Build Flag](templates-only-build.md) — the v0.0.5 LLM-disabled gating mechanism
+- [Templates-only Build Flag](templates-only-build.md) — the current LLM-disabled gating mechanism
 - Google's [Secure AI Framework (SAIF)](https://saif.google/) — the external reference framework this page maps against

@@ -49,6 +49,42 @@ const combinedHostFilter = (selectedHosts: string[], topN: string): string => {
     return `[search \`sap_logserv_idx_macro\` | top limit=${topN} host | fields host] `;
 };
 
+/* ----- tstats-WHERE-safe host filter (build 198 / session 048) -----
+ * The search-language `host IN (...)` operator and a `[subsearch]` are NOT
+ * reliable inside a `| tstats ... WHERE` clause, so the tstats panels use the
+ * variants below instead of combinedHostFilter:
+ *   - multi-host -> OR-expansion `(host="a" OR host="b" ...)`  (NOT IN)
+ *   - top-N      -> PRE-RESOLVED host list inlined as the same OR-expansion
+ *                   (resolvedTopHosts is a slice of the already-loaded,
+ *                   count-sorted host list; no extra search, no subsearch).
+ * combinedHostFilter (above) is retained for the two panels that stay on a raw
+ * search (eventsPerDay + eventsByHost). */
+const hostsToOrFragment = (hosts: string[]): string => {
+    if (hosts.length === 0) return '';
+    if (hosts.length === 1) return `host="${splEscapeHost(hosts[0])}"`;
+    return `(${hosts.map((h) => `host="${splEscapeHost(h)}"`).join(' OR ')})`;
+};
+
+/** tstats-WHERE host fragment. `resolvedTopHosts` is the pre-resolved Top-N host
+ *  list (empty unless selectedHosts is empty AND topN is numeric). */
+const combinedHostFilterTstats = (
+    selectedHosts: string[],
+    topN: string,
+    resolvedTopHosts: string[],
+): string => {
+    if (selectedHosts.length > 0) return hostsToOrFragment(selectedHosts);
+    if (topN === 'all') return '';
+    return hostsToOrFragment(resolvedTopHosts);
+};
+
+// KV-Store rollup reads (build 232) for the two RAW slow panels (Events/Day Avg +
+// Events Over Time by Host). Used only when no host filter is active; see the
+// routing in OverviewTab. vol = host-free per-bucket count; byhost = (host) count.
+const PIPE_ROLL = 'logserv_pipeline_rollup';
+const PIPE_RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const PIPE_VOL = `| inputlookup ${PIPE_ROLL} where metric="vol" ${PIPE_RANGE}`;
+const PIPE_BYHOST = `| inputlookup ${PIPE_ROLL} where metric="byhost" ${PIPE_RANGE}`;
+
 const KpiRow = styled.div`
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -101,31 +137,54 @@ const LinkGraphContainer = styled.div<{ $height: number }>`
  * SPL is still built ad-hoc inside OverviewTab so it can pick up the dynamic
  * timechart span.
  */
-const buildQueries = (HOST: string) => ({
-    totalEvents: `\`sap_logserv_idx_macro\` ${HOST} | stats count`,
-    activeHosts: `\`sap_logserv_idx_macro\` ${HOST} | stats dc(host) AS hosts`,
-    activeSourcetypes: `\`sap_logserv_idx_macro\` ${HOST} | stats dc(sourcetype) AS st`,
-    eventsPerDay: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d count as daily | stats avg(daily) AS perday`,
+const buildQueries = (HOST: string) => {
+    // tstats rewrite (build 198 / session 048). Every metric here uses only
+    // DEFAULT-INDEXED fields (host / sourcetype / source / _time), so tstats
+    // walks the tsidx instead of raw-scanning events — works on existing data
+    // with NO schema change. We keep using the `sap_logserv_idx_macro` macro
+    // (NOT a hardcoded index literal) so per-customer local/macros.conf
+    // overrides — e.g. the con1 tenant's sap_logserv_logs_con01 index — keep
+    // working; macros expand textually before SPL parsing, including inside a
+    // tstats WHERE clause. `${HOST}` is the tstats-WHERE host fragment from
+    // combinedHostFilterTstats ('' = all hosts).
+    const W = HOST
+        ? `\`sap_logserv_idx_macro\` ${HOST}`
+        : `\`sap_logserv_idx_macro\``;
+    return {
+        totalEvents: `| tstats count WHERE ${W}`,
+        activeHosts: `| tstats dc(host) AS hosts WHERE ${W}`,
+        activeSourcetypes: `| tstats dc(sourcetype) AS st WHERE ${W}`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d count`,
-    sparkHosts: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d dc(host) AS hosts`,
-    sparkSt: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d dc(sourcetype) AS st`,
-    sparkPerday: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d count`,
+        // NOTE: eventsPerDay (the "Events / Day (Avg)" KPI scalar) is NOT here —
+        // it stays on a RAW timechart in OverviewTab. Moving it to tstats would
+        // change the average's denominator (tstats omits zero-event days, so the
+        // avg would divide by present days only, not all days in the range).
+        // See design doc dashboard_perf_tstats_and_cim_map_v0.1 §A.3.1.
 
-    // eventsByHost is built dynamically inside OverviewTab so the timechart
-    // span tracks the user's selected time range (avoids 700+ point bars).
+        // Sparklines: tstats BY _time span=1d does NOT zero-fill empty days the
+        // way timechart does, so a sparse series shows gaps. Cosmetic for a
+        // sparkline; consumers read the same count / hosts / st fields.
+        sparkTotal: `| tstats count WHERE ${W} BY _time span=1d`,
+        sparkHosts: `| tstats dc(host) AS hosts WHERE ${W} BY _time span=1d`,
+        sparkSt: `| tstats dc(sourcetype) AS st WHERE ${W} BY _time span=1d`,
+        sparkPerday: `| tstats count WHERE ${W} BY _time span=1d`,
 
-    sourcetypeSummary: `\`sap_logserv_idx_macro\` ${HOST} | stats count, dc(host) AS hosts, latest(_time) AS last_seen by sourcetype | sort - count | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")`,
-    hostLatestActivity: `\`sap_logserv_idx_macro\` ${HOST} | stats count, dc(sourcetype) AS sts, latest(_time) AS last_seen by host | sort - last_seen | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")`,
+        // eventsByHost is built dynamically inside OverviewTab (raw timechart;
+        // no clean tstats top-N-series equivalent — see design doc §A.4).
 
-    // Linked graph: 3-column flow sourcetype → source → host (verbatim from
-    // v0.0.4.2 logserv_overview.xml `ds_qvNrhKle`). The implicit count (no
-    // comma after `sourcetype`) is intentional — Splunk treats it as
-    // `stats count by sourcetype, source, host`. The trailing
-    // `| fields - count` drops the count column so the link graph renders
-    // pure entity-to-entity-to-entity edges.
-    linkGraph: `\`sap_logserv_idx_macro\` ${HOST} | fields source, sourcetype, host | dedup host, source, sourcetype | stats count by sourcetype source, host | fields - count`,
-});
+        // max(_time) NOT latest(_time): tstats rejects latest() on some 9.x;
+        // max() is identical for an epoch field.
+        sourcetypeSummary: `| tstats count, dc(host) AS hosts, max(_time) AS last_seen WHERE ${W} BY sourcetype | sort - count | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")`,
+        hostLatestActivity: `| tstats count, dc(sourcetype) AS sts, max(_time) AS last_seen WHERE ${W} BY host | sort - last_seen | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")`,
+
+        // Linked graph: `| tstats count BY sourcetype, source, host | fields -
+        // count` yields the SAME distinct (sourcetype, source, host) triplet set
+        // as the old `dedup ... | stats count by ... | fields - count` (the
+        // count is dropped either way), but walks the tsidx instead of
+        // raw-scanning every event to dedup.
+        linkGraph: `| tstats count WHERE ${W} BY sourcetype, source, host | fields - count`,
+    };
+};
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
@@ -159,20 +218,40 @@ interface TabProps {
      *  "N of M selected" / "All hosts (M)" wording so the user can see the
      *  size of the universe even after filtering. */
     totalHostCount: number;
+    /** Pre-resolved Top-N host list for the tstats panels (build 198). Empty
+     *  unless `selectedHosts` is empty AND `topN` is numeric; then it's the
+     *  first N of the count-sorted host list. Inlined as an OR-expansion in the
+     *  tstats WHERE clause (a subsearch isn't valid there). */
+    resolvedTopHosts: string[];
 }
 
-const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount }) => {
-    // HOST is the build-162 filter fragment shared with every SPL on this
-    // tab. When the user picks specific hosts via the title-row picker, this
-    // becomes `host="X"` or `host IN (...)`; with no specific pick it falls
-    // back to the Top-N subsearch (or no filter when topN === 'all').
-    const HOST = useMemo(() => combinedHostFilter(selectedHosts, topN), [selectedHosts, topN]);
+const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, resolvedTopHosts }) => {
+    // Two host-filter dialects coexist on this tab (build 198):
+    //   HOST     = tstats-WHERE fragment (OR-expanded) for the tstats panels
+    //   HOST_RAW = search-language fragment (host IN (...) / Top-N subsearch)
+    //              for the two panels that stay on a raw search (eventsPerDay,
+    //              eventsByHost).
+    const HOST = useMemo(
+        () => combinedHostFilterTstats(selectedHosts, topN, resolvedTopHosts),
+        [selectedHosts, topN, resolvedTopHosts],
+    );
+    const HOST_RAW = useMemo(() => combinedHostFilter(selectedHosts, topN), [selectedHosts, topN]);
     const Q = useMemo(() => buildQueries(HOST), [HOST]);
 
     const total = useFirstRowField(Q.totalEvents, 'count');
     const hosts = useFirstRowField(Q.activeHosts, 'hosts');
     const sts = useFirstRowField(Q.activeSourcetypes, 'st');
-    const perDay = useFirstRowField(Q.eventsPerDay, 'perday');
+    // Events/Day Avg: no-filter case reads the vol rollup; the rollup's
+    // `timechart span=1d` 0-fills empty days just like the raw count timechart,
+    // so avg(daily) divides by the same denominator (§A.3.1). Host-filtered cases
+    // stay RAW (narrowed -> fast, and avoids the MV-host double-count).
+    const eventsPerDayQuery = useMemo(
+        () => HOST_RAW === ''
+            ? `${PIPE_VOL} | eval _time=bucket_ts | timechart span=1d sum(count) as daily | stats avg(daily) AS perday`
+            : `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=1d count as daily | stats avg(daily) AS perday`,
+        [HOST_RAW],
+    );
+    const perDay = useFirstRowField(eventsPerDayQuery, 'perday');
 
     // Dynamic timechart span keeps the per-host line chart readable across
     // any selected time range (a hard-coded `span=1h` produces 700+ pts on
@@ -191,8 +270,14 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount }
     const eventsByHostQuery = useMemo(() => {
         const hasHostPick = selectedHosts.length > 0;
         const limitVal = hasHostPick ? '0' : (topN === 'all' ? '0' : topN);
-        return `\`sap_logserv_idx_macro\` ${HOST} | timechart span=${span} count by host limit=${limitVal} useother=false`;
-    }, [span, topN, selectedHosts, HOST]);
+        // No-filter case at hourly-or-coarser spans reads the byhost rollup; the
+        // narrowed (host-filter / topN) cases AND sub-hour spans (the hourly grain
+        // would under-resolve) stay RAW — both already fast.
+        if (HOST_RAW === '' && !span.endsWith('m')) {
+            return `${PIPE_BYHOST} | eval _time=bucket_ts | timechart span=${span} sum(count) by host limit=0 useother=false`;
+        }
+        return `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=${span} count by host limit=${limitVal} useother=false`;
+    }, [span, topN, selectedHosts, HOST_RAW]);
 
     const chartSubtitle = useMemo<string>(() => {
         if (selectedHosts.length > 0) {
@@ -245,10 +330,10 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount }
                 </FramedPanel>
             </FullWidthPanel>
             <PanelGrid>
-                <FramedPanel title="Sourcetype Summary" subtitle="Per-sourcetype event count, distinct hosts, freshness — click a row for that sourcetype's full event log">
+                <FramedPanel search={sourcetypeSummary} title="Sourcetype Summary" subtitle="Per-sourcetype event count, distinct hosts, freshness — click a row for that sourcetype's full event log">
                     <DataTable columns={SOURCETYPE_COLS} rows={sourcetypeSummary.results} loading={sourcetypeSummary.loading} error={sourcetypeSummary.error} emptyMessage="No data in this time range." onRowClick={goSourcetypeRow} />
                 </FramedPanel>
-                <FramedPanel title="Host Latest Activity" subtitle="Most-recently-active hosts — click a row to open Host Details">
+                <FramedPanel search={hostLatest} title="Host Latest Activity" subtitle="Most-recently-active hosts — click a row to open Host Details">
                     <DataTable columns={HOST_COLS} rows={hostLatest.results} loading={hostLatest.loading} error={hostLatest.error} emptyMessage="No data in this time range." onRowClick={goHostRow} />
                 </FramedPanel>
             </PanelGrid>
@@ -283,11 +368,13 @@ const LINK_GRAPH_WIDTH_SAFETY_MARGIN = 280;
  *  ResizeObserver fires. Sized for a typical 1920 px viewport. */
 const LINK_GRAPH_NODE_WIDTH_FALLBACK = 540;
 
-const LinkedGraphTab: React.FC<TabProps> = ({ selectedHosts, topN }) => {
-    // Apply the same dashboard-wide host filter to the linked graph SPL —
-    // build 162 makes the picker affect every panel on this dashboard, on
-    // both tabs.
-    const HOST = useMemo(() => combinedHostFilter(selectedHosts, topN), [selectedHosts, topN]);
+const LinkedGraphTab: React.FC<TabProps> = ({ selectedHosts, topN, resolvedTopHosts }) => {
+    // Same dashboard-wide host filter as the Overview tab, in tstats-WHERE
+    // dialect (the link graph is now a tstats query — build 198).
+    const HOST = useMemo(
+        () => combinedHostFilterTstats(selectedHosts, topN, resolvedTopHosts),
+        [selectedHosts, topN, resolvedTopHosts],
+    );
     const Q = useMemo(() => buildQueries(HOST), [HOST]);
 
     // count: 0 = "all rows" — the link graph needs every unique
@@ -403,7 +490,7 @@ const DataPipelineOverview: React.FC = () => {
     // Host options for the Multiselect — sorted by descending event count
     // so the dropdown's first items are the busiest hosts (most useful).
     const hostListSearch = useSearch<{ host?: string; count?: string | number }>({
-        query: '`sap_logserv_idx_macro` | stats count by host | sort -count',
+        query: '| tstats count WHERE `sap_logserv_idx_macro` BY host | sort -count',
     });
     const hostOptions = useMemo<string[]>(() => {
         const rows = hostListSearch.results ?? [];
@@ -411,6 +498,19 @@ const DataPipelineOverview: React.FC = () => {
             .map((r) => (typeof r.host === 'string' ? r.host : ''))
             .filter((h): h is string => h.length > 0);
     }, [hostListSearch.results]);
+
+    // Pre-resolve the Top-N host list for the tstats panels (build 198). When
+    // no specific hosts are picked AND a numeric Top-N is selected, take the
+    // first N of the already-count-sorted host list (a slice — no extra
+    // search). This replaces the old `[subsearch | top limit=N host]`, which
+    // isn't valid inside a tstats WHERE clause. Empty for the 'all' case (no
+    // host constraint) and when specific hosts are picked (those win).
+    const resolvedTopHosts = useMemo<string[]>(
+        () => (selectedHosts.length === 0 && topN !== 'all'
+            ? hostOptions.slice(0, Number(topN))
+            : []),
+        [selectedHosts, topN, hostOptions],
+    );
 
     const filterControls = (
         <PanelControls>
@@ -467,6 +567,7 @@ const DataPipelineOverview: React.FC = () => {
                                 selectedHosts={selectedHosts}
                                 topN={topN}
                                 totalHostCount={hostOptions.length}
+                                resolvedTopHosts={resolvedTopHosts}
                             />
                         ),
                     },
@@ -478,6 +579,7 @@ const DataPipelineOverview: React.FC = () => {
                                 selectedHosts={selectedHosts}
                                 topN={topN}
                                 totalHostCount={hostOptions.length}
+                                resolvedTopHosts={resolvedTopHosts}
                             />
                         ),
                     },

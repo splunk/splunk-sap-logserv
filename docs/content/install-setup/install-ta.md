@@ -58,7 +58,7 @@ The conf field controls writes; the macro controls reads. They MUST point at the
 
 ### :material-circle-box:{ .taiconcolor } 2. Download the Data TA
 
-Download `splunk_ta_sap_logserv-0.0.5.0.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
+Download `splunk_ta_sap_logserv-0.0.6.0.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
 
 !!! note "v0.0.4.3 changes — Path B Linux sourcetype migration"
     The v0.0.4.3 Data TA replaces the legacy `[set_srctype_for_syslog]` transform (which routed cron + warn + sudolog + slapd into Splunk's pretrained `syslog` sourcetype) with four dedicated transforms producing four new sourcetypes: `linux:cron`, `linux:warn`, `linux:sudolog`, `linux:slapd`. This clears Splunkbase precert's pretrained-sourcetype warning and avoids field-extraction collisions with `Splunk_TA_nix`'s built-in `[syslog]` stanza. Existing data with `sourcetype=syslog` ages out per index retention; the LogServ App's dashboards OR both old + new sourcetypes during the transition.
@@ -114,7 +114,7 @@ Install the Data TA to your instance of Splunk Enterprise:
 
 5.<b style="color: #ff9100">b</b> Click Install app from file.
 
-5.<b style="color: #ff9100">c</b> Locate the downloaded `splunk_ta_sap_logserv-0.0.5.0.tar.gz` file and click Upload.
+5.<b style="color: #ff9100">c</b> Locate the downloaded `splunk_ta_sap_logserv-0.0.6.0.tar.gz` file and click Upload.
 
 5.<b style="color: #ff9100">d</b> If Splunk Enterprise prompts you to restart, do so.
 

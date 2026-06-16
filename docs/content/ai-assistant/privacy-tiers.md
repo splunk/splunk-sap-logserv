@@ -1,7 +1,7 @@
 # Privacy Tiers
 
-!!! warning "v0.0.5 release: privacy tiers are designed but not exercised — LLM dispatch is disabled"
-    The v0.0.5 release ships with the LLM-driven path **disabled at compile time pending internal review**. The privacy tiers described on this page are designed and implemented (the `Hidden<T>` / `Visible<T>` type-system enforcement is always active and will protect any future LLM dispatch), but **no LLM dispatch happens in a v0.0.5 build** — there is no vendor traffic to govern via tier selection. The tier setting in Settings → General is preserved so the configuration survives across releases; it just has no effect until the LLM path is re-enabled in a future release.
+!!! warning "Current release: privacy tiers are designed but not exercised — LLM dispatch is disabled"
+    The current release ships with the LLM-driven path **disabled at compile time pending internal review**. The privacy tiers described on this page are designed and implemented (the `Hidden<T>` / `Visible<T>` type-system enforcement is always active and will protect any future LLM dispatch), but **no LLM dispatch happens in the current build** — there is no vendor traffic to govern via tier selection. The tier setting in Settings → General is preserved so the configuration survives across releases; it just has no effect until the LLM path is re-enabled in a future release.
 
 The AI Assistant supports three privacy tiers that control what an external LLM vendor sees about your Splunk data. Tier selection is admin-configurable in [Settings → General](settings.md). The active tier is enforced by the TypeScript type system at build time, not by runtime policy: every outbound vendor payload must pass through a single sanitize chokepoint, and the chokepoint's summarizer is what the tier setting controls. For the type-system mechanism, see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).
 

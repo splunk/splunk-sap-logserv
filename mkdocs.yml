@@ -75,6 +75,7 @@ nav:
     - Supported Log Types: 'content/getting-started/supported-log-types.md'
     - Prerequisites: 'content/getting-started/prerequisites.md'
     - Quick Install Reference: 'content/getting-started/quick-install-reference.md'
+    - Upgrading from v0.0.5: 'content/getting-started/upgrading.md'
 - LogServ Data TA:
     - Prerequisites: 'content/install-setup/prerequisites.md'
     - Installing the Data TA: 'content/install-setup/install-ta.md'
@@ -85,8 +86,8 @@ nav:
         - AWS Remote S3 Connect Setup Guide: 'content/install-setup/aws-remote-s3-connect-guide.md'
         - AWS Remote S3 Filter Setup Guide: 'content/install-setup/aws-remote-s3-filter-guide.md'
         - AWS Remote S3 Copy Setup Guide: 'content/install-setup/aws-remote-s3-copy-guide.md'
-#    - AWS Migrations Guide:
-#        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md'
+    - AWS Migrations Guide:
+        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md'
     - Azure Setup:
         - Azure Setup Guide: 'content/install-setup/azure-setup.md'
 - LogServ UI App:
@@ -94,6 +95,7 @@ nav:
     - Installing the LogServ App: 'content/logserv-app/installation.md'
     - Dashboards Overview:
         - Overview: 'content/logserv-app/dashboards/index.md'
+        - Performance & Data Freshness: 'content/logserv-app/dashboards/performance.md'
         - Environment Health: 'content/logserv-app/dashboards/environment-health.md'
         - Environment Topology: 'content/logserv-app/dashboards/topology.md'
         - Applications:

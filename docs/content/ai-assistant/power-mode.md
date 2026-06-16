@@ -1,7 +1,7 @@
 # Power Mode
 
-!!! warning "v0.0.5 release: Power Mode is hidden — LLM dispatch is disabled"
-    Power Mode requires the LLM-driven path, which is **disabled at compile time** in the v0.0.5 release pending internal review. The `✦ Power` toggle is hidden in v0.0.5 builds regardless of the `power_user_roles` configuration. This page is preserved as the design reference for the future release that re-enables the LLM path.
+!!! warning "Current release: Power Mode is hidden — LLM dispatch is disabled"
+    Power Mode requires the LLM-driven path, which is **disabled at compile time** in the current release pending internal review. The `✦ Power` toggle is hidden in current builds regardless of the `power_user_roles` configuration. This page is preserved as the design reference for the future release that re-enables the LLM path.
 
 Power Mode is a role-gated **`✦ Power`** toggle in the AI Assistant chat-input toolbar that forces a saved-search dispatch before LLM synthesis on every prompt. When Power Mode is on, the AI MUST call `splunk_run_saved_search` (or `splunk_run_query`) at least once before generating any narrative response — forced-RAG. Reasoning from prior knowledge alone is disallowed; every reply is data-grounded.
 

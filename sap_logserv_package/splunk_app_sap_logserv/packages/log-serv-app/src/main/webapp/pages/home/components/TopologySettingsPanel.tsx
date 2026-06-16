@@ -489,11 +489,11 @@ const TopologySettingsPanel: React.FC = () => {
                     <FieldHint>
                         Bucket rows older than this are deleted by the daily
                         retention saved search (logserv_topology_retention)
-                        which runs at 00:30 UTC. Currently hardcoded at 30
+                        which runs at 00:30 UTC. Currently hardcoded at 365
                         days — adjust default/savedsearches.conf to change.
                     </FieldHint>
                 </div>
-                <ReadonlyValue>30 days</ReadonlyValue>
+                <ReadonlyValue>365 days</ReadonlyValue>
                 <span />
             </FieldRow>
             <FieldRow>

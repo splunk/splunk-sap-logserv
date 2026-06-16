@@ -36,6 +36,18 @@ const TOP_N_CHOICES: Array<{ value: string; label: string }> = [
  * Note: v0.0.4.2 used `splunk.bubble` for "Beaconing Activity" and "Hosts to
  * Beaconing Domains". React port renders these as sortable tables since we don't
  * yet have a Bubble primitive — same SPL, more legible for the underlying data.
+ *
+ * Performance tiering (session 049 CIM; rebuilt build 232 → KV-Store rollup). The
+ * CIM Network_Resolution tier fell back to a RAW full-scan when unaccelerated, so
+ * the 11 query/client/domain/record-type panels now read the always-fast
+ * `logserv_dns_rollup` collection (2 metrics): main (host,query,src — queries,
+ * clients, Queried Domains, Diversity, Resolvers, the Clients chart + populator) and
+ * rtype (record_type — Query Type pie + chart).
+ *   - Beaconing KPI + sparkline reuse `logserv_beaconing_rollup` (per-day dc(query),
+ *     byte-identical to the kpiBeaconing computation).
+ *   - The 2 BEACONING DETAIL tables (Beaconing Activity, Hosts to Beaconing) stay
+ *     RAW — streamstats per-event gap analysis can't roll up byte-exact.
+ * Read idiom: inputlookup metric=X | bucket_ts range | <agg>.
  */
 
 const KpiRow = styled.div`
@@ -71,6 +83,20 @@ const PanelControls = styled.div`
 
 const DNS_BASE = 'tag=dns message_type="Query"';
 
+// --- KV-Store rollup reads (build 232 — replaces the CIM Network_Resolution tier).
+// main (host,query,src) + rtype (record_type). dc() distinct columns reconstruct
+// across buckets because the dims are in the grain; the "(none)" fillnull sentinel
+// is nulled on read. Beaconing kpi+spark read the per-day logserv_beaconing_rollup.
+const ROLL = 'logserv_dns_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
+const RTYPE = `| inputlookup ${ROLL} where metric="rtype" ${RANGE}`;
+const BEACON = '| inputlookup logserv_beaconing_rollup | addinfo | where day_ts>=info_min_time AND day_ts<info_max_time';
+// Build 237 — per-day beaconing DETAIL rollup (qs metric: query,src gap-stats).
+// Approximate (per-day gaps miss the midnight-boundary gap) but picker-responsive.
+// avg=Σsum/Σn, var=(Σsumsq-Σsum²/Σn)/(Σn-1) reconstruct over the picked day range.
+const BCN_QS = '| inputlookup logserv_beaconing_detail_rollup where metric="qs" | addinfo | where day_ts>=info_min_time AND day_ts<info_max_time';
+
 // SPL fragment that rewrites the raw DNS `record_type` code (A, AAAA, MX, …)
 // into a human-readable label of the form `"<code> = <description>"`.
 // The case-default (`1=1, record_type`) preserves any code not listed below
@@ -100,20 +126,29 @@ const RECORD_TYPE_RELABEL = `eval record_type = case(`
     + `)`;
 
 const Q = {
-    kpiQueries: `\`sap_logserv_idx_macro\` ${DNS_BASE} | stats count`,
-    kpiClients: `\`sap_logserv_idx_macro\` ${DNS_BASE} | stats dc(src) as clients`,
-    kpiBeaconing: `\`sap_logserv_idx_macro\` ${DNS_BASE} | bucket _time span=1d as day | fields day, _time, query | streamstats current=f last(_time) as last_time by query, day | eval gap=last_time - _time | stats count, avg(gap) AS avg_gap, var(gap) AS var_gap BY query, day | where var_gap < 60 AND count > 2 AND avg_gap > 1 | stats dc(query) as count`,
+    // --- KV-Store rollup: main (queries / clients / domains / resolvers) -----
+    kpiQueries: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiClients: `${MAIN} | stats count as n, dc(eval(if(src="(none)",null(),src))) as clients | fillnull value=0 clients | fields clients`,
 
-    sparkQueries: `\`sap_logserv_idx_macro\` ${DNS_BASE} | timechart span=1d count`,
-    sparkClients: `\`sap_logserv_idx_macro\` ${DNS_BASE} | timechart span=1d dc(src) as clients`,
-    sparkBeaconing: `\`sap_logserv_idx_macro\` ${DNS_BASE} | bucket _time span=1d as day | fields day, _time, query | streamstats current=f last(_time) as last_time by query, day | eval gap=last_time - _time | stats count, avg(gap) AS avg_gap, var(gap) AS var_gap BY query, day | where var_gap < 60 AND count > 2 AND avg_gap > 1 | stats dc(query) as daily by day | rename day as _time`,
+    sparkQueries: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkClients: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(src="(none)",null(),src))) as clients | fillnull value=0`,
 
-    beaconingActivity: `\`sap_logserv_idx_macro\` ${DNS_BASE} | fields _time, query | streamstats current=f last(_time) as last_time by query | eval gap=last_time - _time | stats count avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query | eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3) | sort -count | where VarianceBeaconTime < 60 AND count > 2 AND AverageBeaconTime>1.000 | table query VarianceBeaconTime count AverageBeaconTime`,
-    hostsToBeaconing: `\`sap_logserv_idx_macro\` ${DNS_BASE} | fields _time, src, query | streamstats current=f last(_time) as last_time by query | eval gap=last_time - _time | stats count dc(src) AS NumHosts avg(gap) AS AverageBeaconTime var(gap) AS VarianceBeaconTime BY query | eval AverageBeaconTime=round(AverageBeaconTime,3), VarianceBeaconTime=round(VarianceBeaconTime,3) | sort -count | where VarianceBeaconTime < 60 AND AverageBeaconTime > 0`,
-    topDomains: `\`sap_logserv_idx_macro\` ${DNS_BASE} | stats count as Queries dc(src) as "Unique Clients" by query | sort -Queries | rename query as Domain`,
-    nxDomain: `\`sap_logserv_idx_macro\` ${DNS_BASE} | stats count as Queries dc(query) as "Unique Domains" by src | eval "Queries per Domain"=round(Queries/'Unique Domains', 1) | sort -"Unique Domains" | rename src as "Client IP"`,
-    queryTypes: `\`sap_logserv_idx_macro\` ${DNS_BASE} record_type=* | ${RECORD_TYPE_RELABEL} | stats count by record_type | sort -count`,
-    topResolvers: `\`sap_logserv_idx_macro\` ${DNS_BASE} | stats count as Queries, dc(query) as "Unique Domains", dc(src) as "Unique Clients" by host | sort -Queries | rename host as "Resolver"`,
+    topDomains: `${MAIN} | search query!="(none)" | stats sum(count) as Queries, dc(eval(if(src="(none)",null(),src))) as "Unique Clients" by query | sort -Queries | rename query as Domain`,
+    nxDomain: `${MAIN} | search src!="(none)" | stats sum(count) as Queries, dc(eval(if(query="(none)",null(),query))) as "Unique Domains" by src | eval "Queries per Domain"=round(Queries/'Unique Domains', 1) | sort -"Unique Domains" | rename src as "Client IP"`,
+    queryTypes: `${RTYPE} | search record_type!="(none)" | ${RECORD_TYPE_RELABEL} | stats sum(count) as count by record_type | sort -count`,
+    topResolvers: `${MAIN} | search host!="(none)" | stats sum(count) as Queries, dc(eval(if(query="(none)",null(),query))) as "Unique Domains", dc(eval(if(src="(none)",null(),src))) as "Unique Clients" by host | sort -Queries | rename host as "Resolver"`,
+
+    // --- beaconing KPI + spark reuse logserv_beaconing_rollup (per-day dc(query)) --
+    kpiBeaconing: `${BEACON} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    sparkBeaconing: `${BEACON} | eval _time=day_ts | timechart span=1d sum(count) as daily | fillnull value=0`,
+
+    // --- stays RAW: streamstats beaconing DETAIL tables (per-event gap analysis;
+    //     can't roll up byte-exact — streamstats over the per-event stream).
+    // Build 237: reconstructed from the per-day beaconing detail rollup (qs).
+    // sum over src gives the per-query event count + gap-stats; avg/var rebuilt
+    // from Σsum_gap/Σn_gap + the sample-variance form. Approximate (per-day gaps).
+    beaconingActivity: `${BCN_QS} | stats sum(cnt) as count, sum(n_gap) as ng, sum(sum_gap) as sg, sum(sumsq_gap) as ssg by query | eval AverageBeaconTime=round(if(ng>0,sg/ng,0),3), VarianceBeaconTime=round(if(ng>1,(ssg - sg*sg/ng)/(ng-1),0),3) | sort -count | where VarianceBeaconTime < 60 AND count > 2 AND AverageBeaconTime>1.000 | table query VarianceBeaconTime count AverageBeaconTime`,
+    hostsToBeaconing: `${BCN_QS} | stats sum(cnt) as count, dc(eval(if(src="(none)",null(),src))) AS NumHosts, sum(n_gap) as ng, sum(sum_gap) as sg, sum(sumsq_gap) as ssg by query | eval AverageBeaconTime=round(if(ng>0,sg/ng,0),3), VarianceBeaconTime=round(if(ng>1,(ssg - sg*sg/ng)/(ng-1),0),3) | sort -count | where VarianceBeaconTime < 60 AND AverageBeaconTime > 0 | table query count NumHosts AverageBeaconTime VarianceBeaconTime`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -224,7 +259,7 @@ const DnsAnalytics: React.FC = () => {
     // Client-IP options for the Multiselect — sorted by descending request
     // volume so the dropdown's first items are the busiest clients.
     const clientListSearch = useSearch<{ src?: string; count?: string | number }>({
-        query: `\`sap_logserv_idx_macro\` ${DNS_BASE} | stats count by src | sort -count`,
+        query: `${MAIN} | search src!="(none)" | stats sum(count) as count by src | sort -count`,
     });
     const clientOptions = useMemo<string[]>(() => {
         const rows = clientListSearch.results ?? [];
@@ -239,12 +274,12 @@ const DnsAnalytics: React.FC = () => {
     const topClientsQuery = useMemo(() => {
         const hasClientPick = selectedClients.length > 0;
         const clientFilterClause = hasClientPick
-            ? `src IN (${selectedClients.map((c) => `"${c.replace(/"/g, '\\"')}"`).join(',')}) `
+            ? ` | search (${selectedClients.map((c) => `src="${c.replace(/"/g, '\\"')}"`).join(' OR ')})`
             : '';
         const limitVal = hasClientPick ? '0' : (topN === 'all' ? '0' : topN);
         return (
-            `\`sap_logserv_idx_macro\` ${DNS_BASE} ${clientFilterClause}` +
-            `| timechart span=${span} limit=${limitVal} usenull=f useother=f count AS Requests by src`
+            `${MAIN}${clientFilterClause} | search src!="(none)" | eval _time=bucket_ts ` +
+            `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(count) AS Requests by src`
         );
     }, [span, topN, selectedClients]);
 
@@ -261,7 +296,8 @@ const DnsAnalytics: React.FC = () => {
 
     const recordTypesQuery = useMemo(
         () =>
-            `\`sap_logserv_idx_macro\` ${DNS_BASE} | ${RECORD_TYPE_RELABEL} | timechart span=${span} usenull=f useother=f count BY record_type`,
+            `${RTYPE} | search record_type!="(none)" | ${RECORD_TYPE_RELABEL} | eval _time=bucket_ts `
+            + `| timechart span=${span} usenull=f useother=f sum(count) BY record_type`,
         [span],
     );
 
@@ -332,19 +368,19 @@ const DnsAnalytics: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Beaconing Activity" subtitle="Domains with low beacon variance + steady cadence (suspicious)">
+                <FramedPanel search={beaconingActivity} title="Beaconing Activity" subtitle="Domains with low beacon variance + steady cadence (suspicious)">
                     <DataTable columns={BEACONING_COLS} rows={beaconingActivity.results} loading={beaconingActivity.loading} error={beaconingActivity.error} emptyMessage="No beaconing patterns detected in this time range." initialSortKey="count" initialSortDir="desc" onRowClick={goBeaconingRow} />
                 </FramedPanel>
-                <FramedPanel title="Hosts to Beaconing Domains" subtitle="Domains beaconed to + how many hosts contacted them">
+                <FramedPanel search={hostsToBeaconing} title="Hosts to Beaconing Domains" subtitle="Domains beaconed to + how many hosts contacted them">
                     <DataTable columns={HOSTS_BEACONING_COLS} rows={hostsToBeaconing.results} loading={hostsToBeaconing.loading} error={hostsToBeaconing.error} emptyMessage="No host-to-beaconing patterns in this time range." initialSortKey="count" initialSortDir="desc" onRowClick={goHostsToBeaconingRow} />
                 </FramedPanel>
             </PanelGrid2>
 
             <PanelGrid3>
-                <FramedPanel title="Queried Domains" subtitle="Domains ranked by query volume">
+                <FramedPanel search={topDomains} title="Queried Domains" subtitle="Domains ranked by query volume">
                     <DataTable columns={TOP_DOM_COLS} rows={topDomains.results} loading={topDomains.loading} error={topDomains.error} emptyMessage="No DNS queries in this time range." onRowClick={goTopDomainsRow} />
                 </FramedPanel>
-                <FramedPanel title="Clients by Domain Diversity" subtitle="Clients ranked by unique domains queried">
+                <FramedPanel search={nxDomain} title="Clients by Domain Diversity" subtitle="Clients ranked by unique domains queried">
                     <DataTable columns={NX_DOM_COLS} rows={nxDomain.results} loading={nxDomain.loading} error={nxDomain.error} emptyMessage="No DNS queries in this time range." onRowClick={goClientDiversityRow} />
                 </FramedPanel>
                 <FramedPanel title="Query Type Distribution" subtitle="Share of total queries by record type">
@@ -353,7 +389,7 @@ const DnsAnalytics: React.FC = () => {
             </PanelGrid3>
 
             <FullWidthPanel>
-                <FramedPanel title="DNS Resolvers" subtitle="Resolvers (BIND hosts) ranked by query volume">
+                <FramedPanel search={topResolvers} title="DNS Resolvers" subtitle="Resolvers (BIND hosts) ranked by query volume">
                     <DataTable columns={RESOLVER_COLS} rows={topResolvers.results} loading={topResolvers.loading} error={topResolvers.error} emptyMessage="No DNS resolvers in this time range." pageSize={5} onRowClick={goResolverRow} />
                 </FramedPanel>
             </FullWidthPanel>

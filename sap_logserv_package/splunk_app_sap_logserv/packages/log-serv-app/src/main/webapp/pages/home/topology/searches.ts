@@ -198,22 +198,48 @@ const sanitizeNodeId = (id: string): string => {
     return id;
 };
 
+/* ============================================================================
+ * Detail-tab KV-Store rollup reads (session 060 / build 240).
+ *
+ * The node + edge detail tabs used to dispatch wide live raw scans on every
+ * selection (slow at customer scale). They now read the hourly-aggregated
+ * logserv_topology_detail_rollup KV Store (~0.1-0.3s inputlookup vs a multi-
+ * second-to-minute raw scan) — the same model as the dashboard rollups.
+ *
+ * `metric` discriminates the tab; `scope` is the node's canonical label
+ * (node_* metrics, byte-exact with the old OR-match via the aggregate's
+ * explode-dedup) OR the edge id (edge_* metrics). DETAIL_RANGE carries the
+ * global TimeRange picker into the generating inputlookup via addinfo. Row
+ * shapes are unchanged so useNodeData/useEdgeData/TopologyRightSidebar are
+ * untouched. The node Calls/Hr read uses a fixed -24h bucket_ts window (not
+ * addinfo) — its production window is hardcoded recent context.
+ *
+ * Trade-off: these tabs are now hourly-fresh (like the dashboards) rather than
+ * live, and the hana_tenant Performance distribution shows Avg+Max instead of
+ * percentiles (percentiles don't merge across hourly buckets — option-c).
+ * ============================================================================ */
+
+const DETAIL_ROLL = 'logserv_topology_detail_rollup';
+const DETAIL_RANGE =
+    '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+
 /**
  * Per-node hourly-calls timechart for the right-sidebar bar chart.
- * Matches events touching the node via ANY of the topology-relevant fields
- * (sap_sid, peer_ip, local_ip, client_ip, clientip, host).
- *
- * Hardcoded to -24h regardless of global time range so the chart shows
- * consistent recent context. (See SESSION-MEMORY-023.md Phase 2 sparkline
- * design rationale.)
+ * Reads the node_hourly metric (byte-exact with the old per-node OR-match
+ * count). Fixed -24h bucket_ts window regardless of global time range so the
+ * chart shows consistent recent context. (See SESSION-MEMORY-023.md Phase 2
+ * sparkline design rationale.) useNodeData dispatches this with earliest=-24h
+ * so timechart bins the recent window.
  */
 export const SEARCH_NODE_HOURLY = (nodeId: string): string | null => {
     const safe = sanitizeNodeId(nodeId);
     if (!safe) return null;
-    const q = `"${safe}"`;
     return `
-${IDX} (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR clientip=${q} OR host=${q})
-| timechart span=1h count
+| inputlookup ${DETAIL_ROLL} where metric="node_hourly" scope="${safe}"
+| where bucket_ts >= relative_time(now(), "-24h")
+| eval _time=bucket_ts
+| timechart span=1h sum(count) as count
+| fillnull value=0
 | fields _time, count
 `.trim();
 };
@@ -224,16 +250,18 @@ ${IDX} (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR clien
  * `icm_program` field extracted from sap:abap:icm has clean per-SID
  * distributions like `SAPMSSY1` / `SAPMHTTP`).
  *
- * Returns rows shaped { icm_program, count }. Top 8.
+ * Returns rows shaped { icm_program, count }. Top 8. Reads the node_program
+ * metric (store-all-then-top: byte-exact with the old `top icm_program`).
  */
 export const SEARCH_NODE_PROGRAMS = (nodeId: string): string | null => {
     const safe = sanitizeNodeId(nodeId);
     if (!safe) return null;
-    const q = `"${safe}"`;
     return `
-${IDX} sourcetype=sap:abap:icm icm_program=*
-    (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR host=${q})
-| top icm_program limit=8
+| inputlookup ${DETAIL_ROLL} where metric="node_program" scope="${safe}"
+${DETAIL_RANGE}
+| stats sum(count) as count by icm_program
+| sort - count
+| head 8
 | fields icm_program, count
 `.trim();
 };
@@ -242,31 +270,21 @@ ${IDX} sourcetype=sap:abap:icm icm_program=*
  * Per-node error summary for the right-sidebar Errors tab.
  *
  * Surfaces errors across the topology-relevant sourcetypes via three
- * complementary signals (any of which alone qualifies a row as "error"):
- *   - HTTP 4xx/5xx response codes from sap:webdispatcher:access
- *   - severity in {ERROR, CRITICAL, FATAL} from HANA audit / ABAP / saprouter
- *   - non-null gw_error_detail or error_function from gateway / saprouter trace
- *
- * `error_kind` is a categorical bucket derived from whichever signal fired
- * (severity name, "HTTP <code>", gateway detail, or trace function name).
+ * complementary signals (HTTP 4xx/5xx, severity in {ERROR, CRITICAL, FATAL},
+ * non-null gw_error_detail/error_function). `error_kind` is the categorical
+ * bucket derived from whichever signal fired — precomputed in the aggregate
+ * (verbatim case() expression) so the read is a plain rollup of the
+ * node_error metric.
  *
  * Returns rows shaped { sourcetype, error_kind, count, last_seen }. Top 20.
  */
 export const SEARCH_NODE_ERRORS = (nodeId: string): string | null => {
     const safe = sanitizeNodeId(nodeId);
     if (!safe) return null;
-    const q = `"${safe}"`;
     return `
-${IDX} (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR clientip=${q} OR host=${q})
-    (status>=400 OR severity="ERROR" OR severity="CRITICAL" OR severity="FATAL" OR gw_error_detail=* OR error_function=*)
-| eval error_kind=case(
-    severity=="ERROR" OR severity=="CRITICAL" OR severity=="FATAL", severity,
-    isnum(status) AND status>=400, "HTTP " . tostring(status),
-    isnotnull(gw_error_detail), gw_error_detail,
-    isnotnull(error_function), error_function,
-    1==1, "unknown"
-  )
-| stats count, max(_time) as last_seen by sourcetype, error_kind
+| inputlookup ${DETAIL_ROLL} where metric="node_error" scope="${safe}"
+${DETAIL_RANGE}
+| stats sum(count) as count, max(max_time) as last_seen by sourcetype, error_kind
 | sort - count
 | head 20
 | fields sourcetype, error_kind, count, last_seen
@@ -277,9 +295,9 @@ ${IDX} (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR clien
  * Per-node host inventory for the right-sidebar Hosts tab.
  *
  * Lists every Splunk-default `host` value that has logged events touching
- * this node (via any of the topology-relevant fields). Includes event count,
- * distinct sourcetype count (so users can spot multi-purpose forwarders),
- * and first/last-seen timestamps for freshness assessment.
+ * this node. Includes event count, distinct sourcetype count (the node_host
+ * metric carries sourcetype as a grain dim so dc() reconstructs exactly —
+ * session-050 #3), and first/last-seen timestamps.
  *
  * Returns rows shaped { host, count, sourcetypes, first_seen, last_seen }.
  * Top 20 by event count.
@@ -287,10 +305,10 @@ ${IDX} (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR clien
 export const SEARCH_NODE_HOSTS = (nodeId: string): string | null => {
     const safe = sanitizeNodeId(nodeId);
     if (!safe) return null;
-    const q = `"${safe}"`;
     return `
-${IDX} (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR clientip=${q} OR host=${q})
-| stats count, dc(sourcetype) as sourcetypes, min(_time) as first_seen, max(_time) as last_seen by host
+| inputlookup ${DETAIL_ROLL} where metric="node_host" scope="${safe}"
+${DETAIL_RANGE}
+| stats sum(count) as count, dc(sourcetype) as sourcetypes, min(min_time) as first_seen, max(max_time) as last_seen by host
 | sort - count
 | head 20
 | fields host, count, sourcetypes, first_seen, last_seen
@@ -298,293 +316,140 @@ ${IDX} (sap_sid=${q} OR peer_ip=${q} OR local_ip=${q} OR client_ip=${q} OR clien
 };
 
 /* ============================================================================
- * Edge-data SPL (build 202 / session 036 — edge-data right pane)
+ * Edge-data detail-tab reads (build 202 / session 036; KV-Store cached in
+ * session 060 / build 240).
  *
- * Each search composes a per-edge-type SPL query backed by:
- *   - splSourcetype     — the canonical sourcetype that produced the edge's events
- *   - splFilterClauses  — { field, value }[] denormalized onto the edge bucket row
+ * The edge tabs now read the hourly logserv_topology_detail_rollup KV Store
+ * keyed by the edge id (`scope` = the sha1[:16] edge id, matching
+ * logserv_topology_edges.id). The aggregate's edge arms replicate the
+ * aggregate_edges id derivation and precompute the same per-type aggregates
+ * the live searches used to compute on the fly, so the read is a plain rollup.
  *
- * These were all denormalized at edge-aggregation time (build 191 KV Store
- * rewrite) so the right pane has them instantly without dispatching a new
- * lookup. Per-edge filter clauses are spliced into the SPL with whitelist
- * sanitization to defend against any field/value that didn't come through
- * the canonical pipeline.
+ *   - Activity   → reuses logserv_topology_edges (already per-(edge,bucket)
+ *                  with call_count + error_count).
+ *   - Operations → edge_op metric (top entity: uri / icm_program / action_type
+ *                  / hana_trace_component).
+ *   - Performance→ edge_perf metric (status-class / icm_tasks / action_status
+ *                  histograms; hana_tenant shows Avg+Max of hana_op_duration_ms
+ *                  — percentiles don't merge across hourly buckets, option-c.
+ *                  Headline p50/p95/max still come from the edge row).
+ *   - Errors     → edge_err metric (error_kind / error_detail pairs).
  *
- * Whitelist for filter VALUES is the same `^[A-Za-z0-9._-]+$` pattern used
- * for node IDs — covers IPs (`100.127.255.9`), hostnames (`hec53v013858`),
- * SIDs (`XCP`), and HANA tenant SIDs. Fields are restricted to a small
- * known set per-edge-type. Anything else returns null (treated as "no
- * filter — query disabled").
+ * Signature is `(splType, edgeId)` — splType only selects the Performance read
+ * variant; the id is the rollup scope. Returns null when either is missing.
  * ============================================================================ */
 
-/** Allowed field names for edge filter clauses. Restricting to a known set
- *  catches accidental schema drift in the SPL aggregator. */
-const ALLOWED_EDGE_FIELDS = new Set([
-    'sap_sid', 'hana_tenant_sid', 'host', 'hana_host',
-    'peer_ip', 'local_ip', 'icm_local_ip',
-    'client_ip', 'clientip',
-]);
-
-const sanitizeFilterValue = (v: string): string => {
-    if (!v || typeof v !== 'string') return '';
-    if (!/^[A-Za-z0-9._-]+$/.test(v)) return '';
-    if (v.length > 80) return '';
-    return v;
-};
-
-const sanitizeSourcetype = (s: string): string => {
-    if (!s || typeof s !== 'string') return '';
-    /* sourcetypes can contain colons (`sap:hana:audit`); allow letters,
-     * digits, colons, underscores, dots, hyphens. */
-    if (!/^[A-Za-z0-9:._-]+$/.test(s)) return '';
-    if (s.length > 80) return '';
-    return s;
-};
-
-/**
- * Compose the WHERE-style filter clause string for an edge SPL search.
- * Returns `field1="val1" field2="val2" ...` ready to splice after the
- * sourcetype= clause. Returns null if any clause fails sanitization.
- */
-const buildEdgeFilter = (
-    clauses: { field: string; value: string }[] | undefined,
-): string | null => {
-    if (!clauses || clauses.length === 0) return null;
-    const parts: string[] = [];
-    for (const c of clauses) {
-        if (!ALLOWED_EDGE_FIELDS.has(c.field)) return null;
-        const safe = sanitizeFilterValue(c.value);
-        if (!safe) return null;
-        parts.push(`${c.field}="${safe}"`);
-    }
-    return parts.join(' ');
+/** Whitelist for the edge id (sha1[:16] hex). Defense-in-depth before splicing
+ *  into the inputlookup `where scope="..."` clause. */
+const sanitizeEdgeId = (id: string | null | undefined): string => {
+    if (!id || typeof id !== 'string') return '';
+    if (!/^[A-Za-z0-9]+$/.test(id)) return '';
+    if (id.length > 64) return '';
+    return id;
 };
 
 /**
  * Per-edge Activity Trend timechart over the global TimeRange. Returns
- * `_time` + `count` + `error_count` per bucket so the chart can stack the
- * two series. Uses 1h span by default — the Splunk side may collapse to
- * fewer/more buckets depending on the dispatched range, but for typical
- * 24h-30d windows 1h is appropriate.
- *
- * Per-type error definition:
- *   - HTTP:        status >= 400
- *   - HANA Audit:  action_status = "UNSUCCESSFUL" (or auth-fail equivalent)
- *   - HANA Tenant: severity in {ERROR, FATAL}
- *   - RFC:         gw_error_detail OR error_function (non-null)
+ * `_time` + `count` + `error_count` per bucket so the chart can stack the two
+ * series. Reads the already-cached logserv_topology_edges rows (call_count +
+ * per-type error_count, computed by aggregate_edges). count 0-fills empty bins
+ * (matching the old `timechart count`); error_count null-fills (matching the
+ * old `timechart sum(eval(...))`).
  */
 export const SEARCH_EDGE_ACTIVITY = (
-    splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
-    splSourcetype: string,
-    clauses: { field: string; value: string }[],
+    _splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    edgeId: string,
 ): string | null => {
-    const safeSt = sanitizeSourcetype(splSourcetype);
-    if (!safeSt) return null;
-    const filter = buildEdgeFilter(clauses);
-    if (!filter) return null;
-
-    const errorClause =
-        splType === 'http'
-            ? 'sum(eval(if(isnum(status) AND status>=400, 1, 0))) as error_count'
-            : splType === 'hana_audit'
-              ? 'sum(eval(if(action_status="UNSUCCESSFUL", 1, 0))) as error_count'
-              : splType === 'hana_tenant'
-                ? 'sum(eval(if(hana_trace_severity="ERROR" OR hana_trace_severity="FATAL", 1, 0))) as error_count'
-                : /* rfc */ 'sum(eval(if(isnotnull(gw_error_detail) OR isnotnull(error_function), 1, 0))) as error_count';
-
+    const eid = sanitizeEdgeId(edgeId);
+    if (!eid) return null;
     return `
-${IDX} sourcetype=${safeSt} ${filter}
-| timechart span=1h count, ${errorClause}
+| inputlookup logserv_topology_edges where id="${eid}"
+${DETAIL_RANGE}
+| eval _time=bucket_ts
+| timechart span=1h sum(call_count) as count, sum(error_count) as error_count
+| fillnull value=0 count
 | fields _time, count, error_count
 `.trim();
 };
 
 /**
- * Per-edge Operations: top entities traversing the edge for the current time range.
- *
- *   HTTP:        top `uri` (most-requested paths)
- *   RFC:         top `icm_program` (most-active ABAP programs)
- *   HANA Audit:  top `action_type` (CONNECT / GRANT / ALTER USER mix)
- *   HANA Tenant: top `hana_trace_component` (most-active component)
- *
- * Returns rows shaped { entity, count }. Top 10. The `entity` column name
- * is uniform so the React side can render a single donut/legend without
- * type-specific projection.
+ * Per-edge Operations: top entities traversing the edge for the current time
+ * range (uri / icm_program / action_type / hana_trace_component depending on
+ * edge type — precomputed in the edge_op metric). Returns rows { entity, count
+ * }. Top 10 (store-all-then-top → byte-exact). rfc legitimately returns empty
+ * (icm_program is absent on sap:abap:gateway events — same as the old live
+ * search).
  */
 export const SEARCH_EDGE_OPERATIONS = (
-    splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
-    splSourcetype: string,
-    clauses: { field: string; value: string }[],
+    _splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    edgeId: string,
 ): string | null => {
-    const safeSt = sanitizeSourcetype(splSourcetype);
-    if (!safeSt) return null;
-    const filter = buildEdgeFilter(clauses);
-    if (!filter) return null;
-
-    const groupField =
-        splType === 'http'
-            ? 'uri'
-            : splType === 'rfc'
-              ? 'icm_program'
-              : splType === 'hana_audit'
-                ? 'action_type'
-                : /* hana_tenant */ 'hana_trace_component';
-
+    const eid = sanitizeEdgeId(edgeId);
+    if (!eid) return null;
     return `
-${IDX} sourcetype=${safeSt} ${filter} ${groupField}=*
-| stats count by ${groupField}
+| inputlookup ${DETAIL_ROLL} where metric="edge_op" scope="${eid}"
+${DETAIL_RANGE}
+| stats sum(count) as count by entity
 | sort - count
 | head 10
-| rename ${groupField} as entity
 | fields entity, count
 `.trim();
 };
 
 /**
- * Per-edge Performance: detail breakdown for the Performance tab. Most
- * Performance values are already pre-computed on the edge bucket row
- * (responseTimeP50/P95/Max, icmTasksMax/Avg, hanaOpP95Ms/MaxMs, etc.) — those
- * are surfaced INSTANT from the cached topology data with no SPL dispatch.
- *
- * This SPL is for the supplementary distribution / breakdown beyond the
- * single aggregated p50/p95/max numbers:
- *
- *   HTTP:        per-status-class counts (2xx / 3xx / 4xx / 5xx) + bytes_out histogram
- *   RFC:         icm_tasks distribution histogram
- *   HANA Audit:  per-action_status counts (SUCCESSFUL / UNSUCCESSFUL)
- *   HANA Tenant: hana_op_duration_ms percentile breakdown via stats perc(...)
- *
- * Returns per-type rows shaped { bucket_label, count } so the right pane
- * can render a single bar chart per edge type without per-type rendering
- * logic forks.
+ * Per-edge Performance distribution for the Performance tab (the headline
+ * p50/p95/max come straight off the edge row — no dispatch). Reads the
+ * edge_perf metric:
+ *   HTTP / RFC / HANA Audit → per-bucket_label count histogram (status class /
+ *     icm_tasks band / action_status).
+ *   HANA Tenant → Avg + Max of hana_op_duration_ms (Σsum/Σn + max-of-max;
+ *     percentiles don't merge across hourly buckets — session-051 option-c).
+ * Returns rows { bucket_label, count }.
  */
 export const SEARCH_EDGE_PERFORMANCE = (
     splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
-    splSourcetype: string,
-    clauses: { field: string; value: string }[],
+    edgeId: string,
 ): string | null => {
-    const safeSt = sanitizeSourcetype(splSourcetype);
-    if (!safeSt) return null;
-    const filter = buildEdgeFilter(clauses);
-    if (!filter) return null;
-
-    if (splType === 'http') {
+    const eid = sanitizeEdgeId(edgeId);
+    if (!eid) return null;
+    if (splType === 'hana_tenant') {
         return `
-${IDX} sourcetype=${safeSt} ${filter} status=*
-| eval bucket_label=case(
-    status>=200 AND status<300, "2xx Success",
-    status>=300 AND status<400, "3xx Redirect",
-    status>=400 AND status<500, "4xx Client Error",
-    status>=500, "5xx Server Error",
-    1==1, "other"
-)
-| stats count by bucket_label
-| sort - count
-| fields bucket_label, count
-`.trim();
-    }
-    if (splType === 'rfc') {
-        return `
-${IDX} sourcetype=${safeSt} ${filter} icm_tasks=*
-| eval bucket_label=case(
-    icm_tasks=0, "0 idle",
-    icm_tasks<=2, "1-2",
-    icm_tasks<=5, "3-5",
-    icm_tasks<=10, "6-10",
-    icm_tasks<=25, "11-25",
-    1==1, "26+"
-)
-| stats count by bucket_label
-| sort - count
-| fields bucket_label, count
-`.trim();
-    }
-    if (splType === 'hana_audit') {
-        return `
-${IDX} sourcetype=${safeSt} ${filter} action_status=*
-| stats count by action_status
-| sort - count
-| rename action_status as bucket_label
-| fields bucket_label, count
-`.trim();
-    }
-    /* hana_tenant — surface the duration percentile distribution. Splunk
-     * doesn't have a clean percentile-bucket primitive, so emit p50/p75/p95
-     * as named buckets via stats. */
-    return `
-${IDX} sourcetype=${safeSt} ${filter} hana_op_duration_ms=*
-| stats
-    perc50(hana_op_duration_ms) as "p50 ms",
-    perc75(hana_op_duration_ms) as "p75 ms",
-    perc95(hana_op_duration_ms) as "p95 ms",
-    perc99(hana_op_duration_ms) as "p99 ms",
-    max(hana_op_duration_ms) as "max ms"
+| inputlookup ${DETAIL_ROLL} where metric="edge_perf" scope="${eid}"
+${DETAIL_RANGE}
+| stats sum(sum_dur) as s, sum(n_dur) as n, max(max_dur) as mx
+| eval "Avg ms"=round(s/n, 1), "Max ms"=mx
+| fields "Avg ms", "Max ms"
 | transpose 0
 | rename column as bucket_label, "row 1" as count
+| fields bucket_label, count
+`.trim();
+    }
+    return `
+| inputlookup ${DETAIL_ROLL} where metric="edge_perf" scope="${eid}"
+${DETAIL_RANGE}
+| stats sum(count) as count by bucket_label
+| sort - count
 | fields bucket_label, count
 `.trim();
 };
 
 /**
- * Per-edge Errors: top failure modes for the current time range.
- *
- *   HTTP:        top failing (status, uri) pairs limited to 4xx/5xx
- *   RFC:         top (gw_error_detail, error_function) pairs
- *   HANA Audit:  top action_type seen as UNSUCCESSFUL
- *   HANA Tenant: top (hana_trace_severity, hana_trace_component) pairs limited to ERROR/FATAL
- *
- * Returns rows shaped { error_kind, error_detail, count, last_seen } so
- * the React side can render a uniform 4-column DataTable.
+ * Per-edge Errors: top failure modes for the current time range. Reads the
+ * edge_err metric (error_kind + error_detail pairs, precomputed per-type:
+ * HTTP `HTTP <status>`/uri; RFC gw_error_detail/error_function; HANA Audit
+ * `UNSUCCESSFUL <action>`/user; HANA Tenant severity/component). Returns rows
+ * { error_kind, error_detail, count, last_seen }. Top 15.
  */
 export const SEARCH_EDGE_ERRORS = (
-    splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
-    splSourcetype: string,
-    clauses: { field: string; value: string }[],
+    _splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    edgeId: string,
 ): string | null => {
-    const safeSt = sanitizeSourcetype(splSourcetype);
-    if (!safeSt) return null;
-    const filter = buildEdgeFilter(clauses);
-    if (!filter) return null;
-
-    if (splType === 'http') {
-        return `
-${IDX} sourcetype=${safeSt} ${filter} status>=400
-| eval error_kind="HTTP " . tostring(status)
-| stats count, max(_time) as last_seen by error_kind, uri
-| sort - count
-| head 15
-| rename uri as error_detail
-| fields error_kind, error_detail, count, last_seen
-`.trim();
-    }
-    if (splType === 'rfc') {
-        return `
-${IDX} sourcetype=${safeSt} ${filter} (gw_error_detail=* OR error_function=*)
-| eval error_kind=coalesce(gw_error_detail, "(error)")
-| eval error_detail=coalesce(error_function, "(unknown)")
-| stats count, max(_time) as last_seen by error_kind, error_detail
-| sort - count
-| head 15
-| fields error_kind, error_detail, count, last_seen
-`.trim();
-    }
-    if (splType === 'hana_audit') {
-        return `
-${IDX} sourcetype=${safeSt} ${filter} action_status="UNSUCCESSFUL"
-| eval error_kind="UNSUCCESSFUL " . action_type
-| eval error_detail=coalesce(executing_user, "(unknown user)")
-| stats count, max(_time) as last_seen by error_kind, error_detail
-| sort - count
-| head 15
-| fields error_kind, error_detail, count, last_seen
-`.trim();
-    }
-    /* hana_tenant */
+    const eid = sanitizeEdgeId(edgeId);
+    if (!eid) return null;
     return `
-${IDX} sourcetype=${safeSt} ${filter} (hana_trace_severity="ERROR" OR hana_trace_severity="FATAL")
-| eval error_kind=hana_trace_severity
-| eval error_detail=coalesce(hana_trace_component, "(unknown)")
-| stats count, max(_time) as last_seen by error_kind, error_detail
+| inputlookup ${DETAIL_ROLL} where metric="edge_err" scope="${eid}"
+${DETAIL_RANGE}
+| stats sum(count) as count, max(max_time) as last_seen by error_kind, error_detail
 | sort - count
 | head 15
 | fields error_kind, error_detail, count, last_seen

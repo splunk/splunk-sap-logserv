@@ -18,6 +18,20 @@ import { logservTheme } from '../styles/logservTheme';
  * Top Domains table + Top Clients table + Client Domain Diversity table + Cache
  * Action Distribution column + Bandwidth Timeline + Top Domains by Bytes table +
  * Bandwidth by Domain (Top 5) line.
+ *
+ * Performance tiering (session 049 CIM; rebuilt build 232 → KV-Store rollup). The
+ * CIM Web tier fell back to a RAW full-scan when the customer hadn't accelerated
+ * Web, so every field-bearing panel now reads the always-fast `logserv_proxy_rollup`
+ * collection (6 metrics):
+ *   - tstats-now (unchanged): Total Requests, Request Volume.
+ *   - core (count/denied_count/bytes_sum) → Bandwidth + Denied KPIs + Bandwidth chart.
+ *   - status → Status Codes. domain (url_domain,src) → Top Domains/Clients/Diversity/
+ *     Bytes + Bandwidth-by-domain. cacheaction → Cache Action Distribution.
+ *   - dur/destdur (per-bucket + per-dest) → Response Time + Slowest Destinations: the
+ *     RAW perc50/perc95 panels become Avg(=Σsum_dur/Σcnt_dur)+Max(=max-of-max), since
+ *     percentiles don't merge byte-exact across buckets. duration is the Squid
+ *     pretrained access.log field (scope source="*access.log*" duration=*).
+ * Read idiom: inputlookup metric=X | bucket_ts range | <agg>.
  */
 
 const KpiRow = styled.div`
@@ -47,6 +61,24 @@ const PanelGrid3 = styled.div`
 
 const ST = 'sourcetype="squid:access"';
 
+// --- Acceleration tiers (session 049 — CIM data-model acceleration) ----------
+// Pure-count panels read default-indexed dims via tstats-now: fast today, exact,
+// no model/acceleration dependency. The macro re-pins the customer's index so
+// scope matches the raw dashboard and honors con1/jaclyn local/macros.conf overrides.
+const TS_WHERE = `WHERE \`sap_logserv_idx_macro\` ${ST}`;
+
+// KV-Store rollup reads (build 232 — replaces the CIM Web tier). dc() distinct
+// columns put both dims in the metric grain (url_domain,src) so dc reconstructs
+// across buckets; the "(none)" fillnull sentinel is nulled out on read.
+const ROLL = 'logserv_proxy_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const R_CORE = `| inputlookup ${ROLL} where metric="core" ${RANGE}`;
+const R_STATUS = `| inputlookup ${ROLL} where metric="status" ${RANGE}`;
+const R_DOMAIN = `| inputlookup ${ROLL} where metric="domain" ${RANGE}`;
+const R_CACHE = `| inputlookup ${ROLL} where metric="cacheaction" ${RANGE}`;
+const R_DUR = `| inputlookup ${ROLL} where metric="dur" ${RANGE}`;
+const R_DESTDUR = `| inputlookup ${ROLL} where metric="destdur" ${RANGE}`;
+
 const formatBytes = (raw: unknown): string => {
     if (raw === null || typeof raw === 'undefined') return '—';
     const n = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/,/g, ''));
@@ -58,29 +90,39 @@ const formatBytes = (raw: unknown): string => {
 };
 
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST} | stats count`,
-    kpiBandwidth: `\`sap_logserv_idx_macro\` ${ST} | stats sum(bytes_out) as total_bytes | eval total = case(total_bytes >= 1073741824, round(total_bytes/1073741824, 1) . " GB", total_bytes >= 1048576, round(total_bytes/1048576, 1) . " MB", total_bytes >= 1024, round(total_bytes/1024, 1) . " KB", 1=1, tostring(total_bytes) . " B")`,
-    kpiDenied: `\`sap_logserv_idx_macro\` ${ST} action="denied" | stats count`,
+    // --- tstats-now (pure counts on default-indexed fields) ------------------
+    kpiTotal: `| tstats count ${TS_WHERE}`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count`,
-    sparkBandwidth: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d sum(bytes_out) as bytes_daily | eval daily = round(bytes_daily/1048576, 2)`,
-    sparkDenied: `\`sap_logserv_idx_macro\` ${ST} action="denied" | timechart span=1d count`,
+    sparkTotal: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS count`,
+    requestVolume: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS Requests`,
 
-    requestVolume: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count as Requests`,
-    statusCodes: `\`sap_logserv_idx_macro\` ${ST} status=* | eval status_cat=case(status>=200 AND status<300, "2xx", status>=300 AND status<400, "3xx", status>=400 AND status<500, "4xx", status>=500, "5xx", 1=1, "Other") | timechart span=1d count by status_cat`,
-    topDomains: `\`sap_logserv_idx_macro\` ${ST} url_domain=* | stats count as Requests sum(bytes_out) as "Total Bytes" dc(src_ip) as "Unique Clients" by url_domain | sort -Requests | rename url_domain as Domain`,
-    topClients: `\`sap_logserv_idx_macro\` ${ST} src_ip=* | stats count as Requests sum(bytes_out) as "Total Bytes" dc(url_domain) as "Unique Domains" by src_ip | sort -Requests | rename src_ip as "Client IP"`,
-    clientDomainDiversity: `\`sap_logserv_idx_macro\` ${ST} src_ip=* url_domain=* | stats dc(url_domain) as "Unique Domains" by src_ip | sort -"Unique Domains" | rename src_ip as "Client IP"`,
-    contentTypes: `\`sap_logserv_idx_macro\` ${ST} vendor_action=* | stats count as Events by vendor_action | sort -Events | rename vendor_action as "Cache Action"`,
-    bandwidthTimeline: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d sum(bytes_out) as "Bytes Out"`,
-    topDomainsByBytes: `\`sap_logserv_idx_macro\` ${ST} url_domain=* | stats sum(bytes_out) as bytes_out by url_domain | eval mb_out = round(bytes_out/1048576, 2) | sort -mb_out | table url_domain, mb_out | rename url_domain as "Domain", mb_out as "MB Out"`,
-    bandwidthByDomain: `\`sap_logserv_idx_macro\` ${ST} url_domain=* | timechart span=1d sum(bytes_out) by url_domain limit=5 useother=f`,
+    // --- KV-Store rollup: core (bandwidth / denied) -------------------------
+    kpiBandwidth: `${R_CORE} | stats count as n, sum(bytes_sum) as total_bytes | fillnull value=0 total_bytes | eval total = case(total_bytes >= 1073741824, round(total_bytes/1073741824, 1) . " GB", total_bytes >= 1048576, round(total_bytes/1048576, 1) . " MB", total_bytes >= 1024, round(total_bytes/1024, 1) . " KB", 1=1, tostring(total_bytes) . " B")`,
+    kpiDenied: `${R_CORE} | stats count as n, sum(denied_count) as count | fillnull value=0 count | fields count`,
 
-    // Squid response time (build 186 / session 034 deep-dive). The `duration` field
-    // is extracted by Splunk's pretrained squid:access sourcetype but only on the
-    // access.log subset; store.log entries share the sourcetype with no duration.
-    slowDestinations: `\`sap_logserv_idx_macro\` ${ST} source="*access.log*" duration=* | stats count AS Requests avg(duration) AS avg_ms perc95(duration) AS p95_ms max(duration) AS max_ms by dest | sort -p95_ms | head 20 | eval "Avg (ms)" = round(avg_ms, 0) | eval "p95 (ms)" = round(p95_ms, 0) | eval "Max (ms)" = round(max_ms, 0) | fields - avg_ms, p95_ms, max_ms | rename dest AS Destination`,
-    responseTimeTrend: `\`sap_logserv_idx_macro\` ${ST} source="*access.log*" duration=* | timechart span=1d perc50(duration) AS "p50 (ms)" perc95(duration) AS "p95 (ms)" max(duration) AS "Max (ms)"`,
+    sparkBandwidth: `${R_CORE} | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) as bytes_daily | eval daily = round(bytes_daily/1048576, 2) | fields _time daily`,
+    sparkDenied: `${R_CORE} | eval _time=bucket_ts | timechart span=1d sum(denied_count) as count | fillnull value=0`,
+
+    statusCodes: `${R_STATUS} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "2xx", tonumber(status)>=300 AND tonumber(status)<400, "3xx", tonumber(status)>=400 AND tonumber(status)<500, "4xx", tonumber(status)>=500, "5xx", 1=1, "Other") | eval _time=bucket_ts | timechart span=1d sum(count) by status_cat | fillnull value=0`,
+
+    // dc() distinct columns reconstruct across buckets because both dims are in the
+    // domain metric grain (url_domain,src); the "(none)" fillnull sentinel is nulled.
+    topDomains: `${R_DOMAIN} | search url_domain!="(none)" | stats sum(count) as Requests, sum(bytes_sum) as "Total Bytes", dc(eval(if(src="(none)",null(),src))) as "Unique Clients" by url_domain | sort -Requests | rename url_domain as Domain`,
+    topClients: `${R_DOMAIN} | search src!="(none)" | stats sum(count) as Requests, sum(bytes_sum) as "Total Bytes", dc(eval(if(url_domain="(none)",null(),url_domain))) as "Unique Domains" by src | sort -Requests | rename src as "Client IP"`,
+    clientDomainDiversity: `${R_DOMAIN} | search src!="(none)" | stats dc(eval(if(url_domain="(none)",null(),url_domain))) as "Unique Domains" by src | sort -"Unique Domains" | rename src as "Client IP"`,
+
+    bandwidthTimeline: `${R_CORE} | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) as "Bytes Out" | fillnull value=0`,
+    topDomainsByBytes: `${R_DOMAIN} | search url_domain!="(none)" | stats sum(bytes_sum) as bytes_out by url_domain | eval mb_out = round(bytes_out/1048576, 2) | sort -mb_out | rename url_domain as "Domain", mb_out as "MB Out" | table "Domain", "MB Out"`,
+    bandwidthByDomain: `${R_DOMAIN} | search url_domain!="(none)" | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) by url_domain limit=5 useother=f`,
+
+    // --- KV-Store rollup: cacheaction ---------------------------------------
+    contentTypes: `${R_CACHE} | search vendor_action!="(none)" | stats sum(count) as Events by vendor_action | sort -Events | rename vendor_action as "Cache Action"`,
+
+    // --- KV-Store rollup: dur / destdur (was RAW percentiles -> Avg+Max) -----
+    // The Squid pretrained `duration` field exists only on the access.log subset
+    // (store.log shares the sourcetype with no duration); aggregate scope mirrors that.
+    slowDestinations: `${R_DESTDUR} | search dest!="(none)" | stats sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as max_ms, sum(count) as Requests by dest | eval "Avg (ms)" = round(if(c>0, s/c, 0), 0), "Max (ms)" = round(max_ms, 0) | sort -"Max (ms)" | head 20 | rename dest AS Destination | table Destination, Requests, "Avg (ms)", "Max (ms)"`,
+    responseTimeTrend: `${R_DUR} | eval _time=bucket_ts | timechart span=1d sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 0), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -120,7 +162,6 @@ const SLOW_DEST_COLS: ColumnDef[] = [
     { key: 'Destination', label: 'Destination' },
     { key: 'Requests', label: 'Requests', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Avg (ms)', label: 'Avg (ms)', align: 'right', render: (v) => formatInteger(v) },
-    { key: 'p95 (ms)', label: 'p95 (ms)', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Max (ms)', label: 'Max (ms)', align: 'right', render: (v) => formatInteger(v) },
 ];
 
@@ -177,19 +218,19 @@ const Proxy: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid3>
-                <FramedPanel title="Domains" subtitle="Domains ranked by request count — click a row for that domain's full proxy log">
+                <FramedPanel search={topDomains} title="Domains" subtitle="Domains ranked by request count — click a row for that domain's full proxy log">
                     <DataTable columns={TOP_DOM_COLS} rows={topDomains.results} loading={topDomains.loading} error={topDomains.error} emptyMessage="No proxy events in this time range." onRowClick={goDomainRow} />
                 </FramedPanel>
-                <FramedPanel title="Clients" subtitle="Client IPs ranked by request count — click a row to open Host Details">
+                <FramedPanel search={topClients} title="Clients" subtitle="Client IPs ranked by request count — click a row to open Host Details">
                     <DataTable columns={TOP_CLIENT_COLS} rows={topClients.results} loading={topClients.loading} error={topClients.error} emptyMessage="No proxy events in this time range." onRowClick={goClientRow} />
                 </FramedPanel>
-                <FramedPanel title="Clients by Domain Diversity" subtitle="Clients ranked by unique domains visited — click a row to open Host Details">
+                <FramedPanel search={clientDiversity} title="Clients by Domain Diversity" subtitle="Clients ranked by unique domains visited — click a row to open Host Details">
                     <DataTable columns={CLIENT_DIVERSITY_COLS} rows={clientDiversity.results} loading={clientDiversity.loading} error={clientDiversity.error} emptyMessage="No proxy events in this time range." onRowClick={goClientRow} />
                 </FramedPanel>
             </PanelGrid3>
 
             <PanelGrid2>
-                <FramedPanel title="Cache Action Distribution" subtitle="Squid cache actions ranked by count">
+                <FramedPanel search={cacheActions} title="Cache Action Distribution" subtitle="Squid cache actions ranked by count">
                     <DataTable columns={CACHE_COLS} rows={cacheActions.results} loading={cacheActions.loading} error={cacheActions.error} emptyMessage="No proxy events in this time range." />
                 </FramedPanel>
                 <FramedPanel title="Bandwidth Over Time" subtitle="Daily bytes-out volume">
@@ -198,7 +239,7 @@ const Proxy: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="URL Domains by Bytes Out" subtitle="Domains ranked by MB delivered — click a row for that domain's full proxy log">
+                <FramedPanel search={topDomBytes} title="URL Domains by Bytes Out" subtitle="Domains ranked by MB delivered — click a row for that domain's full proxy log">
                     <DataTable columns={TOP_DOM_BYTES_COLS} rows={topDomBytes.results} loading={topDomBytes.loading} error={topDomBytes.error} emptyMessage="No proxy events in this time range." initialSortKey="MB Out" initialSortDir="desc" onRowClick={goDomainRow} />
                 </FramedPanel>
                 <FramedPanel title="Bandwidth Over Time by Domain (Top 5)" subtitle="Daily bytes by top 5 domains">
@@ -207,10 +248,10 @@ const Proxy: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Slowest Destinations" subtitle="Top 20 destinations by p95 response time (ms) — Squid pretrained `duration` field, access.log events only">
-                    <DataTable columns={SLOW_DEST_COLS} rows={slowDestinations.results} loading={slowDestinations.loading} error={slowDestinations.error} emptyMessage="No access.log events with duration in this time range." />
+                <FramedPanel search={slowDestinations} title="Slowest Destinations" subtitle="Top 20 destinations by max response time (ms) — Squid access.log duration field">
+                    <DataTable columns={SLOW_DEST_COLS} rows={slowDestinations.results} loading={slowDestinations.loading} error={slowDestinations.error} emptyMessage="No access.log events with duration in this time range." initialSortKey="Max (ms)" initialSortDir="desc" />
                 </FramedPanel>
-                <FramedPanel title="Response Time Percentiles" subtitle="Daily p50 / p95 / max response time (ms) — Squid pretrained `duration` field, access.log events only">
+                <FramedPanel title="Response Time (Avg / Max)" subtitle="Daily average and peak response time (ms) — Squid access.log duration field">
                     <TimeSeriesChart query={Q.responseTimeTrend} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>

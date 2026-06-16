@@ -5,8 +5,8 @@ This page is intended for the **customer's security team** reviewing the LogServ
 !!! tip "Companion page"
     For the same controls organized along Google's [Secure AI Framework (SAIF)](https://saif.google/) four-pillar structure plus a coverage matrix of SAIF's 15 Key Risks, see [SAIF Security Architecture](security-architecture.md).
 
-!!! warning "v0.0.5 release: LLM functionality intentionally disabled pending review"
-    The v0.0.5 release ships with the LLM-driven path **disabled at compile time pending internal review**. The controls described on this page are designed, implemented, and exercised by the build's CI pipeline — but the LLM dispatch pathway itself is gated off via the [Templates-only build flag](templates-only-build.md) until the review concludes. The predefined-prompt path + Splunk MCP integration + audit log remain fully active. This page documents the controls so reviewers can evaluate the security posture for a future release that re-enables the LLM path.
+!!! warning "Current release: LLM functionality intentionally disabled pending review"
+    The current release ships with the LLM-driven path **disabled at compile time pending internal review**. The controls described on this page are designed, implemented, and exercised by the build's CI pipeline — but the LLM dispatch pathway itself is gated off via the [Templates-only build flag](templates-only-build.md) until the review concludes. The predefined-prompt path + Splunk MCP integration + audit log remain fully active. This page documents the controls so reviewers can evaluate the security posture for a future release that re-enables the LLM path.
 
 ## :material-circle-box:{ .taiconcolor } LLM01 — Prompt Injection
 
@@ -38,7 +38,7 @@ This page is intended for the **customer's security team** reviewing the LogServ
 **Controls shipped:**
 
 - **CI dependency audit gate.** Every CI build runs a dependency audit at the `high` advisory level — non-zero exit on high or critical advisories. Hard-gates the shippable build path so released builds always pass at high+.
-- **SBOM (Software Bill of Materials) shipped with every build.** A bundled generator parses the package lock directly (no external tool dependency) and emits a `SBOM.json` in CycloneDX 1.4 format with `purl` (Package URL) + sha-512 hash per dependency. The v0.0.5.0 SBOM contains 1,416 components; reviewers can pin against this list.
+- **SBOM (Software Bill of Materials) shipped with every build.** A bundled generator parses the package lock directly (no external tool dependency) and emits a `SBOM.json` in CycloneDX 1.4 format with `purl` (Package URL) + sha-512 hash per dependency. The SBOM enumerates every bundled dependency; reviewers can pin against this list.
 - **Audit-log forwarder configurability** so SBOM-driven vulnerability response can correlate against actual usage patterns across customers.
 
 ## :material-circle-box:{ .taiconcolor } LLM04 — Data and Model Poisoning
@@ -130,6 +130,6 @@ The customer's DPA review should still confirm vendor-side prompt-logging polici
 
 ## :material-circle-box:{ .taiconcolor } Pending Internal Review
 
-The v0.0.5 release ships with the LLM dispatch pathway gated off via the [Templates-only build flag](templates-only-build.md) pending internal review of the controls described on this page. The review's outcome will determine when a future release re-enables the LLM path. The predefined-prompt path + Splunk MCP Server integration + audit log remain fully active in the meantime — partners and customers running the v0.0.5 build can exercise the canned-prompt investigation flow + drill-down chips + audit observability without any LLM dispatch.
+The current release ships with the LLM dispatch pathway gated off via the [Templates-only build flag](templates-only-build.md) pending internal review of the controls described on this page. The review's outcome will determine when a future release re-enables the LLM path. The predefined-prompt path + Splunk MCP Server integration + audit log remain fully active in the meantime — partners and customers running the current build can exercise the canned-prompt investigation flow + drill-down chips + audit observability without any LLM dispatch.
 
-For the controls described above to take effect, the LLM path must be re-enabled in a subsequent release. The same controls apply at that point; nothing on this page changes between v0.0.5 (LLM disabled) and the future re-enable release.
+For the controls described above to take effect, the LLM path must be re-enabled in a subsequent release. The same controls apply at that point; nothing on this page changes between the current release (LLM disabled) and the future re-enable release.

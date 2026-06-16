@@ -41,24 +41,44 @@ const PanelGrid2 = styled.div`
     @media (max-width: 1100px) { grid-template-columns: 1fr; }
 `;
 
-const CP_NORM = '`sap_logserv_cloud_provider_default_macro`';
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 053 / build 226).
+ *
+ * All 11 panels read from the `logserv_mc_rollup` KV Store collection (hourly
+ * [logserv_mc_aggregate], one-time [logserv_mc_backfill]). 2 metrics:
+ *  - count: grain (cloud_provider, sourcetype) + count. The null→aws coalesce
+ *    (sap_logserv_cloud_provider_default_macro) is BAKED at aggregate time, so reads
+ *    filter cloud_provider directly. NO host → count is multivalue-safe (#30: host is
+ *    mv on ~653 events). Serves KPIs/sparks/volume + sourcetype/sourcetypes/event-count
+ *    by provider. (kpiTotal sums ALL rows incl the coalesced + any 3rd provider value;
+ *    kpiAws/kpiAzure filter exactly, matching raw's macro-then-where.)
+ *  - hosts: grain (cloud_provider, host) for dc(host) by provider — mv host expands
+ *    identically in raw+rollup so the distinct-host SET per provider is exact.
+ * sourcetype is fillnull'd "(none)" at aggregate (defensive — stats-by-null drops events);
+ * total/by-provider reads include it, the sourcetype-grouped reads exclude/nullify it.
+ * All-indexed dashboard, NO RAW panels.
+ */
+const ROLL = 'logserv_mc_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const CNT = `| inputlookup ${ROLL} where metric="count" ${RANGE}`;
+const HOSTS = `| inputlookup ${ROLL} where metric="hosts" ${RANGE}`;
 
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` | stats count`,
-    kpiAws: `\`sap_logserv_idx_macro\` | ${CP_NORM} | where cloud_provider="aws" | stats count`,
-    kpiAzure: `\`sap_logserv_idx_macro\` | ${CP_NORM} | where cloud_provider="azure" | stats count`,
+    kpiTotal: `${CNT} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiAws: `${CNT} | search cloud_provider="aws" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiAzure: `${CNT} | search cloud_provider="azure" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` | timechart span=1d count`,
-    sparkAws: `\`sap_logserv_idx_macro\` | ${CP_NORM} | where cloud_provider="aws" | timechart span=1d count`,
-    sparkAzure: `\`sap_logserv_idx_macro\` | ${CP_NORM} | where cloud_provider="azure" | timechart span=1d count`,
+    sparkTotal: `${CNT} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkAws: `${CNT} | search cloud_provider="aws" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkAzure: `${CNT} | search cloud_provider="azure" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
-    volumeByProvider: `\`sap_logserv_idx_macro\` | ${CP_NORM} | timechart span=1d count by cloud_provider`,
+    volumeByProvider: `${CNT} | eval _time=bucket_ts | timechart span=1d sum(count) by cloud_provider | fillnull value=0`,
 
-    sourcetypeByProvider: `\`sap_logserv_idx_macro\` | ${CP_NORM} | stats count by sourcetype cloud_provider | xyseries sourcetype cloud_provider count | rename sourcetype as "Sourcetype" aws as "AWS" azure as "Azure" | fillnull value=0 "AWS" "Azure" | eval Total = AWS + Azure | sort -Total | head 30`,
+    sourcetypeByProvider: `${CNT} | search sourcetype!="(none)" | stats sum(count) as count by sourcetype, cloud_provider | xyseries sourcetype cloud_provider count | rename sourcetype as "Sourcetype" aws as "AWS" azure as "Azure" | fillnull value=0 "AWS" "Azure" | eval Total = AWS + Azure | sort -Total | head 30`,
 
-    hostsByProvider: `\`sap_logserv_idx_macro\` | ${CP_NORM} | stats dc(host) as hosts by cloud_provider | rename cloud_provider as "Cloud Provider" hosts as "Distinct Hosts"`,
-    sourcetypesByProvider: `\`sap_logserv_idx_macro\` | ${CP_NORM} | stats dc(sourcetype) as sourcetypes by cloud_provider | rename cloud_provider as "Cloud Provider" sourcetypes as "Distinct Sourcetypes"`,
-    eventsByProvider: `\`sap_logserv_idx_macro\` | ${CP_NORM} | stats count by cloud_provider | rename cloud_provider as "Cloud Provider" count as "Event Count"`,
+    hostsByProvider: `${HOSTS} | stats dc(eval(if(host="(none)",null(),host))) as hosts by cloud_provider | rename cloud_provider as "Cloud Provider" hosts as "Distinct Hosts"`,
+    sourcetypesByProvider: `${CNT} | stats dc(eval(if(sourcetype="(none)",null(),sourcetype))) as sourcetypes by cloud_provider | rename cloud_provider as "Cloud Provider" sourcetypes as "Distinct Sourcetypes"`,
+    eventsByProvider: `${CNT} | stats sum(count) as count by cloud_provider | rename cloud_provider as "Cloud Provider" count as "Event Count"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -95,10 +115,16 @@ const MultiCloudOverview: React.FC = () => {
     const aws = useFirstRowField(Q.kpiAws, 'count');
     const azure = useFirstRowField(Q.kpiAzure, 'count');
 
-    const { results: sourcetypeRows, loading: stLoading, error: stError } = useSearch({ query: Q.sourcetypeByProvider });
-    const { results: hostRows, loading: hostsLoading, error: hostsError } = useSearch({ query: Q.hostsByProvider });
-    const { results: stCountRows, loading: stcLoading, error: stcError } = useSearch({ query: Q.sourcetypesByProvider });
-    const { results: eventCountRows, loading: eventCountLoading, error: eventCountError } = useSearch({ query: Q.eventsByProvider });
+    // build 234 — keep the full useSearch result objects (not destructured-and-
+    // renamed) so each FramedPanel can pass `search={…}` to its toolbar.
+    const sourcetypeSearch = useSearch({ query: Q.sourcetypeByProvider });
+    const hostSearch = useSearch({ query: Q.hostsByProvider });
+    const stCountSearch = useSearch({ query: Q.sourcetypesByProvider });
+    const eventCountSearch = useSearch({ query: Q.eventsByProvider });
+    const { results: sourcetypeRows, loading: stLoading, error: stError } = sourcetypeSearch;
+    const { results: hostRows, loading: hostsLoading, error: hostsError } = hostSearch;
+    const { results: stCountRows, loading: stcLoading, error: stcError } = stCountSearch;
+    const { results: eventCountRows, loading: eventCountLoading, error: eventCountError } = eventCountSearch;
 
     return (
         <DashboardLayout
@@ -142,16 +168,16 @@ const MultiCloudOverview: React.FC = () => {
             </FullWidthPanel>
 
             <PanelGrid2>
-                <FramedPanel title="Event Count by Provider" subtitle="Raw cumulative count">
+                <FramedPanel title="Event Count by Provider" subtitle="Raw cumulative count" search={eventCountSearch}>
                     <DataTable columns={eventCountColumns} rows={eventCountRows} loading={eventCountLoading} error={eventCountError} pageSize={10} />
                 </FramedPanel>
-                <FramedPanel title="Distinct Hosts by Provider" subtitle="How many unique hosts reported in each cloud">
+                <FramedPanel title="Distinct Hosts by Provider" subtitle="How many unique hosts reported in each cloud" search={hostSearch}>
                     <DataTable columns={summaryColumns} rows={hostRows} loading={hostsLoading} error={hostsError} pageSize={10} />
                 </FramedPanel>
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Distinct Sourcetypes by Provider" subtitle="Sourcetype diversity per cloud">
+                <FramedPanel title="Distinct Sourcetypes by Provider" subtitle="Sourcetype diversity per cloud" search={stCountSearch}>
                     <DataTable columns={sourcetypeCountColumns} rows={stCountRows} loading={stcLoading} error={stcError} pageSize={10} />
                 </FramedPanel>
                 <FramedPanel title="" subtitle="">
@@ -173,7 +199,7 @@ const MultiCloudOverview: React.FC = () => {
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Top Sourcetypes by Cloud Provider" subtitle="Event count split AWS vs Azure for the most-active sourcetypes (top 30)">
+                <FramedPanel title="Top Sourcetypes by Cloud Provider" subtitle="Event count split AWS vs Azure for the most-active sourcetypes (top 30)" search={sourcetypeSearch}>
                     <DataTable columns={sourcetypeColumns} rows={sourcetypeRows} loading={stLoading} error={stError} pageSize={10} />
                 </FramedPanel>
             </FullWidthPanel>

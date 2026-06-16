@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import SearchJob from '@splunk/search-job';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useRefreshContext } from '../state/RefreshProvider';
@@ -30,6 +30,18 @@ export interface UseSearchResult<TRow = Record<string, unknown>> {
     results: TRow[] | null;
     loading: boolean;
     error: Error | null;
+    /** Build 234 — panel-toolbar metadata. The dispatched job SID (resolves
+     *  asynchronously via SearchJob.getSid(); undefined until the job is
+     *  created). Powers the Inspect + Download actions. */
+    sid?: string;
+    /** The dispatched SPL string (the `query` passed in). Powers Open-in-Search. */
+    spl: string;
+    /** Epoch-ms when this search was last (re-)dispatched. Powers the
+     *  "&lt;1m ago" last-run timestamp. */
+    dispatchedAt?: number;
+    /** Re-run just this search (bumps an internal nonce). Powers the per-panel
+     *  Refresh action. Stable identity (useCallback). */
+    refresh: () => void;
 }
 
 // Re-export the result type without a generic parameter for convenience —
@@ -54,12 +66,19 @@ export const useSearch = <TRow = Record<string, unknown>>({
     const [results, setResults] = useState<TRow[] | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
+    // Build 234 — panel-toolbar metadata.
+    const [sid, setSid] = useState<string | undefined>(undefined);
+    const [dispatchedAt, setDispatchedAt] = useState<number | undefined>(undefined);
+    // Per-panel manual-refresh nonce (the Refresh action bumps this).
+    const [localNonce, setLocalNonce] = useState(0);
+    const refresh = useCallback(() => setLocalNonce((n) => n + 1), []);
 
     const effectiveEarliest = earliest ?? timeRange.earliest;
     const effectiveLatest = latest ?? timeRange.latest;
     /** Combined re-run trigger: explicit prop (manual refresh button etc.)
-     *  + per-dashboard auto-refresh tick from the RefreshProvider context. */
-    const effectiveRefreshNonce = (refreshNonce ?? 0) + contextNonce;
+     *  + per-dashboard auto-refresh tick from the RefreshProvider context
+     *  + this panel's own Refresh-action nonce (build 234). */
+    const effectiveRefreshNonce = (refreshNonce ?? 0) + contextNonce + localNonce;
 
     useEffect(() => {
         if (!enabled || !query) {
@@ -68,6 +87,8 @@ export const useSearch = <TRow = Record<string, unknown>>({
 
         setLoading(true);
         setError(null);
+        setSid(undefined);
+        setDispatchedAt(Date.now());
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const search = (SearchJob as any).create({
@@ -75,6 +96,19 @@ export const useSearch = <TRow = Record<string, unknown>>({
             earliest_time: effectiveEarliest,
             latest_time: effectiveLatest,
         });
+
+        // Resolve the dispatched job SID (async Observable) for the panel
+        // toolbar's Inspect + Download actions. Best-effort: failures are
+        // swallowed — the data subscription below is independent.
+        let sidSub: { unsubscribe: () => void } | undefined;
+        try {
+            sidSub = search.getSid().subscribe({
+                next: (s: string) => setSid(s),
+                error: () => undefined,
+            });
+        } catch (_e) {
+            // getSid not available — toolbar falls back to Open-in-Search only
+        }
 
         // Default to `count: 0` ("all rows") so no widget silently truncates
         // data inside the selected time range. Callers can override per-call
@@ -99,6 +133,11 @@ export const useSearch = <TRow = Record<string, unknown>>({
                 // ignore
             }
             try {
+                if (sidSub) sidSub.unsubscribe();
+            } catch (_e) {
+                // ignore
+            }
+            try {
                 search.cancel();
             } catch (_e) {
                 // ignore
@@ -106,5 +145,5 @@ export const useSearch = <TRow = Record<string, unknown>>({
         };
     }, [query, effectiveEarliest, effectiveLatest, enabled, count, effectiveRefreshNonce]);
 
-    return { results, loading, error };
+    return { results, loading, error, sid, spl: query, dispatchedAt, refresh };
 };

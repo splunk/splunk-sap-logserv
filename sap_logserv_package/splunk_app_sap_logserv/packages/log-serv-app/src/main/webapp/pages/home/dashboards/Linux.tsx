@@ -44,43 +44,81 @@ const PanelGrid3 = styled.div`
     @media (max-width: 800px) { grid-template-columns: 1fr; }
 `;
 
-// Path B (build 145): cron/warn/sudolog/slapd events were previously routed
-// to sourcetype=syslog; new events go to dedicated linux:cron / linux:warn /
-// linux:sudolog / linux:slapd sourcetypes. The "syslog" entry stays in this
-// OR clause so historical events ingested before the migration remain visible.
-const ST_ALL = '(sourcetype="linux_messages_syslog" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog" OR sourcetype="linux_secure")';
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 052 / build 221).
+ *
+ * All 22 panels are count/sum/dc/max/values/avg aggregations (no streamstats /
+ * percentile / event-listing), so the whole dashboard reads from the
+ * `logserv_linux_rollup` KV Store collection, populated hourly by
+ * [logserv_linux_aggregate] (one-time [logserv_linux_backfill]). 0 RAW panels.
+ *
+ * 8 metrics (design adversarially reviewed pre-build; verdict: ship). `total`
+ * (sourcetype, host) over ST_ALL — kpiTotal/kpiHosts + sparks + volumeByType +
+ * fwTimeline (derived via sourcetype="linux_secure"). `fw` (fw_action/src/dst/
+ * dpt/proto/host over linux_secure, rex from _raw) — IDENTICAL shape to the
+ * Network Perimeter `fw` metric; serves kpiFwDrops (fw_action=IN_DROP),
+ * kpiTopDropSrc / fwTopSources (all-secure-with-src, NO IN_DROP filter), fwTopPorts.
+ * The Linux DataTables key on the RAW field names (fw_src/fw_dpt/fw_proto/Targets/
+ * Protocol) so these reads must NOT apply NP's renames. `kernel` (kernel_event).
+ * `sapapp` (sap_app, sap_sid) — plain stats, NOT a timechart. `sapinst` (sap_sid,
+ * sap_inst, sap_cid, host). `oom`/`lockup`/`tcpoom` (resource pressure; max-of-max
+ * + avg-from-sum/count reconstruction; group-by host fillnull'd → reads add
+ * `| search host!="(none)"` to restore raw's null-host drop).
+ *
+ * Read idiom: `| inputlookup <coll> where metric=X | addinfo | where bucket_ts
+ * range | <agg>`. Count KPIs empty-safe; COUNT/dc timecharts append fillnull-0;
+ * sapAppActivity (plain stats fed to a chart) does NOT.
+ */
+const ROLL = 'logserv_linux_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const TOTAL = `| inputlookup ${ROLL} where metric="total" ${RANGE}`;
+// hosts is a separate metric (grain host) from total (grain sourcetype): some
+// linux_messages_syslog events carry a multivalue host, so combining count-by-
+// sourcetype with dc(host) in one grain would inflate the count. dc(host) here
+// is mv-host-correct; the count field is unused.
+const HOSTS = `| inputlookup ${ROLL} where metric="hosts" ${RANGE}`;
+const FW = `| inputlookup ${ROLL} where metric="fw" ${RANGE}`;
+const KERNEL = `| inputlookup ${ROLL} where metric="kernel" ${RANGE}`;
+const SAPAPP = `| inputlookup ${ROLL} where metric="sapapp" ${RANGE}`;
+const SAPINST = `| inputlookup ${ROLL} where metric="sapinst" ${RANGE}`;
+const OOM = `| inputlookup ${ROLL} where metric="oom" ${RANGE}`;
+const LOCKUP = `| inputlookup ${ROLL} where metric="lockup" ${RANGE}`;
+const TCPOOM = `| inputlookup ${ROLL} where metric="tcpoom" ${RANGE}`;
 
 const Q = {
-    // KPIs
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST_ALL} | stats count`,
-    kpiFwDrops: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | stats count`,
-    kpiTopDropSrc: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | where isnotnull(fw_src) AND fw_src!="" | stats count as drops by fw_src | sort -drops | head 1 | eval display = fw_src . " (" . tostring(drops, "commas") . ")" | table display`,
-    kpiHosts: `\`sap_logserv_idx_macro\` ${ST_ALL} | stats dc(host) as hosts`,
+    // KPIs (count KPIs use the empty-safe idiom; kpiHosts is a dc, kpiTopDropSrc
+    // reconstructs the "ip (N,NNN)" display string char-for-char).
+    kpiTotal: `${TOTAL} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiFwDrops: `${FW} | search fw_action="IN_DROP" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiTopDropSrc: `${FW} | search fw_src!="(none)" | stats sum(count) as drops by fw_src | sort -drops | head 1 | eval display = fw_src . " (" . tostring(drops, "commas") . ")" | table display`,
+    kpiHosts: `${HOSTS} | stats dc(eval(if(host="(none)",null(),host))) as hosts`,
 
-    // Sparklines
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST_ALL} | timechart span=1d count`,
-    sparkFwDrops: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | timechart span=1d count`,
-    sparkHosts: `\`sap_logserv_idx_macro\` ${ST_ALL} | timechart span=1d dc(host) AS hosts`,
+    // Sparklines (COUNT + dc timecharts 0-fill empty bins via fillnull-0)
+    sparkTotal: `${TOTAL} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkFwDrops: `${FW} | search fw_action="IN_DROP" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkHosts: `${HOSTS} | eval _time=bucket_ts | timechart span=1d dc(eval(if(host="(none)",null(),host))) AS hosts | fillnull value=0`,
 
     // Charts
-    volumeByType: `\`sap_logserv_idx_macro\` ${ST_ALL} | timechart span=1d count by sourcetype`,
-    sapAppActivity: `\`sap_logserv_idx_macro\` sourcetype="linux_messages_syslog" sap_app=* | stats count by sap_app sap_sid | sort -count`,
-    fwTimeline: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | timechart span=1d count AS "Firewall Events"`,
-    kernelEvents: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "kernel:.*?\\]\\s+(?<kernel_event>[A-Z_]+)" | where isnotnull(kernel_event) | stats count by kernel_event | sort -count`,
+    volumeByType: `${TOTAL} | eval _time=bucket_ts | timechart span=1d sum(count) by sourcetype | fillnull value=0`,
+    // sapAppActivity is a plain stats fed to a chart (no _time axis) — NO timechart / fillnull-0.
+    sapAppActivity: `${SAPAPP} | search sap_sid!="(none)" | stats sum(count) as count by sap_app, sap_sid | sort -count`,
+    // fwTimeline counts ALL linux_secure (no IN_DROP filter) — derived from `total`.
+    fwTimeline: `${TOTAL} | search sourcetype="linux_secure" | eval _time=bucket_ts | timechart span=1d sum(count) AS "Firewall Events" | fillnull value=0`,
+    kernelEvents: `${KERNEL} | stats sum(count) as count by kernel_event | sort -count`,
 
-    // Tables
-    sapInstances: `\`sap_logserv_idx_macro\` sourcetype="linux_messages_syslog" sap_sid=* | stats count as Events dc(host) as Hosts by sap_sid, sap_inst, sap_cid | sort -Events`,
-    fwTopSources: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops dc(fw_dst) as Targets values(fw_proto) as Protocol by fw_src | sort -Drops`,
-    fwTopPorts: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops`,
+    // Tables (sapInstances restores raw's null-group drop on sap_inst AND sap_cid;
+    // fwTopSources/fwTopPorts keep the RAW field keys — no NP-style renames).
+    sapInstances: `${SAPINST} | search sap_inst!="(none)" sap_cid!="(none)" | stats sum(count) as Events, dc(eval(if(host="(none)",null(),host))) as Hosts by sap_sid, sap_inst, sap_cid | sort -Events`,
+    fwTopSources: `${FW} | search fw_src!="(none)" | stats sum(count) as Drops, dc(eval(if(fw_dst="(none)",null(),fw_dst))) as Targets, values(eval(if(fw_proto="(none)",null(),fw_proto))) as Protocol by fw_src | sort -Drops`,
+    fwTopPorts: `${FW} | search fw_dpt!="(none)" fw_proto!="(none)" | stats sum(count) as Drops, dc(eval(if(host="(none)",null(),host))) as Hosts by fw_dpt, fw_proto | sort -Drops`,
 
-    // Resource Pressure (build 186 / session 034 deep-dive). Kernel OOM/lockup/
-    // tcp-mem events live on (linux:warn) for current data + (syslog) for legacy
-    // pre-Path-B-migration data; both stanzas carry the same EXTRACTs in props.conf
-    // so the structured fields populate uniformly.
-    oomByHost: `\`sap_logserv_idx_macro\` (sourcetype="linux:warn" OR sourcetype="syslog") "Out of memory: Killed process" | stats count AS Kills, values(oom_proc) AS Victims, max(oom_rss_kb) AS MaxRssKb, max(oom_vm_kb) AS MaxVmKb by host | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | eval "Max VM (MB)" = round(MaxVmKb / 1024, 0) | fields - MaxRssKb, MaxVmKb | sort -Kills`,
-    oomByVictim: `\`sap_logserv_idx_macro\` (sourcetype="linux:warn" OR sourcetype="syslog") "Out of memory: Killed process" oom_proc=* | stats count AS Kills, dc(host) AS Hosts, max(oom_rss_kb) AS MaxRssKb by oom_proc | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | fields - MaxRssKb | sort -Kills`,
-    cpuLockups: `\`sap_logserv_idx_macro\` (sourcetype="linux:warn" OR sourcetype="syslog") "soft lockup" | stats count AS Lockups, dc(lockup_cpu) AS "CPUs", max(lockup_duration_s) AS "Max (sec)", avg(lockup_duration_s) AS avg_s by host | eval "Avg (sec)" = round(avg_s, 1) | fields - avg_s | sort -Lockups`,
-    tcpOomTimeline: `\`sap_logserv_idx_macro\` (sourcetype="linux:warn" OR sourcetype="syslog") "TCP: out of memory" | timechart span=1d count by host`,
+    // Resource Pressure (build 186 / session 034). max-of-max + avg-from-sum/count
+    // reconstruction; oomByHost/cpuLockups/tcpOomTimeline group by host (fillnull'd)
+    // so add `| search host!="(none)"` to restore raw's null-host drop.
+    oomByHost: `${OOM} | search host!="(none)" | stats sum(count) AS Kills, values(eval(if(oom_proc="(none)",null(),oom_proc))) AS Victims, max(max_rss) AS MaxRssKb, max(max_vm) AS MaxVmKb by host | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | eval "Max VM (MB)" = round(MaxVmKb / 1024, 0) | fields - MaxRssKb, MaxVmKb | sort -Kills`,
+    oomByVictim: `${OOM} | search oom_proc!="(none)" | stats sum(count) AS Kills, dc(eval(if(host="(none)",null(),host))) AS Hosts, max(max_rss) AS MaxRssKb by oom_proc | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | fields - MaxRssKb | sort -Kills`,
+    cpuLockups: `${LOCKUP} | search host!="(none)" | stats sum(count) AS Lockups, dc(eval(if(lockup_cpu="(none)",null(),lockup_cpu))) AS "CPUs", max(max_dur) AS "Max (sec)", sum(sum_dur) AS tot_dur by host | eval "Avg (sec)" = round(tot_dur / Lockups, 1) | fields - tot_dur | sort -Lockups`,
+    tcpOomTimeline: `${TCPOOM} | search host!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by host | fillnull value=0`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -249,7 +287,7 @@ const Linux: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid3>
-                <FramedPanel title="SAP Instance Distribution" subtitle="Events and host count by SID / instance / CID — click a row for that SID's full Linux activity">
+                <FramedPanel search={sapInstances} title="SAP Instance Distribution" subtitle="Events and host count by SID / instance / CID — click a row for that SID's full Linux activity">
                     <DataTable
                         columns={SAP_INSTANCE_COLS}
                         rows={sapInstances.results}
@@ -268,7 +306,7 @@ const Linux: React.FC = () => {
             </PanelGrid3>
 
             <PanelGrid2>
-                <FramedPanel title="Blocked Sources" subtitle="Source IPs ranked by firewall-drop count — click a row for that source's full firewall log">
+                <FramedPanel search={fwTopSources} title="Blocked Sources" subtitle="Source IPs ranked by firewall-drop count — click a row for that source's full firewall log">
                     <DataTable
                         columns={FW_SRC_COLS}
                         rows={fwTopSources.results}
@@ -279,7 +317,7 @@ const Linux: React.FC = () => {
                         onRowClick={goFwSrcRow}
                     />
                 </FramedPanel>
-                <FramedPanel title="Blocked Destination Ports" subtitle="Destination ports being blocked at the firewall, ranked by drop count — click a row for events to that port">
+                <FramedPanel search={fwTopPorts} title="Blocked Destination Ports" subtitle="Destination ports being blocked at the firewall, ranked by drop count — click a row for events to that port">
                     <DataTable
                         columns={FW_PORT_COLS}
                         rows={fwTopPorts.results}
@@ -293,7 +331,7 @@ const Linux: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="OOM Kills by Host" subtitle="Kernel OOM-killer events grouped by host, with victim processes and max RSS/VM observed — click a row to drill into Host Details">
+                <FramedPanel search={oomByHost} title="OOM Kills by Host" subtitle="Kernel OOM-killer events grouped by host, with victim processes and max RSS/VM observed — click a row to drill into Host Details">
                     <DataTable
                         columns={OOM_HOST_COLS}
                         rows={oomByHost.results}
@@ -304,7 +342,7 @@ const Linux: React.FC = () => {
                         onRowClick={goOomHostRow}
                     />
                 </FramedPanel>
-                <FramedPanel title="OOM Kills by Victim Process" subtitle="Process names targeted by the OOM killer with affected host count and max RSS — click a row for that process's full kill log">
+                <FramedPanel search={oomByVictim} title="OOM Kills by Victim Process" subtitle="Process names targeted by the OOM killer with affected host count and max RSS — click a row for that process's full kill log">
                     <DataTable
                         columns={OOM_VICTIM_COLS}
                         rows={oomByVictim.results}
@@ -318,7 +356,7 @@ const Linux: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="CPU Soft-Lockups" subtitle="NMI watchdog detections of stuck kernel-space CPUs — signals VM overcommit, hypervisor starvation, or noisy-neighbor; click a row to drill into Host Details">
+                <FramedPanel search={cpuLockups} title="CPU Soft-Lockups" subtitle="NMI watchdog detections of stuck kernel-space CPUs — signals VM overcommit, hypervisor starvation, or noisy-neighbor; click a row to drill into Host Details">
                     <DataTable
                         columns={CPU_LOCKUP_COLS}
                         rows={cpuLockups.results}

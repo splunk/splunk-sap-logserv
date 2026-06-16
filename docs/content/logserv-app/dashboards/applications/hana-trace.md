@@ -15,6 +15,8 @@ The HANA Trace dashboard provides visibility into SAP HANA's internal diagnostic
 - **Component by Severity (Top 10)** -- Stacked column chart showing which components produce the most errors (same noise filter applied)
 - **Source File Hotspots** -- Table identifying specific source files generating the most trace entries (same noise filter applied)
 - **Activity by SID / Instance** -- Event distribution across HANA systems
+- **Slowest SQL Operations** -- Table of the top 20 SQL operations ranked by max duration (msec), with average duration and event count per operation. (Reads the hourly rollup layer; the per-event time/host columns are not retained at the aggregate grain -- use a row's drill-down for the underlying events.)
+- **Operation Duration (Avg / Max)** -- Daily average and peak HANA SQL operation duration (msec), across the events that carry the duration field.
 - **Recent Errors / Fatal Events** -- Table of the latest error and fatal trace events with component and source location
 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For

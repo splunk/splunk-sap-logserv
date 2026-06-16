@@ -54,31 +54,85 @@ const CHANGE_FILTER = `( (sourcetype="sap:hana:audit" (action_category IN ("User
 // Source-prefixed operator + category + after-hours derivation (verbatim)
 const ENRICH = `eval change_source = case(sourcetype="sap:hana:audit", "HANA", sourcetype="XmlWinEventLog", "Windows", 1=1, "Linux") | rex field=_raw "sudo:\\s+(?<sudo_op>\\w+)\\s*:" | rex field=_raw "\\((?<paren_op>\\w+)\\)" | eval operator = case(sourcetype="sap:hana:audit", "HANA:" . executing_user, sourcetype="XmlWinEventLog", "Windows:" . coalesce(SubjectUserName, user, "unknown"), 1=1, "Linux:" . coalesce(sudo_op, paren_op, os_user, "unknown")) | eval category = case(sourcetype="sap:hana:audit" AND action_category="Permission Grant", "Permission Grant", sourcetype="sap:hana:audit" AND action_category="Permission Revoke", "Permission Revoke", sourcetype="sap:hana:audit" AND action_category IN ("User Creation","User Deletion","User Management"), "User Management", sourcetype="sap:hana:audit" AND action_category IN ("Password Management","Password Reset"), "Password Change", sourcetype="sap:hana:audit" AND action_category="Account Status Change", "Account Status", sourcetype="sap:hana:audit", "DDL / Config", sourcetype="XmlWinEventLog" AND EventCode IN (4720,4722,4725,4726,4738,4781), "User Management", sourcetype="XmlWinEventLog" AND EventCode=4724, "Password Change", sourcetype="XmlWinEventLog" AND EventCode IN (4728,4729,4732,4733,4756,4757), "Group Membership", sourcetype="XmlWinEventLog" AND EventCode IN (4740,4767), "Account Status", match(_raw, "(?i)passwd\\b"), "Password Change", match(_raw, "(?i)(useradd|usermod|userdel)"), "User Management", match(_raw, "(?i)(groupadd|groupmod|groupdel)"), "Group Membership", match(_raw, "COMMAND="), "Sudo Command", 1=1, "Other") | eval hr = tonumber(strftime(_time, "%H")) | eval dw = strftime(_time, "%A") | eval is_after_hours = case(sourcetype="sap:hana:audit", if(is_business_hours="false" OR is_weekend="true", 1, 0), 1=1, if(hr < 7 OR hr > 19 OR match(dw, "(?i)(saturday|sunday)"), 1, 0))`;
 
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 051 / build 212).
+ *
+ * Change & Configuration Activity is a cross-stack compliance dashboard (HANA /
+ * Windows / Linux change synthesis) commonly run over WIDE time ranges, with a
+ * per-event ENRICH classification (change_source / category / operator /
+ * is_after_hours) that raw-scanned every panel. The 9 aggregatable panels below
+ * now read from the `logserv_compliance_rollup` KV Store collection, populated
+ * hourly by [logserv_compliance_aggregate] (one-time backfill via
+ * [logserv_compliance_backfill]). The 5 per-event audit-trail tables (HANA /
+ * Windows / Linux / Privileged / After-Hours) stay RAW — a rollup can't
+ * reconstruct an event-level listing; `priv` + `ah` still use CHANGE_FILTER /
+ * ENRICH above.
+ *
+ * 4 metrics. `main` (change_source/category/operator/is_after_hours grain)
+ * serves the Total/After-Hours/Operators KPIs+sparks, the Activity chart, the
+ * Category pie, and the Operators table. `userchg`/`permgrant`/`password` are
+ * per-bucket counts that replicate each KPI's EXACT filter — those filters are
+ * NOT simple subsets of main's `category` dim (e.g. permGrants counts Windows
+ * group-add EventCodes that main classifies "Group Membership"). The
+ * userchg/password arms apply their Linux `match(_raw, ...)` regex in a
+ * post-base `| where` (session-051 follow-up): match() in BASE-search position
+ * silently returns 0, which previously UNDER-COUNTED the Linux clause (e.g.
+ * `kpiPassword` read 0 while the Category pie showed the same 21 linux:sudolog
+ * passwd events). The rollup now counts them correctly — byte-identical to the
+ * Category pie's regex classification on any data. operator is the
+ * one nullable dim (HANA null executing_user -> "HANA:"+null = null): the
+ * aggregate fillnull's it to "(none)" to preserve TOTAL counts, and reads
+ * exclude "(none)" to reproduce the raw stats-by-operator / dc(operator)
+ * drop-null semantics.
+ *
+ * Read idiom: `| inputlookup <coll> where metric=X | addinfo | where bucket_ts
+ * range | <agg>`. addinfo carries the global TimeRange picker (useSearch sets
+ * the dispatch earliest/latest) into the generating inputlookup. bucket_ts is
+ * hour-aligned, so day-aligned picker ranges match the raw scope exactly.
+ */
+const ROLL = 'logserv_compliance_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
+const USERCHG = `| inputlookup ${ROLL} where metric="userchg" ${RANGE}`;
+const PERMGRANT = `| inputlookup ${ROLL} where metric="permgrant" ${RANGE}`;
+const PASSWORD = `| inputlookup ${ROLL} where metric="password" ${RANGE}`;
+
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | stats count`,
-    kpiUserChanges: `\`sap_logserv_idx_macro\` ( (sourcetype="sap:hana:audit" action_category IN ("User Creation","User Deletion","User Management")) OR (sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4725,4726,4738,4781)) OR ((sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") match(_raw, "(?i)(useradd|usermod|userdel)")) ) | stats count`,
-    kpiPermGrants: `\`sap_logserv_idx_macro\` ( (sourcetype="sap:hana:audit" action_category="Permission Grant") OR (sourcetype="XmlWinEventLog" EventCode IN (4728,4732,4756)) ) | stats count`,
-    kpiPassword: `\`sap_logserv_idx_macro\` ( (sourcetype="sap:hana:audit" action_category IN ("Password Management","Password Reset")) OR (sourcetype="XmlWinEventLog" EventCode=4724) OR ((sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") match(_raw, "(?i)passwd\\b")) ) | stats count`,
-    kpiAfterHours: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | where is_after_hours=1 | stats count`,
-    kpiOperators: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | stats dc(operator) as operators`,
+    // KPIs read precomputed per-bucket counts. The `stats count as n, ...`
+    // forces a result row even when the metric has ZERO rows (an empty
+    // `| inputlookup | stats sum(count)` returns 0 rows, unlike a raw event
+    // search's `| stats count` which always returns count=0); `n` is a throwaway
+    // row-anchor that `| fields count` drops (a non-underscore field, so fields
+    // removes it — an underscore-prefixed name would survive), and
+    // `fillnull value=0 count` then yields a clean 0. This matches raw
+    // `stats count`=0 for an all-zero metric (a metric with no matching events
+    // in the picker range — e.g. permGrants on an estate with no Windows logs).
+    kpiTotal: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiUserChanges: `${USERCHG} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiPermGrants: `${PERMGRANT} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiPassword: `${PASSWORD} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiAfterHours: `${MAIN} | search is_after_hours=1 | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiOperators: `${MAIN} | stats dc(eval(if(operator="(none)",null(),operator))) as operators`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | timechart span=1d count`,
-    sparkUserChanges: `\`sap_logserv_idx_macro\` ( (sourcetype="sap:hana:audit" action_category IN ("User Creation","User Deletion","User Management")) OR (sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4725,4726,4738,4781)) OR ((sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") match(_raw, "(?i)(useradd|usermod|userdel)")) ) | timechart span=1d count`,
-    sparkPermGrants: `\`sap_logserv_idx_macro\` ( (sourcetype="sap:hana:audit" action_category="Permission Grant") OR (sourcetype="XmlWinEventLog" EventCode IN (4728,4732,4756)) ) | timechart span=1d count`,
-    sparkPassword: `\`sap_logserv_idx_macro\` ( (sourcetype="sap:hana:audit" action_category IN ("Password Management","Password Reset")) OR (sourcetype="XmlWinEventLog" EventCode=4724) OR ((sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") match(_raw, "(?i)passwd\\b")) ) | timechart span=1d count`,
-    sparkAfterHours: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | where is_after_hours=1 | timechart span=1d count`,
-    sparkOperators: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | timechart span=1d dc(operator) as operators`,
+    // Timecharts: `eval _time=bucket_ts` then `| fillnull value=0` — raw `count`
+    // zero-fills empty series-bins, rollup `sum(count)` nulls them.
+    sparkTotal: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkUserChanges: `${USERCHG} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkPermGrants: `${PERMGRANT} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkPassword: `${PASSWORD} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkAfterHours: `${MAIN} | search is_after_hours=1 | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkOperators: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(operator="(none)",null(),operator))) as operators | fillnull value=0`,
 
-    activity: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | eval change_source = case(sourcetype="sap:hana:audit", "HANA", sourcetype="XmlWinEventLog", "Windows", 1=1, "Linux") | timechart span=1d count by change_source`,
-    category: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | stats count by category | sort -count`,
-    operators: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | stats count by operator | sort -count | rename operator as "Operator", count as "Change Events"`,
+    activity: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) by change_source | fillnull value=0`,
+    category: `${MAIN} | stats sum(count) as count by category | sort -count`,
+    operators: `${MAIN} | search operator!="(none)" | stats sum(count) as count by operator | sort -count | rename operator as "Operator", count as "Change Events"`,
 
-    hana: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" (action_category IN ("User Management","User Creation","User Deletion","Permission Grant","Permission Revoke","Password Management","Account Status Change","Password Reset") OR action_type IN ("CREATE TABLE","ALTER TABLE","DROP TABLE","CREATE VIEW","ALTER VIEW","DROP VIEW","CREATE SCHEMA","ALTER SCHEMA","DROP SCHEMA","CREATE FUNCTION","ALTER FUNCTION","DROP FUNCTION","CREATE PROCEDURE","ALTER PROCEDURE","DROP PROCEDURE","AUDIT POLICY","CREATE AUDIT POLICY","ALTER AUDIT POLICY","DROP AUDIT POLICY")) | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, target_user, action_category, action_type, status, audit_hostname | rename executing_user as "Operator", target_user as "Target", action_category as "Category", action_type as "Action", status as "Status", audit_hostname as "Host"`,
-    windows: `\`sap_logserv_idx_macro\` sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757) | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Description = case(EventCode=4720, "Account Created", EventCode=4722, "Account Enabled", EventCode=4724, "Password Reset", EventCode=4725, "Account Disabled", EventCode=4726, "Account Deleted", EventCode=4738, "Account Modified", EventCode=4740, "Account Locked Out", EventCode=4767, "Account Unlocked", EventCode=4781, "Account Renamed", EventCode=4728, "Added to Global Group", EventCode=4729, "Removed from Global Group", EventCode=4732, "Added to Local Group", EventCode=4733, "Removed from Local Group", EventCode=4756, "Added to Universal Group", EventCode=4757, "Removed from Universal Group", 1=1, "Other") | sort -_time | table Time, EventCode, Description, SubjectUserName, TargetUserName, host | rename EventCode as "Event", SubjectUserName as "Operator", TargetUserName as "Target", host as "Computer"`,
-    linux: `\`sap_logserv_idx_macro\` (sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") ("COMMAND=" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd) | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | rex field=_raw "sudo:\\s+(?<sudo_op>\\w+)\\s*:" | rex field=_raw "\\((?<paren_op>\\w+)\\)" | rex field=_raw "COMMAND=(?<cmd>[^\\s]+(?:\\s[^\\s]+){0,4})" | eval Operator = coalesce(sudo_op, paren_op, os_user, "unknown") | eval Type = case(match(_raw, "(?i)useradd"), "useradd", match(_raw, "(?i)usermod"), "usermod", match(_raw, "(?i)userdel"), "userdel", match(_raw, "(?i)groupadd"), "groupadd", match(_raw, "(?i)groupmod"), "groupmod", match(_raw, "(?i)groupdel"), "groupdel", match(_raw, "(?i)passwd\\b"), "passwd", match(_raw, "COMMAND="), "sudo", 1=1, "other") | sort -_time | table Time, Operator, Type, cmd, host | rename cmd as "Command", host as "Host"`,
+    hana: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" (action_category IN ("User Management","User Creation","User Deletion","Permission Grant","Permission Revoke","Password Management","Account Status Change","Password Reset") OR action_type IN ("CREATE TABLE","ALTER TABLE","DROP TABLE","CREATE VIEW","ALTER VIEW","DROP VIEW","CREATE SCHEMA","ALTER SCHEMA","DROP SCHEMA","CREATE FUNCTION","ALTER FUNCTION","DROP FUNCTION","CREATE PROCEDURE","ALTER PROCEDURE","DROP PROCEDURE","AUDIT POLICY","CREATE AUDIT POLICY","ALTER AUDIT POLICY","DROP AUDIT POLICY")) | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, target_user, action_category, action_type, status, audit_hostname | rename executing_user as "Operator", target_user as "Target", action_category as "Category", action_type as "Action", status as "Status", audit_hostname as "Host"`,
+    windows: `\`sap_logserv_idx_macro\` sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757) | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Description = case(EventCode=4720, "Account Created", EventCode=4722, "Account Enabled", EventCode=4724, "Password Reset", EventCode=4725, "Account Disabled", EventCode=4726, "Account Deleted", EventCode=4738, "Account Modified", EventCode=4740, "Account Locked Out", EventCode=4767, "Account Unlocked", EventCode=4781, "Account Renamed", EventCode=4728, "Added to Global Group", EventCode=4729, "Removed from Global Group", EventCode=4732, "Added to Local Group", EventCode=4733, "Removed from Local Group", EventCode=4756, "Added to Universal Group", EventCode=4757, "Removed from Universal Group", 1=1, "Other") | sort -_time | table Time, EventCode, Description, SubjectUserName, TargetUserName, host | rename EventCode as "Event", SubjectUserName as "Operator", TargetUserName as "Target", host as "Computer"`,
+    linux: `\`sap_logserv_idx_macro\` (sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") ("COMMAND=" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd) | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | rex field=_raw "sudo:\\s+(?<sudo_op>\\w+)\\s*:" | rex field=_raw "\\((?<paren_op>\\w+)\\)" | rex field=_raw "COMMAND=(?<cmd>[^\\s]+(?:\\s[^\\s]+){0,4})" | eval Operator = coalesce(sudo_op, paren_op, os_user, "unknown") | eval Type = case(match(_raw, "(?i)useradd"), "useradd", match(_raw, "(?i)usermod"), "usermod", match(_raw, "(?i)userdel"), "userdel", match(_raw, "(?i)groupadd"), "groupadd", match(_raw, "(?i)groupmod"), "groupmod", match(_raw, "(?i)groupdel"), "groupdel", match(_raw, "(?i)passwd\\b"), "passwd", match(_raw, "COMMAND="), "sudo", 1=1, "other") | sort -_time | table Time, Operator, Type, cmd, host | rename cmd as "Command", host as "Host"`,
 
-    priv: `\`sap_logserv_idx_macro\` ( (sourcetype="sap:hana:audit" (action_category IN ("Permission Grant","User Creation") OR action_type IN ("AUDIT POLICY","CREATE AUDIT POLICY","ALTER AUDIT POLICY","DROP AUDIT POLICY"))) OR (sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4724,4732)) OR ((sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") (useradd OR visudo OR usermod OR userdel)) ) | ${ENRICH} | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Target = case(sourcetype="sap:hana:audit", target_user, sourcetype="XmlWinEventLog", TargetUserName, 1=1, "-") | eval Action = case(sourcetype="sap:hana:audit", action_type, sourcetype="XmlWinEventLog" AND EventCode=4720, "User Created (EventCode 4720)", sourcetype="XmlWinEventLog" AND EventCode=4722, "User Enabled (EventCode 4722)", sourcetype="XmlWinEventLog" AND EventCode=4724, "Password Reset (EventCode 4724)", sourcetype="XmlWinEventLog" AND EventCode=4732, "Added to Local Group (EventCode 4732)", sourcetype="XmlWinEventLog", "EventCode " . EventCode, 1=1, substr(_raw, 1, 120)) | sort -_time | table Time, change_source, category, operator, Target, Action | rename change_source as "Source", category as "Category", operator as "Operator"`,
-    ah: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | where is_after_hours=1 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Target = case(sourcetype="sap:hana:audit", target_user, sourcetype="XmlWinEventLog", TargetUserName, 1=1, "-") | eval Action = case(sourcetype="sap:hana:audit", action_type, sourcetype="XmlWinEventLog", "EventCode " . EventCode, 1=1, substr(_raw, 1, 120)) | eval Day = strftime(_time, "%a %H:%M") | sort -_time | table Time, Day, change_source, category, operator, Target, Action | rename change_source as "Source", category as "Category", operator as "Operator"`,
+    priv: `\`sap_logserv_idx_macro\` ( (sourcetype="sap:hana:audit" (action_category IN ("Permission Grant","User Creation") OR action_type IN ("AUDIT POLICY","CREATE AUDIT POLICY","ALTER AUDIT POLICY","DROP AUDIT POLICY"))) OR (sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4724,4732)) OR ((sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") (useradd OR visudo OR usermod OR userdel)) ) | head 500 | ${ENRICH} | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Target = case(sourcetype="sap:hana:audit", target_user, sourcetype="XmlWinEventLog", TargetUserName, 1=1, "-") | eval Action = case(sourcetype="sap:hana:audit", action_type, sourcetype="XmlWinEventLog" AND EventCode=4720, "User Created (EventCode 4720)", sourcetype="XmlWinEventLog" AND EventCode=4722, "User Enabled (EventCode 4722)", sourcetype="XmlWinEventLog" AND EventCode=4724, "Password Reset (EventCode 4724)", sourcetype="XmlWinEventLog" AND EventCode=4732, "Added to Local Group (EventCode 4732)", sourcetype="XmlWinEventLog", "EventCode " . EventCode, 1=1, substr(_raw, 1, 120)) | sort -_time | table Time, change_source, category, operator, Target, Action | rename change_source as "Source", category as "Category", operator as "Operator"`,
+    ah: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | where is_after_hours=1 | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Target = case(sourcetype="sap:hana:audit", target_user, sourcetype="XmlWinEventLog", TargetUserName, 1=1, "-") | eval Action = case(sourcetype="sap:hana:audit", action_type, sourcetype="XmlWinEventLog", "EventCode " . EventCode, 1=1, substr(_raw, 1, 120)) | eval Day = strftime(_time, "%a %H:%M") | sort -_time | table Time, Day, change_source, category, operator, Target, Action | rename change_source as "Source", category as "Category", operator as "Operator"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -215,34 +269,34 @@ const ChangeConfig: React.FC = () => {
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Operators by Change Count (Source-Prefixed)" subtitle="Operator IDs across all 3 stacks ranked by change events">
+                <FramedPanel search={operators} title="Operators by Change Count (Source-Prefixed)" subtitle="Operator IDs across all 3 stacks ranked by change events">
                     <DataTable columns={OPERATOR_COLS} rows={operators.results} loading={operators.loading} error={operators.error} emptyMessage="No change activity in this time range." initialSortKey="Change Events" initialSortDir="desc" />
                 </FramedPanel>
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="HANA Audit — Change Events" subtitle="HANA user/permission/DDL audit trail, most-recent first">
+                <FramedPanel search={hana} title="HANA Audit — Change Events" subtitle="HANA user/permission/DDL audit trail, most-recent first">
                     <DataTable columns={HANA_COLS} rows={hana.results} loading={hana.loading} error={hana.error} emptyMessage="No HANA audit change events in this time range." initialSortKey="Time" initialSortDir="desc" onRowClick={goHanaRow} />
                 </FramedPanel>
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="Windows — Account & Group Modifications" subtitle="EventCodes 4720-4781 / 4728-4757 with friendly description, most-recent first">
+                <FramedPanel search={windows} title="Windows — Account & Group Modifications" subtitle="EventCodes 4720-4781 / 4728-4757 with friendly description, most-recent first">
                     <DataTable columns={WIN_COLS} rows={windows.results} loading={windows.loading} error={windows.error} emptyMessage="No Windows account events in this time range." initialSortKey="Time" initialSortDir="desc" onRowClick={goWinRow} />
                 </FramedPanel>
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="Linux — Sudo & Command Activity" subtitle="useradd / usermod / passwd / sudo COMMAND= extraction, most-recent first">
+                <FramedPanel search={linux} title="Linux — Sudo & Command Activity" subtitle="useradd / usermod / passwd / sudo COMMAND= extraction, most-recent first">
                     <DataTable columns={LINUX_COLS} rows={linux.results} loading={linux.loading} error={linux.error} emptyMessage="No Linux change activity in this time range." initialSortKey="Time" initialSortDir="desc" onRowClick={goLinuxRow} />
                 </FramedPanel>
             </FullWidthPanel>
 
             <PanelGrid2>
-                <FramedPanel title="Recent Privileged Changes (Compliance Focus)" subtitle="High-privilege subset for compliance review, most-recent first">
+                <FramedPanel search={priv} title="Recent Privileged Changes (Compliance Focus)" subtitle="High-privilege subset for compliance review, most-recent first">
                     <DataTable columns={PRIV_COLS} rows={priv.results} loading={priv.loading} error={priv.error} emptyMessage="No privileged changes in this time range." initialSortKey="Time" initialSortDir="desc" />
                 </FramedPanel>
-                <FramedPanel title="Recent After-Hours Changes (Outside Business Hours)" subtitle="Changes outside 7am–7pm or on weekends, most-recent first">
+                <FramedPanel search={ah} title="Recent After-Hours Changes (Outside Business Hours)" subtitle="Changes outside 7am–7pm or on weekends, most-recent first">
                     <DataTable columns={AH_COLS} rows={ah.results} loading={ah.loading} error={ah.error} emptyMessage="No after-hours changes in this time range." initialSortKey="Time" initialSortDir="desc" />
                 </FramedPanel>
             </PanelGrid2>

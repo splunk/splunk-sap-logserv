@@ -1,7 +1,78 @@
 # Release Notes
 
 
-## Version 0.0.5 (latest)
+## Version 0.0.6 (latest)
+
+!!! note "v0.0.6 is a dashboard-performance release — the feature set is unchanged from v0.0.5"
+    v0.0.6 keeps the **entire v0.0.5 feature set unchanged** (21 React dashboards + the Environment Topology view, templates-only AI Assistant with 61 canned prompts + audit log, index-time filtering + Deployment Server automation, Cloud Provider attribution, Enterprise Security integration). The single focus of this release is a **dashboard data-layer rewrite** that makes the dashboards fast at high event volume. Search-time field extractions, sourcetype routing, the Data TA, and all dashboard *content* are unchanged — only how each panel sources its data changed. **No data re-ingest is required to upgrade.**
+
+### :material-circle-box:{ .taiconcolor } Compatibility
+
+|                                  |                              |
+|----------------------------------|------------------------------|
+| Splunk platform versions         | 9.4.3 and later              |
+| CIM                              | 5.1.1 and later              |
+| Supported OS for data collection | Platform independent         |
+| Vendor products                  | SAP LogServ for SAP ECS in Amazon Web Services (AWS) and Microsoft Azure |
+| AI Assistant prerequisite        | [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.1.0 or later, on the search head where the LogServ App is installed |
+| Azure ingest prerequisite        | [Splunk Add-on for Microsoft Cloud Services (Splunkbase App 3110)](https://splunkbase.splunk.com/app/3110) v5.0+, on the Heavy Forwarder tier (Azure deployments only) |
+
+### :material-circle-box:{ .taiconcolor } The problem this release solves
+
+At a customer's reported scale (~10.7M events / 24 h, ~321M over 30 days) the 21 non-Topology dashboards took **over 10 minutes** to populate. Each panel dispatched its own raw, search-time-extraction full-scan with no shared base search, no `tstats`, and no acceleration. (The Environment Topology view was already fast — it had been moved to a KV-Store-backed data layer in v0.0.5.)
+
+### :material-circle-box:{ .taiconcolor } New data architecture — two tiers
+
+Every dashboard panel was re-tiered onto the cheapest *correct* data source and byte-exact-verified against the original raw SPL. The result is a **two-tier data layer** — no Common Information Model (CIM) acceleration is required.
+
+1. **`tstats` on indexed dimensions** — pure count / average panels (Data Pipeline Overview, Host Details, the Environment Health pipeline panels, Multi-Cloud Overview, and the count KPIs across the suite) read via `| tstats` over the already-indexed `WRITE_META` fields. A new `default/fields.conf` declares `INDEXED = true` for `clz_dir` / `clz_subdir` / `splunk_solution` / `cloud_provider`.
+2. **KV-Store precompute rollups** — every other high-volume panel reads from **22 hourly-aggregated KV-Store rollup collections** (`logserv_*_rollup`). Scheduled saved searches (`logserv_*_aggregate`, cron `5 * * * *`) precompute each panel's data; the dashboards read it back filtered by a `bucket_ts` range driven by the global time-range picker. Streamstats / per-event-listing panels that cannot be rolled up stay raw (capped with `| head N` where they are time-ordered listings).
+
+Cached reads are uniformly **~0.1–0.6 s** versus 10 s – 19 min raw (speedups of **64× – 5,358×**), validated at 335M events on the test fleet. **Data freshness on the rolled-up panels is hourly** — the same trade-off the Environment Topology view already made. See [Dashboard Performance & Data Freshness](../logserv-app/dashboards/performance.md) for the full picture and the one-time backfill step.
+
+!!! info "No CIM data-model acceleration needed for dashboards"
+    An interim build had the four HTTP / DNS / proxy dashboards (Proxy, Web Dispatcher, Cloud Connector, DNS Analytics) read from CIM accelerated data models. That approach was **removed** before this release: when a customer had not accelerated those models (the common case), the queries fell back to a raw full-scan — exactly the slowness this release set out to fix. Those four dashboards now read dedicated KV-Store rollups, so they are fast regardless of the customer's CIM-acceleration state. The LogServ App's CIM *tagging* (eventtypes + tags) for **Enterprise Security** correlation is unaffected — see [Enterprise Security → CIM Compliance](../enterprise-security/cim-compliance.md).
+
+### :material-circle-box:{ .taiconcolor } New features
+
+1. **"Run backfill" — Dashboard Data settings tab** — a new **Settings → AI Assistant → Dashboard Data** tab seeds the rollup collections on first install. It dispatches each rollup's aggregation searches as **top-level jobs** (immune to the subsearch wall-clock limits that truncate a bundled backfill at high volume), with a progress bar, completeness banner, and per-rollup status. Idempotent and resumable. **An admin clicks this once after installing on a high-volume instance** to populate dashboard history immediately; otherwise the hourly aggregation seeds history going forward. See [Dashboard Performance & Data Freshness → Backfilling on first install](../logserv-app/dashboards/performance.md#backfilling-on-first-install).
+2. **365-day cache retention** — all rollup-retention searches keep a full year of rolled-up history. The install backfill seeds 30 days; the cache then grows to a year organically via the hourly aggregation (seed-and-grow).
+3. **Per-panel action toolbar** — every chart and table panel header now carries **Open in Search · Download (CSV) · Inspect (Job Inspector) · Refresh** plus a "&lt;1m ago" last-run stamp. KPI single-value cards get the loading spinner but no toolbar.
+4. **Universal loading spinner** — every chart / table renders the orange-dot spinner + "Loading data…" while its search is in flight (KPI cards show a small spinner instead of a dash), replacing the old plain "Loading…" text.
+
+### :material-circle-box:{ .taiconcolor } Scheduling & Enterprise Security (build 242)
+
+1. **Enterprise Security content ships disabled by default.** All 22 `splunk_sap_logserv_es_*` saved searches now ship with `disabled = 1`. The ES content is opt-in (it targets the ES Notable / Risk / Asset & Identity frameworks and CIM data models that no-op without ES installed) and no dashboard reads any ES output — so shipping it disabled removes the two heaviest scheduled searches (the 30-day anomaly scans) and the per-hour correlation cluster from every customer that has not installed ES. **Enable it after installing Splunk Enterprise Security** — see [Enterprise Security → Enabling the ES content](../enterprise-security/overview.md#enabling-the-es-content).
+2. **Scheduled searches re-staggered into three non-overlapping bands** — the 24 hourly rollup aggregates spread one-per-minute across `:05`–`:28` (was all at `:05`), retention + the 2 daily beaconing aggregates moved to an off-peak `:30`–`:58` band, and the (disabled) ES searches re-croned to the back of the hour. No two enabled scheduled searches share an `(hour, minute)`, eliminating the previous `:05` burst and two same-minute collisions. Dispatch windows are unchanged, so data freshness is unaffected. See [Dashboard Performance & Data Freshness → Scheduled-search schedule](../logserv-app/dashboards/performance.md#scheduled-search-schedule).
+
+### :material-circle-box:{ .taiconcolor } Changed (user-visible panel shapes)
+
+A few panels changed shape as a consequence of reading from hourly rollups instead of raw events:
+
+1. **All response-time charts now show Avg + Max by hour instead of p50 / p95 / p99 percentiles.** Averages and maxima roll up byte-exact across hourly buckets (Avg = Σsum ÷ Σcount, Max = max-of-per-bucket-max); percentiles cannot be merged across buckets. Affects Web and API Performance ("Response Time (Avg / Max) Over Time", and the "Slow URIs / Slow Clients" tables now show a **Max (ms)** column in place of p95) and HANA Trace ("Operation Duration (Avg / Max)").
+2. **HANA Trace "Slowest SQL Operations"** is now a top-operations-by-max-duration table (operation, max ms, avg ms, event count) — the per-event `_time` / host columns cannot survive an aggregate.
+3. **Web Dispatcher "URIs by Request Count"** dropped its "Unique Clients" column (a 3-dimension grain would explode at scale).
+4. **Panels that remain raw** (and are therefore unaffected): Network Perimeter "Suspicious Activity Indicator", the DNS / Network-Perimeter beaconing tables, Web Dispatcher "Slowest Request Traces", and Cloud Connector "Audit Log" — streamstats / per-event listings that cannot be rolled up byte-exact. (The beaconing and Slowest-Traces panels are now backed by per-day / per-hour rollups so they stay responsive to the time-range picker.)
+
+### :material-circle-box:{ .taiconcolor } Fixed issues
+
+While re-expressing panels, three pre-existing display bugs (all string-vs-number / `match()`-in-base-search predicate mistakes that silently returned 0) were found and fixed:
+
+1. **Cloud Connector HTTP Error Rate** — the KPI compared a string `is_error` field against the number `1` and was stuck at 0%; re-expressed as the `status >= 400` fraction (now ~7.3% on test data).
+2. **Change & Configuration "Password Change" / "User Change" KPIs** — a Linux `match(_raw, …)` clause sat in base-search position where `match()` (eval-only) silently no-ops; moved to a post-base `| where`.
+3. **`icm_is_error` predicate** — the same string-vs-number trap (`icm_is_error = 1` vs the field's string `"true"`) in the Environment Health severity rollup and the `logserv_top_error_categories` AI prompt; fixed to `= "true"`.
+
+### :material-circle-box:{ .taiconcolor } Third-party software attributions
+
+`THIRD-PARTY-NOTICES.md` was refreshed for v0.0.6 and now lists **1236 unique top-level npm packages** (adds `elkjs@0.11.1`, EPL-2.0, used by the Environment Topology layout engine — previously omitted). The file is generated deterministically from the build's `node_modules/` tree by `yarn build`, shipped at the root of the installed app directory and mirrored at the GitHub source-tree root, alongside the CycloneDX 1.4 `SBOM.json`. See [Third-Party Software](third-party-licenses.md).
+
+### :material-circle-box:{ .taiconcolor } Known issues
+
+1. The hourly rollup data layer means rolled-up panels are accurate to the most-recently-completed hour; sub-hour time-range selections (e.g. "Last 15 minutes") read from the hourly buckets and so reflect completed hours rather than the live partial hour. Use the raw Search app (via the per-panel **Open in Search** toolbar action) for live sub-hour investigation.
+2. On a fresh install at high event volume, dashboards show empty until the first hourly aggregation runs or an admin runs the **Dashboard Data → Run backfill** step.
+
+
+## Version 0.0.5
 
 !!! warning "AI Assistant LLM functionality intentionally disabled pending review"
     The v0.0.5 release ships with the AI Assistant's **LLM-driven path disabled at compile time pending internal review** of the OWASP LLM Top 10 controls. Every customer running v0.0.5 runs the **templates-only build variant** — there is no separate "regular" build published in this release. What's still active: the predefined-prompt path (61 canned prompts via the Splunk MCP Server), tool tiles in the right pane, drill-down chips, audit log, all 21 dashboards + the Environment Topology view, per-dashboard auto-refresh picker, Download PNG. What's disabled: free-form chat input, the model picker, the Power Mode toggle, the Provider Credentials Settings tab, and all vendor (Anthropic / OpenAI / Azure / Bedrock) traffic. The LLM-driven path will be re-enabled in a future release once review concludes — the type-system enforcement, privacy tiers, and OWASP Top 10 hardening are designed and implemented, just gated off via the build flag for now. See the **AI Assistant → Templates-only Build** docs page and the **AI Assistant → OWASP LLM Top 10 Compliance** page for the full picture.

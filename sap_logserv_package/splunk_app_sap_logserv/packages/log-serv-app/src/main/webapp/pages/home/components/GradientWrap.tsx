@@ -53,23 +53,27 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
         const container = containerRef.current;
         if (!container) return undefined;
 
-        // Per-instance hex → gradient ID cache.
-        const colorIdMap = new Map<string, string>();
         // Reentrancy guard so our own DOM mutations don't trigger the observer.
         let applying = false;
 
         const ensureGradient = (svg: SVGSVGElement, hex: string): string => {
-            const existing = colorIdMap.get(hex);
-            if (existing) return existing;
+            const id = `${wrapIdRef.current}-${hex.slice(1)}`;
 
             let defs = svg.querySelector(':scope > defs.logserv-gradients') as SVGDefsElement | null;
+            // Reuse the gradient ONLY if it still lives in THIS svg. On a chart
+            // re-render (e.g. a time-range change) the viz can swap the <svg>
+            // element or wipe its <defs>, so a blindly-cached id would dangle —
+            // slices referencing url(#<id>) then paint with no fill (the
+            // transparent-donut bug). Verifying against the live svg keeps the
+            // gradient defs in lockstep with the elements that reference them.
+            if (defs && defs.querySelector(`[id="${id}"]`)) return id;
+
             if (!defs) {
                 defs = document.createElementNS(SVG_NS, 'defs') as SVGDefsElement;
                 defs.classList.add('logserv-gradients');
                 svg.insertBefore(defs, svg.firstChild);
             }
 
-            const id = `${wrapIdRef.current}-${hex.slice(1)}`;
             const gradient = document.createElementNS(SVG_NS, 'linearGradient');
             gradient.setAttribute('id', id);
             gradient.setAttribute('x1', '0%');
@@ -87,14 +91,33 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
             gradient.appendChild(stop2);
             defs.appendChild(gradient);
 
-            colorIdMap.set(hex, id);
             return id;
         };
 
         const applyToElement = (el: SVGElement, svg: SVGSVGElement): void => {
-            // If this element is already pointing at a url(#...) we set, skip.
             const currentInline = el.style && el.style.fill;
-            if (currentInline && currentInline.startsWith('url(')) return;
+            if (currentInline && currentInline.startsWith('url(')) {
+                // Already gradient-ized by a prior pass. Decide whether to leave
+                // it or re-create the gradient using the source hex we stashed on
+                // the element — NOT by parsing currentInline. The browser
+                // normalizes `el.style.fill` to `url("#id")` (WITH quotes); a
+                // quote-fragile regex that fails to extract the id would make us
+                // re-set the fill on every pass → an infinite MutationObserver
+                // loop that pegs the main thread (the build-238 hang). Deriving
+                // the expected id from data-gw-hex and checking its existence is
+                // robust and convergent: when the gradient is present we return
+                // WITHOUT mutating, so the observer stops firing.
+                const storedHex = el.getAttribute('data-gw-hex');
+                if (!storedHex) return; // not ours / unrecoverable — leave it
+                const expectedId = `${wrapIdRef.current}-${storedHex.slice(1)}`;
+                if (svg.querySelector(`[id="${expectedId}"]`)) return; // intact
+                // Gradient was wiped (svg swapped / defs cleared on re-render) —
+                // recreate it in the current svg and re-point the element.
+                const reId = ensureGradient(svg, storedHex);
+                el.setAttribute('fill', `url(#${reId})`);
+                if (el.style) el.style.fill = `url(#${reId})`;
+                return;
+            }
 
             // Try inline-style or attribute first, fall back to computed style
             // (handles Highcharts CSS-class-based fills).
@@ -111,6 +134,9 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
             if (hex === '#000000') return;
 
             const id = ensureGradient(svg, hex);
+            // Stash the source hex so a later pass can recover the gradient if
+            // the svg's <defs> are wiped on re-render (the url() branch above).
+            el.setAttribute('data-gw-hex', hex);
             // Setting both inline style and the attribute makes our gradient
             // win over both inline `style="fill:#..."` and CSS class rules.
             el.setAttribute('fill', `url(#${id})`);
@@ -139,10 +165,21 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
         // arrives. Try several times in case the first runs before DOM is ready.
         const initialTimers = [60, 200, 500, 1000].map((ms) => window.setTimeout(apply, ms));
 
-        // Re-apply on any DOM change (chart redraws, theme changes).
-        const observer = new MutationObserver(() => {
-            apply();
-        });
+        // Re-apply on any DOM change (chart redraws, theme changes), but
+        // coalesce bursts into one pass per animation frame. Defense in depth:
+        // even if some future change made apply() emit a mutation each pass, the
+        // rAF debounce caps it at ~one pass/frame (the page stays responsive)
+        // instead of a synchronous re-entrant storm that freezes the renderer.
+        let rafScheduled = false;
+        const scheduleApply = () => {
+            if (rafScheduled) return;
+            rafScheduled = true;
+            window.requestAnimationFrame(() => {
+                rafScheduled = false;
+                apply();
+            });
+        };
+        const observer = new MutationObserver(scheduleApply);
         observer.observe(container, { childList: true, subtree: true, attributes: true, attributeFilter: ['fill', 'style', 'class'] });
 
         return () => {

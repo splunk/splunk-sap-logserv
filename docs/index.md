@@ -1,7 +1,7 @@
 # About Splunk for SAP LogServ
 
-!!! warning "v0.0.5 release: AI Assistant LLM functionality intentionally disabled pending review"
-    The v0.0.5 release ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review** of the OWASP LLM Top 10 controls. The **predefined-prompt path** + Splunk MCP Server integration + 21 dashboards + 1 Environment Topology view + audit log are all fully active. The free-form chat input is disabled, the model picker is hidden, and the Provider Credentials Settings tab is hidden. See [Templates-only Build](content/ai-assistant/templates-only-build.md) for the build mechanism. The LLM-driven path will be re-enabled in a future release once review concludes.
+!!! warning "Current release: AI Assistant LLM functionality intentionally disabled pending review"
+    The current release ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review** of the OWASP LLM Top 10 controls. The **predefined-prompt path** + Splunk MCP Server integration + 21 dashboards + 1 Environment Topology view + audit log are all fully active. The free-form chat input is disabled, the model picker is hidden, and the Provider Credentials Settings tab is hidden. See [Templates-only Build](content/ai-assistant/templates-only-build.md) for the build mechanism. The LLM-driven path will be re-enabled in a future release once review concludes.
 
 ## :material-circle-box:{ .cboxmove } Introduction
 
@@ -37,7 +37,7 @@ For details on which package goes where, see [Architecture](content/getting-star
 
 |             |                                                                                                                                                                        |
 |-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Version     | 0.0.5.0-beta                                                                                                                                                           |
+| Version     | 0.0.6.0                                                                                                                                                           |
 | Supported vendor products     | SAP LogServ for SAP ECS in Amazon Web Services (AWS) and Microsoft Azure                                                                                                  |
 | Splunk platform versions | 9.4.3 and later |
 | CIM | 5.1.1 and later |

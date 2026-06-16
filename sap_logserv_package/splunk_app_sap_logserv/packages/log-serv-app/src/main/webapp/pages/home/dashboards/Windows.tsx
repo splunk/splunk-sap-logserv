@@ -38,20 +38,44 @@ const PanelGrid2 = styled.div`
 
 const ST = 'sourcetype="XmlWinEventLog"';
 
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 053 / build 224).
+ *
+ * All 11 panels read from the `logserv_windows_rollup` KV Store collection (hourly
+ * [logserv_windows_aggregate], one-time [logserv_windows_backfill]). 2 metrics:
+ *  - main: grain (EventCode, source, severity, signature, host) fillnull "(none)" +
+ *    count + last_seen(=max(_time) per bucket). Serves the 10 main panels.
+ *  - svc: rex svc_name/svc_state from _raw (XML Data fields) on source=System
+ *    EventCode IN (7036,7034,7031); per-bucket count + latest(svc_state). Serves serviceEvents.
+ *
+ * topEvents reconstructs raw first(signature)/first(severity)/first(log_name) via
+ * latest(eval(nullify-sentinel ...)) with _time=last_seen — each first() skips nulls,
+ * so each latest() nullifies "(none)" independently (per-field, matching raw).
+ * NOTE: raw first(signature) is INPUT-ORDER (non-deterministic across bucket merges);
+ * the rollup's latest(non-null signature) is the deterministic true-newest (an
+ * improvement, stable across refreshes). Counts/Hosts/Last-Seen are byte-exact.
+ * kpiCritical `severity IN ("critical","error")` = 0 on demo data (severity vocab is
+ * high/informational/medium); replicated EXACTLY — correct on real Windows data.
+ */
+const ROLL = 'logserv_windows_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
+const SVC = `| inputlookup ${ROLL} where metric="svc" ${RANGE}`;
+
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST} | stats count`,
-    kpiCritical: `\`sap_logserv_idx_macro\` ${ST} severity IN ("critical", "error") | stats count`,
-    kpiHosts: `\`sap_logserv_idx_macro\` ${ST} | stats dc(host) as hosts`,
+    kpiTotal: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiCritical: `${MAIN} | search severity IN ("critical", "error") | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiHosts: `${MAIN} | stats count as n, dc(eval(if(host="(none)",null(),host))) as hosts | fillnull value=0 hosts | fields hosts`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count`,
-    sparkCritical: `\`sap_logserv_idx_macro\` ${ST} severity IN ("critical", "error") | timechart span=1d count`,
-    sparkHosts: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d dc(host) as hosts`,
+    sparkTotal: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkCritical: `${MAIN} | search severity IN ("critical", "error") | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkHosts: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(host="(none)",null(),host))) as hosts | fillnull value=0`,
 
-    volumeByLog: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count by source`,
-    severity: `\`sap_logserv_idx_macro\` ${ST} | where isnotnull(severity) | timechart span=1d count by severity`,
-    topEvents: `\`sap_logserv_idx_macro\` ${ST} | eval log_name = replace(source, "WinEventLog:", "") | stats count as Events, dc(host) as Hosts, first(signature) as Description, first(severity) as Severity, first(log_name) as Source, latest(_time) as last_seen_ts by EventCode | eval "Last Seen" = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | sort -Events | table EventCode, Description, Source, Severity, Events, Hosts, "Last Seen" | rename EventCode as "Event Code"`,
-    serviceEvents: `\`sap_logserv_idx_macro\` ${ST} source="WinEventLog:System" EventCode IN (7036, 7034, 7031) | rex field=_raw "<Data Name='param1'>(?<svc_name>[^<]+)</Data>" | rex field=_raw "<Data Name='param2'>(?<svc_state>[^<]+)</Data>" | where isnotnull(svc_name) | stats count as Events latest(svc_state) as "Last State" by svc_name | sort -Events | rename svc_name as "Service Name"`,
-    powershell: `\`sap_logserv_idx_macro\` ${ST} source="WinEventLog:Powershell" | timechart span=1d count as "PowerShell Events"`,
+    volumeByLog: `${MAIN} | search source!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by source | fillnull value=0`,
+    severity: `${MAIN} | search severity!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by severity | fillnull value=0`,
+    topEvents: `${MAIN} | eval _time=last_seen, log_name=replace(source,"WinEventLog:","") | stats sum(count) as Events, dc(eval(if(host="(none)",null(),host))) as Hosts, latest(eval(if(signature="(none)",null(),signature))) as Description, latest(eval(if(severity="(none)",null(),severity))) as Severity, latest(eval(if(log_name="(none)",null(),log_name))) as Source, max(last_seen) as last_seen_ts by EventCode | eval "Last Seen" = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | sort -Events | table EventCode, Description, Source, Severity, Events, Hosts, "Last Seen" | rename EventCode as "Event Code"`,
+    serviceEvents: `${SVC} | eval _time=bucket_ts | stats sum(count) as Events, latest(svc_state) as "Last State" by svc_name | sort -Events | rename svc_name as "Service Name"`,
+    powershell: `${MAIN} | search source="WinEventLog:Powershell" | eval _time=bucket_ts | timechart span=1d sum(count) as "PowerShell Events" | fillnull value=0`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -126,13 +150,13 @@ const Windows: React.FC = () => {
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Event Codes" subtitle="EventCodes ranked by volume — click a row for that EventCode's full event log">
+                <FramedPanel search={topEvents} title="Event Codes" subtitle="EventCodes ranked by volume — click a row for that EventCode's full event log">
                     <DataTable columns={TOP_EVENT_COLS} rows={topEvents.results} loading={topEvents.loading} error={topEvents.error} emptyMessage="No Windows events in this time range." onRowClick={goEventCodeRow} />
                 </FramedPanel>
             </FullWidthPanel>
 
             <PanelGrid2>
-                <FramedPanel title="Service Events" subtitle="Service start/stop/crash (EventCode 7036/7034/7031) — click a row for that service's lifecycle history">
+                <FramedPanel search={serviceEvents} title="Service Events" subtitle="Service start/stop/crash (EventCode 7036/7034/7031) — click a row for that service's lifecycle history">
                     <DataTable columns={SERVICE_COLS} rows={serviceEvents.results} loading={serviceEvents.loading} error={serviceEvents.error} emptyMessage="No service events in this time range." onRowClick={goServiceRow} />
                 </FramedPanel>
                 <FramedPanel title="PowerShell Activity" subtitle="Daily volume of WinEventLog:Powershell events">

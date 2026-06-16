@@ -2,10 +2,13 @@
 
 The Splunk for SAP LogServ App ships out-of-the-box integration with **Splunk Enterprise Security (ES)** so SOC analysts can investigate SAP-side threats through ES's standard Incident Review queue, Risk-Based Alerting (RBA) framework, and CIM-aligned correlation searches.
 
+!!! warning "The ES content ships DISABLED by default — enable it after installing Splunk Enterprise Security"
+    As of v0.0.6 (build 242), all 22 `splunk_sap_logserv_es_*` saved searches ship with `disabled = 1`. The ES content is **opt-in**: it targets ES frameworks (Notable Events, Risk-Based Alerting, Asset & Identity) that no-op when ES isn't installed, and **no dashboard depends on any ES output**. Shipping it disabled keeps the heaviest scheduled searches (the 30-day anomaly scans) off every instance that hasn't installed ES. **If you run Splunk Enterprise Security, enable the ES content** — see [Enabling the ES content](#enabling-the-es-content) below.
+
 Integration is **dual-mode** — the same App tarball works whether or not ES is installed:
 
-- **With ES installed**: 19 correlation searches emit Notable Events to ES Incident Review; one tier-2 Risk Notable fires when accumulated risk on a single object crosses a threshold; SAP-side Asset & Identity inventory feeds ES's Identity Management framework for asset-context enrichment.
-- **Without ES**: the same saved searches still load, dispatch on schedule, and are alertable via standard Splunk workflow. The `action.notable=1` directive silently no-ops; ES-specific Risk Notable returns 0 rows; Asset/Identity feed CSVs still populate but the ES merger framework isn't there to consume them.
+- **With ES installed**: enable the ES searches (below); 19 correlation searches then emit Notable Events to ES Incident Review; one tier-2 Risk Notable fires when accumulated risk on a single object crosses a threshold; SAP-side Asset & Identity inventory feeds ES's Identity Management framework for asset-context enrichment.
+- **Without ES**: leave the ES searches disabled (their default). They would no-op anyway — the `action.notable=1` directive silently does nothing, the ES-specific Risk Notable returns 0 rows, and there's no ES merger framework to consume the Asset/Identity CSVs. The rest of the App (dashboards, AI Assistant, topology) is unaffected — none of it reads ES output.
 
 ## :material-circle-box:{ .taiconcolor } What ships for ES integration
 
@@ -27,6 +30,35 @@ Integration is **dual-mode** — the same App tarball works whether or not ES is
 The App declares a hard dependency on `Splunk_SA_CIM ≥ 5.0.0` in its `app.manifest`. Splunk_SA_CIM is the standard Splunk CIM data-model definitions; it ships with ES but can also be installed standalone (free on Splunkbase).
 
 The App does **NOT** declare a hard dep on `SplunkEnterpriseSecuritySuite` — this is intentional, so customers running the App without ES still get full functionality. ES-specific content (notable events, risk events, the Risk data-model search) silently no-ops without ES. Customers who later install ES gain the ES-specific surfaces immediately, with no App reconfiguration needed.
+
+## :material-circle-box:{ .taiconcolor } Enabling the ES content
+
+The ES saved searches ship **disabled**. Once Splunk Enterprise Security (and `Splunk_SA_CIM`) is installed on the search head, enable them by either method:
+
+**Splunk Web (per search or in bulk):**
+
+1. **Settings → Searches, Reports, and Alerts**.
+2. Set the **App** context to *Splunk for SAP LogServ* and filter the name on `splunk_sap_logserv_es_`.
+3. For each search (or select all), use the **Edit → Enable** action.
+
+**Config override (all at once):** add a stanza per search to `local/savedsearches.conf` — never edit `default/`:
+
+```ini
+[splunk_sap_logserv_es_hana_privilege_escalation]
+disabled = 0
+
+[splunk_sap_logserv_es_cross_stack_auth_failure]
+disabled = 0
+# ... one stanza per splunk_sap_logserv_es_* search you want enabled
+```
+
+There are 22 ES searches (19 detections + the Risk Notable + the 2 Asset/Identity feeds). Enable all of them for the full integration, or a subset if you only want specific detections.
+
+!!! info "CIM acceleration for the heavy anomaly searches"
+    Three behavioral-anomaly searches scan a **30-day** window (`splunk_sap_logserv_es_anomaly_webdisp_response`, `_anomaly_user_auth_volume`, `_anomaly_topology_edge_volume`). On a large environment these should run against **CIM-accelerated** data models (the standard ES design). If you leave the CIM models un-accelerated, those searches become 30-day full scans — acceptable at small/medium volume, but accelerate the Web / Authentication models before enabling them at high volume. See [CIM Compliance](cim-compliance.md).
+
+!!! note "Scheduling is already staggered for when you enable"
+    Even while disabled, the ES searches carry de-conflicted cron schedules (the heavy 30-day anomaly searches sit on distinct back-of-hour minutes; the lighter threat-intel / correlation searches are phase-staggered). Enabling them therefore does **not** re-create a scheduler burst. The always-on rollup-aggregate searches occupy minutes `:05`–`:28` of each hour and retention runs `:30`–`:58`, so the ES content is scheduled clear of both bands. See [Dashboard Performance & Data Freshness → Scheduled-search schedule](../logserv-app/dashboards/performance.md#scheduled-search-schedule).
 
 ## :material-circle-box:{ .taiconcolor } Install matrix
 

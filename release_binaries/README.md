@@ -1,229 +1,100 @@
-# v0.0.5.0 Release Binaries
+# v0.0.6.0 Release Binaries
 
-This directory contains the two installable tarballs for the **Splunk for SAP LogServ** v0.0.5.0 release.
+This directory contains the two installable tarballs for the **Splunk for SAP LogServ** v0.0.6.0 release.
 
 ## Canonical tarballs
 
 | Tarball | md5 | Size | Tier |
 |---|---|---|---|
-| [`splunk_app_sap_logserv-0.0.5.0.tar.gz`](./splunk_app_sap_logserv-0.0.5.0.tar.gz) | `0390775ccc3c6831f44d45f8f4511cd5` | 2.8 MB | Search Head |
-| [`splunk_ta_sap_logserv-0.0.5.0.tar.gz`](./splunk_ta_sap_logserv-0.0.5.0.tar.gz) | `dcd9ba2a966ea5acc6c726db364cda77` | 1.6 MB | Deployment Server + Heavy Forwarders + Indexer (also installable on Splunk Cloud SH for single-instance Cloud deployments) |
+| [`splunk_app_sap_logserv-0.0.6.0.tar.gz`](./splunk_app_sap_logserv-0.0.6.0.tar.gz) | `7dc64397bbe524f4f14a9df17334ae99` | 3.87 MB | Search Head |
+| [`splunk_ta_sap_logserv-0.0.6.0.tar.gz`](./splunk_ta_sap_logserv-0.0.6.0.tar.gz) | `dcd9ba2a966ea5acc6c726db364cda77` | 1.6 MB | Deployment Server + Heavy Forwarders + Indexer (also installable on Splunk Cloud SH for single-instance Cloud deployments) |
 
-The App tarball is at **build 197** and the Data TA at **app version 0.0.5** (proper 3-part SemVer; "fsfix" UCC respin 2026-06-01 session 047) as of 2026-06-01. Twelve change sets from the original build 174 are now bundled:
-
-1. **Splunk Cloud compatibility fix** (App build 182 — see "Cloud-fix" below). Required for installation on Splunk Cloud Victoria 10.x.
-2. **ISC BIND + Squid parsing absorption** (App build 184 — see "Absorbed parsing" below). Customers no longer need the separately-archived `Splunk_TA_isc-bind` v2.0.0 or `Splunk_TA_squid` v2.1.0 add-ons.
-3. **Icon-rendering fix on Splunk Cloud** (App build 185 — see "Icon fix" below). Adds the missing `app.manifest` so Splunk Cloud Victoria renders the app's icon in the launcher / Apps switcher instead of a generic placeholder.
-4. **Splunk Cloud `sc_subadmin` enablement — metadata + capability** (App build 186 + Data TA — see "sc_subadmin enablement" below). Allows customer-tier Splunk Cloud admins (whose top role is `sc_subadmin`, not `sc_admin`) to write to `storage/passwords` and other knowledge objects.
-5. **Data TA Cloud-vetting fixes** (Data TA app version `0.0.5` — see "Data TA Cloud-vetting" below). Cleared 5 pre-existing AppInspect Cloud-mode failures that had been blocking Data TA install on Splunk Cloud: 4-part SemVer version corrected to 3-part, missing `python.version`/`python.required` flags added to scripted inputs + REST handler stanzas, audit-index renamed `_ai_assistant_audit` → `logserv_ai_assistant_audit` (underscore-prefix violation + `maxTotalDataSizeMB` illegal property both cleared by the rename + property removal).
-6. **Audit-index rename in App** (App build 187 → 188 coordinated with Data TA fix). The App's `ai_assistant_settings.conf` `audit_index_name`, `macros.conf` audit macro, and `auditWriter.ts` JS default were all updated from `_ai_assistant_audit` → `logserv_ai_assistant_audit` to remain in sync with the Data TA's renamed index.
-7. **v0.1.1 feature-parity overlay + useIsAdmin fix** (App build 190 → 191) — see "v0.1.1 feature-parity overlay" below.
-8. **Session 042 — AI Assistant settings + acks migrated to KV Store** (App build 192) — see "KV Store migration for sc_subadmin enablement" below. Removes the last `admin_all_objects` capability-gated write paths in the App; sc_subadmin users can now Save Defaults + accept legal T&C modals without 403 errors.
-9. **Session 044 — Topology Live / Lookup toggle removed** (App build 193) — see "Live / Lookup toggle removed (session 044)" below. The 30-second polling effect re-fetched KV Store rows that only update hourly; 119 of every 120 ticks were no-ops. Manual Refresh button retained for cases where an admin just dispatched a backfill and wants results before the next hourly aggregation.
-10. **Sessions 046–047 — Data TA Cloud Provider tab + `splunk_solution` / `cloud_provider` indexed fields + Configuration-tab banner fix** (Data TA UCC respin 2026-05-31) — see "Cloud Provider attribution + Configuration-tab banner fix (sessions 046–047)" below. This is the first promoted v0.0.5.0 Data TA to carry the cloud-provider attribution feature. Adds a second Configuration tab (**Cloud Provider**) with an AWS / Microsoft Azure / Not set dropdown that stamps an indexed `cloud_provider` field at index time, plus an always-on `splunk_solution = splunk_for_sap_logserv` indexed field. Also fixes a UI bug where both "Deployment Server Detected" banners rendered on the Filters tab instead of each on its own tab. This respin additionally re-pinned `solnlib>=5.0.0,<8.0.0` in `package/lib/requirements.txt` (source had drifted to an unbounded `>=5.0.0`, which would pull solnlib 8.x + its AArch64-incompatible OpenTelemetry/gRPC/protobuf deps) and relocated `run_appinspect.sh` out of `package/` to the TA root (it was being bundled + flagged by AppInspect `check_for_bin_files`) — keeping the 0/0/0/11/123 Cloud posture.
-11. **Session 047 — Events/Day (Avg) KPI fix** (App build 197) — see "Events/Day (Avg) KPI fix (session 047)" below. The Data Pipeline Overview "Events per Day (Avg)" KPI rendered blank on Splunk Cloud because its SPL grouped by `date_mday`, an event field that is unpopulated on most/all LogServ events; the fix bins by `_time` via `timechart span=1d`. **Confirmed fixed on the user's Splunk Cloud instance.**
-12. **Session 047 — Data TA Configuration "operation forbidden" fix** (Data TA "fsfix" respin) — see "Configuration save filesystem-fallback fix (session 047)" below. On Splunk Cloud Victoria, saving either Configuration tab returned "This operation is forbidden" because splunktaucclib's default field-persist does a REST write to `configs/conf-…` that requires `admin_all_objects`, which `sc_subadmin` lacks. The handler now wraps `super().handleEdit` and, on a 403, falls back to a direct filesystem write of `local/<settings>.conf` (which bypasses the capability-gated REST endpoint). **Confirmed fixed on the user's Splunk Cloud instance.**
-
-The TA tarball was also respun earlier in session 040 to (a) drop now-stale `Splunk_TA_isc-bind` + `Splunk_TA_squid` dependencies that were preventing the TA from rendering cleanly on Splunk Cloud (their parsing now lives in the App, not the TA), and (b) clear two `python.required = 3.13` AppInspect future_failures that had been carried forward from the original v0.0.5.0 release.
-
-The previous canonical builds (App 174 / 181 / 182 / 184 / 185 / 188 / 191 / 192 / 193, TA 1778087892 / 1778087893) are preserved in [`../testing/iteration_tarballs/`](../testing/iteration_tarballs/) and [`../testing/release_binaries/`](../testing/release_binaries/). The immediately-prior App canonical — build 193 (`86e5a04b3947f95ed332e20bdc6da94e`, pre-KPI-fix) — is retired to [`../testing/release_binaries/splunk_app_sap_logserv-0.0.5.0-build193.tar.gz`](../testing/release_binaries/splunk_app_sap_logserv-0.0.5.0-build193.tar.gz). The immediately-prior Data TA canonical — the session-046–047 hook-fix build (`e5fe28eaf9bac944d35d6c50575629d4`, cloud_provider but pre-forbidden-fix) — is preserved as [`../testing/iteration_tarballs/splunk_ta_sap_logserv-0.0.5.0-hookfix-2026-05-31.tar.gz`](../testing/iteration_tarballs/splunk_ta_sap_logserv-0.0.5.0-hookfix-2026-05-31.tar.gz), and the earlier session-043 build (`409120096648d0d2b7399e8e42f40c9b`, pre-cloud_provider) is retired to [`../testing/release_binaries/splunk_ta_sap_logserv-0.0.5.0-session043-pre-cloudprovider.tar.gz`](../testing/release_binaries/splunk_ta_sap_logserv-0.0.5.0-session043-pre-cloudprovider.tar.gz).
+The App tarball is at **build 242** (internal `app.conf` / `app.manifest` version `0.0.6`, proper 3-part SemVer). **Build 242 ships the Enterprise Security content disabled by default and re-staggers the scheduled searches** to eliminate the hourly burst and all same-minute collisions — see "Build 242" below. Build 240 caches the Environment Topology view's right-pane detail tabs onto an hourly KV-Store rollup (the last topology corner still doing live raw scans per node/edge click); **build 241 host-splits the three full-index node aggregate arms so the one-time backfill no longer does a full-index `mvexpand`** — see "Build 240–241" below. Build 239 added the donut/pie empty-after-range-change fix. The Data TA is **unchanged from the v0.0.5.0 line** — its internal `app.conf` version stays at `0.0.5` (the cloud-provider + filesystem-fallback "fsfix" build, md5 `dcd9ba2a966ea5acc6c726db364cda77`, byte-identical to the v0.0.5.0 canonical Data TA). The `0.0.6.0` in the Data TA filename is the combined-snapshot version for directory continuity (matching the App tarball); App and Data TA version independently, and the Data TA had no source changes across the v0.0.5.0 → v0.0.6.0 line (the entire v0.0.6.0 effort is search-head-side: dashboards + KV Store rollup collections + scheduled aggregation searches, all in the App).
 
 Both are installable via Splunk Web (**Apps → Install app from file**) or via CLI:
 ```bash
 /opt/splunk/bin/splunk install app /path/to/<tarball>
 ```
 
-See [`docs/content/getting-started/quick-install-reference.md`](../docs/content/getting-started/quick-install-reference.md) for the per-tier install matrix and the prerequisite Splunkbase add-ons (CIM modules, Splunk MCP Server for the AI Assistant).
+See [`docs/content/getting-started/quick-install-reference.md`](../docs/content/getting-started/quick-install-reference.md) for the per-tier install matrix and the prerequisite Splunkbase add-ons (CIM modules, Splunk MCP Server for the AI Assistant, the AWS / Microsoft Azure ingest add-ons).
 
-## What's in v0.0.5.0
+## What's new in v0.0.6.0 — dashboard performance refactor
 
-The v0.0.5.0 release ships the React-based LogServ App with:
+v0.0.6.0 keeps the **entire v0.0.5.0 feature set unchanged** (21 React dashboards + the Environment Topology view, templates-only AI Assistant with 61 canned prompts + audit log, index-time filtering + Deployment Server automation, Cloud Provider attribution, Enterprise Security integration). The single focus of this release is a **dashboard data-layer rewrite** that makes the dashboards fast at high event volume.
 
-- **21 React-based dashboards + the Environment Topology view** organized as Environment Health (default landing) + Topology + Applications (5) + Integration (5) + Security (3) + Platform (7). Single React bundle built on `@splunk/react-ui`, `@splunk/visualizations`, and `@xyflow/react`. Replaces the Dashboard Studio v2 layout that shipped in v0.0.4.2.
-- **Environment Topology view** — graph-based visualization of SAP systems, integration partners, and endpoints. Force-directed initial layout, self-derived IP→SID inventory, named saved layouts via Splunk KV Store, Live mode auto-refresh.
-- **AI Assistant — templates-only build** — predefined-prompt browser (61 canned saved searches across SAP Basis / Security / Operations packs, dispatched via the Splunk MCP Server with no LLM call). The free-form / LLM-driven path is **disabled at compile time** in this build pending internal review of the OWASP LLM Top 10 controls. Admins see the chat panel and the prompt browser; the chat input is read-only and Provider Credentials / Power Mode are hidden.
-- **Audit log** — every AI Assistant action recorded in the dedicated `logserv_ai_assistant_audit` index, with an in-app browser at **Settings → AI Assistant → Audit Log** and an optional HEC forwarder for tamper-evidence.
-- **Index-time filtering + Deployment Server automation** — control which log types ingest via the Splunk Web UI; filtered events incur zero license cost.
-- **Splunk 9.4.3 or later** is the minimum supported version. See the full release notes at [`docs/content/overview/release-notes.md`](../docs/content/overview/release-notes.md).
+**The problem.** At a customer's reported scale (~10.7M events / 24 h, ~321M over 30 days), the 21 non-Topology dashboards took **>10 minutes** to populate. Each panel dispatched its own raw, search-time-extraction full-scan with no shared base search, no `tstats`, and no acceleration. (The Topology view was already fast — it had been moved to a KV-Store-backed data layer in an earlier release.)
 
-## Why "templates-only" in v0.0.5.0
+**The fix (App builds 198–237).** Every dashboard panel was re-tiered onto the cheapest correct data source, byte-exact-verified against the original raw SPL. The **final architecture (build 237) has two data tiers** — `tstats` on indexed dimensions, and KV-Store precompute rollups:
 
-The v0.0.5.0 release deliberately ships with the LLM-driven path **physically removed from the bundle at build time**. The MCP-based predefined-prompt path stays fully active so the solution can be demonstrated end-to-end against your data without enabling any external LLM provider. No event data is transmitted outside the Splunk deployment, no AI-generated narrative is produced, no provider credential needs to be configured.
+1. **`tstats` on indexed dimensions** (builds 198–200) — Data Pipeline Overview, Host Details, and the Environment Health pipeline-count panels read pure counts/avgs via `| tstats` over the already-`WRITE_META`-indexed fields. A new `default/fields.conf` declares `INDEXED = true` for `clz_dir` / `clz_subdir` / `splunk_solution` / `cloud_provider` so `tstats` can read them at search time.
+2. **KV-Store precompute rollups** (builds 206–232) — **every** other high-volume dashboard reads from hourly-aggregated KV Store rollup collections. Scheduled saved searches (`logserv_*_aggregate`, cron `5 * * * *`) precompute each panel's data; the dashboards read it back with a `bucket_ts` range filter driven by the global time-range picker. Streamstats/event-listing panels that cannot be rolled up stay raw, capped with `| head N` where they are time-ordered listings.
 
-The full LLM capabilities (free-form chat, Anthropic / OpenAI / Azure OpenAI / AWS Bedrock providers, three privacy tiers, Power Mode) are planned for a subsequent release behind a runtime admin toggle.
+   - Builds 206–227 covered Work Process Performance, ABAP Operations, Environment Health error classification, HANA Audit, Change & Configuration Activity, SAP Router, ABAP Network & Security, Cross-Stack Authentication, Network Perimeter, Linux, Web & API Performance, HANA Trace, Windows, SAP Services, and Multi-Cloud Overview.
+   - **Build 232 retired the interim CIM tier and folded the percentile panels into the rollups** (see below) — bringing four more dashboards (Proxy, Web Dispatcher, Cloud Connector, DNS Analytics) fully onto KV-Store as well.
+   - **Build 233 moved the Host Details Overview tab's last raw full-scans onto the rollup tier** — its DATA VOLUME (`sum(len(_raw))`), ERRORS/CRITICALS, and AUTH FAILURES KPIs + sparklines were ~162 s / 29 s / 38 s at 76 M events (minutes at full volume); they now read a new `logserv_hostdetails_rollup` (metrics `vol`/`err`/`auth` per host+bucket) in ~0.1–0.3 s (≈200–580× faster). The Event Count by Sourcetype chart was also rewritten to `tstats` (165 s → 5 s, 30×; sourcetype is indexed). The release now ships **20 rollup collections** (15 from builds 206–227, plus `logserv_cloudconn_rollup`, `logserv_proxy_rollup`, `logserv_dns_rollup`, `logserv_pipeline_rollup`, `logserv_hostdetails_rollup`) plus a per-day beaconing rollup.
 
-## v0.1.1 feature-parity overlay (App build 191, 2026-05-14)
+**Build 232 — CIM tier removed + percentiles → Avg + Max.** An interim approach (builds 201–205) had the four HTTP/DNS/proxy-semantic dashboards read their status / method / bandwidth / domain panels from the CIM **Web** / **Network_Resolution** / **Authentication** accelerated data models, shipping `summariesonly=false allow_old_summaries=true`. The problem: when a customer had **not** accelerated those models (the common case), the queries fell back to a raw full-scan — exactly the slowness this release set out to fix. Build 232 therefore **ditches the CIM tier entirely** and moves those four dashboards onto dedicated KV-Store rollups, so they are fast regardless of the customer's CIM-acceleration state. In the same build, **every percentile chart (p50/p95/p99) was replaced with an Avg + Max-by-hour chart** — averages and maxima roll up byte-exact across hourly buckets (Avg = Σsum ÷ Σcount, Max = max-of-per-bucket-max), whereas percentiles cannot be merged across buckets.
 
-The v0.0.5.0 App was originally forked at build 174 (April 2026) and missed all subsequent enhancements that landed in v0.1.1 (sessions 035-037 topology rewrite, sessions 022-029 AI Assistant polish + audit log + HEC forwarder + drilldown UX, sessions 025-027 Settings UI reorganization, session 033+ Enterprise Security integration). Session 041 brought v0.0.5.0 up to **v0.1.1 feature parity** while preserving the templates-only LLM strip.
+**Result (validated at 335M events on the test fleet).** Cached reads are uniformly **~0.1–0.6 s** versus 10 s – 19 min raw; speedups range **64× – 5,358×**. Every rolled-up panel was verified byte-exact against its original raw SPL (build 232: all 40 refactored panels re-verified byte-exact post-deploy at 335M; build 233: the 7 Host Details panels re-verified byte-exact). Data freshness on the rolled-up panels is hourly (the same trade-off the Topology view already made).
 
-### What's new vs prior v0.0.5.0 build 188
+**Builds 234–237 — universal panel UX + the last raw-scan fixes.**
 
-Full v0.1.1 webapp + default-conf overlay, plus:
+- **Loading spinner on every panel** (build 234) — every chart/table renders the orange-dot spinner + "Loading data…" while its search is in flight (KPI cards show a small spinner instead of a dash), replacing the old plain "Loading…" text.
+- **Per-panel action toolbar** (builds 234–235) — every chart and table panel header now carries **Open in Search · Download (CSV) · Inspect (job inspector) · Refresh** plus a "&lt;1m ago" last-run stamp. Charts auto-wire their search metadata; tables pass it explicitly. (KPI single-value cards get the spinner but no toolbar.)
+- **Web Dispatcher "Slowest Request Traces"** (build 236) — was the last estate-wide raw `| sort 20 - total_us` full-scan of the highest-volume web sourcetype (~165 s at scale). Now reads a per-hour top-20 rollup (`logserv_webdisp_slowtrace_rollup`); **byte-exact** (the global 20 slowest are each within their own hour's top-20, so the union re-sorted = the global top-20).
+- **Beaconing / suspicious-activity** (build 237) — the 3 DNS / Network-Perimeter `streamstats` periodicity panels now read a per-day gap-statistics rollup (`logserv_beaconing_detail_rollup`), reconstructing avg/variance over the picked range. This is a **close approximation** (per-day gaps miss the inter-arrival gap spanning each midnight boundary) chosen so the panels stay time-picker-responsive; on the validation data the flagged set matched the raw streamstats exactly.
 
-- **Topology view rewrite** (sessions 035-037): KV Store-backed data layer (~sub-second page load vs on-demand SPL), Force / Layered / Tree layout switcher with lazy-loaded `elkjs` (~280 KB chunk), 5-tab edge inspector (Calls / Programs / Errors / Hosts + per-edge Activity / Operations / Performance / Errors), 3-segment call-bucket health rings, DB-vendor tagging (HANA / Oracle / MSSQL / Postgres / DB2), Manage Layouts modal with cross-browser per-mode defaults, MiniMap click-to-center + drag-to-pan, 3 new KV Store collections (`logserv_topology_nodes` / `_edges` / `_inventory`) + 7 scheduled saved searches that pre-aggregate the topology data
-- **AI Assistant polish** (sessions 022-029): Audit Log Settings tab + HEC audit forwarder + acceptance modals, drilldown chips + citation chips, Dashboard-Focused prompt-browser tab, 61 canned prompts (was 40), dashboard hyperlinks
-- **Settings UI reorganization** (sessions 025-027): 5-tab layout (General + Provider Credentials + Splunk MCP + Audit Log + Topology), per-dashboard refresh-interval picker
-- **Enterprise Security integration** (session 033): 18 ES correlation searches (5 base + 6 cross-stack + 3 threat-intel + 4 behavioral) emitting Notable Events when ES is installed, Asset & Identity feeds, CIM-aligned eventtypes + tags. Silently no-ops when ES isn't installed.
+The release now ships **22 rollup collections** (the 20 from builds 206–233 plus `logserv_webdisp_slowtrace_rollup` and `logserv_beaconing_detail_rollup`) plus the per-day beaconing-count rollup.
 
-### Three-layer LLM-disable enforcement (preserved)
+**User-visible changes in build 232.** A few panels changed shape as a consequence of moving to rollups: HANA Trace "Slowest SQL Operations" became a top-operations-by-Max/Avg-duration table (the per-event `_time`/host columns cannot survive an aggregate); Web Dispatcher "Top URIs" dropped its "Unique Clients" column (a 3-dimension grain would explode at scale); and all response-time charts now show **Avg + Max** instead of p50/p95/p99. Network Perimeter's "Suspicious Activity Indicator", DNS beaconing tables, Web Dispatcher "Slowest Request Traces", and Cloud Connector "Audit Log" stay raw (streamstats / per-event listings that cannot be rolled up byte-exact).
 
-Any one of these three layers prevents LLM dispatch independently of the others:
+### Build 242 — Enterprise Security disabled by default + scheduled-search staggering
 
-1. **Compile-time** — `buildFlags.TEMPLATES_ONLY === true` (set via `LOGSERV_TEMPLATES_ONLY=true` env var that `yarn build:templates-only` injects). Webpack's DefinePlugin replaces references with the literal `true`, dead-code-eliminating the would-be vendor-dispatch branches from the bundle.
-2. **Runtime** — `ai_assistant_settings.conf` `templates_only_mode = true` is the default in v0.0.5.0. v0.1.1 source uses this flag to gate the chat-input field, Power Mode toggle, Provider Credentials tab visibility, etc.
-3. **Physical** — the six LLM-specific provider files (`AnthropicProvider.ts`, `OpenAIProvider.ts`, `AzureOpenAIProvider.ts`, `BedrockProvider.ts`, `anthropicEventTranslator.ts`, `sseUtils.ts`) are absent from source. The `providers/index.ts` factory collapses ALL provider names (including `anthropic`, `openai`, `azure_openai`, `bedrock`, `ollama`) to MockProvider. Even if a future code change accidentally re-introduces a dispatch path, there is no provider to dispatch to. Verified at the bundle level: `grep AnthropicProvider home.js` returns 0 matches.
+This is a **`savedsearches.conf`-only** release (plus the build-number bump) — no dashboard, rollup, or JavaScript changes. It tunes the scheduled-search workload so it scales cleanly at high event volume.
 
-### Build + deploy verification
+- **Enterprise Security content ships disabled by default.** All 22 `splunk_sap_logserv_es_*` saved searches (5 correlation searches, the threat-intel + behavioral-anomaly detections, the risk-notable threshold, and the Asset & Identity feeds) now carry `disabled = 1`. The ES content is opt-in — it targets the ES notable / risk / Asset & Identity frameworks and CIM data models that no-op when ES is not installed — and **no dashboard reads any ES output** (verified: the ES searches write only `action.notable` / `action.risk` and the `splunk_for_sap_logserv_{assets,identities}.csv` lookups). Disabling them removes the two heaviest searches on the box (the 30-day anomaly scans) and the per-hour correlation cluster from every customer that has not installed ES. **Enable them after installing Splunk Enterprise Security** — Settings → Searches, Reports & Alerts → filter `splunk_sap_logserv_es_` → Enable, or a `local/savedsearches.conf` `[<name>] disabled = 0` override. See the ES Integration docs.
+- **The hourly rollup aggregates were de-bursted.** Previously all 24 always-on rollup-aggregate searches fired at minute `:05` every hour (alongside the two heaviest ES anomaly scans). They are now spread one-per-minute across **`:05`–`:28`** (`<min> * * * *`; the dispatch window is unchanged `-1h@h..@h`, so the firing minute is freshness-neutral — each always processes the just-completed hour). Peak concurrency drops from 24 to ~1–2.
+- **Retention + the two daily beaconing aggregates moved to an off-peak `:30`–`:58` band**, 2 minutes apart, across hours 0 and 1 (`00:30`–`00:58` then `01:30`–`01:50`). This keeps every daily search out of the aggregate band and eliminates the two pre-existing same-minute collisions.
+- **The (disabled) ES searches were re-croned to the back of the hour** so that enabling them later does not re-create a burst — the heavy 30-day anomaly searches sit on distinct back-of-hour minutes (`48` / `52` / `56`, daily `03:00`), with the lighter threat-intel / correlation searches phase-staggered.
 
-Built locally via `yarn build:templates-only` (Node 23 + yarn 1.22 on the user's Windows machine), 99-second clean build, 1416 SBOM components, TypeScript 0 errors, webpack 2 warnings (asset-size only). Deployed to `splunk-sh-idxr` (Splunk Enterprise 9.4.3) via the standard `cp -rT` local-backup pattern. REST API smoke-test confirms: app loaded clean, all 7 v0.1.1 topology + dashboard KV Store collections registered, runtime templates-only mode active, audit-index resolution intact. Only ERROR-level events in `_internal` since deploy are the expected "Alert action 'risk'/'notable' not found" entries — those are the ES correlation searches firing on a non-ES host (silent no-op per session-033 design; same behavior expected on the user's non-ES Splunk Cloud).
+A cron-expanding collision check (expanding `*`, `*/n`, ranges, and comma-lists over the full hour × minute space) confirms **no two enabled scheduled searches share an (hour, minute)**; a post-deploy scheduler-log check showed **0 skipped / 0 deferred**. AppInspect was re-run (the conf changed) — posture unchanged at 0 errors / 0 failures / 0 future_failures / 8 warnings / 109 success.
 
-## Live / Lookup toggle removed (session 044, 2026-05-17)
+> **Note on the plan's daily-band table.** The shipped daily band places the hour-1 spillover at `01:30`–`01:50` (not the `01:08`–`01:30` that an earlier draft used) — the draft's hour-1 minutes overlapped the every-hour aggregate band (`:05`–`:28` fires *every* hour, including hour 1), which would have produced 11 collisions. The corrected layout keeps the entire daily band in the stated `:30`–`:58` window.
 
-The Environment Topology toolbar previously carried a **Live | Lookup** mode toggle that, when set to Live, wired a 30-second `setInterval` to bump the `refreshNonce` and re-trigger every topology query. The original intent (build 125) was auto-refresh against on-demand SPL — but the session-035 data-layer rewrite moved topology to KV Store collections populated by **hourly** scheduled saved searches (`logserv_topology_aggregate_nodes/_edges/_inventory`, cron `5 * * * *`). With the new data layer in place, ~119 of every 120 Live-mode ticks returned byte-identical KV Store data and re-rendered the same graph. The toggle provided no value for the main graph and was misleadingly named.
+### Build 240–241 — Environment Topology detail-tab caching
 
-Build 193 removes:
+The Environment Topology view's **graph** (nodes / edges / inventory / Live Activity) was already KV-Store-backed and fast. Its **right-pane detail tabs**, however, were the one corner the dashboard-perf refactor never touched — they dispatched a live raw `sap_logserv_idx_macro` scan on every node/edge click (node Calls/Hr · Top Programs · Errors · Hosts; edge Operations · Performance · Errors), which is multi-second-to-minute at high event volume. Build 240 moves them onto the same hourly KV-Store rollup model as the dashboards.
 
-- The `Live | Lookup` `ModeToggle` button-group in `TopologyToolbar.tsx`
-- The associated `ModeToggle` + `ModeButton` styled-components (unused after JSX removal)
-- The `liveMode` + `onToggleLiveMode` props on the toolbar interface
-- The `liveMode` state + 30-second polling `useEffect` in `IntegrationTopology.tsx`
-- The `LIVE_REFRESH_MS = 30_000` constant
+One new collection, **`logserv_topology_detail_rollup`**, with a `metric` discriminator serves all seven tabs (node `node_hourly` / `node_program` / `node_error` / `node_host`; edge `edge_op` / `edge_perf` / `edge_err`). Edge **Activity** reuses the existing `logserv_topology_edges` rows, and the edge Performance headline p50/p95/max still come straight off the edge row — neither needs a new metric. A new hourly aggregate (`logserv_topology_detail_aggregate`, cron `5 * * * *`), one-time backfill, and 365-day retention search populate and trim it; the **Settings → AI Assistant → Dashboard Data → Run backfill** panel now lists this collection (22 rollups total).
 
-**Manual Refresh button retained.** It still bumps `refreshNonce` exactly once when clicked, useful for admins who just dispatched a backfill saved search and want to see results before the next hourly aggregation. Per-node detail panels (`useNodeData`) continue to re-fetch on node-selection change (independent live SPL via `useSearch`).
+- **Node metrics are byte-exact with the old sourcetype-agnostic OR-match** via an explode-dedup pattern (`scope = mvdedup(mvappend(sap_sid, peer_ip, local_ip, client_ip, clientip, host)) | mvexpand scope`), so an event matching a node in two fields is counted once — exactly as the old `(sap_sid=X OR …)` search did. **Edge metrics** replicate the `aggregate_edges` id derivation (`scope` = the sha1[:16] edge id) so the cache key matches the clicked edge.
+- **One intentional display change** (the only non-byte-exact tab): the HANA-tenant edge **Performance** distribution now shows **Avg + Max** of `hana_op_duration_ms` instead of the p50/p75/p95/p99/max percentile breakdown — percentiles don't merge across hourly buckets (Avg = Σsum ÷ Σcount, Max = max-of-per-bucket-max). The headline p50/p95/max still come from the edge row, unchanged.
+- **Trade-off:** these tabs are now hourly-fresh (like the dashboards) rather than live; the node Calls/Hr chart's most-recent complete hour lags by up to one aggregate cycle.
 
-**Saved searches unchanged.** The three hourly aggregation searches continue to run on their `5 * * * *` cron schedule and populate the KV Store with fresh bucket rows. Net data freshness is unchanged from prior builds when Live was off — the only change is that the misleading "Live" toggle is gone.
+All seven tabs were verified byte-exact against the original raw search both pre-deploy (22 node/edge cases) and post-deploy reading the populated collection at 335M events, and live-verified in the browser (the node tabs render the rollup data; the edge reads return correct data from the app's authenticated session; the view stays fully responsive). This build **adds conf** (the collection + transforms + metadata + three saved searches), so AppInspect was **re-run** — posture unchanged at 0 errors / 0 failures / 0 future_failures / 8 warnings / 109 success.
 
-The "Live Activity" bottom-panel drawer is a separate feature (a collapsible recent-activity feed) and is unaffected by this change.
+**Build 241 — host-split the node aggregate arms (backfill speedup).** The three full-scan node metrics (`node_hourly` / `node_host` / `node_error`) originally used one explode-dedup arm (`mvdedup(mvappend(6 fields)) | mvexpand scope`) that scans the **whole index** — at 335M a single node_host backfill day measured ~1,059 s. Build 241 splits each into (a) a cheap single-pass `stats … by host | eval scope=host` arm (no `mvexpand`, covering host-nodes) + (b) a small 5-SAP-field explode arm scoped to SAP events only (covering SID/IP-nodes). This is **byte-exact** with the old 6-field OR-match because hostnames are disjoint from SID/IP values (the only double-count case is a single event whose host literally equals one of its own SAP-field values — structurally absent; gated by a 9-case de-risk + the same 22-case post-deploy verify, all byte-exact). The dominant full-index `mvexpand` is eliminated (`stats … by host` ≈ 3 s/day); only the SAP-fields explode arm — a subset of events — remains, so the one-time backfill drops from ~hours to tens of minutes (the steady-state hourly aggregate was already fast and is unchanged). Build 241 is JS-identical to build 240 (only `app.conf` build + the `savedsearches.conf` node arms changed); AppInspect re-run, unchanged at 0/0/0 + 8 warnings / 109 success. The Run-backfill panel still handles any slow arm via its resume-on-reopen mechanism.
 
-## KV Store migration for sc_subadmin enablement (App build 192, 2026-05-14)
+### Build 239 — pie/donut empty-after-range-change fix
 
-The session-041 `sc_subadmin` fix at `metadata/default.meta` (build 186) enabled writes to `storage/passwords` and other metadata-ACL-gated endpoints, but Splunk's `/configs/conf-X/` REST endpoint imposes a SEPARATE hardcoded capability gate (`admin_all_objects`) that no metadata ACL change can bypass. On Splunk Cloud Victoria deployments where `sc_subadmin` does NOT hold `admin_all_objects`, every conf-file write 403'd — including:
+Every chart applies a vertical color gradient to its bars/slices via a shared post-render SVG walker (`GradientWrap`). It cached each color's gradient `<defs>` id, but didn't verify the gradient still existed in the *current* `<svg>`. When the Splunk Pie viz swaps its `<svg>` (or wipes its defs) on a time-range change, the cached id dangled — slices then painted `fill="url(#missing)"`, i.e. **transparent** — so donut/pie charts (e.g. Change & Configuration Activity → "Change Events by Category") rendered as an empty outline with labels but no colored slices after switching the time range. The initial render was always fine; only re-renders broke.
 
-- **Save Defaults** on the AI Assistant Settings page (`POST /configs/conf-ai_assistant_settings/defaults`)
-- **Accept T&C modal** on enabling AI Assistant or disabling the audit forwarder (`POST /configs/conf-ai_assistant_acks/<stanza>`)
+Build 239 fixes it by deriving the gradient id from a source-hex stashed on each element and re-creating the gradient in the live svg when it's missing (convergent — no DOM mutation when the gradient is already present), plus a `requestAnimationFrame` debounce on the redraw observer as a defense-in-depth cap. This is a JavaScript-bundle-only change (`home.js`); no conf, data-model, or rollup changes, so the AppInspect posture and all rollup verification are unaffected. (Build 238 was an interim attempt at this fix that shipped a quote-parsing bug causing an observer loop; it was reverted and never canonical — preserved only under `testing/iteration_tarballs/`.)
 
-Build 192 migrates both mutable conf-file backed stores to KV Store collections:
+### Latent-bug fixes shipped alongside the refactor
 
-| Was | Now |
-|---|---|
-| `local/ai_assistant_settings.conf [defaults]` (conf-file) | KV Store collection `logserv_ai_assistant_settings`, single row `_key = defaults` |
-| `local/ai_assistant_acks.conf [<stanza>]` user-state fields (conf-file) | KV Store collection `logserv_ai_assistant_acks`, one row per stanza |
+While re-expressing panels, three pre-existing display bugs (all string-vs-number / `match()`-in-base-search predicate mistakes that silently returned 0) were found and fixed:
 
-KV Store endpoints (`/storage/collections/data/<collection>`) are governed by collection-level metadata ACL only — no `admin_all_objects` capability requirement. Both collections ship with `write : [ * ]` ACL matching the seven pre-existing topology + dashboard preference collections (which already work for sc_subadmin without capability escalation).
+- **Cloud Connector HTTP Error Rate** (build 204) — the KPI compared a string `is_error` field against the number `1` and was stuck at 0%; re-expressed as the `status >= 400` fraction (now ~7.3% on test data). Build 232 carried this corrected semantics into the Cloud Connector KV-Store rollup (`err_count` where `status >= 400`, ÷ total) when the CIM tier was retired.
+- **Change & Configuration "Password Change" / "User Change" KPIs** (build 215) — a Linux `match(_raw, …)` clause sat in base-search position where `match()` (eval-only) silently no-ops; moved to a post-base `| where`. `kpiPassword` 0 → 21 on test data.
+- **`icm_is_error` predicate** (build 227) — the same string-vs-number trap (`icm_is_error = 1` vs the EVAL's string `"true"`) in the Environment Health severity rollup and the `logserv_top_error_categories` AI prompt; fixed to `="true"`.
 
-**Operator-controlled `optInVersion` stays in `default/ai_assistant_acks.conf`** — bumping the version still re-prompts everyone (same UX as before). Only the user-acknowledgement fields (`optInVersionAcknowledged`, `optInChoice`, `optInChoiceAt`) moved to KV Store.
+### Backfill button + 365-day cache retention (builds 230–231)
 
-**Customer upgrade preservation:** a one-shot migration helper in `App.tsx` runs on first page load post-upgrade. For each store, if the KV Store row is absent AND the conf-file carries non-default values (customer had previously saved settings or accepted T&Cs), the values are copied into the KV Store row. Idempotent — subsequent loads find the KV Store row populated and no-op. Best-effort: failures don't block the UI. Customers who had customized settings or accepted T&Cs on a prior build don't get re-prompted spuriously.
+- **"Run backfill" Settings button** (build 230) — a new **Settings → AI Assistant → Dashboard Data** tab seeds all the rollup collections on first install. It dispatches each rollup's aggregation arms as **top-level** searches (immune to the subsearch wall-clock limits that truncate a bundled `| union` backfill at high volume), with a progress bar, completeness banner, and per-rollup status. Idempotent and resumable. **An admin clicks this once after installing on a high-volume instance** to populate dashboard history immediately; otherwise the hourly aggregation seeds history going forward.
+- **Cache retention raised 30 → 365 days** (build 231) — all 16 rollup-retention searches (15 dashboard rollups + Topology) now keep a full year. The install backfill still seeds 30 days; the cache then grows to a year organically via the hourly aggregation (seed-and-grow).
 
-**Splunk Enterprise compatibility:** zero behavior change. The App on Enterprise reads from KV Store (which works there too) and falls back to the conf-file on first load before any KV Store write. Admins on Enterprise see exactly the same Save / Accept UX as before; the only difference is the storage backend.
-
-**AppInspect Cloud-mode posture (build 192):** 0 errors / 0 failures / 0 future_failures / 8 baseline warnings / 112 success — identical to build 191. The two new KV Store collections + their ACL stanzas are checked by the same baseline rules as the seven pre-existing topology collections; no new findings.
-
-## Cloud Provider attribution + Configuration-tab banner fix (sessions 046–047, 2026-05-31)
-
-First v0.0.5.0 Data TA canonical to ship the cloud-provider attribution feature (built in session 046, never previously promoted) together with the session-047 Configuration-tab banner fix. Two index-time indexed fields are stamped on the bootstrap `sap_logserv_logs` sourcetype via `WRITE_META` transforms (same mechanism that preserves `clz_dir` / `clz_subdir`):
-
-- **`splunk_solution = splunk_for_sap_logserv`** — always stamped on every event, no UI control. Identifies events that flowed through this solution; distinct from the App's per-sourcetype search-time `vendor_product` field (the two coexist and do not collide).
-- **`cloud_provider = aws | azure`** — driven by a new **Configuration → Cloud Provider** tab (dropdown: AWS / Microsoft Azure / Not set; default Not set). "Not set" stamps nothing; the App's search-time `sap_logserv_cloud_provider_default_macro` defaults legacy/un-stamped events to `aws`. On a Deployment Server the selection deploys to Heavy Forwarders via the same **Deploy to Forwarders** flow as the Filters tab. For a single HF ingesting from both AWS and Azure, leave the dropdown at Not set and attribute per input via the add-on's `_meta`.
-
-The session-047 fix corrects a UI bug surfaced after the Cloud Provider tab shipped: both Configuration tabs' "Deployment Server Detected" banners injected via document-global DOM queries that resolved to the first/active (Filters) tab, so both banners stacked on Filters and the Cloud Provider tab got none. Each hook (`filter_settings_hook.js`, `cloud_provider_hook.js`) now anchors on a field unique to its own tab (`days_in_past` / `cloud_provider`), walks up to the nearest ancestor containing that tab's Save button, and inserts the banner there.
-
-Two source-hygiene fixes were also required for a clean Cloud build (the prior session-043 canonical predated this source drift):
-
-- **`solnlib>=5.0.0,<8.0.0` re-pinned** in `package/lib/requirements.txt` — the v0.0.5.0 source had drifted to an unbounded `solnlib>=5.0.0` (session-044 carry-over #4), which pulled solnlib 8.x and its OpenTelemetry / gRPC / protobuf transitive deps with x86_64-only C extensions that fail AppInspect's AArch64 compatibility check. The pin lands solnlib 7.0.0 (no OTel chain).
-- **`run_appinspect.sh` relocated** from `package/` to the TA root (one level up) — inside `package/` it was bundled into the runtime tarball with execute permissions and tripped AppInspect's `check_for_bin_files`. v0.1.1 already had it at the TA root; this brings v0.0.5.0 to parity.
-
-The session-046–047 hook-fix build (md5 `e5fe28eaf9bac944d35d6c50575629d4`) carried this feature set but predated the Configuration-save filesystem-fallback fix below; the current canonical Data TA (`dcd9ba2a966ea5acc6c726db364cda77`, "fsfix") supersedes it and is preserved as [`../testing/iteration_tarballs/splunk_ta_sap_logserv-0.0.5.0-hookfix-2026-05-31.tar.gz`](../testing/iteration_tarballs/splunk_ta_sap_logserv-0.0.5.0-hookfix-2026-05-31.tar.gz). AppInspect Cloud-mode posture is unchanged across both: **0 errors / 0 failures / 11 warnings / 123 success** (app version 0.0.5). Not deployed to the test fleet (which runs the v0.1.1 Data TA) — this promotion brings the v0.0.5.0 snapshot's canonical Data TA to feature + fix parity with v0.1.1.
-
-## Events/Day (Avg) KPI fix (session 047, 2026-06-01)
-
-The Data Pipeline Overview dashboard's **Events per Day (Avg)** KPI rendered blank on the user's Splunk Cloud instance. Root cause: the KPI's SPL computed the daily average via `stats count by date_mday` — but `date_mday` (like the other `date_*` fields) is not reliably populated for LogServ events (only ~10% on the test fleet; ~0% on Cloud), and `stats … by <null>` silently drops every event whose group-by field is null, leaving an empty result that renders as a blank KPI.
-
-Build 197 (`DataPipelineOverview.tsx`) rewrites the query to bin by `_time` instead: `… | timechart span=1d count as daily | stats avg(daily) AS perday`. `timechart` buckets on the event timestamp (always present), so the per-day average is computed correctly regardless of `date_*` population. **Confirmed fixed on the user's Splunk Cloud instance** — the KPI now displays the daily-average event count.
-
-AppInspect Cloud-mode posture is unchanged from builds 191–193: 0 errors / 0 failures / 0 future_failures / 8 baseline warnings / 112 success. The change is a single SPL string; no new findings.
-
-## Configuration save filesystem-fallback fix (session 047, 2026-06-01)
-
-On Splunk Cloud Victoria, a `sc_subadmin` user clicking **Save** on either Configuration tab (Filters or Cloud Provider) got an HTTP 500 wrapping `splunktaucclib.rest_handler.error.RestError [403]: Forbidden`. Root cause: splunktaucclib's `AdminExternalHandler.handleEdit` persists the settings fields by issuing a REST write to `configs/conf-splunk_ta_sap_logserv_settings`, and that endpoint enforces a hardcoded `admin_all_objects` capability gate that `sc_subadmin` lacks on Cloud Victoria. (Our own `transforms.conf` filter/cloud-provider write is a filesystem write and was never the problem — but it ran *after* the failing `super().handleEdit`, so nothing saved.) `passSystemAuth = true` does not help here: splunktaucclib uses the request session for its inner conf-persist call, not the system token.
-
-The "fsfix" Data TA (`dcd9ba2a966ea5acc6c726db364cda77`) wraps both `super().handleEdit` call sites (Filters + Cloud Provider) in `_safe_super_handle_edit(confInfo)`. On a `RestError` 403 (or "forbidden"), it falls back to `update_local_stanza(...)` — a new filesystem stanza-updater in `splunk_ta_sap_logserv_filter_utils.py` that writes `local/<settings>.conf` directly (preserving other stanzas), then populates `confInfo` + best-effort `_reload`. A direct filesystem write by the handler process bypasses the capability-gated REST endpoint. On Splunk Enterprise (where the metadata ACL alone is honored) `super().handleEdit` succeeds and the fallback never fires — zero behavior change.
-
-**Confirmed fixed on the user's Splunk Cloud instance** — sc_subadmin can now save both Configuration tabs without "operation forbidden". AppInspect Cloud-mode posture unchanged: 0 errors / 0 failures / 0 future_failures / 11 warnings / 123 success.
-
-## Data TA sc_subadmin write ACL fix (session 043, 2026-05-15)
-
-The session-041 `metadata/default.meta` fix added `sc_subadmin` to the global write ACL in the Data TA source at `package/metadata/default.meta`. **But UCC's build pipeline overwrites that source-level file with a baked-in template that hardcodes `write : [ admin, sc_admin ]`** — silently dropping our sc_subadmin addition. The released Data TA tarballs through session 042 carried the stock UCC default and a sc_subadmin user on Splunk Cloud Victoria would hit 403 on any write to Data TA-owned knowledge objects (filter Configuration UI, anything in `storage/passwords` under the Data TA namespace, etc.).
-
-Session 043 adds a UCC post-build patcher to `additional_packaging.py` that re-injects sc_subadmin into the output `metadata/default.meta` after UCC's template has run. Idempotent: re-running on already-patched input is a no-op; running on input that doesn't match the expected stock UCC ACL line prints a WARNING and skips so misconfigured manual edits surface loudly. The same logic also lives as a standalone repair script at `tools/scripts/patch_data_ta_sc_subadmin_metadata.py` that can be invoked against an already-built tarball without re-running UCC.
-
-**Customer impact:** sc_subadmin users on locked-down Splunk Cloud Victoria can now write to Data TA-owned knowledge objects. Combined with the session-042 KV Store migration in the App, this clears the last hardcoded `admin_all_objects` capability gate facing sc_subadmin on the entire LogServ stack (App + Data TA).
-
-The session-043 Data TA respin preserves the same AppInspect Cloud-mode posture as the prior build (0/0/0/11/131 success); the patcher's addition is invisible to the checker.
-
-## Data TA Cloud-vetting (Data TA app version 0.0.5, 2026-05-14)
-
-Prior to this build, the v0.0.5.0 Data TA carried **5 pre-existing AppInspect Cloud-mode failures** that were tolerated on Splunk Enterprise but blocked Splunk Cloud install. Cleared in this build:
-
-1. **`check_version_is_valid_semver`** — `version = 0.0.5.0` (4-part) was invalid per Splunkbase SemVer 2.0.0. Fixed by rebuilding the TA with `ucc-gen build --ta-version 0.0.5` (3-part). The tarball filename stays `splunk_ta_sap_logserv-0.0.5.0.tar.gz` for snapshot-directory continuity, but the internal `app.conf` `[id] version` + `[launcher] version` + `app.manifest` `info.id.version` are all now `0.0.5`.
-
-2. **`check_scripted_inputs_python_version`** — `[script://./bin/logserv_filter_time_refresh.py]` (and its sibling `logserv_filter_upgrade_check.py`) in `default/inputs.conf` lacked the required `python.version = python3` flag. Added explicitly. Also added `python.required = 3.13` to clear the related future_failure check `check_scripted_inputs_python_required` (applied via `additional_packaging.py` post-UCC hook).
-
-3. **`check_indexes_conf_properties`** — the audit index stanza had an illegal `maxTotalDataSizeMB = 5000` property (only `homePath`, `coldPath`, `thawedPath`, `frozenTimePeriodInSecs`, `disabled`, `datatype`, `repFactor` are allowed on Splunk Cloud). Removed the line. Index retention is now governed solely by `frozenTimePeriodInSecs = 7776000` (~90 days).
-
-4. **`check_lower_cased_index_names`** — the audit index `[_ai_assistant_audit]` started with an underscore (reserved for Splunk's internal indexes like `_internal`, `_audit`). Renamed to **`[logserv_ai_assistant_audit]`** — the `logserv_` prefix namespaces the index to this app so it never collides with another app that might define a generic `ai_assistant_audit` index. The LogServ App's `ai_assistant_settings.conf`, `macros.conf`, and `auditWriter.ts` were updated in lockstep.
-
-5. **`check_rest_handler_python_executable_exists`** — the custom REST script `[script:splunk_ta_sap_logserv_deployment_push]` (deployment-server push endpoint) lacked the required `python.version` flag. Added explicitly via `additional_packaging.py`. Also added `python.required = 3.13` to clear the related future_failure check `check_admin_external_restmap_conf_python_required`.
-
-**Customer migration note:** customers running the prerelease state with existing audit data under `$SPLUNK_DB/_ai_assistant_audit/db/` will see that data become orphaned on disk after upgrade — not queryable via the new index name. Audit retention horizons are typically short, so a clean break is acceptable. If a customer needs to preserve historical audit events, they can search the bucket files directly via a temporary `[_ai_assistant_audit_legacy]` index stanza referencing the old path, or restore from backup to the new index location.
-
-**Splunk Enterprise compatibility:** all 5 fixes are forward-compatible with on-prem Splunk Enterprise. The version normalization (4-part → 3-part) doesn't break Enterprise installs. The `python.version` / `python.required` declarations are valid on Enterprise. The index rename is a clean break either way (no transition mechanism on Enterprise vs Cloud).
-
-## sc_subadmin enablement (App build 186 + Data TA build 1778087894, 2026-05-13)
-
-Splunk Cloud Victoria deployments may reserve the `sc_admin` role for Splunk Cloud Ops staff and never expose it to customers — in which case `sc_subadmin` becomes the customer's effective top admin role. The default UCC-generated `metadata/default.meta` granted write access only to `[admin, sc_admin]`, which locked sc_subadmin users out of credential storage and other writable knowledge objects. Saving any provider credential (AI Assistant LLM keys, audit forwarder HEC token, etc.) returned `"User '<name>' with roles { ..., sc_subadmin, ... } cannot write: /nobody/<app>/passwords/..."`.
-
-The session-041 fix (applied to BOTH the App and the Data TA):
-
-1. **`metadata/default.meta`** write list expanded from `[admin, sc_admin]` to `[admin, sc_admin, sc_subadmin]`. Allows sc_subadmin to write to `storage/passwords` and all other knowledge objects in the app.
-2. **Data TA `default/restmap.conf [script:splunk_ta_sap_logserv_deployment_push]`** capability requirement changed from `admin_all_objects` → `edit_deployment_server` (a Splunk-standard capability that's auto-granted to `admin` on Enterprise and typically also held by sc_subadmin on Cloud). The capability change is sourced via `sap_logserv_package/splunk_ta_sap_logserv/additional_packaging.py BACKFILL_STANZAS` (the build-time patch that injects the stanza into the UCC-generated `restmap.conf`).
-
-**Splunk Enterprise compatibility:** Both changes are backwards-compatible with on-prem Splunk Enterprise. `sc_admin` and `sc_subadmin` are Splunk Cloud-only roles — on Enterprise, Splunk's metadata parser silently ignores unknown roles and the `admin` role retains all write access. `edit_deployment_server` is granted to `admin` on Enterprise via the wildcard `* = enabled`, so DS push continues to work identically. Enterprise admins see zero behavior change.
-
-## Icon fix (build 185, 2026-05-13)
-
-The original v0.0.5.0 App tarball (and builds 174 / 181 / 182 / 184) did **not** ship an `app.manifest` file. AppInspect Cloud flagged this as `check_for_valid_package_id: skipped` ("Splunk App packages doesn't contain `app.manifest` file"). Splunk Cloud Victoria 10.x interpreted the missing manifest as an "incomplete app" and rendered the app with a generic placeholder icon in the launcher + Apps switcher instead of the actual `static/appIcon.png` art.
-
-Build 185 adds an `app.manifest` modeled on the v0.1.1 manifest structure (`schemaVersion: 2.0.0`), declares the `Splunk_SA_CIM >=5.0.0` dependency, sets `targetWorkloads: ["_search_heads"]`, and lists Standalone / Distributed / SHC as supported deployments. AppInspect Cloud's `check_for_valid_package_id` now resolves to `success` (no longer skipped). On reinstall, Splunk Cloud renders the app's actual orange-frame "LS" icon.
-
-The TA tarball ships the same fix posture and additionally:
-- Drops the stale `Splunk_TA_isc-bind` + `Splunk_TA_squid` hard dependencies (their parsing now lives in the App, not the TA). Splunk Cloud no longer marks the TA as "dependency unmet" → degraded → no icon.
-- Adds `python.required = 3.13` to the `[script://./bin/logserv_filter_upgrade_check.py]` scripted input stanza and the `[admin_external:splunk_ta_sap_logserv_settings]` REST handler stanza, clearing 2 AppInspect Cloud `future_failure` advisories that had been carried forward from the original v0.0.5.0 release.
-
-## Absorbed parsing (build 184, 2026-05-12)
-
-Two Splunkbase add-ons were absorbed into this App: their parsing (props/transforms/eventtypes/tags/lookups) now ships natively so customers no longer need them as separate installs. Both add-ons are **archived** by Splunk Inc. (no longer maintained on Splunkbase).
-
-| Absorbed add-on | Version | License | Sourcetypes |
-|---|---|---|---|
-| Splunk Add-on for ISC BIND | v2.0.0 | `LicenseRef-Splunk-1-2020` | `isc:bind:query`, `:queryerror`, `:lameserver`, `:network`, `:transfer` |
-| Splunk Add-on for Squid Proxy | v2.1.0 | `LicenseRef-Splunk-8-2021` | `squid:access` (`squid:access:recommended` not absorbed) |
-
-Detail in [`../THIRD-PARTY-NOTICES.md`](../THIRD-PARTY-NOTICES.md) under "Absorbed Splunk add-ons". License files included at `LICENSES/LicenseRef-Splunk-1-2020.txt` and `LICENSES/LicenseRef-Splunk-8-2021.txt` inside the tarball.
-
-**One customization vs the absorbed v2.1.0 Squid lookup:** the absorbed `squid_actions_210.csv` maps `TCP_DENIED`/`UDP_DENIED`/`TCP_SWAPFAIL`/`UDP_INVALID` to `denied` (not `blocked` as the original TA does). This deviates from CIM Proxy data-model standard vocabulary (`blocked`) to match the field-value expectations of our Environment Health + Proxy dashboards (`action="denied"`). Other actions map per the original (`TCP_HIT → allowed`, etc.).
-
-**Customer-upgrade note:** customers who currently have `Splunk_TA_isc-bind` or `Splunk_TA_squid` installed alongside the LogServ App will see double-parsing when build 184 lands. The App now ships a runtime compatibility banner that detects this and recommends uninstalling the standalone add-on(s) via `Settings → Manage Apps`. The banner only renders when one or both archived TAs are detected; it's dismissible (persists in `localStorage`).
-
-## Cloud-fix (build 182, 2026-05-12)
-
-The original v0.0.5.0 build 174 carried a custom Mako template at `appserver/templates/home.html` with an embedded `<% page_path = ... %>` Python code block. AppInspect Cloud-mode flagged this as a WARNING (`check_for_existence_of_python_code_block_in_mako_template`) but allowed the tarball to pass vetting. Splunk Cloud Victoria 10.2.x enforces this policy at runtime — installing build 174 on Splunk Cloud produced a `TopLevelLookupException: Splunk has failed to locate the template for uri 'splunk_app_sap_logserv:/templates/home.html'` and the home view returned HTTP 500.
-
-The build-182 fix:
-- Keeps `appserver/templates/home.html` and the `template=` attribute in `home.xml`
-- Inlines the page-path expression directly into the `${make_url(...)}` script-src so there's no `<% %>` Python code block
-- Verified on Splunk Enterprise 9.4.3 (`splunk-jaclyn` + `splunk-sh-idxr`) — home view renders cleanly with all KPIs + dashboards
-- AppInspect Cloud-mode now shows the Mako check as `success` (no warning)
+The previous canonical App builds are preserved in [`../testing/iteration_tarballs/`](../testing/iteration_tarballs/) (canonical chain: build 233 → 237 → 239 → 240 → 241 → 242; build 238 was a reverted interim — an early attempt at the pie fix that shipped an observer-loop bug — kept there for the record but never canonical). The Data TA fsfix tarball is also mirrored there as [`splunk_ta_sap_logserv-0.0.5.0-fsfix-2026-06-01.tar.gz`](../testing/iteration_tarballs/splunk_ta_sap_logserv-0.0.5.0-fsfix-2026-06-01.tar.gz).
 
 ## AppInspect
 
@@ -231,18 +102,22 @@ Both tarballs are AppInspect-validated via `splunk-appinspect` in **precert mode
 
 ```bash
 pip install splunk-appinspect
-splunk-appinspect inspect release_binaries/splunk_app_sap_logserv-0.0.5.0.tar.gz --mode precert --included-tags cloud
-splunk-appinspect inspect release_binaries/splunk_ta_sap_logserv-0.0.5.0.tar.gz --mode precert --included-tags cloud
+splunk-appinspect inspect release_binaries/splunk_app_sap_logserv-0.0.6.0.tar.gz --mode precert --included-tags cloud
+splunk-appinspect inspect release_binaries/splunk_ta_sap_logserv-0.0.6.0.tar.gz --mode precert --included-tags cloud
 ```
 
-Current Cloud-mode posture (App build 197 / Data TA app version 0.0.5 "fsfix"):
+Current Cloud-mode posture (re-baselined on the canonical **build-242** App tarball, AppInspect 4.1.3):
 
-- **App**: 0 errors / 0 failures / 0 future_failures / 8 baseline warnings / 112 success — see [`appinspect_cloud_logserv_app.json`](./appinspect_cloud_logserv_app.json). Identical to builds 191 / 192 / 193; the Live mode removal (build 193) and the Events/Day KPI SPL fix (build 197) are pure subtractions / single-string changes with no AppInspect impact.
-- **TA**: 0 errors / 0 failures / 0 future_failures / 11 baseline warnings / 123 success — see [`appinspect_cloud_logserv_ta.json`](./appinspect_cloud_logserv_ta.json). **Both tarballs are now Splunk Cloud-installable** (previous baselines had 5 Data TA failures that blocked Cloud install; all cleared — see "Data TA Cloud-vetting" above). Re-verified on the session-047 "fsfix" respin (md5 `dcd9ba2a966ea5acc6c726db364cda77`); the Configuration filesystem-fallback persist is invisible to AppInspect (same posture as the prior hook-fix build). Note: the success count (123 / 220 total) reflects AppInspect 4.1.3, the toolchain on the current build host; an earlier 4.2.0 run reported 131 / 242 total — the gating posture (0 errors / 0 failures / 0 future_failures) is identical, only the absolute check totals differ by AppInspect version.
+- **App** (build 242): 0 errors / 0 failures / 0 future_failures / 8 baseline warnings / 109 success — see [`appinspect_cloud_logserv_app.json`](./appinspect_cloud_logserv_app.json). Identical gating posture to the v0.0.5.0 App. Build 242 **changes conf only** (`savedsearches.conf` — `disabled` flips on the ES searches + `cron_schedule` re-staggering), so AppInspect was **re-run** on the build-242 bundle; disabling searches and changing crons introduce no new findings. The 8 App warnings are the established baseline (pretrained sourcetypes, public-IP literals in JSON examples, Mako template framework).
+- **Data TA** (app version 0.0.5, "fsfix"): 0 errors / 0 failures / 0 future_failures / 11 baseline warnings / 123 success — see [`appinspect_cloud_logserv_ta.json`](./appinspect_cloud_logserv_ta.json). Byte-identical to the v0.0.5.0 canonical Data TA; re-baselined here against the exact tarball bytes.
 
-(For reference: build 174 was 0/0/0/9/106 — every subsequent App build added passing checks as we resolved skipped/future_failure/warning advisories. The Data TA went 6 failures → 0 in build app-version-0.0.5.)
+Both tarballs are **Splunk Cloud-installable** (the v0.0.5.0 line cleared all prior Data TA Cloud-vetting failures; see the v0.0.5.0 release notes for that history). The 8 App / 11 Data TA warnings are the established baseline (pretrained sourcetypes, public-IP literals in JSON examples, Mako template framework). Note: AppInspect 4.1.3 reports 220 total checks; an earlier 4.2.0 run reported 242 — the gating posture (0 errors / 0 failures / 0 future_failures) is identical, only the absolute check totals differ by AppInspect version.
 
 Each app also ships a `run_appinspect.sh` helper at `sap_logserv_package/<app>/run_appinspect.sh` that wraps the above.
+
+## Third-party attribution
+
+The App tarball bundles a current CycloneDX 1.4 software bill of materials at `splunk_app_sap_logserv/SBOM.json`, enumerating every third-party dependency with its package URL (purl), version, and hash. It also ships a full attribution document at `splunk_app_sap_logserv/THIRD-PARTY-NOTICES.md` — one section per bundled npm package (1236 packages: name@version, license, repository, and the complete bundled LICENSE/NOTICE text) plus the absorbed-Splunk-add-on attributions. The same file is mirrored at the snapshot root for the GitHub repo; both are regenerated deterministically from the build's `node_modules/` tree by `yarn build` (`bin/generate-third-party-notices.js`), so the listed package versions always match the shipped JavaScript bytes. The Data TA's third-party Python dependencies are pinned in `package/lib/requirements.txt` (notably `solnlib>=5.0.0,<8.0.0` for Splunk Cloud AArch64 compatibility).
 
 ## Splunkbase submission status
 

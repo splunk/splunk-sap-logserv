@@ -2,6 +2,7 @@ import React, { ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState
 import styled from 'styled-components';
 import Table from '@splunk/react-ui/Table';
 import { logservTheme } from '../styles/logservTheme';
+import PanelLoading from './PanelLoading';
 
 /**
  * DataTable — wraps @splunk/react-ui/Table with our zebra + cyan-accent
@@ -521,7 +522,7 @@ function DataTable<TRow extends Record<string, unknown>>({
         return <ErrorLine>{error.message || 'Search failed'}</ErrorLine>;
     }
     if (loading && (!rows || rows.length === 0)) {
-        return <StatusLine>Loading…</StatusLine>;
+        return <PanelLoading />;
     }
     if (!visibleRows || visibleRows.length === 0) {
         return <StatusLine>{emptyMessage}</StatusLine>;

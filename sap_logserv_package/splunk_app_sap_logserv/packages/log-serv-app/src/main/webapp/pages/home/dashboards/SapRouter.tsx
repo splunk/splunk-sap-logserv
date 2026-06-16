@@ -40,53 +40,89 @@ const PanelGrid2 = styled.div`
 
 const ST = 'sourcetype="sap:saprouter"';
 
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 052 / build 216).
+ *
+ * SAP Router is a single-sourcetype dashboard whose count panels raw-scanned all
+ * sap:saprouter events. The 9 aggregatable panels below now read from the
+ * `logserv_saprouter_rollup` KV Store collection, populated hourly by
+ * [logserv_saprouter_aggregate] (one-time [logserv_saprouter_backfill]). The
+ * Recent Connection Log table stays RAW — a rollup can't reconstruct an
+ * event-level listing.
+ *
+ * 2 metrics. `main` grain (action, peer_ip, return_code, is_error,
+ * error_function) + count (only 18 combos). All 5 dims are heavily nullable
+ * (peer_ip/return_code/error_function ~90% null, action ~27%): the aggregate
+ * fillnull's them to "(none)" to preserve TOTAL counts, and reads exclude
+ * "(none)" to reproduce the raw `field=*` / dc() / `stats by` drop-null
+ * semantics. `errdetail` (error_function + per-bucket latest(error_detail))
+ * serves the Error-Detail table's free-text "Last Error Detail" column,
+ * left-joined onto the main-derived Count/dc(peer_ip)/values(return_code). The
+ * Return-Code pie stores the raw numeric code and decodes it at READ time
+ * (RC_DECODE) so the precompute stays code-agnostic.
+ *
+ * Read idiom: `| inputlookup <coll> where metric=X | addinfo | where bucket_ts
+ * range | <agg>`; addinfo carries the global TimeRange picker.
+ */
+const ROLL = 'logserv_saprouter_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
+const ERRDETAIL = `| inputlookup ${ROLL} where metric="errdetail" ${RANGE}`;
+
+// Decode SAP Router numeric return codes (from NIRC.h — Network Interface
+// Return Codes) into "<code> = <description>" labels so the pie chart's slices
+// are readable without external lookup. Applied at READ time (the rollup stores
+// the raw code). Case-default preserves any unlisted code as "<code> = Other".
+const RC_DECODE =
+    `eval return_code = case(`
+    + `return_code==0, "0 = OK (Success)",`
+    + `return_code==-1, "-1 = Timeout",`
+    + `return_code==-2, "-2 = Too Many File Descriptors",`
+    + `return_code==-3, "-3 = No Free Port",`
+    + `return_code==-4, "-4 = Service Unknown",`
+    + `return_code==-5, "-5 = Service Already Used",`
+    + `return_code==-6, "-6 = No Service Definition",`
+    + `return_code==-7, "-7 = No Free Service",`
+    + `return_code==-8, "-8 = Select Direction Error",`
+    + `return_code==-9, "-9 = Internal Error",`
+    + `return_code==-10, "-10 = Ping",`
+    + `return_code==-11, "-11 = Dump",`
+    + `return_code==-90, "-90 = Connection Broken",`
+    + `return_code==-91, "-91 = Own Hostname Lookup Failed",`
+    + `return_code==-92, "-92 = Host Unknown (DNS)",`
+    + `return_code==-93, "-93 = Connection Refused",`
+    + `return_code==-94, "-94 = Host-to-Address Conversion Failed",`
+    + `return_code==-95, "-95 = No Connection",`
+    + `return_code==-96, "-96 = Select Aborted",`
+    + `return_code==-97, "-97 = Sequence Error",`
+    + `return_code==-98, "-98 = No Transport List",`
+    + `return_code==-99, "-99 = Timeout",`
+    + `1=1, return_code . " = Other"`
+    + `)`;
+
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST} | stats count`,
-    kpiErrors: `\`sap_logserv_idx_macro\` ${ST} is_error="true" | stats count`,
-    kpiInval: `\`sap_logserv_idx_macro\` ${ST} action="INVAL DATA" | stats count`,
-    kpiPeers: `\`sap_logserv_idx_macro\` ${ST} peer_ip=* | stats dc(peer_ip) as peers`,
+    // Count KPIs use the empty-safe idiom (`stats count as n, …`): an empty
+    // `| inputlookup | stats sum(count)` returns 0 ROWS (not count=0), so the
+    // `count as n` anchor forces a row → fillnull → clean 0.
+    kpiTotal: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiErrors: `${MAIN} | search is_error="true" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiInval: `${MAIN} | search action="INVAL DATA" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiPeers: `${MAIN} | stats dc(eval(if(peer_ip="(none)",null(),peer_ip))) as peers`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count`,
-    sparkErrors: `\`sap_logserv_idx_macro\` ${ST} is_error="true" | timechart span=1d count`,
-    sparkInval: `\`sap_logserv_idx_macro\` ${ST} action="INVAL DATA" | timechart span=1d count`,
-    sparkPeers: `\`sap_logserv_idx_macro\` ${ST} peer_ip=* | timechart span=1d dc(peer_ip) as peers`,
+    sparkTotal: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkErrors: `${MAIN} | search is_error="true" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkInval: `${MAIN} | search action="INVAL DATA" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkPeers: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(peer_ip="(none)",null(),peer_ip))) as peers | fillnull value=0`,
 
-    connTrend: `\`sap_logserv_idx_macro\` ${ST} action=* | timechart span=1d count by action`,
-    errorTrend: `\`sap_logserv_idx_macro\` ${ST} is_error="true" | timechart span=1d count as "Errors"`,
-    topPeers: `\`sap_logserv_idx_macro\` ${ST} peer_ip=* | stats count as "Connections" by peer_ip | sort -Connections | rename peer_ip as "Peer IP"`,
-    // Decode SAP Router numeric return codes (from NIRC.h — Network Interface
-    // Return Codes) into "<code> = <description>" labels so the pie chart's
-    // slices are readable without external lookup. Case-default preserves any
-    // unlisted code as-is so we never silently drop data.
-    returnCodes: `\`sap_logserv_idx_macro\` ${ST} return_code=* `
-        + `| eval return_code = case(`
-        + `return_code==0, "0 = OK (Success)",`
-        + `return_code==-1, "-1 = Timeout",`
-        + `return_code==-2, "-2 = Too Many File Descriptors",`
-        + `return_code==-3, "-3 = No Free Port",`
-        + `return_code==-4, "-4 = Service Unknown",`
-        + `return_code==-5, "-5 = Service Already Used",`
-        + `return_code==-6, "-6 = No Service Definition",`
-        + `return_code==-7, "-7 = No Free Service",`
-        + `return_code==-8, "-8 = Select Direction Error",`
-        + `return_code==-9, "-9 = Internal Error",`
-        + `return_code==-10, "-10 = Ping",`
-        + `return_code==-11, "-11 = Dump",`
-        + `return_code==-90, "-90 = Connection Broken",`
-        + `return_code==-91, "-91 = Own Hostname Lookup Failed",`
-        + `return_code==-92, "-92 = Host Unknown (DNS)",`
-        + `return_code==-93, "-93 = Connection Refused",`
-        + `return_code==-94, "-94 = Host-to-Address Conversion Failed",`
-        + `return_code==-95, "-95 = No Connection",`
-        + `return_code==-96, "-96 = Select Aborted",`
-        + `return_code==-97, "-97 = Sequence Error",`
-        + `return_code==-98, "-98 = No Transport List",`
-        + `return_code==-99, "-99 = Timeout",`
-        + `1=1, return_code . " = Other"`
-        + `) `
-        + `| stats count by return_code | sort -count | rename return_code as "Return Code"`,
-    errorDetail: `\`sap_logserv_idx_macro\` ${ST} is_error="true" error_function=* | stats count as "Count", dc(peer_ip) as "Unique Peers", values(return_code) as "Return Codes", latest(error_detail) as "Last Error Detail" by error_function | sort -Count | rename error_function as "Function"`,
-    connLog: `\`sap_logserv_idx_macro\` ${ST} is_connection_event="true" | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval has_error=if(is_error="true", "Yes", "No") | table Time, action, connection_id, peer_ip, src_ip, src_port, has_error | sort -Time | rename peer_ip as "Peer IP", src_ip as "Source IP", src_port as "Source Port", has_error as "Error", connection_id as "Conn ID"`,
+    connTrend: `${MAIN} | search action!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by action | fillnull value=0`,
+    errorTrend: `${MAIN} | search is_error="true" | eval _time=bucket_ts | timechart span=1d sum(count) as "Errors" | fillnull value=0`,
+    topPeers: `${MAIN} | search peer_ip!="(none)" | stats sum(count) as "Connections" by peer_ip | sort -Connections | rename peer_ip as "Peer IP"`,
+    returnCodes: `${MAIN} | search return_code!="(none)" | ${RC_DECODE} | stats sum(count) as count by return_code | sort -count | rename return_code as "Return Code"`,
+    // Error-Detail: Count/dc(peer_ip)/values(return_code) from `main`, left-joined
+    // to the `errdetail` metric's latest(error_detail) by error_function (only 3
+    // functions, so the join is trivial). dc/values exclude the "(none)" sentinel.
+    errorDetail: `${MAIN} | search is_error="true" error_function!="(none)" | stats sum(count) as Count, dc(eval(if(peer_ip="(none)",null(),peer_ip))) as "Unique Peers", values(eval(if(return_code="(none)",null(),return_code))) as "Return Codes" by error_function | join type=left error_function [ ${ERRDETAIL} | eval _time=bucket_ts | stats latest(error_detail) as "Last Error Detail" by error_function ] | sort -Count | rename error_function as "Function"`,
+    connLog: `\`sap_logserv_idx_macro\` ${ST} is_connection_event="true" | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval has_error=if(is_error="true", "Yes", "No") | table Time, action, connection_id, peer_ip, src_ip, src_port, has_error | sort -Time | rename peer_ip as "Peer IP", src_ip as "Source IP", src_port as "Source Port", has_error as "Error", connection_id as "Conn ID"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -181,7 +217,7 @@ const SapRouter: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Peer IPs by Connection Volume" subtitle="Peers ranked by connection count">
+                <FramedPanel search={topPeers} title="Peer IPs by Connection Volume" subtitle="Peers ranked by connection count">
                     <DataTable columns={TOP_PEERS_COLS} rows={topPeers.results} loading={topPeers.loading} error={topPeers.error} emptyMessage="No router events in this time range." onRowClick={goPeerRow} />
                 </FramedPanel>
                 <FramedPanel title="Return Code Distribution" subtitle="Share of router events by return code">
@@ -190,13 +226,13 @@ const SapRouter: React.FC = () => {
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Error Detail by Function" subtitle="Errors grouped by error_function">
+                <FramedPanel search={errorDetail} title="Error Detail by Function" subtitle="Errors grouped by error_function">
                     <DataTable columns={ERROR_DETAIL_COLS} rows={errorDetail.results} loading={errorDetail.loading} error={errorDetail.error} emptyMessage="No router errors in this time range." initialSortKey="Count" initialSortDir="desc" pageSize={5} onRowClick={goErrorFunctionRow} />
                 </FramedPanel>
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="Recent Connection Log" subtitle="Connection events with peer/src IPs, most-recent first">
+                <FramedPanel search={connLog} title="Recent Connection Log" subtitle="Connection events with peer/src IPs, most-recent first">
                     <DataTable columns={CONN_LOG_COLS} rows={connLog.results} loading={connLog.loading} error={connLog.error} emptyMessage="No connection events in this time range." initialSortKey="Time" initialSortDir="desc" onRowClick={goConnLogRow} />
                 </FramedPanel>
             </FullWidthPanel>

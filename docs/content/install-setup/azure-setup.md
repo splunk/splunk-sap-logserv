@@ -2,8 +2,8 @@
 
 This page covers setting up the **Splunk for SAP LogServ** solution to ingest LogServ data from **Microsoft Azure Blob Storage**. The downstream pipeline (sourcetype routing, dashboards, ES integration) is identical between AWS and Azure deployments — only the ingest mechanism differs.
 
-!!! note "v0.0.5 release: LLM functionality intentionally disabled pending review"
-    The v0.0.5 release ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review**. The setup procedure on this page applies in full regardless. See [Templates-only Build Flag](../ai-assistant/templates-only-build.md) for details on the LLM disablement.
+!!! note "Current release: LLM functionality intentionally disabled pending review"
+    The current release ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review**. The setup procedure on this page applies in full regardless. See [Templates-only Build Flag](../ai-assistant/templates-only-build.md) for details on the LLM disablement.
 
 ## :material-circle-box:{ .taiconcolor } Architecture overview
 

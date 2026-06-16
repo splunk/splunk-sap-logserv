@@ -8,6 +8,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import FramedPanel from '../components/FramedPanel';
 import AuditLogViewer from '../components/AuditLogViewer';
 import TopologySettingsPanel from '../components/TopologySettingsPanel';
+import RollupBackfillPanel from '../components/RollupBackfillPanel';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import {
     CredentialSummary,
@@ -1823,6 +1824,20 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                             subtitle="Admin controls for the time-bucketed KV Store that powers the Environment Topology view. Hourly scheduled searches aggregate node + edge activity into the logserv_topology_nodes + logserv_topology_edges collections; the topology view reads from KV Store at render time, filtered by the global TimeRange picker. Built session 035 / build 188 — see topology_kvstore_design_v0.1.md for the full architecture."
                         >
                             <TopologySettingsPanel />
+                        </FramedPanel>
+                    </SectionGrid>
+                </TabLayout.Panel>
+
+                <TabLayout.Panel
+                    panelId="rollups"
+                    label="Dashboard Data"
+                >
+                    <SectionGrid>
+                        <FramedPanel
+                            title="Dashboard Rollup Backfill"
+                            subtitle="Admin controls for the time-bucketed KV Store rollups that power the dashboard suite. Hourly scheduled searches aggregate raw events into the logserv_*_rollup collections; the dashboards read from KV Store at render time. After first install, run the 30-day backfill here to populate history — it dispatches each rollup's component searches as top-level jobs so they complete correctly at customer scale (the bundled *_backfill saved searches truncate at high event volumes). See session 056."
+                        >
+                            <RollupBackfillPanel />
                         </FramedPanel>
                     </SectionGrid>
                 </TabLayout.Panel>

@@ -1,11 +1,11 @@
 # Settings & Configuration
 
-!!! warning "v0.0.5 release: the Provider Credentials tab is hidden — LLM dispatch is disabled"
-    The v0.0.5 release ships with the LLM-driven path **disabled at compile time pending internal review**. The Provider Credentials tab is hidden entirely in v0.0.5 builds, and the model picker on the General tab is non-functional even though the underlying setting persists. The General tab's `provider`, `default_model`, `tier`, `power_user_roles`, `tier2_pii_redaction`, `tier2_redact_hostname`, `rate_limit_per_hour`, `daily_spend_cap_usd`, and `session_tool_call_cap` fields are documented for the future release that re-enables the LLM path; in v0.0.5, only `enabled`, `mcp_required`, `mcp_server_url`, and the audit-forwarder fields under Audit & Telemetry are operationally meaningful.
+!!! warning "Current release: the Provider Credentials tab is hidden — LLM dispatch is disabled"
+    The current release ships with the LLM-driven path **disabled at compile time pending internal review**. The Provider Credentials tab is hidden entirely in current builds, and the model picker on the General tab is non-functional even though the underlying setting persists. The General tab's `provider`, `default_model`, `tier`, `power_user_roles`, `tier2_pii_redaction`, `tier2_redact_hostname`, `rate_limit_per_hour`, `daily_spend_cap_usd`, and `session_tool_call_cap` fields are documented for the future release that re-enables the LLM path; in the current release, only `enabled`, `mcp_required`, `mcp_server_url`, and the audit-forwarder fields under Audit & Telemetry are operationally meaningful.
 
-The AI Assistant Settings page is at **`#/settings/ai-assistant`** within the LogServ App. Admin-only. Four tabs, each handling a different aspect of the AI Assistant configuration.
+The AI Assistant Settings page is at **`#/settings/ai-assistant`** within the LogServ App. Admin-only. Six tabs, each handling a different aspect of the app's configuration. (The page is named for the AI Assistant but also hosts the app-wide dashboard data-layer admin controls.)
 
-## :material-circle-box:{ .taiconcolor } The Four Tabs
+## :material-circle-box:{ .taiconcolor } The Six Tabs
 
 | Tab | Scope |
 |---|---|
@@ -13,6 +13,8 @@ The AI Assistant Settings page is at **`#/settings/ai-assistant`** within the Lo
 | **Provider Credentials** | LLM provider API keys (Anthropic / OpenAI / Azure OpenAI / AWS Bedrock) |
 | **Splunk MCP** | MCP Server bearer token + Audit Forwarder HEC token |
 | **Audit Log** | Read-only browser of every audit event in the `logserv_ai_assistant_audit` index |
+| **Topology** | Admin controls for the Environment Topology view's hourly KV-Store aggregation + on-demand backfill |
+| **Dashboard Data** | Admin controls for the dashboard KV-Store rollups — run the one-time backfill that seeds dashboard history ([see below](#dashboard-data-tab)) |
 
 In the [Templates-only build variant](templates-only-build.md), the Provider Credentials tab is hidden entirely (no LLM provider needed) and an info banner at the top of the page explains the build mode.
 
@@ -115,6 +117,25 @@ Clicking a row's **+** expand button reveals the full event JSON. The page is pa
 > Audit events live in a Splunk index. A host-root admin can edit the bucket files. Mitigation: forward audit events to a separate Splunk instance / SIEM / S3-with-Object-Lock owned by a different admin team. Configure the HEC forwarder under Settings → General → Audit & Telemetry.
 
 See [Audit Log](audit-log.md) for the threat model + forwarder configuration.
+
+## :material-circle-box:{ .taiconcolor } Topology Tab
+
+Admin controls for the time-bucketed KV Store that powers the [Environment Topology](../logserv-app/dashboards/topology.md) view. Hourly scheduled searches aggregate node + edge activity into the `logserv_topology_nodes` + `logserv_topology_edges` collections; the topology view reads from KV Store at render time, filtered by the global time-range picker. This tab surfaces the per-collection status and an on-demand backfill so an admin can populate topology history immediately after install rather than waiting for the hourly aggregation.
+
+## :material-circle-box:{ .taiconcolor } Dashboard Data Tab
+
+Admin controls for the time-bucketed **KV-Store rollups that power the dashboard suite**. The 21 non-Topology dashboards read precomputed, hour-bucketed data from `logserv_*_rollup` collections instead of scanning raw events on every page load — see [Dashboard Performance & Data Freshness](../logserv-app/dashboards/performance.md) for the architecture.
+
+This tab is where you run the **one-time backfill after a fresh install on a high-volume instance**:
+
+1. Review the per-rollup status. Collections without history show an "incomplete history" banner.
+2. Click **Run backfill**.
+3. Watch the progress bar; the run is idempotent and resumable, so it's safe to re-run.
+
+The backfill seeds **30 days** of history into every rollup collection, dispatching each rollup's component aggregation searches as **top-level Splunk jobs** (which complete correctly at customer scale — the bundled `*_backfill` saved searches truncate at high event volume because of a subsearch wall-clock limit). After this, the hourly aggregation keeps each collection current and the cache grows toward the 365-day retention window. You only need to run the backfill again if you reinstall or clear a collection.
+
+!!! note "You can skip the backfill"
+    Without it, rolled-up panels start populating from the next hourly aggregation onward, filling in one hour at a time. The backfill exists only to make 30 days of history available immediately.
 
 ## :material-circle-box:{ .taiconcolor } Legal Acknowledgement Modals
 

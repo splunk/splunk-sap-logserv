@@ -57,41 +57,76 @@ const FullWidthPanel = styled.div`
     margin-bottom: ${logservTheme.elevation.panelGap};
 `;
 
-// SPL queries — verbatim from v0.0.4.2 logserv_environment_health.xml dataSources.
+// Dashboard-perf tier #6 (KV-Store precompute, session 050 cont. / build 209).
+// The cross-cutting error panels read the logserv_severity_rollup collection —
+// 6 metric sub-types precomputing each panel-group's EXACT error classification
+// (the panels count different event sets, so no single "errors" metric is
+// byte-exact for all). RAW (unchanged): beaconing (streamstats gap analysis) +
+// criticalEvents (event listing). tstats-now (build 200, unchanged): the 3 Data
+// Pipeline panels. Read idiom: `| inputlookup ... where metric=X | addinfo |
+// where bucket_ts range | <agg>` (respects the global TimeRange picker).
+const ROLL = 'logserv_severity_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const TOTERR = `| inputlookup ${ROLL} where metric="toterr" ${RANGE}`;
+const TREND = `| inputlookup ${ROLL} where metric="trend" ${RANGE}`;
+const TOPHOST = `| inputlookup ${ROLL} where metric="tophost" ${RANGE}`;
+const WEB = `| inputlookup ${ROLL} where metric="web" ${RANGE}`;
+const ICMSTAT = `| inputlookup ${ROLL} where metric="icmstat" ${RANGE}`;
+const AUTHFAIL = `| inputlookup ${ROLL} where metric="authfail" ${RANGE}`;
+// Beaconing now precomputed DAILY into its own KV collection (logserv_beaconing_rollup) by
+// logserv_beaconing_aggregate. The per-event streamstats gap-variance detection is too heavy
+// to run raw at scale (scanned 37.6M DNS events / ~3.75 min at 335M). Per-DAY grain (day_ts).
+const BEACON = `| inputlookup logserv_beaconing_rollup | addinfo | where day_ts>=info_min_time AND day_ts<info_max_time`;
+// One error-trend chart = the trend metric filtered to a category, timechart by
+// src. `| fillnull value=0` matches raw `count by src`'s 0-fill on empty bins.
+const trendChart = (cat: string): string =>
+    `${TREND} | search trend_cat="${cat}" | eval _time=bucket_ts | timechart span=1d sum(count) by trend_src | fillnull value=0`;
+
 const Q = {
-    // KPIs
-    totalErrors: `\`sap_logserv_idx_macro\` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR (sourcetype="sap:abap:icm" icm_is_error=1) OR (sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="") OR (sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:hana:tracelogs" hana_trace_severity IN ("error", "fatal")) OR (sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="sap:scc:audit" scc_audit_type="ACCESS_DENIED") OR (sourcetype="linux_secure" IN_DROP) OR (sourcetype="XmlWinEventLog" severity IN ("critical","error","high")) OR (sourcetype="sap:webdispatcher:access" status>=400) OR (sourcetype="squid:access" action="denied")) | stats count`,
-    hanaFailures: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" status!="SUCCESSFUL" | stats count`,
-    authFailures: `\`sap_logserv_idx_macro\` ((sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="sap:hana:audit" audit_action="CONNECT" status!="SUCCESSFUL")) | stats count`,
-    firewallDrops: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" IN_DROP | stats count`,
-    webErrorRate: `\`sap_logserv_idx_macro\` sourcetype="sap:webdispatcher:access" | eval is_err=if(tonumber(status)>=400,1,0) | stats sum(is_err) as errors, count as total | eval pct = if(total>0, round(errors/total*100, 1), 0) | table pct`,
-    beaconing: `\`sap_logserv_idx_macro\` tag=dns message_type="Query" | bucket _time span=1d as day | fields day, _time, query | streamstats current=f last(_time) as last_time by query, day | eval gap=last_time - _time | stats count, avg(gap) AS avg_gap, var(gap) AS var_gap BY query, day | where var_gap < 60 AND count > 2 AND avg_gap > 1 | stats dc(query) as count by day | rename day as _time | eventstats sum(count) as total`,
-    pipelineEventsPerDay: `\`sap_logserv_idx_macro\` | timechart span=1d count as daily | stats avg(daily) as total | eval total=round(total, 0)`,
+    // KPIs (rollup). HANA Failed Ops + Firewall Drops derive from the toterr
+    // metric by sourcetype (their conditions ARE toterr's hana/linux subsets).
+    totalErrors: `${TOTERR} | stats sum(count) as count`,
+    hanaFailures: `${TOTERR} | search sourcetype="sap:hana:audit" | stats sum(count) as count`,
+    authFailures: `${AUTHFAIL} | stats sum(count) as count`,
+    firewallDrops: `${TOTERR} | search sourcetype="linux_secure" | stats sum(count) as count`,
+    webErrorRate: `${WEB} | stats sum(web_err) as errors, sum(web_total) as total | eval pct = if(total>0, round(errors/total*100, 1), 0) | table pct`,
+    // beaconing now reads the precomputed daily rollup (logserv_beaconing_rollup).
+    beaconing: `${BEACON} | rename day_ts as _time | sort _time | eventstats sum(count) as total`,
+    // pipeline KPI stays tstats-now (build 200) — pure tsidx count, already fast.
+    pipelineEventsPerDay: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=1d | timechart span=1d sum(count) as daily | stats avg(daily) as total | eval total=round(total, 0)`,
 
-    // KPI sparklines (daily trends)
-    sparkTotalErrors: `\`sap_logserv_idx_macro\` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR (sourcetype="sap:abap:icm" icm_is_error=1) OR (sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="") OR (sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:hana:tracelogs" hana_trace_severity IN ("error", "fatal")) OR (sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="sap:scc:audit" scc_audit_type="ACCESS_DENIED") OR (sourcetype="linux_secure" IN_DROP) OR (sourcetype="XmlWinEventLog" severity IN ("critical","error","high")) OR (sourcetype="sap:webdispatcher:access" status>=400) OR (sourcetype="squid:access" action="denied")) | timechart span=1d count`,
-    sparkHanaFailures: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" status!="SUCCESSFUL" | timechart span=1d count`,
-    sparkAuthFailures: `\`sap_logserv_idx_macro\` ((sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="sap:hana:audit" audit_action="CONNECT" status!="SUCCESSFUL")) | timechart span=1d count`,
-    sparkFirewallDrops: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" IN_DROP | timechart span=1d count`,
-    sparkWebErrorRate: `\`sap_logserv_idx_macro\` sourcetype="sap:webdispatcher:access" | eval is_err=if(tonumber(status)>=400,1,0) | timechart span=1d sum(is_err) as errors_daily count as total_daily | eval pct = if(total_daily>0, round(errors_daily/total_daily*100, 1), 0) | fields _time pct`,
-    sparkPipelineEvents: `\`sap_logserv_idx_macro\` | timechart span=1d count`,
+    // KPI sparklines (rollup)
+    sparkTotalErrors: `${TOTERR} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkHanaFailures: `${TOTERR} | search sourcetype="sap:hana:audit" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkAuthFailures: `${AUTHFAIL} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkFirewallDrops: `${TOTERR} | search sourcetype="linux_secure" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkWebErrorRate: `${WEB} | eval _time=bucket_ts | timechart span=1d sum(web_err) as errors_daily, sum(web_total) as total_daily | eval pct = if(total_daily>0, round(errors_daily/total_daily*100, 1), 0) | fields _time pct`,
+    // pipeline spark stays tstats-now (build 200)
+    sparkPipelineEvents: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=1d | timechart span=1d sum(count) as count`,
 
-    // Trend charts — 6 column charts by category
-    errAbap: `\`sap_logserv_idx_macro\` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR (sourcetype="sap:abap:icm" icm_is_error=1) OR (sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="")) | eval src=case(sourcetype="sap:abap:dispatcher", "Dispatcher", sourcetype="sap:abap:icm", "ICM", sourcetype="sap:abap:gateway", "Gateway") | timechart span=1d count by src`,
-    errHana: `\`sap_logserv_idx_macro\` ((sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:hana:tracelogs" (hana_trace_severity="error" OR hana_trace_severity="fatal"))) | eval src=case(sourcetype="sap:hana:audit", "Audit Failures", sourcetype="sap:hana:tracelogs", "Trace Errors") | timechart span=1d count by src`,
-    errSecurity: `\`sap_logserv_idx_macro\` ((sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="linux_secure" IN_DROP)) | eval src=case(sourcetype="sap:sapstartsrv", "Auth Failures", sourcetype="linux_secure", "Firewall Drops") | timechart span=1d count by src`,
-    errWebnet: `\`sap_logserv_idx_macro\` ((sourcetype="sap:webdispatcher:access") OR (sourcetype="sap:saprouter" is_error="true") OR (sourcetype="squid:access" action="denied")) | eval is_err=case(sourcetype="sap:webdispatcher:access", if(tonumber(status)>=400, 1, 0), 1=1, 1) | where is_err=1 | eval src=case(sourcetype="sap:webdispatcher:access", "WebDisp 4xx/5xx", sourcetype="sap:saprouter", "Router Errors", sourcetype="squid:access", "Proxy Denied") | timechart span=1d count by src`,
-    errOsinfra: `\`sap_logserv_idx_macro\` sourcetype="XmlWinEventLog" (severity="high" OR severity="medium") | eval src=case(severity="high", "Windows High", severity="medium", "Windows Medium") | timechart span=1d count by src`,
-    errScc: `\`sap_logserv_idx_macro\` sourcetype="sap:scc:http_access" status>=400 | eval src=case(status>=500, "5xx Server", status>=400, "4xx Client") | timechart span=1d count by src`,
+    // 6 error-trend charts (rollup, metric="trend")
+    errAbap: trendChart('ABAP'),
+    errHana: trendChart('HANA'),
+    errSecurity: trendChart('Security'),
+    errWebnet: trendChart('Web-Network'),
+    errOsinfra: trendChart('OS-Infra'),
+    errScc: trendChart('Cloud-Connector'),
 
-    // Other charts
-    webResponseTime: `\`sap_logserv_idx_macro\` sourcetype="sap:webdispatcher:access" | eval response_time_ms=tonumber(total_us)/1000 | timechart span=1d avg(response_time_ms) as "Avg Response Time (ms)"`,
-    icmStatus: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:icm" icm_status_code=* | eval status_cat=case(icm_status_code>=200 AND icm_status_code<300, "2xx", icm_status_code>=300 AND icm_status_code<400, "3xx", icm_status_code>=400 AND icm_status_code<500, "4xx", icm_status_code>=500, "5xx", 1=1, "Other") | timechart span=1d count by status_cat`,
-    pipelineTrend: `\`sap_logserv_idx_macro\` | timechart span=1d count as "Events/Day"`,
+    // Other charts (rollup). webResponseTime avg = Σrt_sum/Σrt_cnt per day
+    // (reproduces raw avg(response_time_ms); ~1e-13 float diff is invisible).
+    webResponseTime: `${WEB} | eval _time=bucket_ts | timechart span=1d sum(web_rt_sum) as rt_sum, sum(web_rt_cnt) as rt_cnt | eval "Avg Response Time (ms)"=rt_sum/rt_cnt | fields _time, "Avg Response Time (ms)"`,
+    icmStatus: `${ICMSTAT} | eval _time=bucket_ts | timechart span=1d sum(count) by status_cat | fillnull value=0`,
+    // pipeline trend stays tstats-now (build 200)
+    pipelineTrend: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=1d | timechart span=1d sum(count) as "Events/Day"`,
 
-    // Tables
-    criticalEvents: `\`sap_logserv_idx_macro\` ((sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR (sourcetype="sap:hana:tracelogs" hana_trace_severity="fatal") OR (sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="XmlWinEventLog" severity="critical")) | eval Category=case(sourcetype="sap:hana:audit", "HANA Audit", sourcetype="sap:abap:dispatcher", "ABAP Dispatcher", sourcetype="sap:hana:tracelogs", "HANA Trace", sourcetype="sap:sapstartsrv", "Auth Failure", sourcetype="XmlWinEventLog", "Windows Critical", 1=1, sourcetype) | eval Detail=case(sourcetype="sap:hana:audit", status." - ".audit_action." by ".executing_user, sourcetype="sap:abap:dispatcher", dp_severity." - ".coalesce(dp_message, _raw), sourcetype="sap:hana:tracelogs", hana_trace_severity." - ".hana_trace_component, sourcetype="sap:sapstartsrv", "Auth failure for ".coalesce(auth_user, "unknown"), sourcetype="XmlWinEventLog", coalesce(source, "WinEvent")." EventCode=".coalesce(EventCode, "N/A"), 1=1, "") | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | table Time host Category sourcetype Detail | sort -Time`,
-    topHosts: `\`sap_logserv_idx_macro\` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR (sourcetype="sap:abap:icm" icm_is_error=1) OR (sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="") OR (sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:hana:tracelogs" (hana_trace_severity="error" OR hana_trace_severity="fatal")) OR (sourcetype="sap:scc:http_access" is_error="true") OR (sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="sap:saprouter" is_error="true") OR (sourcetype="squid:access" action="denied") OR (sourcetype="sap:webdispatcher:access") OR (sourcetype="XmlWinEventLog") OR (sourcetype="linux_secure")) | eval is_err=case(sourcetype="sap:webdispatcher:access", if(tonumber(status)>=400, 1, 0), sourcetype="XmlWinEventLog", if(severity IN ("high", "medium"), 1, 0), sourcetype="linux_secure", if(match(_raw, "IN_DROP"), 1, 0), 1=1, 1) | where is_err=1 | eval error_cat=case(sourcetype IN ("sap:abap:dispatcher","sap:abap:icm","sap:abap:gateway"), "ABAP", sourcetype IN ("sap:hana:audit","sap:hana:tracelogs"), "HANA", sourcetype IN ("sap:sapstartsrv","sap:saprouter"), "Services", sourcetype IN ("linux_secure"), "Firewall", 1=1, "Other") | chart count by host error_cat | addtotals | sort -Total`,
+    // Tables. criticalEvents stays RAW (event listing — needs the actual events) but is
+    // | head 200-capped: Splunk's default newest-first event scan short-circuits after 200,
+    // so it reads only the most-recent buckets instead of scanning the full 30d (16.4M events
+    // / ~2-3 min at 335M). A "most-recent-first" table never needs more than the latest N.
+    criticalEvents: `\`sap_logserv_idx_macro\` ((sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR (sourcetype="sap:hana:tracelogs" hana_trace_severity="fatal") OR (sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="XmlWinEventLog" severity="critical")) | head 200 | eval Category=case(sourcetype="sap:hana:audit", "HANA Audit", sourcetype="sap:abap:dispatcher", "ABAP Dispatcher", sourcetype="sap:hana:tracelogs", "HANA Trace", sourcetype="sap:sapstartsrv", "Auth Failure", sourcetype="XmlWinEventLog", "Windows Critical", 1=1, sourcetype) | eval Detail=case(sourcetype="sap:hana:audit", status." - ".audit_action." by ".executing_user, sourcetype="sap:abap:dispatcher", dp_severity." - ".coalesce(dp_message, _raw), sourcetype="sap:hana:tracelogs", hana_trace_severity." - ".hana_trace_component, sourcetype="sap:sapstartsrv", "Auth failure for ".coalesce(auth_user, "unknown"), sourcetype="XmlWinEventLog", coalesce(source, "WinEvent")." EventCode=".coalesce(EventCode, "N/A"), 1=1, "") | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | table Time host Category sourcetype Detail | sort -Time`,
+    // Affected Hosts matrix (rollup, metric="tophost"). chart over host by
+    // error_cat reproduces the raw `chart count by host error_cat | addtotals`.
+    topHosts: `${TOPHOST} | chart sum(count) over host by error_cat | fillnull value=0 | addtotals | sort -Total`,
 };
 
 /** SPL dispatched when the user clicks the "Total Errors" KPI. Cross-cutting
@@ -292,7 +327,7 @@ const EnvironmentHealth: React.FC = () => {
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Recent Critical Events" subtitle="Critical signals across HANA / ABAP / Auth / Windows, most-recent first">
+                <FramedPanel search={criticalEvents} title="Recent Critical Events" subtitle="Critical signals across HANA / ABAP / Auth / Windows, most-recent first">
                     <DataTable
                         columns={CRITICAL_EVENT_COLS}
                         rows={criticalEvents.results}
@@ -305,7 +340,7 @@ const EnvironmentHealth: React.FC = () => {
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="Affected Hosts" subtitle="Hosts ranked by error count, broken down by category">
+                <FramedPanel search={topHosts} title="Affected Hosts" subtitle="Hosts ranked by error count, broken down by category">
                     <DataTable
                         columns={TOP_HOSTS_COLS}
                         rows={topHosts.results}

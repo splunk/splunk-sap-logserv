@@ -128,7 +128,7 @@ interface ConditionalProps {
 const ConditionalPanel: React.FC<ConditionalProps> = ({ title, subtitle, search, children }) => {
     if (search.loading || search.error) return null;
     if (!search.results || search.results.length === 0) return null;
-    return <FramedPanel title={title} subtitle={subtitle}>{children}</FramedPanel>;
+    return <FramedPanel title={title} subtitle={subtitle} search={search}>{children}</FramedPanel>;
 };
 
 // =====================================================================================
@@ -183,27 +183,24 @@ interface HostPickerProps {
     onChange: (hosts: string[]) => void;
     topHosts: string;
     onTopHostsChange: (topHosts: string) => void;
+    /** Count-sorted host list (descending by event count), lifted to the
+     *  parent so the SAME ordering drives both the Multiselect options and
+     *  the parent's `resolvedTopHosts` Top-N slice. */
+    hosts: string[];
+    hostsLoading: boolean;
 }
 
-const HostPicker: React.FC<HostPickerProps> = ({ selectedHosts, onChange, topHosts, onTopHostsChange }) => {
-    const { results, loading } = useSearch({
-        query: '`sap_logserv_idx_macro` | stats count by host | sort - count',
-    });
-    const hosts = useMemo(() => {
-        if (!results) return [] as string[];
-        return results.map((r) => String((r as Record<string, unknown>).host ?? '')).filter(Boolean);
-    }, [results]);
-
+const HostPicker: React.FC<HostPickerProps> = ({ selectedHosts, onChange, topHosts, onTopHostsChange, hosts, hostsLoading }) => {
     /* Top Hosts is disabled when ANY specific hosts are selected — the
      * explicit pick is always the more specific intent and the Top N
-     * subsearch would be ignored anyway (see combinedHostFilter). */
+     * resolution would be ignored anyway (see combinedHostFilter). */
     const topHostsDisabled = selectedHosts.length > 0;
 
     /* Multiselect placeholder — shown when no specific hosts are selected
      * (i.e. "All Hosts" intent). Matches DataPipelineOverview's
      * "Filter hosts (N)" wording so the two dashboards' title-row clusters
      * read identically. */
-    const emptyPlaceholder = loading ? 'Loading hosts…' : `Filter hosts (${hosts.length})`;
+    const emptyPlaceholder = hostsLoading ? 'Loading hosts…' : `Filter hosts (${hosts.length})`;
 
     return (
         <PickerRow>
@@ -284,32 +281,120 @@ const combinedHostFilter = (hosts: string[], topHosts: string): string => {
 };
 
 // =====================================================================================
+// tstats host-filter dialect — mirrors the validated DataPipelineOverview
+// build-198 pattern. tstats `WHERE` does NOT accept the `host IN (...)`
+// operator nor a `[search …]` subsearch reliably across Splunk versions, so
+// the tstats dialect expands the host selection to an explicit
+// `(host="X" OR host="Y")` fragment.
+// =====================================================================================
+
+/** OR-expand a host selection for a tstats WHERE clause. Reuses the in-file
+ *  `splEscapeHost` (same convention as `hostFilter`/`combinedHostFilter`). */
+const hostsToOrFragment = (hosts: string[]): string => {
+    if (hosts.length === 0) return '';
+    if (hosts.length === 1) return `host="${splEscapeHost(hosts[0])}"`;
+    return `(${hosts.map((h) => `host="${splEscapeHost(h)}"`).join(' OR ')})`;
+};
+
+/**
+ * tstats variant of `combinedHostFilter`. The Top-N branch is PRE-RESOLVED:
+ * the parent component slices the already-count-sorted host list down to the
+ * top N and threads it in as `resolvedTopHosts`, which is then OR-expanded
+ * (NOT emitted as a subsearch — a tstats WHERE can't host a subsearch). Both
+ * the original subsearch and this pre-resolved slice inherit the global time
+ * range, so the semantics are equivalent.
+ *
+ *  - 1+ hosts selected           → `(host="X" OR …)`            (Top N ignored)
+ *  - 0 selected + topHosts='all' → ''                           (no host filter)
+ *  - 0 selected + topHosts='N'   → `(host="T1" OR host="T2" …)` (pre-resolved)
+ */
+const combinedHostFilterTstats = (
+    hosts: string[],
+    topHosts: string,
+    resolvedTopHosts: string[],
+): string => {
+    if (hosts.length > 0) return hostsToOrFragment(hosts);
+    if (topHosts === 'all') return '';
+    return hostsToOrFragment(resolvedTopHosts);
+};
+
+// =====================================================================================
+// Build-233 Host Details KV-Store rollup (logserv_hostdetails_rollup). The
+// Overview-tab DATA VOLUME (sum len(_raw)), ERRORS/CRITICALS, and AUTH FAILURES
+// KPIs + their sparklines were raw full-scans (~162s / 29s / 38s at 76M / -7d;
+// minutes at full volume). They now read 3 hourly-aggregated metrics keyed by
+// (host, bucket): vol (count + sum_bytes), err (count over the errors/criticals
+// filter), auth (count over the auth-failure filter). Read idiom:
+//   <R_X> [| search <host OR-fragment>] | <agg>
+// The host fragment is the SAME tstats dialect (HOST_TS); empty = all hosts.
+// eventsBySource moved to tstats (sourcetype is indexed); TOTAL EVENTS / ACTIVE
+// SOURCETYPES / topSources / dataFreshness were already tstats. Host Inventory
+// (osquery, narrow) + the per-host Role Activity tab stay RAW.
+const HD_ROLL = 'logserv_hostdetails_rollup';
+const HD_RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const R_VOL = `| inputlookup ${HD_ROLL} where metric="vol" ${HD_RANGE}`;
+const R_ERR = `| inputlookup ${HD_ROLL} where metric="err" ${HD_RANGE}`;
+const R_AUTH = `| inputlookup ${HD_ROLL} where metric="auth" ${HD_RANGE}`;
+
+// =====================================================================================
 // Tab 1 — Overview
 // =====================================================================================
 
-const OverviewTab: React.FC<{ hosts: string[]; topHosts: string }> = ({ hosts, topHosts }) => {
-    // HOST now carries both the explicit host pick AND the Top Hosts subsearch
-    // when applicable — see `combinedHostFilter`. Every query in this tab
-    // references `${HOST}`, so the Top Hosts filter applies dashboard-wide
-    // (KPIs, chart, sources table, freshness table) by construction.
-    const HOST = combinedHostFilter(hosts, topHosts);
-    const Q = {
-        totalEvents: `\`sap_logserv_idx_macro\` ${HOST} | stats count`,
-        dataVolume: `\`sap_logserv_idx_macro\` ${HOST} | eval bytes=len(_raw) | stats sum(bytes) AS total_bytes`,
-        activeSourcetypes: `\`sap_logserv_idx_macro\` ${HOST} | stats dc(sourcetype) AS sts`,
-        errorsCriticals: `\`sap_logserv_idx_macro\` ${HOST} (severity=ERROR OR severity=CRITICAL OR "error" OR "critical") | stats count`,
-        authFailures: `\`sap_logserv_idx_macro\` ${HOST} ("authentication failure" OR "Failed password" OR "FAILED LOGIN" OR EventCode=4625 OR status="UNSUCCESSFUL") | stats count`,
-        sparkTotal: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d count`,
-        sparkVolume: `\`sap_logserv_idx_macro\` ${HOST} | eval bytes=len(_raw) | timechart span=1d sum(bytes) AS total_bytes`,
-        sparkSts: `\`sap_logserv_idx_macro\` ${HOST} | timechart span=1d dc(sourcetype) AS sts`,
-        sparkErrors: `\`sap_logserv_idx_macro\` ${HOST} (severity=ERROR OR severity=CRITICAL OR "error") | timechart span=1d count`,
-        sparkAuth: `\`sap_logserv_idx_macro\` ${HOST} ("Failed password" OR EventCode=4625 OR status="UNSUCCESSFUL") | timechart span=1d count`,
+const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHosts: string[] }> = ({ hosts, topHosts, resolvedTopHosts }) => {
+    // Two host dialects coexist in this tab:
+    //   - HOST     → search-language fragment (host="X" / host IN(...) /
+    //                subsearch) for RAW panels (len(_raw), full-text
+    //                severity/auth, osquery rex, timechart-by-split).
+    //   - HOST_TS  → tstats WHERE fragment ((host="X" OR …), pre-resolved
+    //                Top-N) for the default-indexed-dim panels rewritten to
+    //                | tstats. See combinedHostFilterTstats.
+    // The macro is spliced INSIDE the tstats WHERE (via `W`) so per-customer
+    // local/macros.conf index overrides keep working — search macros expand
+    // textually before parse, including inside tstats WHERE.
+    const HOST = useMemo(() => combinedHostFilter(hosts, topHosts), [hosts, topHosts]);
+    const HOST_TS = useMemo(
+        () => combinedHostFilterTstats(hosts, topHosts, resolvedTopHosts),
+        [hosts, topHosts, resolvedTopHosts],
+    );
+    // tstats WHERE clause: macro + optional host fragment. When HOST_TS is
+    // empty the trailing space collapses to just the macro.
+    const W = useMemo(
+        () => (HOST_TS ? `\`sap_logserv_idx_macro\` ${HOST_TS}` : `\`sap_logserv_idx_macro\``),
+        [HOST_TS],
+    );
+    // Host filter for the build-233 rollup inputlookup reads: the HOST_TS
+    // OR-fragment as a post-inputlookup `| search` clause (empty = all hosts).
+    const HOST_ROLL = useMemo(() => (HOST_TS ? `| search ${HOST_TS} ` : ''), [HOST_TS]);
+    const Q = useMemo(() => ({
+        totalEvents: `| tstats count WHERE ${W}`,
+        dataVolume: `${R_VOL} ${HOST_ROLL}| stats sum(sum_bytes) AS total_bytes`,
+        activeSourcetypes: `| tstats dc(sourcetype) AS sts WHERE ${W}`,
+        errorsCriticals: `${R_ERR} ${HOST_ROLL}| stats sum(count) AS count`,
+        authFailures: `${R_AUTH} ${HOST_ROLL}| stats sum(count) AS count`,
+        // sparkTotal/sparkSts: rewritten to | tstats. tstats BY _time span=1d
+        // does NOT zero-fill empty days (unlike the legacy `timechart`), which
+        // would leave gaps on sparse per-host data. The trailing
+        // `| timechart span=1d <agg>` re-fills zero-event days so the
+        // sparkline keeps its previous continuous baseline. Same pattern as
+        // the validated DataPipelineOverview build-198 sparklines.
+        sparkTotal: `| tstats count WHERE ${W} BY _time span=1d | timechart span=1d sum(count) AS count`,
+        // sparkVolume/sparkErrors/sparkAuth now read the build-233 rollup (eval
+        // _time=bucket_ts then daily timechart). sparkErrors/sparkAuth are ALIGNED
+        // to the KPI's err/auth filter (the pre-build sparks used a narrower filter
+        // than the KPI — a pre-existing inconsistency, now consistent).
+        sparkVolume: `${R_VOL} ${HOST_ROLL}| eval _time=bucket_ts | timechart span=1d sum(sum_bytes) AS total_bytes`,
+        sparkSts: `| tstats dc(sourcetype) AS sts WHERE ${W} BY _time span=1d | timechart span=1d max(sts) AS sts`,
+        sparkErrors: `${R_ERR} ${HOST_ROLL}| eval _time=bucket_ts | timechart span=1d sum(count) AS count`,
+        sparkAuth: `${R_AUTH} ${HOST_ROLL}| eval _time=bucket_ts | timechart span=1d sum(count) AS count`,
         // eventsBySource now built dynamically below so the timechart span
         // tracks the user's selected time range — see `eventsBySourceQuery`
         // memo. Hardcoded `span=1h` produced 700+ bars on a 30-day window.
-        topSources: `\`sap_logserv_idx_macro\` ${HOST} | top limit=0 source`,
-        activityByHour: `\`sap_logserv_idx_macro\` ${HOST} | bin _time span=1h | stats count by _time | sort _time`,
-        dataFreshness: `\`sap_logserv_idx_macro\` ${HOST} | stats count, latest(_time) AS last_seen by sourcetype | sort - last_seen | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")`,
+        // topSources: `top limit=0 source` emits source/count/percent; the
+        // tstats rewrite re-synthesizes the per-row `percent` (consumed by
+        // colsForKey('source','Source')) via eventstats so all three consumer
+        // fields are preserved.
+        topSources: `| tstats count WHERE ${W} BY source | sort -count | eventstats sum(count) AS _tot | eval percent=round(count/_tot*100, 1) | fields - _tot`,
+        dataFreshness: `| tstats count, max(_time) AS last_seen WHERE ${W} BY sourcetype | sort - last_seen | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")`,
         // Host Inventory — restored in build 160 (session 027 task 7) per
         // v0.0.4.2 logserv_host_details.xml `ds_host_inventory`. Pulls
         // hardware/OS/cloud facts from osqueryd events embedded in
@@ -347,7 +432,7 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string }> = ({ hosts, t
             ` latest(instance_id) AS "Instance ID"` +
             ` by host` +
             ` | rename host AS Host`,
-    };
+    }), [HOST, W, HOST_ROLL]);
 
     const total = useFirstRowField(Q.totalEvents, 'count');
     const volume = useFirstRowField(Q.dataVolume, 'total_bytes');
@@ -372,7 +457,7 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string }> = ({ hosts, t
     // `hosts.length`. This query is intentionally NOT host-filtered — it
     // always reports the full count of hosts the user could have picked.
     const totalHostsAcrossEstate = useFirstRowField(
-        '`sap_logserv_idx_macro` | stats dc(host) AS hosts',
+        '| tstats dc(host) AS hosts WHERE `sap_logserv_idx_macro`',
         'hosts',
     );
 
@@ -390,10 +475,15 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string }> = ({ hosts, t
     // reflects the full set of sourcetypes that contributed events; the
     // side legend handles scrolling when there are more series than fit
     // vertically.
+    // Build 233: rewritten to | tstats (sourcetype is indexed) — was a raw
+    // timechart-by-sourcetype full-scan (~165s at 76M / -7d). tstats reads the
+    // tsidx (~5.6s). `${W}` is the tstats WHERE (macro + host OR-fragment);
+    // BY sourcetype, _time span=<span> then timechart re-aggregates, mirroring
+    // the validated DataPipelineOverview build-198 pattern.
     const eventsBySourceQuery = useMemo(
         () =>
-            `\`sap_logserv_idx_macro\` ${HOST} | timechart span=${span} count by sourcetype limit=0 useother=false`,
-        [HOST, span],
+            `| tstats count WHERE ${W} BY sourcetype, _time span=${span} | timechart span=${span} sum(count) by sourcetype limit=0 useother=false`,
+        [W, span],
     );
 
     const formatBytes = (raw: unknown): string => {
@@ -552,6 +642,7 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string }> = ({ hosts, t
                     <FramedPanel
                         title="Host Inventory"
                         subtitle={`Hardware, OS, and cloud facts for ${hostLabel(hosts)} — sourced from osqueryd events`}
+                        search={hostInventory}
                     >
                         {/* Footnote (build 164): rendered above the table so
                           * the user reads it before scanning rows. Suppressed
@@ -579,10 +670,10 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string }> = ({ hosts, t
                 </FullWidthPanel>
             )}
             <PanelGrid>
-                <FramedPanel title="Sources" subtitle={`Sources contributing events for ${hostLabel(hosts)}, ranked by event count`}>
+                <FramedPanel search={topSources} title="Sources" subtitle={`Sources contributing events for ${hostLabel(hosts)}, ranked by event count`}>
                     <DataTable columns={colsForKey('source', 'Source')} rows={topSources.results} loading={topSources.loading} error={topSources.error} emptyMessage={empty} onRowClick={goToSourcesRow} />
                 </FramedPanel>
-                <FramedPanel title="Data Freshness" subtitle="Per-sourcetype event count and last-seen timestamp — click a row to open the related specialist dashboard">
+                <FramedPanel search={dataFreshness} title="Data Freshness" subtitle="Per-sourcetype event count and last-seen timestamp — click a row to open the related specialist dashboard">
                     <DataTable
                         columns={[
                             { key: 'sourcetype', label: 'Sourcetype' },
@@ -670,14 +761,18 @@ interface LinkGraphResult {
     host?: string;
 }
 
-const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string }> = ({ hosts, topHosts }) => {
-    const HOST = combinedHostFilter(hosts, topHosts);
+const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHosts: string[] }> = ({ hosts, topHosts, resolvedTopHosts }) => {
+    const HOST_TS = combinedHostFilterTstats(hosts, topHosts, resolvedTopHosts);
+    const W = HOST_TS ? `\`sap_logserv_idx_macro\` ${HOST_TS}` : `\`sap_logserv_idx_macro\``;
 
     // count: 0 → "all rows". The link graph needs every unique
     // sourcetype/source/host combination, which can easily exceed the
-    // default 100-row cap and silently drop hosts.
+    // default 100-row cap and silently drop hosts. `| tstats … BY a, b, c`
+    // already yields one row per distinct tuple (dedup is implicit in the BY
+    // grouping), so the trailing `| fields - count` drops the aggregate just
+    // like the legacy form. All three dims are default-indexed.
     const { results, loading, error } = useSearch<LinkGraphResult>({
-        query: `\`sap_logserv_idx_macro\` ${HOST} | fields source, sourcetype, host | dedup host, source, sourcetype | stats count by sourcetype source, host | fields - count`,
+        query: `| tstats count WHERE ${W} BY sourcetype, source, host | fields - count`,
         count: 0,
     });
 
@@ -850,6 +945,33 @@ const HostDetails: React.FC = () => {
     // The picker is disabled in the UI when ANY specific hosts are selected.
     const [topHosts, setTopHosts] = useState<string>('all');
 
+    // Count-sorted host list — lifted out of HostPicker so the SAME ordering
+    // drives both the Multiselect options AND the tstats Top-N resolution
+    // (resolvedTopHosts). Rewritten to | tstats: `host` is a default-indexed
+    // dim and `count` is tstats-native. The macro inside WHERE preserves
+    // per-customer index overrides.
+    const hostListSearch = useSearch({
+        query: '| tstats count WHERE `sap_logserv_idx_macro` BY host | sort -count',
+    });
+    const hostOptions = useMemo<string[]>(() => {
+        if (!hostListSearch.results) return [];
+        return hostListSearch.results
+            .map((r) => String((r as Record<string, unknown>).host ?? ''))
+            .filter(Boolean);
+    }, [hostListSearch.results]);
+
+    // Pre-resolve the Top-N host slice for the tstats dialect. When the user
+    // leaves the picker on "All Hosts" + a numeric Top-N, this slice of the
+    // already-count-sorted list is OR-expanded inside tstats WHERE (a tstats
+    // WHERE can't carry a subsearch). When 'all' or a specific host pick is
+    // active, the slice is unused by combinedHostFilterTstats.
+    const resolvedTopHosts = useMemo<string[]>(() => {
+        if (topHosts === 'all') return [];
+        const n = parseInt(topHosts, 10);
+        if (!Number.isFinite(n) || n <= 0) return [];
+        return hostOptions.slice(0, n);
+    }, [topHosts, hostOptions]);
+
     // If an externally-driven URL change happens (e.g., browser back/forward,
     // a drilldown landing here with `?host=…` from another dashboard), reflect
     // it in component state.
@@ -915,14 +1037,16 @@ const HostDetails: React.FC = () => {
                     onChange={setHosts}
                     topHosts={topHosts}
                     onTopHostsChange={setTopHosts}
+                    hosts={hostOptions}
+                    hostsLoading={hostListSearch.loading}
                 />
             }
         >
             <TabbedLayout
                 tabs={[
-                    { id: 'overview', label: 'Overview', content: <OverviewTab hosts={selectedHosts} topHosts={topHosts} /> },
+                    { id: 'overview', label: 'Overview', content: <OverviewTab hosts={selectedHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
                     { id: 'role-activity', label: 'Role Activity', content: <RoleActivityTab hosts={selectedHosts} topHosts={topHosts} /> },
-                    { id: 'sourcetype-mapping', label: 'Sourcetype Mapping', content: <SourcetypeMappingTab hosts={selectedHosts} topHosts={topHosts} /> },
+                    { id: 'sourcetype-mapping', label: 'Sourcetype Mapping', content: <SourcetypeMappingTab hosts={selectedHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
                 ]}
             />
         </DashboardLayout>

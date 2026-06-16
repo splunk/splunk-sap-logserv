@@ -56,6 +56,15 @@ export = system
 access = read : [ * ], write : [ * ]
 export = system
 
+# Environment Topology detail-tab rollup (session 060 / build 240). Read by the
+# topology view's right-pane detail tabs (via | inputlookup) on node/edge
+# selection; written by the logserv_topology_detail_aggregate / _backfill saved
+# searches. Same all-authenticated read+write ACL as the other topology + rollup
+# collections — KV-Store endpoints check only this collection-level ACL.
+[collections/logserv_topology_detail_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
 # AI Assistant admin-managed settings (session 042 / Option D). Read by all
 # authenticated users (the React app needs this on every page load to know
 # whether the AI Assistant button should render); admin-tier users write
@@ -71,5 +80,118 @@ export = system
 # the stanza name (e.g. "logserv-ai-assistant-enable-tc") and the React
 # app writes on every modal Submit / Cancel interaction.
 [collections/logserv_ai_assistant_acks]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Work Process Performance dashboard rollup (session 050 / build 206). Read by
+# the dashboard's panels (via | inputlookup) at render time; written by the
+# logserv_wp_perf_aggregate / _backfill saved searches. Same all-authenticated
+# read+write ACL as the topology collections — KV-Store endpoints check only
+# this collection-level ACL, no admin_all_objects capability gate.
+[collections/logserv_wp_perf_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Environment Health cross-cutting error/severity rollup (session 050 cont.).
+[collections/logserv_severity_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# HANA Audit dashboard rollup (session 050 cont.).
+[collections/logserv_hana_category_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Change & Configuration Activity dashboard rollup (session 051).
+[collections/logserv_compliance_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# SAP Router dashboard rollup (session 052).
+[collections/logserv_saprouter_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# ABAP Network & Security dashboard rollup (session 052).
+[collections/logserv_abapnet_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Cross-Stack Authentication dashboard rollup (session 052).
+[collections/logserv_xstack_auth_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Network Perimeter dashboard rollup (session 052).
+[collections/logserv_perimeter_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Linux System & Security dashboard rollup (session 052).
+[collections/logserv_linux_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Web & API Performance dashboard rollup (session 052).
+[collections/logserv_web_timing_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# HANA Trace dashboard rollup (session 053).
+[collections/logserv_hana_trace_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Windows dashboard rollup (session 053).
+[collections/logserv_windows_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# SAP Services dashboard rollup (session 053).
+[collections/logserv_sapservices_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Multi-Cloud Overview dashboard rollup (session 053).
+[collections/logserv_mc_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+[collections/logserv_beaconing_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Cloud Connector dashboard rollup (build 232).
+[collections/logserv_cloudconn_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Proxy Analytics dashboard rollup (build 232).
+[collections/logserv_proxy_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# DNS Analytics dashboard rollup (build 232).
+[collections/logserv_dns_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Data Pipeline Overview dashboard rollup (build 232).
+[collections/logserv_pipeline_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Host Details dashboard rollup (build 233).
+[collections/logserv_hostdetails_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Web Dispatcher Slowest Traces rollup (build 236).
+[collections/logserv_webdisp_slowtrace_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Beaconing detail rollup (build 237).
+[collections/logserv_beaconing_detail_rollup]
 access = read : [ * ], write : [ * ]
 export = system

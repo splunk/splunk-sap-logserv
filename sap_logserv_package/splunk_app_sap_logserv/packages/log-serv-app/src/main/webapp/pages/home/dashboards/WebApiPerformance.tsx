@@ -42,27 +42,68 @@ const PanelGrid2 = styled.div`
 const ST_BOTH = '(sourcetype="sap:webdispatcher:access" OR sourcetype="sap:scc:http_access")';
 const ST_WD = 'sourcetype="sap:webdispatcher:access"';
 
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 052 / build 222).
+ *
+ * Build 232 percentile refactor: this WAS a percentile dashboard where the
+ * true-percentile panels stayed RAW (session-051 "option c") because p50/p95/p99
+ * do NOT merge byte-exact across hourly buckets. They are now folded into the
+ * rollup — p50/p95/p99 are DROPPED and replaced by Avg (= Σsum_rt/Σcnt_rt) + Max
+ * (= max-of-per-bucket-max_rt), both byte-exact. Only err500 (event listing,
+ * | head 200) stays RAW.
+ *
+ * 7 metrics (design adversarially reviewed pre-build). `core` per-bucket over
+ * ST_BOTH: count + err_count (tonumber(status)>=400 — range test NEEDS tonumber;
+ * non-numeric status → not counted) + sum_rt (NATIVE float — WD response_time_ms
+ * is fractional, CC integer; NO round) + cnt_rt (count(response_time_ms)) +
+ * max_rt (max(response_time_ms), build 232) + authfail_count (WD 401/403 + CC
+ * 401/403/is_authenticated="false" — bare string status=, NOT tonumber) +
+ * cc_count + cc_authfail_count. `url` (uri). `timing` per-bucket dt1-4 sums +
+ * cnt_dt (4-stage avg, UNROUNDED → float-tolerant). `tls` (tls_version) +
+ * `cipher` (cipher_suite). `client` (clientip,uri) count+sum_rt+cnt_rt+max_rt —
+ * Slow Clients (Unique URIs byte-exact via the 2-dim grain). `slowuri`
+ * (uri,src_log) count+sum_rt+cnt_rt+max_rt+err_count — Slow URIs.
+ *
+ * Read idiom: `| inputlookup <coll> where metric=X | addinfo | where bucket_ts
+ * range | <agg>`. Avg = Σsum_rt/Σcnt_rt; Max = max(max_rt); rates =
+ * if(denom>0,round(...,2),0). kpiAvgRt empty-window renders "0 ms" (documented
+ * deviation from raw's " ms").
+ */
+const ROLL = 'logserv_web_timing_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const CORE = `| inputlookup ${ROLL} where metric="core" ${RANGE}`;
+const URL = `| inputlookup ${ROLL} where metric="url" ${RANGE}`;
+const TIMING = `| inputlookup ${ROLL} where metric="timing" ${RANGE}`;
+const TLS = `| inputlookup ${ROLL} where metric="tls" ${RANGE}`;
+const CIPHER = `| inputlookup ${ROLL} where metric="cipher" ${RANGE}`;
+const CLIENT = `| inputlookup ${ROLL} where metric="client" ${RANGE}`;
+const SLOWURI = `| inputlookup ${ROLL} where metric="slowuri" ${RANGE}`;
+
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST_BOTH} | stats count`,
-    kpiErrorRate: `\`sap_logserv_idx_macro\` ${ST_BOTH} | eval is_err = if(tonumber(status)>=400, 1, 0) | stats sum(is_err) as errs count as total | eval pct = if(total>0, round(errs*100/total, 2), 0) | eval display=tostring(pct)."%"`,
-    kpiAvgRt: `\`sap_logserv_idx_macro\` ${ST_BOTH} response_time_ms=* | stats avg(response_time_ms) as avg_ms | eval display=tostring(round(avg_ms, 0))." ms"`,
-    kpiAuthFail: `\`sap_logserv_idx_macro\` ((sourcetype="sap:webdispatcher:access" AND (status=401 OR status=403)) OR (sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"))) | stats count`,
-    kpiUniqueUrls: `\`sap_logserv_idx_macro\` ${ST_BOTH} uri=* | stats dc(uri) as urls`,
+    kpiTotal: `${CORE} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiErrorRate: `${CORE} | stats count as n, sum(err_count) as errs, sum(count) as total | fillnull value=0 errs total | eval pct = if(total>0, round(errs*100/total, 2), 0) | eval display=tostring(pct)."%" | fields display`,
+    kpiAvgRt: `${CORE} | stats count as n, sum(sum_rt) as s, sum(cnt_rt) as c | fillnull value=0 s c | eval avg_ms = if(c>0, s/c, 0) | eval display=tostring(round(avg_ms, 0))." ms" | fields display`,
+    kpiAuthFail: `${CORE} | stats count as n, sum(authfail_count) as count | fillnull value=0 count | fields count`,
+    kpiUniqueUrls: `${URL} | stats count as n, dc(uri) as urls | fillnull value=0 urls | fields urls`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST_BOTH} | timechart span=1d count`,
-    sparkErrorRate: `\`sap_logserv_idx_macro\` ${ST_BOTH} | eval is_err = if(tonumber(status)>=400, 1, 0) | timechart span=1d count as total_daily, sum(is_err) as err_daily | eval daily = if(total_daily>0, round(err_daily*100/total_daily, 2), 0) | fields _time daily`,
-    sparkAvgRt: `\`sap_logserv_idx_macro\` ${ST_BOTH} response_time_ms=* | timechart span=1d avg(response_time_ms) as avg_daily | eval daily = round(avg_daily, 0)`,
-    sparkAuthFail: `\`sap_logserv_idx_macro\` ((sourcetype="sap:webdispatcher:access" AND (status=401 OR status=403)) OR (sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"))) | timechart span=1d count`,
-    sparkUniqueUrls: `\`sap_logserv_idx_macro\` ${ST_BOTH} uri=* | timechart span=1d dc(uri) as urls`,
+    sparkTotal: `${CORE} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkErrorRate: `${CORE} | eval _time=bucket_ts | timechart span=1d sum(count) as total_daily, sum(err_count) as err_daily | eval daily = if(total_daily>0, round(err_daily*100/total_daily, 2), 0) | fields _time daily`,
+    sparkAvgRt: `${CORE} | eval _time=bucket_ts | timechart span=1d sum(sum_rt) as s, sum(cnt_rt) as c | eval daily = round(s/c, 0) | fields _time daily`,
+    sparkAuthFail: `${CORE} | eval _time=bucket_ts | timechart span=1d sum(authfail_count) as count | fillnull value=0`,
+    sparkUniqueUrls: `${URL} | eval _time=bucket_ts | timechart span=1d dc(uri) as urls | fillnull value=0`,
 
-    timing: `\`sap_logserv_idx_macro\` ${ST_WD} dt1_us=* dt2_us=* dt3_us=* dt4_us=* | eval dt1_ms = dt1_us/1000 | eval dt2_ms = dt2_us/1000 | eval dt3_ms = dt3_us/1000 | eval dt4_ms = dt4_us/1000 | timechart span=1d avg(dt1_ms) as "Receive (dt1)", avg(dt2_ms) as "Handler (dt2)", avg(dt3_ms) as "Response (dt3)", avg(dt4_ms) as "Send (dt4)"`,
-    percentiles: `\`sap_logserv_idx_macro\` ${ST_BOTH} response_time_ms=* | timechart span=1d perc50(response_time_ms) as p50, perc95(response_time_ms) as p95, perc99(response_time_ms) as p99`,
-    slowUris: `\`sap_logserv_idx_macro\` ${ST_BOTH} response_time_ms=* uri=* | eval src_log = if(sourcetype="sap:webdispatcher:access", "WebDisp", "CC") | stats count as events, avg(response_time_ms) as avg_ms, perc95(response_time_ms) as p95_ms, sum(eval(if(tonumber(status)>=400, 1, 0))) as errors by uri, src_log | eval avg_ms = round(avg_ms, 0), p95_ms = round(p95_ms, 0) | sort -avg_ms | rename uri as "URI", src_log as "Source", events as "Events", avg_ms as "Avg (ms)", p95_ms as "p95 (ms)", errors as "Errors"`,
-    errorAuth: `\`sap_logserv_idx_macro\` ${ST_BOTH} | eval is_http_err = if(tonumber(status)>=400, 1, 0) | eval is_cc = if(sourcetype="sap:scc:http_access", 1, 0) | eval is_cc_auth_fail = if(sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"), 1, 0) | timechart span=1d count as total_all, sum(is_http_err) as http_err, sum(is_cc) as total_cc, sum(is_cc_auth_fail) as cc_auth_fail | eval "HTTP Error Rate (%)" = if(total_all>0, round(http_err*100/total_all, 2), 0) | eval "CC Auth Failure Rate (%)" = if(total_cc>0, round(cc_auth_fail*100/total_cc, 2), 0) | fields _time, "HTTP Error Rate (%)", "CC Auth Failure Rate (%)"`,
-    tlsVersion: `\`sap_logserv_idx_macro\` ${ST_WD} tls_version=* | stats count by tls_version | sort tls_version`,
-    tlsCipher: `\`sap_logserv_idx_macro\` ${ST_WD} cipher_suite=* | stats count by cipher_suite | sort -count | rename cipher_suite as "Cipher Suite"`,
-    slowClients: `\`sap_logserv_idx_macro\` ${ST_BOTH} response_time_ms=* clientip=* | stats count as events, avg(response_time_ms) as avg_ms, perc95(response_time_ms) as p95_ms, dc(uri) as unique_uris by clientip | eval avg_ms = round(avg_ms, 0), p95_ms = round(p95_ms, 0) | sort -p95_ms | rename clientip as "Client IP", events as "Events", avg_ms as "Avg (ms)", p95_ms as "p95 (ms)", unique_uris as "Unique URIs"`,
-    err500: `\`sap_logserv_idx_macro\` ${ST_BOTH} status>=500 | eval src_log = if(sourcetype="sap:webdispatcher:access", "WebDisp", "CC") | eval resp_time = if(isnotnull(response_time_ms), tostring(response_time_ms) . " ms", "-") | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, src_log, host, clientip, method, uri, status, resp_time | rename src_log as "Source", host as "Host", clientip as "Client IP", method as "Method", uri as "URI", status as "Status", resp_time as "Response Time"`,
+    // Four-stage timing: UNROUNDED avg per stage (Σsum_dtN / Σcnt_dt) → verify
+    // float-tolerantly (~1e-13 vs raw avg(), invisible on the chart).
+    timing: `${TIMING} | eval _time=bucket_ts | timechart span=1d sum(sum_dt1) as s1, sum(sum_dt2) as s2, sum(sum_dt3) as s3, sum(sum_dt4) as s4, sum(cnt_dt) as c | eval "Receive (dt1)" = s1/c | eval "Handler (dt2)" = s2/c | eval "Response (dt3)" = s3/c | eval "Send (dt4)" = s4/c | fields _time, "Receive (dt1)", "Handler (dt2)", "Response (dt3)", "Send (dt4)"`,
+    percentiles: `${CORE} | eval _time=bucket_ts | timechart span=1d sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" | eval "Avg (ms)" = if(c>0, s/c, 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+    slowUris: `${SLOWURI} | stats sum(count) as events, sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as max_ms, sum(err_count) as errors by uri, src_log | eval avg_ms = round(if(c>0, s/c, 0), 0), max_ms = round(max_ms, 0) | sort -avg_ms | rename uri as "URI", src_log as "Source", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", errors as "Errors"`,
+    // errorAuth: HTTP error rate denom = sum(count) (all ST_BOTH); CC auth-fail
+    // rate denom = sum(cc_count) (CC only). Both if(denom>0,...,0)-guarded.
+    errorAuth: `${CORE} | eval _time=bucket_ts | timechart span=1d sum(count) as total_all, sum(err_count) as http_err, sum(cc_count) as total_cc, sum(cc_authfail_count) as cc_auth_fail | eval "HTTP Error Rate (%)" = if(total_all>0, round(http_err*100/total_all, 2), 0) | eval "CC Auth Failure Rate (%)" = if(total_cc>0, round(cc_auth_fail*100/total_cc, 2), 0) | fields _time, "HTTP Error Rate (%)", "CC Auth Failure Rate (%)"`,
+    tlsVersion: `${TLS} | stats sum(count) as count by tls_version | sort tls_version`,
+    tlsCipher: `${CIPHER} | stats sum(count) as count by cipher_suite | sort -count | rename cipher_suite as "Cipher Suite"`,
+    slowClients: `${CLIENT} | stats sum(count) as events, sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as max_ms, dc(eval(if(uri="(none)", null(), uri))) as unique_uris by clientip | eval avg_ms = round(if(c>0, s/c, 0), 0), max_ms = round(max_ms, 0) | sort -max_ms | rename clientip as "Client IP", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", unique_uris as "Unique URIs"`,
+    err500: `\`sap_logserv_idx_macro\` ${ST_BOTH} status>=500 | head 200 | eval src_log = if(sourcetype="sap:webdispatcher:access", "WebDisp", "CC") | eval resp_time = if(isnotnull(response_time_ms), tostring(response_time_ms) . " ms", "-") | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, src_log, host, clientip, method, uri, status, resp_time | rename src_log as "Source", host as "Host", clientip as "Client IP", method as "Method", uri as "URI", status as "Status", resp_time as "Response Time"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -77,7 +118,7 @@ const SLOW_URI_COLS: ColumnDef[] = [
     { key: 'Source', label: 'Source', width: '90px' },
     { key: 'Events', label: 'Events', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Avg (ms)', label: 'Avg (ms)', align: 'right' },
-    { key: 'p95 (ms)', label: 'p95 (ms)', align: 'right' },
+    { key: 'Max (ms)', label: 'Max (ms)', align: 'right' },
     { key: 'Errors', label: 'Errors', align: 'right', render: (v) => formatInteger(v) },
 ];
 const TLS_CIPHER_COLS: ColumnDef[] = [
@@ -88,7 +129,7 @@ const SLOW_CLIENT_COLS: ColumnDef[] = [
     { key: 'Client IP', label: 'Client IP' },
     { key: 'Events', label: 'Events', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Avg (ms)', label: 'Avg (ms)', align: 'right' },
-    { key: 'p95 (ms)', label: 'p95 (ms)', align: 'right' },
+    { key: 'Max (ms)', label: 'Max (ms)', align: 'right' },
     { key: 'Unique URIs', label: 'Unique URIs', align: 'right', render: (v) => formatInteger(v) },
 ];
 const ERR500_COLS: ColumnDef[] = [
@@ -175,13 +216,13 @@ const WebApiPerformance: React.FC = () => {
                 <FramedPanel title="Four-Stage Request Timing Breakdown (avg ms per stage)" subtitle="Web Dispatcher dt1–dt4 average timing per day">
                     <TimeSeriesChart query={Q.timing} height={280} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="Response Time Percentiles Over Time" subtitle="p50 / p95 / p99 across both sources">
+                <FramedPanel title="Response Time (Avg / Max) Over Time" subtitle="Average and peak response time per day across both sources">
                     <TimeSeriesChart query={Q.percentiles} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Slow URIs by Avg Response Time" subtitle="URIs across Web Dispatcher + Cloud Connector ranked by avg response time">
+                <FramedPanel search={slowUris} title="Slow URIs by Avg Response Time" subtitle="URIs across Web Dispatcher + Cloud Connector ranked by avg response time">
                     <DataTable columns={SLOW_URI_COLS} rows={slowUris.results} loading={slowUris.loading} error={slowUris.error} emptyMessage="No URI timing data in this time range." initialSortKey="Avg (ms)" initialSortDir="desc" onRowClick={goSlowUriRow} />
                 </FramedPanel>
             </FullWidthPanel>
@@ -196,19 +237,19 @@ const WebApiPerformance: React.FC = () => {
                 <FramedPanel title="TLS Version Distribution" subtitle="Web Dispatcher TLS protocol mix">
                     <TimeSeriesChart query={Q.tlsVersion} height={260} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="TLS Cipher Suite Distribution" subtitle="Negotiated cipher suites ranked by count">
+                <FramedPanel search={tlsCipher} title="TLS Cipher Suite Distribution" subtitle="Negotiated cipher suites ranked by count">
                     <DataTable columns={TLS_CIPHER_COLS} rows={tlsCipher.results} loading={tlsCipher.loading} error={tlsCipher.error} emptyMessage="No TLS cipher data in this time range." />
                 </FramedPanel>
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Slow Clients by p95 Response Time" subtitle="Client IPs ranked by p95 latency">
-                    <DataTable columns={SLOW_CLIENT_COLS} rows={slowClients.results} loading={slowClients.loading} error={slowClients.error} emptyMessage="No client timing data in this time range." initialSortKey="p95 (ms)" initialSortDir="desc" onRowClick={goSlowClientRow} />
+                <FramedPanel search={slowClients} title="Slow Clients by Max Response Time" subtitle="Client IPs ranked by max latency">
+                    <DataTable columns={SLOW_CLIENT_COLS} rows={slowClients.results} loading={slowClients.loading} error={slowClients.error} emptyMessage="No client timing data in this time range." initialSortKey="Max (ms)" initialSortDir="desc" onRowClick={goSlowClientRow} />
                 </FramedPanel>
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="Recent 500-Level Errors" subtitle="Server errors with source / client / URI, most-recent first">
+                <FramedPanel search={err500} title="Recent 500-Level Errors" subtitle="Server errors with source / client / URI, most-recent first">
                     <DataTable columns={ERR500_COLS} rows={err500.results} loading={err500.loading} error={err500.error} emptyMessage="No 500-level errors in this time range." initialSortKey="Time" initialSortDir="desc" onRowClick={goErr500Row} />
                 </FramedPanel>
             </FullWidthPanel>

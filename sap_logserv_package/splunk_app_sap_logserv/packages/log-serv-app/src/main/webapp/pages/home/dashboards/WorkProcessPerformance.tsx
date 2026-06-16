@@ -40,32 +40,72 @@ const PanelGrid2 = styled.div`
 
 const ST_WP = 'sourcetype="sap:abap:workprocess"';
 const ST_DP = 'sourcetype="sap:abap:dispatcher"';
-const ST_ICM = 'sourcetype="sap:abap:icm"';
+
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 050 / build 206).
+ *
+ * Work Process Performance is HIGH-VOL and has NO CIM data-model path
+ * (workprocess / dispatcher / icm are not CIM-tagged), so the tstats-now (#1)
+ * and CIM-DMA (#4) tiers can't accelerate it. The aggregatable panels below
+ * now read from the `logserv_wp_perf_rollup` KV Store collection, populated
+ * hourly by the [logserv_wp_perf_aggregate] scheduled search (one-time
+ * backfill via [logserv_wp_perf_backfill]). The Recent Dispatcher Errors panel
+ * stays on a RAW search — a rollup can't reconstruct an event-level listing.
+ *
+ * Read idiom: `| inputlookup logserv_wp_perf_rollup where metric=<X> | addinfo
+ * | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | <agg>`.
+ *  - The inputlookup `where metric=` filter hits the collection's
+ *    {metric,bucket_ts} accelerator.
+ *  - `addinfo` injects info_min_time/info_max_time from the dispatched job's
+ *    earliest/latest, so the panel respects the GLOBAL TimeRange picker
+ *    (useSearch sets earliest_time/latest_time on every dispatch). bucket_ts
+ *    is hour-aligned, so day-aligned picker ranges match the raw scope exactly.
+ *  - Sentinel handling: events without wp_function / wp_category_name were
+ *    fillnull'd to "(none)" so the rollup preserves TOTAL counts; reads
+ *    exclude "(none)" to reproduce the raw `field=*` / dc() semantics.
+ *  - Timecharts `eval _time=bucket_ts` first so span=1d bins by the bucket
+ *    hour (zero-filled across the picker range, same as the old raw timechart).
+ *  - ICM avg(icm_tasks) is reconstructed as sum(sum_tasks)/sum(count) — exact.
+ */
+const ROLL = 'logserv_wp_perf_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const WP = `| inputlookup ${ROLL} where metric="wp" ${RANGE}`;
+const DP = `| inputlookup ${ROLL} where metric="dp" ${RANGE}`;
+const ICM = `| inputlookup ${ROLL} where metric="icm" ${RANGE}`;
 
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST_WP} | stats count`,
-    kpiSids: `\`sap_logserv_idx_macro\` ${ST_WP} | stats dc(sap_sid) as sids`,
-    kpiErrors: `\`sap_logserv_idx_macro\` ${ST_DP} dp_severity="ERROR" | stats count`,
-    kpiFunctions: `\`sap_logserv_idx_macro\` ${ST_WP} wp_function=* | stats dc(wp_function) as functions`,
+    kpiTotal: `${WP} | stats sum(count) as count`,
+    kpiSids: `${WP} | stats dc(eval(if(sap_sid="(none)",null(),sap_sid))) as sids`,
+    kpiErrors: `${DP} | search dp_severity="ERROR" | stats sum(count) as count`,
+    kpiFunctions: `${WP} | search wp_function!="(none)" | stats dc(wp_function) as functions`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST_WP} | timechart span=1d count`,
-    sparkSids: `\`sap_logserv_idx_macro\` ${ST_WP} | timechart span=1d dc(sap_sid) as sids`,
-    sparkErrors: `\`sap_logserv_idx_macro\` ${ST_DP} dp_severity="ERROR" | timechart span=1d count`,
-    sparkFunctions: `\`sap_logserv_idx_macro\` ${ST_WP} wp_function=* | timechart span=1d dc(wp_function) as functions`,
+    // Timecharts append `| fillnull value=0`: raw `count by X` zero-fills empty
+    // series-bins with 0, but the rollup's `sum(count)` yields null for an empty
+    // bin (sum of zero rows = null). fillnull restores raw's 0-fill so the
+    // charts render identically to the pre-refactor dashboard.
+    sparkTotal: `${WP} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkSids: `${WP} | eval _time=bucket_ts | timechart span=1d dc(eval(if(sap_sid="(none)",null(),sap_sid))) as sids | fillnull value=0`,
+    sparkErrors: `${DP} | search dp_severity="ERROR" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkFunctions: `${WP} | search wp_function!="(none)" | eval _time=bucket_ts | timechart span=1d dc(wp_function) as functions | fillnull value=0`,
 
-    categoryTrend: `\`sap_logserv_idx_macro\` ${ST_WP} wp_category_name=* | timechart span=1d count by wp_category_name limit=14`,
-    categoryMix: `\`sap_logserv_idx_macro\` ${ST_WP} wp_category_name=* | stats count by wp_category_name | sort -count`,
-    topFunctions: `\`sap_logserv_idx_macro\` ${ST_WP} wp_function=* | stats count by wp_function | sort -count | rename wp_function as "Function", count as "Events"`,
-    severityTrend: `\`sap_logserv_idx_macro\` ${ST_DP} dp_severity=* | timechart span=1d count by dp_severity`,
-    bySid: `\`sap_logserv_idx_macro\` ${ST_WP} | stats count as "Total Events", dc(wp_function) as "Unique Functions", dc(wp_category_name) as "WP Categories" by sap_sid, sap_instance | sort -"Total Events" | rename sap_sid as "SID", sap_instance as "Instance"`,
-    recentErrors: `\`sap_logserv_idx_macro\` ${ST_DP} dp_severity="ERROR" | fillnull value="-" dp_function dp_reason | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | table Time, sap_sid, dp_function, dp_reason, host | sort -Time | rename sap_sid as "SID", dp_function as "Function", dp_reason as "Reason"`,
+    categoryTrend: `${WP} | search wp_category_name!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by wp_category_name limit=14 | fillnull value=0`,
+    categoryMix: `${WP} | search wp_category_name!="(none)" | stats sum(count) as count by wp_category_name | sort -count`,
+    topFunctions: `${WP} | search wp_function!="(none)" | stats sum(count) as count by wp_function | sort -count | rename wp_function as "Function", count as "Events"`,
+    severityTrend: `${DP} | search dp_severity!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by dp_severity | fillnull value=0`,
+    bySid: `${WP} | stats sum(count) as "Total Events", dc(eval(if(wp_function="(none)",null(),wp_function))) as "Unique Functions", dc(eval(if(wp_category_name="(none)",null(),wp_category_name))) as "WP Categories" by sap_sid, sap_instance | sort -"Total Events" | rename sap_sid as "SID", sap_instance as "Instance"`,
 
-    // ICM async RFC queue depth (build 186 / session 034 deep-dive). icm_tasks
-    // and icm_memory are extracted by props.conf; previously unsurfaced in any
-    // dashboard. Queue depth signals downstream-system saturation when the
-    // RFC stack can't drain to the consumer fast enough.
-    asyncRfcQueueTrend: `\`sap_logserv_idx_macro\` ${ST_ICM} icm_request_type="ASYNC_RFC" icm_tasks=* | timechart span=1d avg(icm_tasks) AS "Avg Queue Depth" max(icm_tasks) AS "Max Queue Depth"`,
-    topProgramsByTasks: `\`sap_logserv_idx_macro\` ${ST_ICM} icm_program=* icm_tasks=* | stats count AS Calls avg(icm_tasks) AS avg_tasks max(icm_tasks) AS max_tasks max(icm_memory) AS max_mem_kb by icm_program | eval Avg = round(avg_tasks, 1) | sort -max_tasks | head 20 | rename icm_program AS Program max_tasks AS "Max Tasks" max_mem_kb AS "Max Mem (KB)" | table Program Calls Avg "Max Tasks" "Max Mem (KB)"`,
+    // Recent Dispatcher Errors stays RAW — an event-level listing the rollup
+    // can't reconstruct. Bounded by the picker, so cost is acceptable.
+    recentErrors: `\`sap_logserv_idx_macro\` ${ST_DP} dp_severity="ERROR" | head 200 | fillnull value="-" dp_function dp_reason | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | table Time, sap_sid, dp_function, dp_reason, host | sort -Time | rename sap_sid as "SID", dp_function as "Function", dp_reason as "Reason"`,
+
+    // ICM async RFC queue depth (build 186 / session 034 deep-dive). Rolled up
+    // per (icm_program, icm_request_type) with sum/max(icm_tasks) + max(icm_memory)
+    // over task-bearing (icm_tasks=*) events. Daily avg = Σ(sum_tasks)/Σ(count).
+    // Avg Queue Depth = Σ(sum_tasks)/Σ(count) reproduces raw avg(icm_tasks)
+    // exactly — kept full-precision (NOT round()ed) to match the raw chart's
+    // unrounded avg. Empty days stay null in both raw and rollup (no fillnull).
+    asyncRfcQueueTrend: `${ICM} | search icm_request_type="ASYNC_RFC" | eval _time=bucket_ts | timechart span=1d sum(sum_tasks) as st, sum(count) as ct, max(max_tasks) as "Max Queue Depth" | eval "Avg Queue Depth"=st/ct | fields _time, "Avg Queue Depth", "Max Queue Depth"`,
+    topProgramsByTasks: `${ICM} | search icm_program!="(none)" | stats sum(count) as Calls, sum(sum_tasks) as st, max(max_tasks) as "Max Tasks", max(max_mem) as "Max Mem (KB)" by icm_program | eval Avg = round(st/Calls, 1) | sort -"Max Tasks" | head 20 | rename icm_program AS Program | table Program Calls Avg "Max Tasks" "Max Mem (KB)"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -166,7 +206,7 @@ const WorkProcessPerformance: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Work Process Functions" subtitle="Functions ranked by event volume">
+                <FramedPanel search={topFunctions} title="Work Process Functions" subtitle="Functions ranked by event volume">
                     <DataTable columns={TOP_FUNC_COLS} rows={topFunctions.results} loading={topFunctions.loading} error={topFunctions.error} emptyMessage="No work-process events in this time range." />
                 </FramedPanel>
                 <FramedPanel title="Dispatcher Severity Over Time" subtitle="Dispatcher event severity trend">
@@ -175,13 +215,13 @@ const WorkProcessPerformance: React.FC = () => {
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Activity by SID / Instance" subtitle="Per-SID totals + function/category counts — click a row for that SID's full WP event log">
+                <FramedPanel search={bySid} title="Activity by SID / Instance" subtitle="Per-SID totals + function/category counts — click a row for that SID's full WP event log">
                     <DataTable columns={BY_SID_COLS} rows={bySid.results} loading={bySid.loading} error={bySid.error} emptyMessage="No work-process events in this time range." initialSortKey="Total Events" initialSortDir="desc" onRowClick={goBySidRow} />
                 </FramedPanel>
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="Recent Dispatcher Errors" subtitle="Dispatcher ERROR events, most-recent first — click a row to open Host Details">
+                <FramedPanel search={recentErrors} title="Recent Dispatcher Errors" subtitle="Dispatcher ERROR events, most-recent first — click a row to open Host Details">
                     <DataTable columns={RECENT_ERR_COLS} rows={recentErrors.results} loading={recentErrors.loading} error={recentErrors.error} emptyMessage="No dispatcher ERROR events in this time range." initialSortKey="Time" initialSortDir="desc" onRowClick={goRecentErrorRow} />
                 </FramedPanel>
             </FullWidthPanel>
@@ -190,7 +230,7 @@ const WorkProcessPerformance: React.FC = () => {
                 <FramedPanel title="Async RFC Queue Depth" subtitle="ICM ASYNC_RFC tasks-in-queue per dispatch (sap:abap:icm `icm_tasks` field) — daily avg + max">
                     <TimeSeriesChart query={Q.asyncRfcQueueTrend} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
-                <FramedPanel title="Top Programs by Queue Depth" subtitle="ABAP programs ranked by max queue depth at dispatch — saturated programs surface here">
+                <FramedPanel search={topPrograms} title="Top Programs by Queue Depth" subtitle="ABAP programs ranked by max queue depth at dispatch — saturated programs surface here">
                     <DataTable columns={TOP_PROGRAMS_COLS} rows={topPrograms.results} loading={topPrograms.loading} error={topPrograms.error} emptyMessage="No ICM ASYNC_RFC events with task counts in this time range." />
                 </FramedPanel>
             </PanelGrid2>

@@ -1,6 +1,7 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
+import { PanelMeta, PanelMetaContext, PanelActions } from './PanelMeta';
 
 /**
  * FramedPanel — the v0.0.4.2 "framed dark cards" container.
@@ -68,10 +69,28 @@ const Body = styled.div`
     color: ${logservTheme.colors.textDefault};
 `;
 
+/** Right-side header cluster: any caller-supplied `actions` plus the build-234
+ *  PanelActions toolbar, vertically centered (icons, not text baselines). */
+const HeaderRight = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${logservTheme.spacing.sm};
+    align-self: center;
+`;
+
 interface FramedPanelProps {
     title?: ReactNode;
     subtitle?: ReactNode;
     actions?: ReactNode;
+    /** Build 234 — the panel's search result (from useSearch). When provided,
+     *  FramedPanel renders the Open-in-Search / Download / Inspect / Refresh
+     *  toolbar in the header. Tables pass this explicitly; charts report it
+     *  automatically via PanelMetaContext (see usePanelMetaReporter), so chart
+     *  panels need no prop. */
+    search?: PanelMeta;
+    /** Opt out of the action toolbar for a specific panel (e.g. non-data
+     *  panels, or where the chrome would be redundant). */
+    noToolbar?: boolean;
     compact?: boolean;
     children?: ReactNode;
     className?: string;
@@ -92,46 +111,64 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
     title,
     subtitle,
     actions,
+    search,
+    noToolbar,
     compact,
     children,
     className,
     onClick,
     clickTitle,
 }) => {
-    const showHeader = title || subtitle || actions;
+    // Build 234 — capture search meta reported by an inner chart (charts run
+    // their own useSearch); tables pass `search` explicitly. Either drives the
+    // PanelActions toolbar.
+    const [captured, setCaptured] = useState<PanelMeta | null>(null);
+    const ctx = useMemo(() => ({ report: setCaptured }), []);
+    const meta = search ?? captured;
+    const showToolbar = !noToolbar && !!meta;
+    const headerRight =
+        actions || showToolbar ? (
+            <HeaderRight>
+                {actions}
+                {showToolbar && meta && <PanelActions meta={meta} />}
+            </HeaderRight>
+        ) : null;
+    const showHeader = title || subtitle || headerRight;
     const isClickable = !!onClick;
     return (
-        <Root
-            $compact={compact}
-            $clickable={isClickable}
-            className={className}
-            onClick={onClick}
-            role={isClickable ? 'button' : undefined}
-            tabIndex={isClickable ? 0 : undefined}
-            title={isClickable ? clickTitle : undefined}
-            aria-label={isClickable ? clickTitle : undefined}
-            onKeyDown={
-                isClickable
-                    ? (e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              onClick && onClick();
+        <PanelMetaContext.Provider value={ctx}>
+            <Root
+                $compact={compact}
+                $clickable={isClickable}
+                className={className}
+                onClick={onClick}
+                role={isClickable ? 'button' : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                title={isClickable ? clickTitle : undefined}
+                aria-label={isClickable ? clickTitle : undefined}
+                onKeyDown={
+                    isClickable
+                        ? (e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  onClick && onClick();
+                              }
                           }
-                      }
-                    : undefined
-            }
-        >
-            {showHeader && (
-                <Header>
-                    <div>
-                        {title && <Title>{title}</Title>}
-                        {subtitle && <Subtitle>{subtitle}</Subtitle>}
-                    </div>
-                    {actions && <div>{actions}</div>}
-                </Header>
-            )}
-            <Body>{children}</Body>
-        </Root>
+                        : undefined
+                }
+            >
+                {showHeader && (
+                    <Header>
+                        <div>
+                            {title && <Title>{title}</Title>}
+                            {subtitle && <Subtitle>{subtitle}</Subtitle>}
+                        </div>
+                        {headerRight}
+                    </Header>
+                )}
+                <Body>{children}</Body>
+            </Root>
+        </PanelMetaContext.Provider>
     );
 };
 

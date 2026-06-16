@@ -48,30 +48,88 @@ const PanelGrid30_70 = styled.div`
     @media (max-width: 1100px) { grid-template-columns: 1fr; }
 `;
 
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 052 / build 220).
+ *
+ * Network Perimeter is a cross-source firewall + proxy + DNS synthesis. The 18
+ * aggregatable count/sum/dc panels below now read from the `logserv_perimeter_rollup`
+ * KV Store collection, populated hourly by [logserv_perimeter_aggregate] (one-time
+ * [logserv_perimeter_backfill]). Beaconing KPI + sparkline (build 232) reuse the
+ * per-day `logserv_beaconing_rollup` (byte-identical to the kpiBeacon streamstats
+ * dc(query) computation). Only the `suspicious` synthesis table stays RAW —
+ * per-event streamstats inter-arrival gap-variance analysis over the (query,src)
+ * stream cannot be reconstructed byte-exact from additive hourly count buckets.
+ *
+ * 7 metrics (design adversarially reviewed pre-build; verdict: ship). `fw`
+ * (fw_action, fw_src, fw_dst, fw_dpt, fw_proto, host) over ALL linux_secure (rex
+ * from _raw, all fillnull'd) — MERGES the IN_DROP-scoped KPIs (read filters
+ * fw_action="IN_DROP") with the all-secure-scoped block tables (NO IN_DROP filter
+ * — a latent dashboard imprecision REPLICATED, not fixed). `proxy` per-bucket
+ * count/denied_count/bytes_sum. `proxydom` (url_domain, src_ip) for outDomains.
+ * `dnscount` (full tag=dns/Query scope) for kpiDns/sparkDns. `dnstype`
+ * (query_type) for dnsType. `dnsq` (query, src)+txt/mx measures for queried.
+ * `activity` (source_type) kept SEPARATE (different filter forms / event
+ * populations than the KPIs).
+ *
+ * Read idiom: `| inputlookup <coll> where metric=X | addinfo | where bucket_ts
+ * range | <agg>`. Count KPIs use the empty-safe idiom; COUNT timecharts append
+ * `| fillnull value=0` (raw count 0-fills, rollup sum(count) null-fills) — but
+ * sparkBw (a sum-measure timechart) does NOT (both null-fill empty bins).
+ * decode-at-read for proto_name / query_type_label.
+ */
+const ROLL = 'logserv_perimeter_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const FW = `| inputlookup ${ROLL} where metric="fw" ${RANGE}`;
+const PROXY = `| inputlookup ${ROLL} where metric="proxy" ${RANGE}`;
+const PROXYDOM = `| inputlookup ${ROLL} where metric="proxydom" ${RANGE}`;
+const DNSCOUNT = `| inputlookup ${ROLL} where metric="dnscount" ${RANGE}`;
+const DNSTYPE = `| inputlookup ${ROLL} where metric="dnstype" ${RANGE}`;
+const DNSQ = `| inputlookup ${ROLL} where metric="dnsq" ${RANGE}`;
+const ACTIVITY = `| inputlookup ${ROLL} where metric="activity" ${RANGE}`;
+// Beaconing KPI + spark reuse the per-day beaconing rollup (build 232).
+const BEACON = '| inputlookup logserv_beaconing_rollup | addinfo | where day_ts>=info_min_time AND day_ts<info_max_time';
+// Build 237 — per-day beaconing DETAIL rollup (qs gap-stats + denied counts).
+// Approximate (per-day gaps), picker-responsive. Drives the Suspicious table.
+const BCN_QS = '| inputlookup logserv_beaconing_detail_rollup where metric="qs" | addinfo | where day_ts>=info_min_time AND day_ts<info_max_time';
+const BCN_DENIED = '| inputlookup logserv_beaconing_detail_rollup where metric="denied" | addinfo | where day_ts>=info_min_time AND day_ts<info_max_time';
+// Byte-size formatter (raw GB/MB/KB/B case), reused for kpiBw + outDomains.
+const bytesFmt = (f: string): string =>
+    `case(${f} >= 1073741824, tostring(round(${f}/1073741824, 2)) . " GB", ${f} >= 1048576, tostring(round(${f}/1048576, 1)) . " MB", ${f} >= 1024, tostring(round(${f}/1024, 0)) . " KB", 1=1, tostring(${f}) . " B")`;
+const PROTO_NAME = 'case(fw_proto="TCP" OR fw_proto="6", "TCP", fw_proto="UDP" OR fw_proto="17", "UDP", fw_proto="ICMP" OR fw_proto="1", "ICMP", 1=1, fw_proto)';
+const QTYPE_LABEL = 'case(query_type="A", "A (IPv4 Address)", query_type="AAAA", "AAAA (IPv6 Address)", query_type="CNAME", "CNAME (Canonical Name)", query_type="MX", "MX (Mail Exchange)", query_type="NS", "NS (Name Server)", query_type="PTR", "PTR (Reverse DNS)", query_type="SOA", "SOA (Start of Authority)", query_type="SRV", "SRV (Service)", query_type="TXT", "TXT (Text)", query_type="HINFO", "HINFO (Host Info)", query_type="ANY", "ANY (Any Type)", query_type="NAPTR", "NAPTR (Naming Authority Pointer)", query_type="DS", "DS (Delegation Signer)", query_type="DNSKEY", "DNSKEY (DNS Key)", query_type="RRSIG", "RRSIG (Resource Record Signature)", query_type="NSEC", "NSEC (Next Secure)", query_type="CAA", "CAA (Certificate Authority Authorization)", 1=1, query_type)';
+
 const Q = {
-    kpiFw: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | stats count`,
-    kpiProxy: `\`sap_logserv_idx_macro\` sourcetype="squid:access" | stats count`,
-    kpiDns: `\`sap_logserv_idx_macro\` tag=dns message_type="Query" | stats count`,
-    kpiBeacon: `\`sap_logserv_idx_macro\` tag=dns message_type="Query" | bucket _time span=1d as day | fields day, _time, query | streamstats current=f last(_time) as last_time by query, day | eval gap=last_time - _time | stats count, avg(gap) AS avg_gap, var(gap) AS var_gap BY query, day | where var_gap < 60 AND count > 2 AND avg_gap > 1 | stats dc(query) as count`,
-    kpiDenied: `\`sap_logserv_idx_macro\` sourcetype="squid:access" (status=403 OR vendor_action="TCP_DENIED") | stats count`,
-    kpiBw: `\`sap_logserv_idx_macro\` sourcetype="squid:access" bytes_out=* | stats sum(bytes_out) as total_bytes | eval display = case(total_bytes >= 1073741824, tostring(round(total_bytes/1073741824, 2)) . " GB", total_bytes >= 1048576, tostring(round(total_bytes/1048576, 1)) . " MB", total_bytes >= 1024, tostring(round(total_bytes/1024, 0)) . " KB", 1=1, tostring(total_bytes) . " B")`,
+    kpiFw: `${FW} | search fw_action="IN_DROP" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiProxy: `${PROXY} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiDns: `${DNSCOUNT} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiBeacon: `${BEACON} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiDenied: `${PROXY} | stats count as n, sum(denied_count) as count | fillnull value=0 count | fields count`,
+    kpiBw: `${PROXY} | stats count as n, sum(bytes_sum) as total_bytes | fillnull value=0 total_bytes | eval display = ${bytesFmt('total_bytes')} | fields display`,
 
-    sparkFw: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | timechart span=1d count`,
-    sparkProxy: `\`sap_logserv_idx_macro\` sourcetype="squid:access" | timechart span=1d count`,
-    sparkDns: `\`sap_logserv_idx_macro\` tag=dns message_type="Query" | timechart span=1d count`,
-    sparkBeacon: `\`sap_logserv_idx_macro\` tag=dns message_type="Query" | bucket _time span=1d as day | fields day, _time, query | streamstats current=f last(_time) as last_time by query, day | eval gap=last_time - _time | stats count, avg(gap) AS avg_gap, var(gap) AS var_gap BY query, day | where var_gap < 60 AND count > 2 AND avg_gap > 1 | stats dc(query) as daily by day | rename day as _time`,
-    sparkDenied: `\`sap_logserv_idx_macro\` sourcetype="squid:access" (status=403 OR vendor_action="TCP_DENIED") | timechart span=1d count`,
-    sparkBw: `\`sap_logserv_idx_macro\` sourcetype="squid:access" bytes_out=* | timechart span=1d sum(bytes_out) as bytes_daily | eval daily = round(bytes_daily/1048576, 2)`,
+    sparkFw: `${FW} | search fw_action="IN_DROP" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkProxy: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkDns: `${DNSCOUNT} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkBeacon: `${BEACON} | eval _time=day_ts | timechart span=1d sum(count) as daily | fillnull value=0`,
+    sparkDenied: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(denied_count) as count | fillnull value=0`,
+    // sparkBw is a SUM-measure timechart -> NO fillnull-0 (both raw and rollup
+    // null-fill empty bins; the count-spark 0-fill rule does NOT apply here).
+    sparkBw: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) as bytes_daily | eval daily = round(bytes_daily/1048576, 2)`,
 
-    activity: `\`sap_logserv_idx_macro\` (sourcetype="linux_secure" OR sourcetype="squid:access" OR (tag=dns message_type="Query")) | eval source_type = case(sourcetype="linux_secure" AND match(_raw, "IN_DROP"), "Firewall Drops", sourcetype="squid:access", "Proxy Requests", sourcetype="isc:bind:query", "DNS Queries", 1=1, "other") | where source_type != "other" | timechart span=1d count by source_type`,
-    blockedSrc: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops, dc(fw_dst) as "Unique Targets", values(fw_proto) as Protocols by fw_src | sort -Drops | rename fw_src as "Source IP"`,
-    blockedPort: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops, dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
-    fwProto: `\`sap_logserv_idx_macro\` sourcetype="linux_secure" | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_proto) | eval proto_name = case(fw_proto="TCP" OR fw_proto="6", "TCP", fw_proto="UDP" OR fw_proto="17", "UDP", fw_proto="ICMP" OR fw_proto="1", "ICMP", 1=1, fw_proto) | timechart span=1d count by proto_name`,
-    proxyDenied: `\`sap_logserv_idx_macro\` sourcetype="squid:access" (status=403 OR vendor_action="TCP_DENIED") | timechart span=1d count as "Denied Requests"`,
-    outDomains: `\`sap_logserv_idx_macro\` sourcetype="squid:access" url_domain=* bytes_out=* | stats count as Requests, sum(bytes_out) as bytes, dc(src_ip) as "Unique Clients" by url_domain | eval Bandwidth = case(bytes >= 1073741824, tostring(round(bytes/1073741824, 2)) . " GB", bytes >= 1048576, tostring(round(bytes/1048576, 1)) . " MB", bytes >= 1024, tostring(round(bytes/1024, 0)) . " KB", 1=1, tostring(bytes) . " B") | sort -bytes | table url_domain, Requests, Bandwidth, "Unique Clients" | rename url_domain as "Domain"`,
-    dnsType: `\`sap_logserv_idx_macro\` tag=dns message_type="Query" query_type=* | eval query_type_label = case(query_type="A", "A (IPv4 Address)", query_type="AAAA", "AAAA (IPv6 Address)", query_type="CNAME", "CNAME (Canonical Name)", query_type="MX", "MX (Mail Exchange)", query_type="NS", "NS (Name Server)", query_type="PTR", "PTR (Reverse DNS)", query_type="SOA", "SOA (Start of Authority)", query_type="SRV", "SRV (Service)", query_type="TXT", "TXT (Text)", query_type="HINFO", "HINFO (Host Info)", query_type="ANY", "ANY (Any Type)", query_type="NAPTR", "NAPTR (Naming Authority Pointer)", query_type="DS", "DS (Delegation Signer)", query_type="DNSKEY", "DNSKEY (DNS Key)", query_type="RRSIG", "RRSIG (Resource Record Signature)", query_type="NSEC", "NSEC (Next Secure)", query_type="CAA", "CAA (Certificate Authority Authorization)", 1=1, query_type) | stats count by query_type_label | sort -count | rename query_type_label as "Query Type"`,
-    queried: `\`sap_logserv_idx_macro\` tag=dns message_type="Query" query=* | stats count as Queries, dc(src) as "Unique Clients", sum(eval(if(query_type="TXT", 1, 0))) as txt_count, sum(eval(if(query_type="MX", 1, 0))) as mx_count by query | eval pct_txt = tostring(round(txt_count*100/Queries, 1)) . "%" | eval pct_mx = tostring(round(mx_count*100/Queries, 1)) . "%" | sort -Queries | table query, Queries, "Unique Clients", pct_txt, pct_mx | rename query as "Domain", pct_txt as "%TXT", pct_mx as "%MX"`,
-    suspicious: `\`sap_logserv_idx_macro\` tag=dns message_type="Query" src=* | fields _time, src, query | streamstats current=f last(_time) as last_time by query | eval gap=last_time - _time | stats count AS beacon_query_count, avg(gap) AS avg_gap, var(gap) AS var_gap BY query, src | where var_gap < 60 AND avg_gap > 0 AND beacon_query_count > 2 | stats dc(query) as beacon_domains, sum(beacon_query_count) as beacon_queries by src | append [ search \`sap_logserv_idx_macro\` sourcetype="squid:access" (status=403 OR vendor_action="TCP_DENIED") src_ip=* | stats count as denied_requests by src_ip | rename src_ip as src ] | stats max(beacon_domains) as beacon_domains, max(beacon_queries) as beacon_queries, max(denied_requests) as denied_requests by src | fillnull value=0 beacon_domains beacon_queries denied_requests | eval signal_score = (beacon_domains * 3) + denied_requests | where signal_score > 0 | sort -signal_score | rename src as "Host", beacon_domains as "Beaconing Domains", beacon_queries as "Beaconing Queries", denied_requests as "Denied Proxy Requests", signal_score as "Signal Score"`,
+    activity: `${ACTIVITY} | eval _time=bucket_ts | timechart span=1d sum(count) by source_type | fillnull value=0`,
+    blockedSrc: `${FW} | search fw_src!="(none)" | stats sum(count) as Drops, dc(eval(if(fw_dst="(none)",null(),fw_dst))) as "Unique Targets", values(eval(if(fw_proto="(none)",null(),fw_proto))) as Protocols by fw_src | sort -Drops | rename fw_src as "Source IP"`,
+    // blockedPort adds fw_proto!="(none)" because raw `stats by fw_dpt, fw_proto`
+    // drops a null-proto group (a DPT-present-but-PROTO-absent event).
+    blockedPort: `${FW} | search fw_dpt!="(none)" fw_proto!="(none)" | stats sum(count) as Drops, dc(eval(if(host="(none)",null(),host))) as Hosts by fw_dpt, fw_proto | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
+    fwProto: `${FW} | search fw_action="IN_DROP" fw_proto!="(none)" | eval proto_name = ${PROTO_NAME} | eval _time=bucket_ts | timechart span=1d sum(count) by proto_name | fillnull value=0`,
+    proxyDenied: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(denied_count) as "Denied Requests" | fillnull value=0`,
+    outDomains: `${PROXYDOM} | stats sum(count) as Requests, sum(bytes_sum) as bytes, dc(eval(if(src_ip="(none)",null(),src_ip))) as "Unique Clients" by url_domain | eval Bandwidth = ${bytesFmt('bytes')} | sort -bytes | table url_domain, Requests, Bandwidth, "Unique Clients" | rename url_domain as "Domain"`,
+    dnsType: `${DNSTYPE} | eval query_type_label = ${QTYPE_LABEL} | stats sum(count) as count by query_type_label | sort -count | rename query_type_label as "Query Type"`,
+    queried: `${DNSQ} | stats sum(count) as Queries, dc(eval(if(src="(none)",null(),src))) as "Unique Clients", sum(txt_count) as txt_count, sum(mx_count) as mx_count by query | eval pct_txt = tostring(round(txt_count*100/Queries, 1)) . "%" | eval pct_mx = tostring(round(mx_count*100/Queries, 1)) . "%" | sort -Queries | table query, Queries, "Unique Clients", pct_txt, pct_mx | rename query as "Domain", pct_txt as "%TXT", pct_mx as "%MX"`,
+    // Build 237: reconstructed from the per-day beaconing detail rollup. qs gives
+    // per-(query,src) gap-stats (avg/var rebuilt via Σ) → flag beaconing (query,src)
+    // → dc(query)+sum by src; denied metric replaces the squid-denied append.
+    // Approximate (per-day gaps), picker-responsive. Output columns unchanged.
+    suspicious: `${BCN_QS} | search src!="(none)" | stats sum(cnt) as beacon_query_count, sum(n_gap) as ng, sum(sum_gap) as sg, sum(sumsq_gap) as ssg by query, src | eval avg_gap=if(ng>0,sg/ng,0), var_gap=if(ng>1,(ssg - sg*sg/ng)/(ng-1),null()) | where var_gap < 60 AND avg_gap > 0 AND beacon_query_count > 2 | stats dc(query) as beacon_domains, sum(beacon_query_count) as beacon_queries by src | append [ ${BCN_DENIED} | search src!="(none)" | stats sum(denied_count) as denied_requests by src ] | stats max(beacon_domains) as beacon_domains, max(beacon_queries) as beacon_queries, max(denied_requests) as denied_requests by src | fillnull value=0 beacon_domains beacon_queries denied_requests | eval signal_score = (beacon_domains * 3) + denied_requests | where signal_score > 0 | sort -signal_score | rename src as "Host", beacon_domains as "Beaconing Domains", beacon_queries as "Beaconing Queries", denied_requests as "Denied Proxy Requests", signal_score as "Signal Score"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -199,10 +257,10 @@ const NetworkPerimeter: React.FC = () => {
             </FullWidthPanel>
 
             <PanelGrid2>
-                <FramedPanel title="Blocked Source IPs" subtitle="Source IPs being dropped by firewall, ranked by drop count">
+                <FramedPanel search={blockedSrc} title="Blocked Source IPs" subtitle="Source IPs being dropped by firewall, ranked by drop count">
                     <DataTable columns={BLOCKED_SRC_COLS} rows={blockedSrc.results} loading={blockedSrc.loading} error={blockedSrc.error} emptyMessage="No firewall drops in this time range." initialSortKey="Drops" initialSortDir="desc" pageSize={10} onRowClick={goBlockedSrc} />
                 </FramedPanel>
-                <FramedPanel title="Blocked Destination Ports" subtitle="Destination ports being dropped, ranked by drop count">
+                <FramedPanel search={blockedPort} title="Blocked Destination Ports" subtitle="Destination ports being dropped, ranked by drop count">
                     <DataTable columns={BLOCKED_PORT_COLS} rows={blockedPort.results} loading={blockedPort.loading} error={blockedPort.error} emptyMessage="No firewall drops in this time range." initialSortKey="Drops" initialSortDir="desc" pageSize={10} />
                 </FramedPanel>
             </PanelGrid2>
@@ -217,7 +275,7 @@ const NetworkPerimeter: React.FC = () => {
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Outbound Domains by Volume & Bytes" subtitle="Outbound domains ranked by bandwidth">
+                <FramedPanel search={outDomains} title="Outbound Domains by Volume & Bytes" subtitle="Outbound domains ranked by bandwidth">
                     <DataTable columns={OUT_DOMAIN_COLS} rows={outDomains.results} loading={outDomains.loading} error={outDomains.error} emptyMessage="No proxy outbound traffic in this time range." initialSortKey="Requests" initialSortDir="desc" onRowClick={goOutDomain} />
                 </FramedPanel>
             </FullWidthPanel>
@@ -226,13 +284,13 @@ const NetworkPerimeter: React.FC = () => {
                 <FramedPanel title="DNS Query Type Distribution" subtitle="Share of total DNS queries by record type">
                     <PieChart query={Q.dnsType} categoryField="Query Type" valueField="count" height={300} donut />
                 </FramedPanel>
-                <FramedPanel title="Queried Domains" subtitle="Domains with %TXT and %MX columns (DNS exfil heuristic), ranked by query count">
+                <FramedPanel search={queried} title="Queried Domains" subtitle="Domains with %TXT and %MX columns (DNS exfil heuristic), ranked by query count">
                     <DataTable columns={QUERIED_COLS} rows={queried.results} loading={queried.loading} error={queried.error} emptyMessage="No DNS queries in this time range." initialSortKey="Queries" initialSortDir="desc" onRowClick={goQueried} />
                 </FramedPanel>
             </PanelGrid30_70>
 
             <FullWidthPanel>
-                <FramedPanel title="Suspicious Activity Indicator (Beaconing DNS + Denied Proxy, by Host)" subtitle="Synthesis: signal_score = beacon_domains * 3 + denied_requests">
+                <FramedPanel search={suspicious} title="Suspicious Activity Indicator (Beaconing DNS + Denied Proxy, by Host)" subtitle="Synthesis: signal_score = beacon_domains * 3 + denied_requests">
                     <DataTable columns={SUSPICIOUS_COLS} rows={suspicious.results} loading={suspicious.loading} error={suspicious.error} emptyMessage="No suspicious activity detected in this time range." initialSortKey="Signal Score" initialSortDir="desc" onRowClick={goSuspicious} />
                 </FramedPanel>
             </FullWidthPanel>

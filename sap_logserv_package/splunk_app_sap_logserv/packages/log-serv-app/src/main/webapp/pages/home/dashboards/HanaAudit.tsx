@@ -41,28 +41,55 @@ const PanelGrid2 = styled.div`
 `;
 const ST = 'sourcetype=sap:hana:audit';
 
+/**
+ * Dashboard-perf tier #6 (KV-Store precompute, session 050 cont. / build 211).
+ * Reads the `logserv_hana_category_rollup` collection (4 metric sub-types) so
+ * the panels stop raw-scanning sap:hana:audit. Read idiom: `| inputlookup …
+ * where metric=X | addinfo | where bucket_ts range | <agg>`.
+ *
+ * CRITICAL null-handling (design-review workflow): status is null on ~2,450 of
+ * ~20,947 events; the main grain fillnull's 5 dims to "(none)". STRICT-failure
+ * reads use `status!="SUCCESSFUL" status!="(none)"` (=335) to exclude the
+ * sentinel; afterHours keeps the LOOSE `if(status="SUCCESSFUL",…,"Failures")`
+ * so "(none)" lands in Failures (the strict/loose panels differ by 2,450, both
+ * byte-exact). dc() reads null-guard the sentinel via dc(eval(if(X="(none)",
+ * null(),X))) for executing_user AND action_type. Group-by reads exclude
+ * "(none)" to match the raw `stats by`'s implicit null-drop. highRiskEvents +
+ * afterHoursAdmin stay RAW (event listings). afterHours hour / healthScore day
+ * derive from bucket_ts (exact on whole-hour-offset TZ).
+ */
+const ROLL = 'logserv_hana_category_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
+const UA = `| inputlookup ${ROLL} where metric="useradmin" ${RANGE}`;
+const SEC = `| inputlookup ${ROLL} where metric="security" ${RANGE}`;
+const PW = `| inputlookup ${ROLL} where metric="password" ${RANGE}`;
+const FAIL = 'status!="SUCCESSFUL" status!="(none)"';
+const DCU = 'dc(eval(if(executing_user="(none)",null(),executing_user)))';
+
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST} | stats count`,
-    kpiFailures: `\`sap_logserv_idx_macro\` ${ST} status!="SUCCESSFUL" | stats count`,
-    kpiUsers: `\`sap_logserv_idx_macro\` ${ST} | stats dc(executing_user) as users`,
+    kpiTotal: `${MAIN} | stats sum(count) as count`,
+    kpiFailures: `${MAIN} | search ${FAIL} | stats sum(count) as count`,
+    kpiUsers: `${MAIN} | stats ${DCU} as users`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count`,
-    sparkFailures: `\`sap_logserv_idx_macro\` ${ST} status!="SUCCESSFUL" | timechart span=1d count`,
-    sparkUsers: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d dc(executing_user) as users`,
+    sparkTotal: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkFailures: `${MAIN} | search ${FAIL} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkUsers: `${MAIN} | eval _time=bucket_ts | timechart span=1d ${DCU} as users | fillnull value=0`,
 
-    userAdminTimeline: `\`sap_logserv_idx_macro\` ${ST} | where match(audit_category, "HEC Audit - User Administration") | eval admin_action = case(match(sql_statement, "(?i)reset connect"), "Password Reset", match(sql_statement, "(?i)activate user"), "User Activation", match(sql_statement, "(?i)deactivate user"), "User Deactivation", match(sql_statement, "(?i)disable password"), "Policy Change", 1=1, "Other Admin") | timechart span=1d count by admin_action`,
-    securityEventsTimeline: `\`sap_logserv_idx_macro\` ${ST} | where status!="SUCCESSFUL" OR match(action_type, "(?i)(grant|revoke|create|drop)") | eval event_type = case(status!="SUCCESSFUL", "Failed Operation", match(action_type, "(?i)grant"), "Permission Grant", match(action_type, "(?i)revoke"), "Permission Revoke", match(action_type, "(?i)(create|drop)"), "Object Modification", 1=1, "Other Security Event") | timechart span=1d count by event_type`,
-    auditCategoryBreakdown: `\`sap_logserv_idx_macro\` ${ST} | stats count by action_category | sort -count`,
-    riskTimeline: `\`sap_logserv_idx_macro\` ${ST} risk_level=* | timechart span=1d count by risk_level`,
-    afterHours: `\`sap_logserv_idx_macro\` ${ST} | eval hour=strftime(_time, "%H") | eval result=if(status="SUCCESSFUL", "Successes", "Failures") | chart count over hour by result`,
+    userAdminTimeline: `${UA} | eval _time=bucket_ts | timechart span=1d sum(count) by admin_action | fillnull value=0`,
+    securityEventsTimeline: `${SEC} | eval _time=bucket_ts | timechart span=1d sum(count) by event_type | fillnull value=0`,
+    auditCategoryBreakdown: `${MAIN} | stats sum(count) as count by action_category | sort -count`,
+    riskTimeline: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) by risk_level | fillnull value=0`,
+    afterHours: `${MAIN} | eval hour=strftime(bucket_ts, "%H") | eval result=if(status="SUCCESSFUL", "Successes", "Failures") | chart sum(count) over hour by result | fillnull value=0`,
 
-    healthScore: `\`sap_logserv_idx_macro\` ${ST} | eval day = strftime(_time, "%Y-%m-%d") | stats count as daily_events, dc(executing_user) as active_users, sum(eval(if(status!="SUCCESSFUL", 1, 0))) as daily_failures by day | eval success_rate = round(((daily_events - daily_failures)/daily_events)*100, 1) | sort day | table day, daily_events, active_users, daily_failures, success_rate`,
-    passwordMgmt: `\`sap_logserv_idx_macro\` ${ST} | where match(sql_statement, "(?i)password") | eval password_action = case(match(sql_statement, "password \\*\\*\\*"), "Password Change", match(sql_statement, "disable password"), "Disable Lifetime", match(sql_statement, "reset.*connect"), "Reset Attempts", 1=1, "Other") | stats count by password_action, target_user, executing_user, client_ip | sort -count, password_action`,
-    failedByHost: `\`sap_logserv_idx_macro\` ${ST} | where status!="SUCCESSFUL" | stats count by host | sort -count`,
-    topUsers: `\`sap_logserv_idx_macro\` ${ST} | stats count as Events dc(action_type) as ActionTypes sum(eval(if(status!="SUCCESSFUL",1,0))) as Failures by executing_user | sort -Events`,
-    clientIps: `\`sap_logserv_idx_macro\` ${ST} client_ip=* | stats count as Events dc(executing_user) as Users sum(eval(if(status!="SUCCESSFUL",1,0))) as Failures latest(_time) as last_seen by client_ip | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M") | sort -Events`,
-    highRiskEvents: `\`sap_logserv_idx_macro\` ${ST} is_critical=true | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, action_type, action_category, risk_level, status, host, client_ip, sql_statement`,
-    afterHoursAdmin: `\`sap_logserv_idx_macro\` ${ST} is_admin_user=true | eval is_weekend=if(strftime(_time,"%w") IN ("0","6"), 1, 0) | where is_business_hours=false OR is_weekend=1 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Day=strftime(_time, "%a") | eval Hour=strftime(_time, "%H:%M") | eval Period=case(is_weekend=1 AND is_business_hours=false, "Weekend / After Hours", is_weekend=1, "Weekend", 1=1, "After Hours") | sort -_time | table Time, Day, Period, executing_user, action_type, status, host, client_ip`,
+    healthScore: `${MAIN} | eval day = strftime(bucket_ts, "%Y-%m-%d") | stats sum(count) as daily_events, ${DCU} as active_users, sum(eval(if(status!="SUCCESSFUL" AND status!="(none)", count, 0))) as daily_failures by day | eval success_rate = round(((daily_events - daily_failures)/daily_events)*100, 1) | sort day | table day, daily_events, active_users, daily_failures, success_rate`,
+    passwordMgmt: `${PW} | search target_user!="(none)" executing_user!="(none)" client_ip!="(none)" | stats sum(count) as count by password_action, target_user, executing_user, client_ip | sort -count, password_action`,
+    failedByHost: `${MAIN} | search ${FAIL} host!="(none)" | stats sum(count) as count by host | sort -count`,
+    topUsers: `${MAIN} | search executing_user!="(none)" | stats sum(count) as Events, dc(eval(if(action_type="(none)",null(),action_type))) as ActionTypes, sum(eval(if(status!="SUCCESSFUL" AND status!="(none)",count,0))) as Failures by executing_user | sort -Events`,
+    clientIps: `${MAIN} | search client_ip!="(none)" | stats sum(count) as Events, ${DCU} as Users, sum(eval(if(status!="SUCCESSFUL" AND status!="(none)",count,0))) as Failures, max(last_seen) as last_seen by client_ip | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M") | sort -Events`,
+    // highRiskEvents + afterHoursAdmin stay RAW — per-event listings.
+    highRiskEvents: `\`sap_logserv_idx_macro\` ${ST} is_critical=true | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, action_type, action_category, risk_level, status, host, client_ip, sql_statement`,
+    afterHoursAdmin: `\`sap_logserv_idx_macro\` ${ST} is_admin_user=true | eval is_weekend=if(strftime(_time,"%w") IN ("0","6"), 1, 0) | where is_business_hours=false OR is_weekend=1 | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Day=strftime(_time, "%a") | eval Hour=strftime(_time, "%H:%M") | eval Period=case(is_weekend=1 AND is_business_hours=false, "Weekend / After Hours", is_weekend=1, "Weekend", 1=1, "After Hours") | sort -_time | table Time, Day, Period, executing_user, action_type, status, host, client_ip`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -219,7 +246,7 @@ const HanaAudit: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Audit Category Breakdown" subtitle="Distribution by action_category">
+                <FramedPanel search={auditCategory} title="Audit Category Breakdown" subtitle="Distribution by action_category">
                     <DataTable columns={CATEGORY_COLS} rows={auditCategory.results} loading={auditCategory.loading} error={auditCategory.error} emptyMessage="No HANA audit events in this time range." />
                 </FramedPanel>
                 <FramedPanel title="Risk-Tiered Event Timeline" subtitle="Daily volume by risk_level">
@@ -228,25 +255,25 @@ const HanaAudit: React.FC = () => {
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Daily Security Health Score" subtitle="Per-day totals, active users, failures, success %">
+                <FramedPanel search={healthScore} title="Daily Security Health Score" subtitle="Per-day totals, active users, failures, success %">
                     <DataTable columns={HEALTH_COLS} rows={healthScore.results} loading={healthScore.loading} error={healthScore.error} emptyMessage="No HANA audit events in this time range." initialSortKey="day" initialSortDir="desc" />
                 </FramedPanel>
             </FullWidthPanel>
 
             <PanelGrid2>
-                <FramedPanel title="Password Management Activities" subtitle="Password changes, lifetime disables, reset-attempts — click a row to open Cross-Stack Authentication">
+                <FramedPanel search={passwordMgmt} title="Password Management Activities" subtitle="Password changes, lifetime disables, reset-attempts — click a row to open Cross-Stack Authentication">
                     <DataTable columns={PASSWORD_COLS} rows={passwordMgmt.results} loading={passwordMgmt.loading} error={passwordMgmt.error} emptyMessage="No password-management activity in this time range." onRowClick={goCrossStackAuth} />
                 </FramedPanel>
-                <FramedPanel title="Failed Operations by Host" subtitle="Where failures are concentrated — click a row to open Host Details">
+                <FramedPanel search={failedByHost} title="Failed Operations by Host" subtitle="Where failures are concentrated — click a row to open Host Details">
                     <DataTable columns={HOST_COLS} rows={failedByHost.results} loading={failedByHost.loading} error={failedByHost.error} emptyMessage="No failed operations in this time range." onRowClick={goFailedHost} />
                 </FramedPanel>
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Users by Activity" subtitle="Executing users with action variety + failure count, ranked by activity — click a row to open Cross-Stack Authentication">
+                <FramedPanel search={topUsers} title="Users by Activity" subtitle="Executing users with action variety + failure count, ranked by activity — click a row to open Cross-Stack Authentication">
                     <DataTable columns={TOP_USER_COLS} rows={topUsers.results} loading={topUsers.loading} error={topUsers.error} emptyMessage="No HANA audit events in this time range." onRowClick={goCrossStackAuth} />
                 </FramedPanel>
-                <FramedPanel title="Client IP Analysis" subtitle="Client IPs with users / failures / freshness, ranked by event count — click a row for the IP's full audit trail">
+                <FramedPanel search={clientIps} title="Client IP Analysis" subtitle="Client IPs with users / failures / freshness, ranked by event count — click a row for the IP's full audit trail">
                     <DataTable columns={CLIENT_IP_COLS} rows={clientIps.results} loading={clientIps.loading} error={clientIps.error} emptyMessage="No HANA audit events in this time range." onRowClick={goClientIpRow} />
                 </FramedPanel>
             </PanelGrid2>
@@ -262,13 +289,13 @@ const HanaAudit: React.FC = () => {
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="High-Risk Events" subtitle="Events flagged is_critical=true, most-recent first — click a row to investigate that user + action pattern">
+                <FramedPanel search={highRisk} title="High-Risk Events" subtitle="Events flagged is_critical=true, most-recent first — click a row to investigate that user + action pattern">
                     <DataTable columns={HIGH_RISK_COLS} rows={highRisk.results} loading={highRisk.loading} error={highRisk.error} emptyMessage="No high-risk HANA audit events in this time range." onRowClick={goHighRiskRow} />
                 </FramedPanel>
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="After-Hours / Weekend Admin Activity" subtitle="Admin actions outside business hours, most-recent first — click a row to investigate that user's full audit history">
+                <FramedPanel search={afterHoursAdmin} title="After-Hours / Weekend Admin Activity" subtitle="Admin actions outside business hours, most-recent first — click a row to investigate that user's full audit history">
                     <DataTable columns={AFTER_HOURS_COLS} rows={afterHoursAdmin.results} loading={afterHoursAdmin.loading} error={afterHoursAdmin.error} emptyMessage="No after-hours admin activity in this time range." onRowClick={goAfterHoursRow} />
                 </FramedPanel>
             </FullWidthPanel>

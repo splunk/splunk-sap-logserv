@@ -2,15 +2,15 @@
 
 This page covers installing the **LogServ App** (`splunk_app_sap_logserv`). For the Data TA installation, see [Installing the Data TA](../install-setup/install-ta.md).
 
-!!! warning "v0.0.5 release: AI Assistant LLM functionality intentionally disabled pending review"
-    The v0.0.5 release of the LogServ App ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review**. The published v0.0.5 tarball is the **templates-only build variant** — there is no separate "regular" v0.0.5 build. The predefined-prompt path + Splunk MCP Server integration + tool tiles + drill-down chips + audit log + 21 dashboards + the Environment Topology view are all fully active. The free-form chat input, the model picker, the Power Mode toggle, and the Provider Credentials Settings tab are all hidden. See [Templates-only Build](../ai-assistant/templates-only-build.md) for the build mechanism.
+!!! warning "Current release: AI Assistant LLM functionality intentionally disabled pending review"
+    The current release of the LogServ App ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review**. The published tarball is the **templates-only build variant** — there is no separate "regular" build. The predefined-prompt path + Splunk MCP Server integration + tool tiles + drill-down chips + audit log + 21 dashboards + the Environment Topology view are all fully active. The free-form chat input, the model picker, the Power Mode toggle, and the Provider Credentials Settings tab are all hidden. See [Templates-only Build](../ai-assistant/templates-only-build.md) for the build mechanism.
 
 ### :material-circle-box:{ .taiconcolor } About the LogServ App
 
 The LogServ App provides:
 
 - **21 React-based dashboards** plus the **Environment Topology** view, organized as one top-level **Environment Health** landing page + four purpose-driven groups (Applications, Integration, Security, Platform). Built on `@splunk/react-ui` + `@splunk/visualizations` + `@xyflow/react`. See [Dashboards Overview](dashboards/index.md).
-- **Built-in AI Assistant chat panel** — predefined prompts + Splunk MCP integration + audit log. (LLM-driven path disabled in v0.0.5; canned-prompt path active.) See [AI Assistant Overview](../ai-assistant/overview.md).
+- **Built-in AI Assistant chat panel** — predefined prompts + Splunk MCP integration + audit log. (LLM-driven path disabled in the current release; canned-prompt path active.) See [AI Assistant Overview](../ai-assistant/overview.md).
 - **Search-time field extractions** for all SAP-specific sourcetypes (~176 directives across EXTRACT, EVAL, FIELDALIAS).
 - **The `sap_logserv_idx_macro` macro** for searching the LogServ index.
 - **Built-in Download PNG button** on every dashboard for `html2canvas`-based full-canvas image export.
@@ -56,14 +56,14 @@ The AI Assistant requires the [Splunk MCP Server (Splunkbase App 7931)](https://
 
 After install, restart Splunkd. Cookie auth from the same Splunk Web session works by default; no bearer token configuration required for HTTP-only Splunk. See [Splunk MCP Setup](../ai-assistant/mcp-setup.md) for full configuration including the optional bearer token for OAuth-strict environments.
 
-!!! note "v0.0.5 release: no AI provider credentials needed"
-    Even with the LLM-driven path disabled, the AI Assistant's predefined-prompt path requires the Splunk MCP Server to dispatch saved searches. Install the MCP Server. Do **not** configure any AI provider credential (Anthropic / OpenAI / Azure / Bedrock) — they are not used in v0.0.5 and their Settings tab is hidden.
+!!! note "Current release: no AI provider credentials needed"
+    Even with the LLM-driven path disabled, the AI Assistant's predefined-prompt path requires the Splunk MCP Server to dispatch saved searches. Install the MCP Server. Do **not** configure any AI provider credential (Anthropic / OpenAI / Azure / Bedrock) — they are not used in the current release and their Settings tab is hidden.
 
 ### :material-circle-box:{ .taiconcolor } 3. Download the LogServ App
 
-Download `splunk_app_sap_logserv-0.0.5.0.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
+Download `splunk_app_sap_logserv-0.0.6.0.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
 
-The published v0.0.5 tarball is the **templates-only build variant** (LLM-driven path disabled at compile time pending review). There is no separate "regular" tarball published in v0.0.5.
+The published tarball is the **templates-only build variant** (LLM-driven path disabled at compile time pending review). There is no separate "regular" tarball published in the current release.
 
 ### :material-circle-box:{ .taiconcolor } 4. Install in Splunk Cloud
 
@@ -88,7 +88,7 @@ Install the LogServ App to your Splunk Enterprise Search Head:
 
 5.<b style="color: #ff9100">b</b> Click Install app from file.
 
-5.<b style="color: #ff9100">c</b> Locate the downloaded `splunk_app_sap_logserv-0.0.5.0.tar.gz` file and click Upload.
+5.<b style="color: #ff9100">c</b> Locate the downloaded `splunk_app_sap_logserv-0.0.6.0.tar.gz` file and click Upload.
 
 5.<b style="color: #ff9100">d</b> If Splunk Enterprise prompts you to restart, do so.
 
@@ -125,6 +125,9 @@ If you used a custom index name (not `sap_logserv_logs`), update the macro:
 7.<b style="color: #ff9100">b</b> Set the app context to **Splunk App for SAP LogServ**
 
 7.<b style="color: #ff9100">c</b> Find `sap_logserv_idx_macro` and update its definition to `index=<your_index_name>`
+
+!!! tip "High-volume installs: seed dashboard history"
+    The dashboards read from an hourly KV-Store rollup layer for performance. On a large environment, run the one-time backfill so dashboards show history immediately: open **Settings → AI Assistant → Dashboard Data** and click **Run backfill**. Without it, rolled-up panels fill in one hour at a time from the next hourly aggregation. See [Dashboard Performance & Data Freshness](dashboards/performance.md).
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

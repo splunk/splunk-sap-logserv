@@ -6,6 +6,8 @@ import { logservTheme } from '../styles/logservTheme';
 import { ChartPalette, paletteColors, STATUS_FIELD_COLORS } from '../styles/chartPalettes';
 import GradientWrap from './GradientWrap';
 import LegendTitleTooltips from './LegendTitleTooltips';
+import PanelLoading from './PanelLoading';
+import { usePanelMetaReporter } from './PanelMeta';
 
 const DEFAULT_GRADIENT_DARKEN = 0.4;
 
@@ -69,7 +71,9 @@ const PieChart: React.FC<PieChartProps> = ({
     seriesColors: seriesColorsProp,
     seriesColorsByField: seriesColorsByFieldProp,
 }) => {
-    const { results, loading, error } = useSearch({ query });
+    const { results, loading, error, sid, spl, dispatchedAt, refresh } = useSearch({ query });
+    // build 234 — report search meta to the enclosing FramedPanel (toolbar).
+    usePanelMetaReporter({ spl, sid, dispatchedAt, refresh });
 
     const dataSources = useMemo(() => {
         if (!results || results.length === 0) return null;
@@ -100,7 +104,7 @@ const PieChart: React.FC<PieChartProps> = ({
         return <Container $height={height}><ErrorLine>{error.message || 'Search failed'}</ErrorLine></Container>;
     }
     if (loading && !dataSources) {
-        return <Container $height={height}><StatusLine>Loading…</StatusLine></Container>;
+        return <Container $height={height}><PanelLoading height={height} /></Container>;
     }
     if (!dataSources) {
         return <Container $height={height}><StatusLine>No data in this time range.</StatusLine></Container>;

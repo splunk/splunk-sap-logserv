@@ -38,30 +38,68 @@ const PanelGrid2 = styled.div`
 `;
 
 const ST = 'sourcetype="sap:hana:tracelogs"';
-const COMP_FILTER = 'where len(hana_trace_component) > 3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:"';
+
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 053 / build 223).
+ *
+ * The count/dc/values/latest panels read from the `logserv_hana_trace_rollup` KV
+ * Store collection (hourly [logserv_hana_trace_aggregate], one-time
+ * [logserv_hana_trace_backfill]). Build 232 folded the former-RAW duration panels
+ * into two new metrics: durationPercentiles (was perc50/95/max — percentiles don't
+ * merge byte-exact across buckets) is now Avg(=Σsum_dur/Σcnt_dur)+Max(=max-of-per-
+ * bucket-max_dur) from the `dur` metric; slowestOps (was a per-event head-sort
+ * listing) is now top operations by Max/Avg from the `durop` (hana_op,sap_sid)
+ * metric — per-event _time/host are DROPPED (cannot survive a rollup). Only
+ * errorDetail (event listing, | head 500) stays RAW.
+ *
+ * main grain (all fillnull "(none)"): sap_sid, hana_instance, component,
+ * source_file, source_line, severity + count + last_seen (=max(_time) per bucket).
+ * Reads exclude "(none)" wherever raw used `field=*` or grouped/filtered by that dim
+ * (raw drops nulls there); dc()/values()/latest() nullify the sentinel. Read idiom:
+ * `| inputlookup <coll> where metric=X | addinfo | where bucket_ts range | <agg>`.
+ */
+const ROLL = 'logserv_hana_trace_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
+const DUR = `| inputlookup ${ROLL} where metric="dur" ${RANGE}`;
+const DUROP = `| inputlookup ${ROLL} where metric="durop" ${RANGE}`;
+// COMP_GUARD = raw COMP_FILTER (component-junk exclusion) + the "(none)" exclusion
+// that reproduces raw `hana_trace_component=*` (len("(none)")=6 passes len>3, so the
+// sentinel must be excluded explicitly). Applied on topComponents/componentSeverity/
+// sourceHotspots reads.
+const COMP_GUARD = 'hana_trace_component!="(none)" AND len(hana_trace_component)>3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:"';
 
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST} | stats count`,
-    kpiErrors: `\`sap_logserv_idx_macro\` ${ST} hana_trace_severity IN ("error", "fatal") | stats count`,
-    kpiComponents: `\`sap_logserv_idx_macro\` ${ST} | stats dc(hana_trace_component) as components`,
+    // count KPIs use the anchored empty-window idiom (#19): reads 0, not blank.
+    kpiTotal: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    // kpiErrors/sparkErrors: the case-insensitive match against stored "ERROR" relies on
+    // the `| search ... IN` COMMAND. Do NOT rewrite as `| where ... IN` or `eval(... IN ...)`
+    // — both are case-SENSITIVE and would silently return 0 against the uppercase value.
+    kpiErrors: `${MAIN} | search hana_trace_severity IN ("error", "fatal") | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiComponents: `${MAIN} | stats count as n, dc(eval(if(hana_trace_component="(none)",null(),hana_trace_component))) as components | fillnull value=0 components | fields components`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count`,
-    sparkErrors: `\`sap_logserv_idx_macro\` ${ST} hana_trace_severity IN ("error", "fatal") | timechart span=1d count`,
-    sparkComponents: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d dc(hana_trace_component) as components`,
+    sparkTotal: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkErrors: `${MAIN} | search hana_trace_severity IN ("error", "fatal") | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkComponents: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(hana_trace_component="(none)",null(),hana_trace_component))) as components | fillnull value=0`,
 
-    traceVolume: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count as "Trace Events"`,
-    bySeverity: `\`sap_logserv_idx_macro\` ${ST} hana_trace_severity=* | timechart span=1d count by hana_trace_severity`,
-    topComponents: `\`sap_logserv_idx_macro\` ${ST} hana_trace_component=*  | ${COMP_FILTER} | stats count as Events dc(hana_trace_source_file) as "Source Files" values(hana_trace_severity) as Severities by hana_trace_component | sort -Events | rename hana_trace_component as Component`,
-    componentSeverity: `\`sap_logserv_idx_macro\` ${ST} hana_trace_component=* hana_trace_severity=*  | ${COMP_FILTER} | stats count by hana_trace_component hana_trace_severity | sort -count | chart sum(count) over hana_trace_component by hana_trace_severity | sort -info | rename hana_trace_component as Component`,
-    sourceHotspots: `\`sap_logserv_idx_macro\` ${ST} hana_trace_source_file=*  | ${COMP_FILTER} | stats count as Events dc(hana_trace_source_line) as "Unique Lines" latest(hana_trace_severity) as "Latest Severity" by hana_trace_source_file hana_trace_component | sort -Events | rename hana_trace_source_file as "Source File" hana_trace_component as Component`,
-    sidInstance: `\`sap_logserv_idx_macro\` ${ST} | stats count by sap_sid hana_instance | sort -count | rename sap_sid as SID hana_instance as Instance`,
-    errorDetail: `\`sap_logserv_idx_macro\` ${ST} hana_trace_severity IN ("error", "fatal") | table _time sap_sid hana_instance hana_trace_component hana_trace_source_file hana_trace_source_line hana_trace_severity | sort -_time | rename sap_sid as SID hana_instance as Instance hana_trace_component as Component hana_trace_source_file as "Source File" hana_trace_source_line as Line hana_trace_severity as Severity`,
+    traceVolume: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as "Trace Events" | fillnull value=0`,
+    bySeverity: `${MAIN} | search hana_trace_severity!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by hana_trace_severity | fillnull value=0`,
+    topComponents: `${MAIN} | where ${COMP_GUARD} | stats sum(count) as Events, dc(eval(if(hana_trace_source_file="(none)",null(),hana_trace_source_file))) as "Source Files", values(eval(if(hana_trace_severity="(none)",null(),hana_trace_severity))) as Severities by hana_trace_component | sort -Events | rename hana_trace_component as Component`,
+    componentSeverity: `${MAIN} | where ${COMP_GUARD} AND hana_trace_severity!="(none)" | stats sum(count) as count by hana_trace_component, hana_trace_severity | sort -count | chart sum(count) over hana_trace_component by hana_trace_severity | sort -info | rename hana_trace_component as Component`,
+    sourceHotspots: `${MAIN} | where hana_trace_source_file!="(none)" AND ${COMP_GUARD} | eval _time=last_seen | stats sum(count) as Events, dc(eval(if(hana_trace_source_line="(none)",null(),hana_trace_source_line))) as "Unique Lines", latest(eval(if(hana_trace_severity="(none)",null(),hana_trace_severity))) as "Latest Severity" by hana_trace_source_file, hana_trace_component | sort -Events | rename hana_trace_source_file as "Source File" hana_trace_component as Component`,
+    sidInstance: `${MAIN} | search sap_sid!="(none)" hana_instance!="(none)" | stats sum(count) as count by sap_sid, hana_instance | sort -count | rename sap_sid as SID hana_instance as Instance`,
 
-    // SQL operation duration (build 186 / session 034 deep-dive). 14.6% of trace
-    // events carry a "<float> msec" duration field; the rex pulls the leading
-    // quoted operation name to give the table a useful first column.
-    slowestOps: `\`sap_logserv_idx_macro\` ${ST} hana_op_duration_ms=* | rex field=_raw "^\\\"(?<hana_op>[^\\\"]+)\\\"" | sort - hana_op_duration_ms | head 20 | eval Duration = round(hana_op_duration_ms, 2) | table _time host sap_sid hana_op Duration | rename sap_sid AS SID hana_op AS Operation Duration AS "Duration (ms)"`,
-    durationPercentiles: `\`sap_logserv_idx_macro\` ${ST} hana_op_duration_ms=* | timechart span=1d perc50(hana_op_duration_ms) AS "p50 (ms)" perc95(hana_op_duration_ms) AS "p95 (ms)" max(hana_op_duration_ms) AS "Max (ms)"`,
+    // RAW (event listing — not rolled up).
+    errorDetail: `\`sap_logserv_idx_macro\` ${ST} hana_trace_severity IN ("error", "fatal") | head 500 | table _time sap_sid hana_instance hana_trace_component hana_trace_source_file hana_trace_source_line hana_trace_severity | sort -_time | rename sap_sid as SID hana_instance as Instance hana_trace_component as Component hana_trace_source_file as "Source File" hana_trace_source_line as Line hana_trace_severity as Severity`,
+
+    // SQL operation duration (build 186 / session 034; rolled up build 232). The
+    // dur metric (per-bucket sum_dur/cnt_dur/max_dur) drives the Avg+Max chart;
+    // the durop metric (per hana_op,sap_sid) drives the top-operations table.
+    // 14.6% of trace events carry a "<float> msec" duration field. NOTE: slowestOps
+    // changed semantics — it now ranks OPERATIONS by max/avg duration (was the
+    // top-20 individual slowest events); per-event _time/host are dropped.
+    slowestOps: `${DUROP} | search hana_op!="(none)" | stats sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as max_ms, sum(count) as events by hana_op, sap_sid | eval "Avg (ms)" = round(if(c>0, s/c, 0), 2), "Max (ms)" = round(max_ms, 2) | sort - "Max (ms)" | head 20 | rename sap_sid AS SID, hana_op AS Operation, events AS Events | table Operation, SID, Events, "Avg (ms)", "Max (ms)"`,
+    durationPercentiles: `${DUR} | eval _time=bucket_ts | timechart span=1d sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 2), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -96,11 +134,11 @@ const ERROR_DETAIL_COLS: ColumnDef[] = [
 
 // SQL operation duration columns (build 186)
 const SLOWEST_OPS_COLS: ColumnDef[] = [
-    { key: '_time', label: 'Time', width: '160px', render: (v) => v ? new Date(String(v)).toLocaleString('en-US', { hour12: false }) : '' },
-    { key: 'host', label: 'Host' },
-    { key: 'SID', label: 'SID', width: '70px' },
     { key: 'Operation', label: 'Operation' },
-    { key: 'Duration (ms)', label: 'Duration (ms)', align: 'right' },
+    { key: 'SID', label: 'SID', width: '70px' },
+    { key: 'Events', label: 'Events', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Avg (ms)', label: 'Avg (ms)', align: 'right' },
+    { key: 'Max (ms)', label: 'Max (ms)', align: 'right' },
 ];
 
 const HanaTrace: React.FC = () => {
@@ -164,7 +202,7 @@ const HanaTrace: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Components" subtitle="HANA components ranked by event volume">
+                <FramedPanel search={topComponents} title="Components" subtitle="HANA components ranked by event volume">
                     <DataTable columns={TOP_COMP_COLS} rows={topComponents.results} loading={topComponents.loading} error={topComponents.error} emptyMessage="No HANA trace events in this time range." onRowClick={goComponentRow} />
                 </FramedPanel>
                 <FramedPanel title="Component by Severity" subtitle="Severity mix per component">
@@ -173,7 +211,7 @@ const HanaTrace: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Source File Hotspots" subtitle="Source files ranked by trace event count">
+                <FramedPanel search={sourceHotspots} title="Source File Hotspots" subtitle="Source files ranked by trace event count">
                     <DataTable columns={SOURCE_HOTSPOT_COLS} rows={sourceHotspots.results} loading={sourceHotspots.loading} error={sourceHotspots.error} emptyMessage="No HANA trace events in this time range." onRowClick={goSourceFileRow} />
                 </FramedPanel>
                 <FramedPanel title="Activity by SID / Instance" subtitle="Trace volume by HANA SID + instance">
@@ -182,16 +220,16 @@ const HanaTrace: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Slowest SQL Operations" subtitle="Top 20 trace events by reported duration (msec) — leading quoted operation name extracted via rex">
-                    <DataTable columns={SLOWEST_OPS_COLS} rows={slowestOps.results} loading={slowestOps.loading} error={slowestOps.error} emptyMessage="No trace events with duration field in this time range." />
+                <FramedPanel search={slowestOps} title="Slowest SQL Operations" subtitle="Top 20 SQL operations by max duration (msec) — with avg + event count per operation">
+                    <DataTable columns={SLOWEST_OPS_COLS} rows={slowestOps.results} loading={slowestOps.loading} error={slowestOps.error} emptyMessage="No trace events with duration field in this time range." initialSortKey="Max (ms)" initialSortDir="desc" />
                 </FramedPanel>
-                <FramedPanel title="Operation Duration Percentiles" subtitle="Daily p50 / p95 / max of HANA SQL operation duration (msec) — only events that carry the duration field">
+                <FramedPanel title="Operation Duration (Avg / Max)" subtitle="Daily average and peak HANA SQL operation duration (msec) — only events that carry the duration field">
                     <TimeSeriesChart query={Q.durationPercentiles} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>
 
             <FullWidthPanel>
-                <FramedPanel title="Recent Errors / Fatal Events" subtitle="Error/fatal severity events, most-recent first">
+                <FramedPanel search={errorDetail} title="Recent Errors / Fatal Events" subtitle="Error/fatal severity events, most-recent first">
                     <DataTable columns={ERROR_DETAIL_COLS} rows={errorDetail.results} loading={errorDetail.loading} error={errorDetail.error} emptyMessage="No HANA error/fatal events in this time range." onRowClick={goErrorDetailRow} />
                 </FramedPanel>
             </FullWidthPanel>

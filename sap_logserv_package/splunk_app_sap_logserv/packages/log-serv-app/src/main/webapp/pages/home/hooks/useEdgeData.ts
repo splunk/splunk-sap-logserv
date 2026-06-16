@@ -121,17 +121,18 @@ const EMPTY: UseEdgeDataResult = {
 export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdgeDataResult => {
     /* Resolve SPL strings up front so all four useSearch calls execute on
      * every render regardless of whether they have valid args (React hook
-     * rules require unconditional hook calls). When the edge is null or
-     * the edge lacks splType/splFilterClauses/splSourcetype, each query
-     * resolves to an empty string + enabled=false so useSearch is a no-op.
+     * rules require unconditional hook calls). The detail tabs now read the
+     * hourly KV-Store rollup keyed by the edge id (session 060 / build 240),
+     * so we only need splType (to pick the Performance read variant) + the
+     * edge id. When the edge is null or lacks splType/id each query resolves
+     * to null + enabled=false so useSearch is a no-op.
      */
     const splType = edge?.splType ?? null;
-    const splSourcetype = edge?.splSourcetype ?? '';
-    const clauses = edge?.splFilterClauses ?? [];
-    const canQuery = splType != null && !!splSourcetype && clauses.length > 0;
+    const edgeId = edge?.id ?? '';
+    const canQuery = splType != null && !!edgeId;
 
     const activityQuery = canQuery
-        ? SEARCH_EDGE_ACTIVITY(splType, splSourcetype, clauses)
+        ? SEARCH_EDGE_ACTIVITY(splType, edgeId)
         : null;
     const activityResult = useSearch<ActivityRow>({
         query: activityQuery ?? '',
@@ -140,7 +141,7 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
     });
 
     const operationsQuery = canQuery
-        ? SEARCH_EDGE_OPERATIONS(splType, splSourcetype, clauses)
+        ? SEARCH_EDGE_OPERATIONS(splType, edgeId)
         : null;
     const operationsResult = useSearch<OperationsRow>({
         query: operationsQuery ?? '',
@@ -149,7 +150,7 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
     });
 
     const performanceQuery = canQuery
-        ? SEARCH_EDGE_PERFORMANCE(splType, splSourcetype, clauses)
+        ? SEARCH_EDGE_PERFORMANCE(splType, edgeId)
         : null;
     const performanceResult = useSearch<PerformanceRow>({
         query: performanceQuery ?? '',
@@ -158,7 +159,7 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
     });
 
     const errorsQuery = canQuery
-        ? SEARCH_EDGE_ERRORS(splType, splSourcetype, clauses)
+        ? SEARCH_EDGE_ERRORS(splType, edgeId)
         : null;
     const errorsResult = useSearch<ErrorRow>({
         query: errorsQuery ?? '',

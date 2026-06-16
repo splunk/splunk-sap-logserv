@@ -1,7 +1,7 @@
 # Time-Window Reasoning
 
-!!! warning "v0.0.5 release: these primer rules are not exercised — LLM dispatch is disabled"
-    The time-window reasoning rules are baked into the system primer and ship with every v0.0.5 build, but they only take effect when the LLM-driven path runs — which is **disabled at compile time** in v0.0.5 pending internal review. Predefined-prompt dispatches in v0.0.5 still respect the saved-search SPL's own time window (which is what the rules are about), but there is no AI synthesis layer applying these rules in v0.0.5. This page is preserved as the design reference for the future release that re-enables the LLM path.
+!!! warning "Current release: these primer rules are not exercised — LLM dispatch is disabled"
+    The time-window reasoning rules are baked into the system primer and ship with every current build, but they only take effect when the LLM-driven path runs — which is **disabled at compile time** in the current release pending internal review. Predefined-prompt dispatches in the current release still respect the saved-search SPL's own time window (which is what the rules are about), but there is no AI synthesis layer applying these rules in the current release. This page is preserved as the design reference for the future release that re-enables the LLM path.
 
 Time-window reasoning is a set of primer rules baked into the AI Assistant's system primer (Tier 1 + Tier 2 variants) that teach the LLM to **identify the dispatch window, normalize cumulative count to per-hour or per-day rate, and run a verify-query before declaring high-severity findings**. The rules ship as a dedicated `=== TIME-WINDOW REASONING — APPLY BEFORE EVERY SEVERITY CLAIM ===` block in the primer, inserted right after the data-boundary block and before the saved-search catalog.
 

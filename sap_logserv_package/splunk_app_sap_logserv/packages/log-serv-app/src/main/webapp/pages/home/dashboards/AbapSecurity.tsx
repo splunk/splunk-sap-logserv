@@ -50,39 +50,73 @@ const PieStack = styled.div`
     gap: ${logservTheme.elevation.panelGap};
 `;
 
-const ST_ALL = 'sourcetype IN ("sap:abap:audit", "sap:abap:gateway", "sap:abap:icm")';
+/**
+ * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 052 / build 217).
+ *
+ * ABAP Network & Security spans 3 sourcetypes (sap:abap:audit/gateway/icm) and
+ * has 11 aggregatable panels (no RAW listings). All now read from the
+ * `logserv_abapnet_rollup` KV Store collection, populated hourly by
+ * [logserv_abapnet_aggregate] (one-time [logserv_abapnet_backfill]). The schema
+ * was adversarially design-reviewed pre-build.
+ *
+ * 7 metrics: `vol` (sourcetype/sid/instance) → Total KPI + Volume-by-Sourcetype
+ * + SID/Instance (sid+instance fillnull'd so the KPI/volume panels sum over ALL
+ * rows — raw doesn't group by sid; only sidInstance excludes "(none)"); `icmstat`
+ * (status_cat, classified in-aggregate) → ICM Status timechart+pie; `icmreq`
+ * (raw request_type, decoded at READ) → ICM Request Types pie; `icmpeer`
+ * (peer_ip/txn/protocol) → ICM Peers (dc/values); `icmerr` (per-bucket count,
+ * `icm_is_error="true"` — build-218 fix of the original `=1` string-vs-number
+ * bug; props.conf EVAL sets icm_is_error="true" iff icm_status_code is 4xx/5xx;
+ * 0 on data with no 4xx/5xx ICM events, real count otherwise; task_7e242b2b)
+ * → ICM Errors KPI; `gwhost`
+ * (rhost/func/svc) → Gateway Hosts Events + Services; `gwlatest` (rhost/func +
+ * count + latest(error_detail), error events only) → Gateway Errors KPI/timeline
+ * + the Gateway Hosts "Last Error" column (left-joined on rhost+func).
+ *
+ * Read idiom: `| inputlookup <coll> where metric=X | addinfo | where bucket_ts
+ * range | <agg>`; nullable dims fillnull'd to "(none)", reads exclude it.
+ */
+const ROLL = 'logserv_abapnet_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const VOL = `| inputlookup ${ROLL} where metric="vol" ${RANGE}`;
+const ICMSTAT = `| inputlookup ${ROLL} where metric="icmstat" ${RANGE}`;
+const ICMREQ = `| inputlookup ${ROLL} where metric="icmreq" ${RANGE}`;
+const ICMPEER = `| inputlookup ${ROLL} where metric="icmpeer" ${RANGE}`;
+const ICMERR = `| inputlookup ${ROLL} where metric="icmerr" ${RANGE}`;
+const GWHOST = `| inputlookup ${ROLL} where metric="gwhost" ${RANGE}`;
+const GWLATEST = `| inputlookup ${ROLL} where metric="gwlatest" ${RANGE}`;
 
 const Q = {
-    kpiTotal: `\`sap_logserv_idx_macro\` ${ST_ALL} | stats count`,
-    kpiIcmErrors: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:icm" icm_is_error=1 | stats count`,
-    kpiGwErrors: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="" | stats count`,
+    // Count KPIs use the empty-safe `stats count as n, …` idiom (icmerr is a
+    // 0-row metric → kpiIcmErrors must read 0, not blank).
+    kpiTotal: `${VOL} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiIcmErrors: `${ICMERR} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiGwErrors: `${GWLATEST} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
 
-    sparkTotal: `\`sap_logserv_idx_macro\` ${ST_ALL} | timechart span=1d count`,
-    sparkIcmErrors: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:icm" icm_is_error=1 | timechart span=1d count`,
-    sparkGwErrors: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="" | timechart span=1d count`,
+    sparkTotal: `${VOL} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkIcmErrors: `${ICMERR} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkGwErrors: `${GWLATEST} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
-    volumeByType: `\`sap_logserv_idx_macro\` ${ST_ALL} | timechart span=1d count by sourcetype`,
-    icmStatus: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:icm" icm_status_code=* | eval status_cat=case(icm_status_code>=200 AND icm_status_code<300, "2xx", icm_status_code>=300 AND icm_status_code<400, "3xx", icm_status_code>=400 AND icm_status_code<500, "4xx", icm_status_code>=500, "5xx", 1=1, "Other") | timechart span=1d count by status_cat`,
-    icmStatusPie: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:icm" icm_status_code=* | eval status_cat=case(icm_status_code>=200 AND icm_status_code<300, "2xx", icm_status_code>=300 AND icm_status_code<400, "3xx", icm_status_code>=400 AND icm_status_code<500, "4xx", icm_status_code>=500, "5xx", 1=1, "Other") | stats count by status_cat | sort status_cat`,
-    icmPeers: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:icm" icm_peer_ip=* | stats count as Requests dc(icm_transaction_id) as Transactions values(icm_protocol) as Protocols by icm_peer_ip | sort -Requests | rename icm_peer_ip as "Peer IP"`,
-    // Decode ICM request type codes (extracted by props.conf as ASYNC_RFC /
-    // HTTP_NORMAL / INTERNAL) to plain-English descriptions. We drop the
-    // original code from the label here (vs. the "<code> = <description>"
-    // format used elsewhere) because this pie sits in a 3-column grid and
-    // the longer combined labels middle-truncate on the slices. The codes
-    // are already half-descriptive words on their own, so the description
-    // alone carries enough meaning.
-    icmRequestTypes: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:icm" icm_request_type=* `
+    volumeByType: `${VOL} | eval _time=bucket_ts | timechart span=1d sum(count) by sourcetype | fillnull value=0`,
+    icmStatus: `${ICMSTAT} | eval _time=bucket_ts | timechart span=1d sum(count) by status_cat | fillnull value=0`,
+    icmStatusPie: `${ICMSTAT} | stats sum(count) as count by status_cat | sort status_cat`,
+    icmPeers: `${ICMPEER} | stats sum(count) as Requests, dc(eval(if(icm_transaction_id="(none)",null(),icm_transaction_id))) as Transactions, values(eval(if(icm_protocol="(none)",null(),icm_protocol))) as Protocols by icm_peer_ip | sort -Requests | rename icm_peer_ip as "Peer IP"`,
+    // Decode ICM request type codes (ASYNC_RFC / HTTP_NORMAL / INTERNAL → plain
+    // English) at READ — the rollup stores the raw code (code-agnostic precompute).
+    icmRequestTypes: `${ICMREQ} `
         + `| eval icm_request_type = case(`
         + `icm_request_type=="ASYNC_RFC", "Asynchronous RFC",`
         + `icm_request_type=="HTTP_NORMAL", "HTTP Request",`
         + `icm_request_type=="INTERNAL", "Internal Call",`
         + `1=1, icm_request_type`
         + `) `
-        + `| stats count by icm_request_type | sort -count`,
-    gwHosts: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:gateway" | stats count as Events values(gw_service) as Services latest(gw_error_detail) as "Last Error" by gw_remote_host gw_function | sort -Events | rename gw_remote_host as "Remote Host" gw_function as "Function"`,
-    gwErrorsTimeline: `\`sap_logserv_idx_macro\` sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="" | timechart span=1d count as "Gateway Errors"`,
-    sidInstance: `\`sap_logserv_idx_macro\` ${ST_ALL} | stats count by sap_sid sap_instance | sort -count`,
+        + `| stats sum(count) as count by icm_request_type | sort -count`,
+    // Two-metric panel: Events + Services from `gwhost` (both dims (none)-excluded,
+    // mirroring raw `by rhost func` null-drop), left-joined to `gwlatest`'s
+    // latest(gw_error_detail) for the "Last Error" column.
+    gwHosts: `${GWHOST} | stats sum(count) as Events, values(eval(if(gw_service="(none)",null(),gw_service))) as Services by gw_remote_host gw_function | search gw_remote_host!="(none)" gw_function!="(none)" | join type=left gw_remote_host gw_function [ ${GWLATEST} | eval _time=bucket_ts | stats latest(gw_error_detail) as "Last Error" by gw_remote_host gw_function | search gw_remote_host!="(none)" gw_function!="(none)" ] | sort -Events | rename gw_remote_host as "Remote Host" gw_function as "Function"`,
+    gwErrorsTimeline: `${GWLATEST} | eval _time=bucket_ts | timechart span=1d sum(count) as "Gateway Errors" | fillnull value=0`,
+    sidInstance: `${VOL} | search sap_sid!="(none)" sap_instance!="(none)" | stats sum(count) as count by sap_sid sap_instance | sort -count`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -160,7 +194,7 @@ const AbapSecurity: React.FC = () => {
             </PanelGrid2>
 
             <PanelGrid3>
-                <FramedPanel title="ICM Peer Connections" subtitle="ICM peer IPs ranked by request count — click a row for that peer's full ICM event log">
+                <FramedPanel search={icmPeers} title="ICM Peer Connections" subtitle="ICM peer IPs ranked by request count — click a row for that peer's full ICM event log">
                     <DataTable columns={ICM_PEER_COLS} rows={icmPeers.results} loading={icmPeers.loading} error={icmPeers.error} emptyMessage="No ICM peer activity in this time range." pageSize={17} onRowClick={goIcmPeerRow} />
                 </FramedPanel>
                 <PieStack>
@@ -171,7 +205,7 @@ const AbapSecurity: React.FC = () => {
                         <PieChart query={Q.icmStatusPie} categoryField="status_cat" valueField="count" height={310} donut palette="status" />
                     </FramedPanel>
                 </PieStack>
-                <FramedPanel title="Gateway Remote Hosts" subtitle="Gateway peer hosts + functions ranked by event count — click a row for that host's full gateway event log">
+                <FramedPanel search={gwHosts} title="Gateway Remote Hosts" subtitle="Gateway peer hosts + functions ranked by event count — click a row for that host's full gateway event log">
                     <DataTable columns={GW_HOST_COLS} rows={gwHosts.results} loading={gwHosts.loading} error={gwHosts.error} emptyMessage="No gateway events in this time range." pageSize={17} onRowClick={goGwHostRow} />
                 </FramedPanel>
             </PanelGrid3>

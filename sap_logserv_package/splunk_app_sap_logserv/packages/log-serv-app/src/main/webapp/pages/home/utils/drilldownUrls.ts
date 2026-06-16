@@ -100,6 +100,53 @@ export const buildSplunkSearchUrl = (
     return withTimeRange(base, earliest, latest);
 };
 
+/** Build a Splunk Search app URL for a panel's EXACT dispatched SPL (build 234,
+ *  panel toolbar "Open in Search"). Unlike buildSplunkSearchUrl this does NOT
+ *  blindly prepend `search ` — a panel query may start with a generating
+ *  command (`| tstats …`, `| inputlookup …`), where `search | tstats` is
+ *  invalid. Normalizes per the session-055 rule: leave leading `|` or `search `
+ *  alone; otherwise prepend `search `. */
+export const buildOpenInSearchUrl = (
+    spl: string,
+    earliest?: string,
+    latest?: string,
+): string => {
+    const trimmed = spl.trim();
+    const q = /^(\||search\b)/i.test(trimmed) ? trimmed : `search ${trimmed}`;
+    const base = `/en-US/app/search/search?q=${encodeURIComponent(q)}`;
+    return withTimeRange(base, earliest, latest);
+};
+
+/** Build a Splunk Job Inspector URL for a dispatched search-job SID (build 234,
+ *  panel toolbar "Inspect"). Opens Splunk's native job inspector (execution
+ *  costs / search.log / per-command timing) in a new tab. */
+export const buildJobInspectorUrl = (sid: string): string =>
+    `/en-US/manager/search/job_inspector?sid=${encodeURIComponent(sid)}`;
+
+/** Build a results-export URL for a dispatched SID (build 234, panel toolbar
+ *  "Download"). Hits the REST results endpoint through Splunk Web's proxy;
+ *  opening it in a new tab streams the panel's results as CSV. */
+export const buildResultsExportUrl = (
+    sid: string,
+    format: 'csv' | 'json' = 'csv',
+): string =>
+    `/en-US/splunkd/__raw/services/search/jobs/${encodeURIComponent(
+        sid,
+    )}/results?output_mode=${format}&count=0`;
+
+/** Format an epoch-ms dispatch time as a compact relative "last run" string
+ *  ("<1m ago", "5m ago", "2h ago", "3d ago") for the panel toolbar. */
+export const formatLastRun = (dispatchedAtMs?: number): string | null => {
+    if (!dispatchedAtMs) return null;
+    const s = Math.max(0, Math.round((Date.now() - dispatchedAtMs) / 1000));
+    if (s < 60) return '<1m ago';
+    const m = Math.round(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.round(h / 24)}d ago`;
+};
+
 /** Open a URL in a new browser tab with the standard reverse-tabnabbing
  *  guard (`noopener,noreferrer`). Centralized so every drilldown call site
  *  doesn't have to remember the flags. */

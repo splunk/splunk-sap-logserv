@@ -1,16 +1,16 @@
 # AI Assistant — Overview
 
-!!! warning "v0.0.5 release: LLM functionality intentionally disabled pending review"
-    The v0.0.5 release of Splunk for SAP LogServ ships with the LLM-driven AI Assistant path **disabled at compile time pending internal review**. The predefined-prompt path + Splunk MCP Server integration + tool tiles + drill-down chips + audit log all stay fully active. The free-form chat input is disabled, the model picker is hidden, and the Provider Credentials Settings tab is hidden. See [Templates-only Build](templates-only-build.md) for the build mechanism. The LLM-driven path will be re-enabled in a future release once review concludes.
+!!! warning "Current release: LLM functionality intentionally disabled pending review"
+    The current release of Splunk for SAP LogServ ships with the LLM-driven AI Assistant path **disabled at compile time pending internal review**. The predefined-prompt path + Splunk MCP Server integration + tool tiles + drill-down chips + audit log all stay fully active. The free-form chat input is disabled, the model picker is hidden, and the Provider Credentials Settings tab is hidden. See [Templates-only Build](templates-only-build.md) for the build mechanism. The LLM-driven path will be re-enabled in a future release once review concludes.
 
 ## :material-circle-box:{ .taiconcolor } What the AI Assistant Is
 
 The AI Assistant is a Splunk-aware chat panel embedded in the LogServ App that lets analysts run pre-canned investigations and free-form questions against their Splunk data. It sits to the right of every dashboard as a togglable side panel, accessed via the **`✦ AI Assistant`** button in the top-right of the app's nav bar.
 
-It has **two distinct paths** with different cost, latency, and privacy properties. **In this v0.0.5 build only the predefined-prompt path is active** — the free-form / LLM-driven path is disabled (the cloud LLM provider code is physically removed from the build, see the warning above):
+It has **two distinct paths** with different cost, latency, and privacy properties. **In this build only the predefined-prompt path is active** — the free-form / LLM-driven path is disabled (the cloud LLM provider code is physically removed from the build, see the warning above):
 
 - **Predefined prompts (no LLM call) — active in this build.** The user opens the prompt browser and clicks one of 61 cataloged prompts. The orchestrator dispatches the saved search via the [Splunk MCP Server](mcp-setup.md), renders the result tile in the right pane, and appends a static interpretation + suggested-next-steps card. **No vendor LLM is invoked.** Free, instant (search latency only), zero data egress.
-- **Free-form prompts (LLM-driven) — disabled / not shipped in this build.** When active, the user types a natural-language question and the orchestrator sends a system primer + the question + tool definitions to the active vendor (Anthropic / OpenAI / Azure OpenAI / AWS Bedrock). In the v0.0.5 build the four cloud LLM provider implementations are physically removed from the source, so this path is unavailable regardless of configuration. The description here documents the capability for reference only.
+- **Free-form prompts (LLM-driven) — disabled / not shipped in this build.** When active, the user types a natural-language question and the orchestrator sends a system primer + the question + tool definitions to the active vendor (Anthropic / OpenAI / Azure OpenAI / AWS Bedrock). In the current build the four cloud LLM provider implementations are physically removed from the source, so this path is unavailable regardless of configuration. The description here documents the capability for reference only.
 
 ## :material-circle-box:{ .taiconcolor } The Privacy Invariant
 
@@ -49,7 +49,7 @@ For the build-time type-system mechanism that makes this guarantee non-bypassabl
 ## :material-circle-box:{ .taiconcolor } Key Capabilities
 
 - **61 predefined prompts** in three packs (sap_basis 15, security 28, operations 18) plus a context-aware **Dashboard Focused** tab that auto-filters to prompts relevant to the dashboard you currently have open. See [Predefined Prompts](predefined-prompts.md).
-- **Four LLM providers** for the free-form path (Anthropic, OpenAI, Azure OpenAI, AWS Bedrock) — **disabled / not shipped in the v0.0.5 build** (provider code physically removed). When active, a per-user model-picker in the chat header lets users switch within the active provider's model list. See [Settings & Configuration](settings.md).
+- **Four LLM providers** for the free-form path (Anthropic, OpenAI, Azure OpenAI, AWS Bedrock) — **disabled / not shipped in the current build** (provider code physically removed). When active, a per-user model-picker in the chat header lets users switch within the active provider's model list. See [Settings & Configuration](settings.md).
 - **[Power Mode](power-mode.md)** — admin-granted role-gated `✦ Power` toggle that forces a saved-search dispatch before LLM synthesis (forced-RAG). Guarantees data-grounded answers; never responds from prior knowledge alone.
 - **[Time-window reasoning](time-window-reasoning.md)** — primer rules teach the AI to identify the dispatch window, normalize cumulative count to per-hour or per-day rate, run a verify-query before declaring high-severity, and state the window precisely in narrative.
 - **[Audit log](audit-log.md)** — every action (canned dispatch, vendor call, security block, privacy-tier elevation, legal acknowledgement) lands in a dedicated `logserv_ai_assistant_audit` index. In-app browser + optional [HEC forwarder](audit-log.md#hec-forwarder) for tamper-evidence.
@@ -60,7 +60,7 @@ For the build-time type-system mechanism that makes this guarantee non-bypassabl
 
 - **Splunk 9.4.3 or later.**
 - **[Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.1.0 or later** installed on the same search head as the LogServ App. See [Splunk MCP Setup](mcp-setup.md). Cookie auth from the same Splunk Web session works by default; the optional bearer token layers on top.
-- **No LLM provider is required in the v0.0.5 build** — the free-form / LLM path is disabled (provider code physically removed), so only the predefined-prompt + MCP path runs. No vendor API credential is needed.
+- **No LLM provider is required in the current build** — the free-form / LLM path is disabled (provider code physically removed), so only the predefined-prompt + MCP path runs. No vendor API credential is needed.
 - **Admin user role** to configure provider credentials, set the privacy tier, manage Power Mode roles, and view the Audit Log tab.
 
 ## :material-circle-box:{ .taiconcolor } First-time UX

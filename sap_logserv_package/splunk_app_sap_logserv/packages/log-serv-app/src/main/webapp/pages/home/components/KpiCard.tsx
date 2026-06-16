@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
+import Spinner from './Spinner';
 // styled-components needs to be imported above; SparklineSlot uses styled.div
 
 /**
@@ -113,7 +114,9 @@ const KpiCard: React.FC<KpiCardProps> = ({
 }) => {
     let displayValue: ReactNode;
     if (loading) {
-        displayValue = '—';
+        // build 234: orange-dot spinner in place of the old "—" while the KPI
+        // search is in flight (consistent with the chart/table PanelLoading).
+        displayValue = <Spinner radius={8} dotSize={3} label="Loading" />;
     } else if (error) {
         displayValue = '!';
     } else if (formatValue && typeof value !== 'undefined') {

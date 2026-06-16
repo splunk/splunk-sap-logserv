@@ -8,6 +8,8 @@ import { logservTheme } from '../styles/logservTheme';
 import { ChartPalette, paletteColors, STATUS_FIELD_COLORS } from '../styles/chartPalettes';
 import GradientWrap from './GradientWrap';
 import LegendTitleTooltips from './LegendTitleTooltips';
+import PanelLoading from './PanelLoading';
+import { usePanelMetaReporter } from './PanelMeta';
 
 /** Default vertical-gradient darkness (0 = same color, 1 = black). */
 const DEFAULT_GRADIENT_DARKEN = 0.4;
@@ -99,7 +101,10 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     seriesColorsByField: seriesColorsByFieldProp,
     chartType = 'column',
 }) => {
-    const { results, loading, error } = useSearch({ query });
+    const { results, loading, error, sid, spl, dispatchedAt, refresh } = useSearch({ query });
+    // build 234 — report search meta up to the enclosing FramedPanel so it can
+    // render the Open-in-Search / Download / Inspect / Refresh toolbar.
+    usePanelMetaReporter({ spl, sid, dispatchedAt, refresh });
 
     const dataSources = useMemo(() => {
         if (!results || results.length === 0) {
@@ -150,7 +155,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     if (loading && !dataSources) {
         return (
             <Container $height={height}>
-                <StatusLine>Loading…</StatusLine>
+                <PanelLoading height={height} />
             </Container>
         );
     }

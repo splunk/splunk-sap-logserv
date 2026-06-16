@@ -40,7 +40,7 @@ Use this page as an index — click any dashboard below to see its full purpose,
 | [SAP Router](integration/sap-router.md) | SAP Router connection activity, error analysis, and network boundary monitoring | `sap:saprouter` |
 | [Cloud Connector](integration/cloud-connector.md) | SAP Cloud Connector HTTP traffic, audit events, and access denied events | `sap:scc:audit`, `sap:scc:http_access` |
 | [Web Dispatcher](integration/web-dispatcher.md) | HTTP traffic analysis, response times, status codes, and client patterns | `sap:webdispatcher:access` |
-| [Web and API Performance](integration/web-api-performance.md) | Four-stage request timing, response-time percentiles, TLS posture, cross-source error correlation | `sap:webdispatcher:access`, `sap:scc:http_access` |
+| [Web and API Performance](integration/web-api-performance.md) | Four-stage request timing, response-time Avg/Max trends, TLS posture, cross-source error correlation | `sap:webdispatcher:access`, `sap:scc:http_access` |
 
 ### Security (cross-source synthesis + compliance)
 
@@ -73,6 +73,9 @@ Use this page as an index — click any dashboard below to see its full purpose,
 
 !!! tip "Per-dashboard auto-refresh"
     Each dashboard's title row carries a **Refresh** picker (Never / 30s / 1m / 5m / 15m / 30m / 1hr) next to the time-range picker. The selection is per-user-per-dashboard — your choice on Environment Health doesn't carry over to HANA Audit. State persists across browser sessions via Splunk KV Store.
+
+!!! tip "Performance & data freshness"
+    The dashboards are tuned to stay fast at high event volume — most panels read from an hourly KV-Store rollup layer rather than scanning raw events on every open. After a fresh install on a large environment, an admin runs a one-time backfill. See [Dashboard Performance & Data Freshness](performance.md) for how each panel sources its data, what "hourly fresh" means, and the backfill step.
 
 ---
 

@@ -19,6 +19,24 @@ import { logservTheme } from '../styles/logservTheme';
  * Web Dispatcher Access — honest port of v0.0.4.2 logserv_web_dispatcher.xml
  * + the v0.0.5.0 redesigned widget (TraceWaterfall) and the per-panel filter
  * (P3 demo on Top URIs).
+ *
+ * Performance tiering (session 049 CIM; rebuilt build 232 → KV-Store rollup):
+ *   - Pure-count panels (Total Requests / Request Volume / sparkline) → tstats-now.
+ *   - Everything else reads the shared `logserv_web_timing_rollup` collection via
+ *     webdispatcher-scoped wd_* metrics (build 232) — the CIM Web tier was slow
+ *     when the customer hadn't accelerated the model (summariesonly=false fell back
+ *     to a RAW full-scan). The percentile Response Time Trend is now Avg+Max
+ *     (Σsum_rt/Σcnt_rt + max_rt) — p50/p95/p99 don't merge across buckets.
+ *   - wd_core (per-bucket: count/err_count/sum_rt/cnt_rt/max_rt) → Error Rate +
+ *     Avg Response + Response Time Trend. wd_status (status_group, chart buckets) →
+ *     Traffic by Status. wd_method (method) → Traffic by Method. wd_uristat
+ *     (uri,status_group filter-buckets) → Slowest Pages + Top URIs. wd_client
+ *     (clientip,uri) → Client IPs by Traffic.
+ *   - recentErrors + slowestTraces stay RAW (per-event listings; total_us/dt1-4 are
+ *     individual extreme-event detail that can't roll up). response_time_ms is
+ *     computed fresh as tonumber(total_us)/1000 (matches the prior RAW panels).
+ * NOTE: Top URIs dropped its "Unique Clients" (dc(clientip)) column — a (uri,
+ * status_group,clientip) grain would explode at scale; the 2-dim grain is bounded.
  */
 
 const KpiRow = styled.div`
@@ -49,22 +67,47 @@ const PanelGrid3 = styled.div`
 
 const ST = 'sourcetype=sap:webdispatcher:access';
 
-// SPL — verbatim from v0.0.4.2 (KPI sums extracted, sparklines re-derived)
+// --- Acceleration tiers (session 049 — CIM data-model acceleration) ----------
+// Mirror of Proxy.tsx; see that file's header for the full data-model contract.
+// Pure-count panels read default-indexed dims via tstats-now (macro re-pins the
+// customer's index, honoring con1/jaclyn local/macros.conf overrides).
+const TS_WHERE = `WHERE \`sap_logserv_idx_macro\` ${ST}`;
+// KV-Store rollup reads (build 232) — webdispatcher-scoped wd_* metrics on the
+// shared logserv_web_timing_rollup. Read idiom: inputlookup metric=X | bucket_ts
+// range | <agg>. Avg = Σsum_rt/Σcnt_rt; Max = max(max_rt). response_time_ms was
+// computed at aggregate time as tonumber(total_us)/1000 (matches the RAW panels).
+const ROLL = 'logserv_web_timing_rollup';
+const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
+const WD_CORE = `| inputlookup ${ROLL} where metric="wd_core" ${RANGE}`;
+const WD_STATUS = `| inputlookup ${ROLL} where metric="wd_status" ${RANGE}`;
+const WD_METHOD = `| inputlookup ${ROLL} where metric="wd_method" ${RANGE}`;
+const WD_URISTAT = `| inputlookup ${ROLL} where metric="wd_uristat" ${RANGE}`;
+const WD_CLIENT = `| inputlookup ${ROLL} where metric="wd_client" ${RANGE}`;
+
 const Q = {
-    kpiRequests: `\`sap_logserv_idx_macro\` ${ST} | stats count`,
-    kpiErrorRate: `\`sap_logserv_idx_macro\` ${ST} | eval is_err=if(tonumber(status)>=400,1,0) | stats sum(is_err) as errors, count as total | eval pct = if(total>0, round(errors/total*100, 1), 0) | table pct`,
-    kpiAvgResponse: `\`sap_logserv_idx_macro\` ${ST} | eval response_time_ms=tonumber(total_us)/1000 | stats avg(response_time_ms) as avg_ms | eval avg_ms=round(avg_ms,1)`,
+    // --- tstats-now (pure counts on default-indexed fields) ------------------
+    kpiRequests: `| tstats count ${TS_WHERE}`,
+    sparkRequests: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS count`,
+    requestVolumeOverTime: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS Requests`,
 
-    sparkRequests: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count`,
-    sparkErrorRate: `\`sap_logserv_idx_macro\` ${ST} | eval is_err=if(tonumber(status)>=400,1,0) | timechart span=1d sum(is_err) as errors_daily count as total_daily | eval daily = round(errors_daily/total_daily*100, 1) | fields _time daily`,
-    sparkAvgResponse: `\`sap_logserv_idx_macro\` ${ST} | eval response_time_ms=tonumber(total_us)/1000 | timechart span=1d avg(response_time_ms) as daily | eval daily=round(daily,1)`,
+    // --- KV-Store rollup: wd_core (error rate + avg response) ----------------
+    kpiErrorRate: `${WD_CORE} | stats sum(err_count) as errors, sum(count) as total | eval pct = if(total>0, round(errors/total*100, 1), 0) | table pct`,
+    sparkErrorRate: `${WD_CORE} | eval _time=bucket_ts | timechart span=1d sum(err_count) as ed, sum(count) as td | eval daily = if(td>0, round(ed/td*100, 1), 0) | fields _time daily`,
+    kpiAvgResponse: `${WD_CORE} | stats sum(sum_rt) as s, sum(cnt_rt) as c | eval avg_ms = if(c>0, round(s/c, 1), 0) | table avg_ms`,
+    sparkAvgResponse: `${WD_CORE} | eval _time=bucket_ts | timechart span=1d sum(sum_rt) as s, sum(cnt_rt) as c | eval daily = round(s/c, 1) | fields _time daily`,
 
-    slowestPages: `\`sap_logserv_idx_macro\` ${ST} | eval response_time_ms = tonumber(total_us)/1000 | stats avg(response_time_ms) as avg_response, count as requests by uri | eval avg_response = round(avg_response, 1) | sort -avg_response | table uri, avg_response, requests`,
-    trafficByMethod: `\`sap_logserv_idx_macro\` ${ST} | stats count by method | sort -count`,
-    topClients: `\`sap_logserv_idx_macro\` ${ST} | stats count as requests, dc(uri) as unique_pages, avg(tonumber(total_us)/1000) as avg_response_ms by clientip | sort -requests | eval avg_response_ms=round(avg_response_ms,1) | table clientip, requests, unique_pages, avg_response_ms`,
-    requestVolumeOverTime: `\`sap_logserv_idx_macro\` ${ST} | timechart span=1d count as Requests`,
-    recentErrors: `\`sap_logserv_idx_macro\` ${ST} status>=400 | eval response_time_ms=round(tonumber(total_us)/1000, 1) | table _time clientip method uri status response_time_ms | sort -_time`,
-    slowestTraces: `\`sap_logserv_idx_macro\` ${ST} | sort - total_us | table _time, uri, status, method, dt1_us, dt2_us, dt3_us, dt4_us, total_us`,
+    // --- KV-Store rollup: wd_method / wd_uristat / wd_client -----------------
+    trafficByMethod: `${WD_METHOD} | search method!="(none)" | stats sum(count) as count by method | sort -count`,
+    slowestPages: `${WD_URISTAT} | search uri!="(none)" | stats sum(count) as requests, sum(sum_rt) as s, sum(cnt_rt) as c by uri | eval avg_response = round(if(c>0, s/c, 0), 1) | sort -avg_response | table uri, avg_response, requests`,
+    topClients: `${WD_CLIENT} | search clientip!="(none)" | stats sum(count) as requests, dc(eval(if(uri="(none)",null(),uri))) as unique_pages, sum(sum_rt) as s, sum(cnt_rt) as c by clientip | eval avg_response_ms = round(if(c>0, s/c, 0), 1) | sort -requests | table clientip, requests, unique_pages, avg_response_ms`,
+
+    // --- recentErrors stays RAW (recent-N event listing, head-200 bounded) ---
+    recentErrors: `\`sap_logserv_idx_macro\` ${ST} status>=400 | head 200 | eval response_time_ms=round(tonumber(total_us)/1000, 1) | table _time clientip method uri status response_time_ms | sort -_time`,
+    // Build 236: slowestTraces reads the per-hour top-20 rollup instead of a raw
+    // `| sort 20 - total_us` full-scan of webdispatcher. Byte-exact — the global
+    // 20 slowest over the range are each within their own hour's top-20, so
+    // re-sorting the union of per-hour top-20s + head 20 = the global top-20.
+    slowestTraces: `| inputlookup logserv_webdisp_slowtrace_rollup | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | sort 20 - total_us | eval _time=event_time | table _time, uri, status, method, dt1_us, dt2_us, dt3_us, dt4_us, total_us`,
 };
 
 // Per-panel filter for Top URIs (P3 demo)
@@ -77,9 +120,9 @@ const URI_STATUS_FILTERS = {
 };
 type UriStatusFilter = keyof typeof URI_STATUS_FILTERS;
 const buildTopUrisQuery = (filter: UriStatusFilter): string => {
-    const { clause } = URI_STATUS_FILTERS[filter];
-    const filterPart = clause ? ` ${clause}` : '';
-    return `\`sap_logserv_idx_macro\` ${ST}${filterPart} | eval response_time_ms=round(tonumber(total_us)/1000, 1) | stats count as Requests, avg(response_time_ms) as "Avg Response (ms)", dc(clientip) as "Unique Clients" by uri | eval "Avg Response (ms)"=round('Avg Response (ms)', 1) | sort -Requests`;
+    // wd_uristat status_group uses the Top URIs filter buckets ("2xx".."5xx"/"other").
+    const sg = filter === 'all' ? '' : `| search status_group="${filter}"`;
+    return `${WD_URISTAT} ${sg} | search uri!="(none)" | stats sum(count) as Requests, sum(sum_rt) as s, sum(cnt_rt) as c by uri | eval "Avg Response (ms)"=round(if(c>0,s/c,0),1) | sort -Requests | table uri, Requests, "Avg Response (ms)"`;
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
@@ -115,7 +158,6 @@ const TOP_URIS_COLS: ColumnDef[] = [
     { key: 'uri', label: 'URI' },
     { key: 'Requests', label: 'Requests', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Avg Response (ms)', label: 'Avg Response (ms)', align: 'right' },
-    { key: 'Unique Clients', label: 'Unique Clients', align: 'right', render: (v) => formatInteger(v) },
 ];
 const RECENT_ERROR_COLS: ColumnDef[] = [
     { key: '_time', label: 'Time', width: '160px', render: (v) => v ? new Date(String(v)).toLocaleString('en-US', { hour12: false }) : '' },
@@ -143,27 +185,19 @@ const WebDispatcher: React.FC = () => {
     // crushed under stacked bars.
     const trafficByStatusQuery = useMemo(
         () =>
-            `\`sap_logserv_idx_macro\` ${ST} ` +
-            `| eval status_group = case(tonumber(status) < 300, "Success (2xx)", ` +
-            `tonumber(status) < 400, "Redirect (3xx)", ` +
-            `tonumber(status) < 500, "Client Error (4xx)", ` +
-            `tonumber(status) >= 500, "Server Error (5xx)", ` +
-            `1=1, "Other") ` +
-            `| timechart span=${span} count by status_group`,
+            `${WD_STATUS} | eval _time=bucket_ts ` +
+            `| timechart span=${span} sum(count) by status_group | fillnull value=0`,
         [span],
     );
 
-    // Response Time Trend — p50/p95/p99 percentile lines (SRE-standard).
-    // Average hides the tail latency that actually annoys users; p95/p99
-    // surface it. Three lines on the same axis make the spread visible.
+    // Response Time Trend — Avg + Max per bucket (build 232). Percentiles
+    // (p50/p95/p99) were RAW and don't merge byte-exact across hourly buckets,
+    // so they are replaced by Avg (=Σsum_rt/Σcnt_rt) + Max (=max-of-per-bucket-max).
     const responseTimeTrendQuery = useMemo(
         () =>
-            `\`sap_logserv_idx_macro\` ${ST} ` +
-            `| eval response_time_ms = tonumber(total_us)/1000 ` +
-            `| timechart span=${span} ` +
-            `p50(response_time_ms) as "p50" ` +
-            `p95(response_time_ms) as "p95" ` +
-            `p99(response_time_ms) as "p99"`,
+            `${WD_CORE} | eval _time=bucket_ts ` +
+            `| timechart span=${span} sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" ` +
+            `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
         [span],
     );
 
@@ -263,26 +297,25 @@ const WebDispatcher: React.FC = () => {
                 </FramedPanel>
                 <FramedPanel
                     title="Response Time Trend"
-                    subtitle={`Latency percentiles (p50 / p95 / p99) in ms — span ${span}`}
+                    subtitle={`Average and peak latency (ms) — span ${span}`}
                 >
                     <TimeSeriesChart
                         query={responseTimeTrendQuery}
                         height={280}
                         chartType="line"
                         seriesColorsByField={{
-                            p50: logservTheme.colors.cyanLight,
-                            p95: logservTheme.colors.orange,
-                            p99: logservTheme.colors.red,
+                            'Avg (ms)': logservTheme.colors.cyanLight,
+                            'Max (ms)': logservTheme.colors.orange,
                         }}
                     />
                 </FramedPanel>
             </PanelGrid2>
 
             <PanelGrid3>
-                <FramedPanel title="Slowest Pages" subtitle="URIs ranked by avg response time — click a row for that URI's full latency distribution">
+                <FramedPanel search={slowestPages} title="Slowest Pages" subtitle="URIs ranked by avg response time — click a row for that URI's full latency distribution">
                     <DataTable columns={SLOWEST_PAGE_COLS} rows={slowestPages.results} loading={slowestPages.loading} error={slowestPages.error} emptyMessage="No requests in this time range." onRowClick={goSlowestPagesRow} />
                 </FramedPanel>
-                <FramedPanel title="Client IPs by Traffic" subtitle="Clients ranked by request count — click a row for that client's full request log">
+                <FramedPanel search={topClients} title="Client IPs by Traffic" subtitle="Clients ranked by request count — click a row for that client's full request log">
                     <DataTable columns={TOP_CLIENT_COLS} rows={topClients.results} loading={topClients.loading} error={topClients.error} emptyMessage="No requests in this time range." onRowClick={goTopClientsRow} />
                 </FramedPanel>
                 <FramedPanel
@@ -302,7 +335,7 @@ const WebDispatcher: React.FC = () => {
             </PanelGrid3>
 
             <FullWidthPanel>
-                <FramedPanel
+                <FramedPanel search={topUris}
                     title="URIs by Request Count"
                     subtitle={`URIs ranked by request count (${URI_STATUS_FILTERS[uriStatusFilter].label}) — click a row to drill into that URI within the current status filter`}
                     actions={
@@ -326,7 +359,7 @@ const WebDispatcher: React.FC = () => {
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="Recent Errors (4xx / 5xx)" subtitle="Error responses, most-recent first — click a row to investigate that client + URI's error path">
+                <FramedPanel search={recentErrors} title="Recent Errors (4xx / 5xx)" subtitle="Error responses, most-recent first — click a row to investigate that client + URI's error path">
                     <DataTable columns={RECENT_ERROR_COLS} rows={recentErrors.results} loading={recentErrors.loading} error={recentErrors.error} emptyMessage="No errors in this time range." onRowClick={goRecentErrorsRow} />
                 </FramedPanel>
             </FullWidthPanel>
@@ -335,6 +368,7 @@ const WebDispatcher: React.FC = () => {
                 <FramedPanel
                     title="Slowest Request Traces"
                     subtitle="Top 20 by total response time, broken down by stage (dt1–dt4)"
+                    search={slowestTraces}
                     onClick={() => {
                         const spl = `\`sap_logserv_idx_macro\` ${ST} | sort - total_us | table _time uri status method dt1_us dt2_us dt3_us dt4_us total_us | head 100`;
                         openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));

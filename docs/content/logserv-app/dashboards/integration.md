@@ -11,4 +11,4 @@ The **Integration** category covers dashboards that monitor how SAP connects to 
 | [SAP Router](integration/sap-router.md) | SAP Router connection activity, error analysis, and network boundary monitoring | `sap:saprouter` |
 | [Cloud Connector](integration/cloud-connector.md) | SAP Cloud Connector HTTP traffic, audit events, and access denied events | `sap:scc:audit`, `sap:scc:http_access` |
 | [Web Dispatcher](integration/web-dispatcher.md) | HTTP traffic analysis, response times, status codes, and client patterns | `sap:webdispatcher:access` |
-| [Web and API Performance](integration/web-api-performance.md) | Four-stage request timing, response-time percentiles, TLS posture, cross-source error correlation | `sap:webdispatcher:access`, `sap:scc:http_access` |
+| [Web and API Performance](integration/web-api-performance.md) | Four-stage request timing, response-time Avg/Max trends, TLS posture, cross-source error correlation | `sap:webdispatcher:access`, `sap:scc:http_access` |

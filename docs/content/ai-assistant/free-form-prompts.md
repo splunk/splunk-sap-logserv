@@ -1,7 +1,7 @@
 # Free-form Prompts
 
-!!! warning "v0.0.5 release: this entire feature is disabled pending review"
-    The free-form / LLM-driven path is **disabled at compile time** in the v0.0.5 release pending internal review. Chat input is greyed out, Send button is disabled, model picker and Power Mode toggle are hidden, and the Provider Credentials Settings tab is hidden. None of the behavior described on this page is reachable in a v0.0.5 build. This page is preserved as the design reference for the future release that re-enables the LLM path. See [Templates-only Build](templates-only-build.md) for the build mechanism and [OWASP LLM Top 10 Compliance](owasp-llm-compliance.md) for the security posture under review.
+!!! warning "Current release: this entire feature is disabled pending review"
+    The free-form / LLM-driven path is **disabled at compile time** in the current release pending internal review. Chat input is greyed out, Send button is disabled, model picker and Power Mode toggle are hidden, and the Provider Credentials Settings tab is hidden. None of the behavior described on this page is reachable in the current build. This page is preserved as the design reference for the future release that re-enables the LLM path. See [Templates-only Build](templates-only-build.md) for the build mechanism and [OWASP LLM Top 10 Compliance](owasp-llm-compliance.md) for the security posture under review.
 
 Free-form prompts are the LLM-driven path through the AI Assistant. The user types a natural-language question; the orchestrator sends a system primer + the question + tool definitions to one of four supported LLM providers; the vendor picks tools, the orchestrator dispatches them via the [Splunk MCP Server](mcp-setup.md), and the vendor synthesizes a narrative response from the privacy-tier-bounded summaries. The narrative ends up in the chat panel on the left; the actual data lands in tool-result tiles on the right.
 
