@@ -1808,9 +1808,10 @@ const dispatchTool = async (
 ): Promise<Hidden<MCPToolResult>> => {
     if (toolName === 'splunk_run_saved_search') {
         const name = typeof args.name === 'string' ? args.name : '';
-        // Time-range tokens get nested into the saved-search dispatch
-        // arguments object so they reach Splunk's `dispatch.earliest_time`
-        // / `dispatch.latest_time` knobs.
+        // Collect the time range alongside any token substitutions; these
+        // are flattened to top-level MCP tool args inside runSavedSearch so
+        // `earliest_time` / `latest_time` reach App 7931's run_saved_search
+        // tool (which bounds the dispatched search to that window).
         const sub: Record<string, unknown> = { ...((args.arguments as object) ?? {}) };
         if (typeof args.earliest_time === 'string') sub.earliest_time = args.earliest_time;
         if (typeof args.latest_time === 'string') sub.latest_time = args.latest_time;

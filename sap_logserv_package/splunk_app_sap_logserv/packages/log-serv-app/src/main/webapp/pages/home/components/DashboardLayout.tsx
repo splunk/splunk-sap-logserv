@@ -23,7 +23,10 @@ import { resolveDocsUrl } from '../utils/docsLinks';
  */
 
 interface DashboardLayoutProps {
-    category: string;
+    /** Uppercase eyebrow above the title. Optional — omit it on pages where the
+     *  title is self-describing (e.g. "Application Settings") so the header isn't
+     *  redundant. */
+    category?: string;
     title: ReactNode;
     subtitle?: ReactNode;
     /** Right-aligned slot in the title row, e.g., page-level filters. The
@@ -112,7 +115,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <RefreshProvider dashboardId={dashboardId}>
                 <TitleRow>
                     <TitleBlock>
-                        <CategoryLabel>{category}</CategoryLabel>
+                        {category && <CategoryLabel>{category}</CategoryLabel>}
                         <TitleAndSubtitle>
                             <Title>{title}</Title>
                             {subtitle && <Subtitle>{subtitle}</Subtitle>}

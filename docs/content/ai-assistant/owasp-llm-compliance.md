@@ -87,7 +87,7 @@ The customer's DPA review should still confirm vendor-side prompt-logging polici
 
 **Threat:** vector / embedding stores used for RAG can leak sensitive data if not access-controlled, can be poisoned by malicious indexed content, or can return chunks across security boundaries.
 
-**Status:** **Not applicable.** The LogServ App's AI Assistant does NOT use vector embeddings or a separate RAG store. The "RAG" here is direct tool dispatch against the live Splunk index — every retrieval is a real-time SPL search bounded by Splunk's own RBAC. There is no separate vector store to compromise.
+**Status:** **Not applicable.** The LogServ App's AI Assistant does NOT use vector embeddings or a separate RAG store. The "RAG" here is direct tool dispatch against the customer's own Splunk index — every retrieval is an SPL search bounded by Splunk's own RBAC (either a live event search or a read of one of the app's own access-controlled KV-Store rollups; neither is an embedding store). There is no vector store to compromise.
 
 ## :material-circle-box:{ .taiconcolor } LLM09 — Misinformation
 

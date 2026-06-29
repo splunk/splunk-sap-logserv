@@ -3,7 +3,7 @@
         "name": "splunk_ta_sap_logserv",
         "restRoot": "splunk_ta_sap_logserv",
         "displayName": "Splunk TA for SAP LogServ",
-        "version": "0.0.4.3",
+        "version": "0.0.6",
         "schemaVersion": "0.0.9",
         "isVisible": true
     },
@@ -102,9 +102,18 @@
                             "options": {
                                 "createSearchChoice": false,
                                 "autoCompleteFields": [
-                                    {"value": "not_set", "label": "Not set"},
-                                    {"value": "aws", "label": "AWS"},
-                                    {"value": "azure", "label": "Microsoft Azure"}
+                                    {
+                                        "value": "not_set",
+                                        "label": "Not set"
+                                    },
+                                    {
+                                        "value": "aws",
+                                        "label": "AWS"
+                                    },
+                                    {
+                                        "value": "azure",
+                                        "label": "Microsoft Azure"
+                                    }
                                 ]
                             }
                         }

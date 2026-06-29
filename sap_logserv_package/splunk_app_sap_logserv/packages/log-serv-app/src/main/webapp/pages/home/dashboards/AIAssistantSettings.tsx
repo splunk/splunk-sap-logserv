@@ -7,7 +7,6 @@ import { parsePowerUserRoles } from '../state/AIAssistantConfig';
 import DashboardLayout from '../components/DashboardLayout';
 import FramedPanel from '../components/FramedPanel';
 import AuditLogViewer from '../components/AuditLogViewer';
-import TopologySettingsPanel from '../components/TopologySettingsPanel';
 import RollupBackfillPanel from '../components/RollupBackfillPanel';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import {
@@ -271,6 +270,43 @@ const StatusBanner = styled.div<{ $tone: 'success' | 'error' | 'info' }>`
     font-size: ${logservTheme.fontSize.body};
     margin-bottom: ${logservTheme.spacing.md};
 `;
+
+// ─── inner (AI Assistant) secondary tab bar ────────────────────────────────
+// A lighter, underlined text-tab treatment so the two tab levels read as a
+// clear hierarchy: the outer @splunk/react-ui TabLayout keeps the standard tab
+// chrome; this inner level is a muted, secondary text-tab row.
+const TabIntro = styled.p`
+    margin: 0 0 ${logservTheme.spacing.md};
+    color: ${logservTheme.colors.textMuted};
+    font-size: ${logservTheme.fontSize.body};
+    max-width: 80ch;
+`;
+const SecondaryTabBar = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    gap: ${logservTheme.spacing.lg};
+    margin-bottom: ${logservTheme.spacing.lg};
+    border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
+`;
+const SecondaryTab = styled.button<{ $active: boolean }>`
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid
+        ${(p) => (p.$active ? logservTheme.colors.cyanAccent : 'transparent')};
+    color: ${(p) => (p.$active ? logservTheme.colors.cyanLight : logservTheme.colors.textMuted)};
+    padding: ${logservTheme.spacing.xs} 2px ${logservTheme.spacing.sm};
+    margin-bottom: -1px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: ${logservTheme.fontSize.body};
+    font-weight: ${(p) =>
+        p.$active ? logservTheme.fontWeight.semibold : logservTheme.fontWeight.normal};
+    &:hover {
+        color: ${logservTheme.colors.textActive};
+    }
+`;
+
+type AiSubTab = 'general' | 'providers' | 'mcp' | 'audit';
 
 // ─── form schema ──────────────────────────────────────────────────────────
 interface FieldDef {
@@ -1649,6 +1685,8 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
     const { isAdmin, loading, username, error } = useIsAdmin();
     const [savedTick, setSavedTick] = useState<number>(0);
     const [globalNotice, setGlobalNotice] = useState<string | null>(null);
+    /** active sub-tab within the AI Assistant top-level tab. */
+    const [aiSubTab, setAiSubTab] = useState<AiSubTab>('general');
 
     useEffect(() => {
         if (savedTick > 0) {
@@ -1662,8 +1700,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
     if (loading) {
         return (
             <DashboardLayout
-                category="SETTINGS"
-                title="AI Assistant"
+                title="Application Settings"
                 subtitle="Loading…"
             >
                 <div />
@@ -1674,8 +1711,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
     if (error) {
         return (
             <DashboardLayout
-                category="SETTINGS"
-                title="AI Assistant"
+                title="Application Settings"
                 subtitle="Could not determine the current user's role"
             >
                 <ForbiddenBlock>
@@ -1688,8 +1724,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
     if (!isAdmin) {
         return (
             <DashboardLayout
-                category="SETTINGS"
-                title="AI Assistant"
+                title="Application Settings"
                 subtitle="Access restricted"
             >
                 <ForbiddenBlock>
@@ -1706,48 +1741,95 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
         );
     }
 
+    // Templates-only mode can hide the Provider Credentials sub-tab while it's
+    // the active one (e.g. an admin saves a config that turns the mode on while
+    // viewing it) — fall back to General so the AI Assistant tab never renders blank.
+    const showProviders = !templatesOnlyMode;
+    const aiActive: AiSubTab =
+        aiSubTab === 'providers' && !showProviders ? 'general' : aiSubTab;
+
     return (
         <DashboardLayout
-            category="SETTINGS"
-            title="AI Assistant"
-            subtitle="Configure LLM provider credentials and the Splunk MCP Server connection. All values are stored in Splunk's encrypted password store; this page only ever displays length + prefix, never the cleartext."
+            title="Application Settings"
+            subtitle="Admin configuration for the AI Assistant feature and the dashboard KV-Store data layer."
         >
             {globalNotice && <StatusBanner $tone="success">{globalNotice}</StatusBanner>}
 
-            {templatesOnlyMode && (
-                <StatusBanner $tone="info">
-                    Templates-only mode — LLM dispatch is disabled by admin setting. Provider /
-                    model / tier / Power-Mode fields on this page have NO effect while this mode
-                    is on. The Provider Credentials tab is hidden. The MCP server connection
-                    (Splunk MCP tab) and the Audit Log remain fully active. Toggle templates-only
-                    mode off in the General tab to re-enable LLM dispatch.
-                </StatusBanner>
-            )}
+            <TabLayout defaultActivePanelId="ai-assistant">
+                <TabLayout.Panel panelId="ai-assistant" label="AI Assistant">
+                    <TabIntro>
+                        Configure LLM provider credentials and the Splunk MCP Server connection. All
+                        secrets are stored in Splunk&apos;s encrypted password store; this page only
+                        ever displays length + prefix, never the cleartext.
+                    </TabIntro>
 
-            <TabLayout defaultActivePanelId="general">
-                <TabLayout.Panel
-                    panelId="general"
-                    label="General"
-                >
-                    <SectionGrid>
-                        <FramedPanel
-                            title="General"
-                            subtitle="Org-wide AI Assistant defaults: enable/disable, active provider, default model, privacy tier, MCP gate, server URL, and per-user rate limit. These apply to every user of this app."
+                    {templatesOnlyMode && (
+                        <StatusBanner $tone="info">
+                            Templates-only mode — LLM dispatch is disabled by admin setting. Provider
+                            / model / tier / Power-Mode fields on this page have NO effect while this
+                            mode is on. The Provider Credentials sub-tab is hidden. The MCP server
+                            connection (Splunk MCP) and the Audit Log remain fully active. Toggle
+                            templates-only mode off in the General sub-tab to re-enable LLM dispatch.
+                        </StatusBanner>
+                    )}
+
+                    <SecondaryTabBar role="tablist" aria-label="AI Assistant settings">
+                        <SecondaryTab
+                            type="button"
+                            role="tab"
+                            aria-selected={aiActive === 'general'}
+                            $active={aiActive === 'general'}
+                            onClick={() => setAiSubTab('general')}
                         >
-                            <GeneralPanel
-                                onSaved={() => setSavedTick((n) => n + 1)}
-                                adminUsername={username ?? ''}
-                                onConfigSaved={onConfigSaved}
-                            />
-                        </FramedPanel>
-                    </SectionGrid>
-                </TabLayout.Panel>
+                            General
+                        </SecondaryTab>
+                        {showProviders && (
+                            <SecondaryTab
+                                type="button"
+                                role="tab"
+                                aria-selected={aiActive === 'providers'}
+                                $active={aiActive === 'providers'}
+                                onClick={() => setAiSubTab('providers')}
+                            >
+                                Provider Credentials
+                            </SecondaryTab>
+                        )}
+                        <SecondaryTab
+                            type="button"
+                            role="tab"
+                            aria-selected={aiActive === 'mcp'}
+                            $active={aiActive === 'mcp'}
+                            onClick={() => setAiSubTab('mcp')}
+                        >
+                            Splunk MCP
+                        </SecondaryTab>
+                        <SecondaryTab
+                            type="button"
+                            role="tab"
+                            aria-selected={aiActive === 'audit'}
+                            $active={aiActive === 'audit'}
+                            onClick={() => setAiSubTab('audit')}
+                        >
+                            Audit Log
+                        </SecondaryTab>
+                    </SecondaryTabBar>
 
-                {!templatesOnlyMode && (
-                    <TabLayout.Panel
-                        panelId="providers"
-                        label="Provider Credentials"
-                    >
+                    {aiActive === 'general' && (
+                        <SectionGrid>
+                            <FramedPanel
+                                title="General"
+                                subtitle="Org-wide AI Assistant defaults: enable/disable, active provider, default model, privacy tier, MCP gate, server URL, and per-user rate limit. These apply to every user of this app."
+                            >
+                                <GeneralPanel
+                                    onSaved={() => setSavedTick((n) => n + 1)}
+                                    adminUsername={username ?? ''}
+                                    onConfigSaved={onConfigSaved}
+                                />
+                            </FramedPanel>
+                        </SectionGrid>
+                    )}
+
+                    {aiActive === 'providers' && showProviders && (
                         <SectionGrid>
                             {PROVIDER_FIELDS.map((section) => (
                                 <FramedPanel
@@ -1765,77 +1847,54 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                                 </FramedPanel>
                             ))}
                         </SectionGrid>
-                    </TabLayout.Panel>
-                )}
+                    )}
 
-                <TabLayout.Panel
-                    panelId="mcp"
-                    label="Splunk MCP"
-                >
-                    <SectionGrid>
-                        <FramedPanel
-                            title="Splunk MCP Server"
-                            subtitle="Bearer token for the Splunk MCP Server. The server URL itself lives under General. Phase G replaces the manual token paste with auto-mint via OAuth/RSA on the Data TA."
-                        >
-                            {MCP_FIELDS.map((f) => (
-                                <FieldEditor
-                                    key={`${f.realm}::${f.name}`}
-                                    field={f}
-                                    onSaved={() => setSavedTick((n) => n + 1)}
-                                />
-                            ))}
-                        </FramedPanel>
-                        <FramedPanel
-                            title="Audit Log Forwarder"
-                            subtitle="HEC token for tamper-evident audit forwarding to a separate Splunk / SIEM. Configure the destination URL and on/off toggle under General. Token is sent on every audit-event POST as `Authorization: Splunk <token>`."
-                        >
-                            {AUDIT_FORWARDER_FIELDS.map((f) => (
-                                <FieldEditor
-                                    key={`${f.realm}::${f.name}`}
-                                    field={f}
-                                    onSaved={() => setSavedTick((n) => n + 1)}
-                                />
-                            ))}
-                        </FramedPanel>
-                    </SectionGrid>
+                    {aiActive === 'mcp' && (
+                        <SectionGrid>
+                            <FramedPanel
+                                title="Splunk MCP Server"
+                                subtitle="Bearer token for the Splunk MCP Server. The server URL itself lives under General. Phase G replaces the manual token paste with auto-mint via OAuth/RSA on the Data TA."
+                            >
+                                {MCP_FIELDS.map((f) => (
+                                    <FieldEditor
+                                        key={`${f.realm}::${f.name}`}
+                                        field={f}
+                                        onSaved={() => setSavedTick((n) => n + 1)}
+                                    />
+                                ))}
+                            </FramedPanel>
+                            <FramedPanel
+                                title="Audit Log Forwarder"
+                                subtitle="HEC token for tamper-evident audit forwarding to a separate Splunk / SIEM. Configure the destination URL and on/off toggle under General. Token is sent on every audit-event POST as `Authorization: Splunk <token>`."
+                            >
+                                {AUDIT_FORWARDER_FIELDS.map((f) => (
+                                    <FieldEditor
+                                        key={`${f.realm}::${f.name}`}
+                                        field={f}
+                                        onSaved={() => setSavedTick((n) => n + 1)}
+                                    />
+                                ))}
+                            </FramedPanel>
+                        </SectionGrid>
+                    )}
+
+                    {aiActive === 'audit' && (
+                        <SectionGrid>
+                            <FramedPanel
+                                title="AI Assistant Audit Log"
+                                subtitle="Read-only browser of every audit event recorded by the AI Assistant — local-only canned prompts, vendor calls, security blocks, and privacy-tier elevations. Filter by time range, category, and user. Click + to expand a row's full event JSON. The disclaimer below describes the tamper-resistance threat model."
+                            >
+                                <AuditLogViewer />
+                            </FramedPanel>
+                        </SectionGrid>
+                    )}
                 </TabLayout.Panel>
 
-                <TabLayout.Panel
-                    panelId="audit"
-                    label="Audit Log"
-                >
+                <TabLayout.Panel panelId="dashboard-data" label="Dashboard Data">
                     <SectionGrid>
                         <FramedPanel
-                            title="AI Assistant Audit Log"
-                            subtitle="Read-only browser of every audit event recorded by the AI Assistant — local-only canned prompts, vendor calls, security blocks, and privacy-tier elevations. Filter by time range, category, and user. Click + to expand a row's full event JSON. The disclaimer below describes the tamper-resistance threat model."
-                        >
-                            <AuditLogViewer />
-                        </FramedPanel>
-                    </SectionGrid>
-                </TabLayout.Panel>
-
-                <TabLayout.Panel
-                    panelId="topology"
-                    label="Topology"
-                >
-                    <SectionGrid>
-                        <FramedPanel
-                            title="Environment Topology Aggregation"
-                            subtitle="Admin controls for the time-bucketed KV Store that powers the Environment Topology view. Hourly scheduled searches aggregate node + edge activity into the logserv_topology_nodes + logserv_topology_edges collections; the topology view reads from KV Store at render time, filtered by the global TimeRange picker. Built session 035 / build 188 — see topology_kvstore_design_v0.1.md for the full architecture."
-                        >
-                            <TopologySettingsPanel />
-                        </FramedPanel>
-                    </SectionGrid>
-                </TabLayout.Panel>
-
-                <TabLayout.Panel
-                    panelId="rollups"
-                    label="Dashboard Data"
-                >
-                    <SectionGrid>
-                        <FramedPanel
-                            title="Dashboard Rollup Backfill"
-                            subtitle="Admin controls for the time-bucketed KV Store rollups that power the dashboard suite. Hourly scheduled searches aggregate raw events into the logserv_*_rollup collections; the dashboards read from KV Store at render time. After first install, run the 30-day backfill here to populate history — it dispatches each rollup's component searches as top-level jobs so they complete correctly at customer scale (the bundled *_backfill saved searches truncate at high event volumes). See session 056."
+                            title="Dashboard Data"
+                            subtitle="Aggregation, backfill, retention, and clear for the time-bucketed KV-Store rollups that power every dashboard (including the Environment Topology view). Hourly scheduled searches aggregate raw events into the logserv_*_rollup collections; the dashboards read from KV Store at render time. After first install, run the 30-day backfill here to populate history — it dispatches each rollup's component searches as top-level jobs so they complete correctly at customer scale (the bundled *_backfill saved searches truncate at high event volumes)."
                         >
                             <RollupBackfillPanel />
                         </FramedPanel>

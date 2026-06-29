@@ -59,7 +59,7 @@ Dispatch a saved search from the LogServ App's catalog (one of the 61 prompts de
 | Arg | Type | Description |
 |---|---|---|
 | `name` | string (required) | Saved-search name from the catalog (e.g., `logserv_hana_failed_auth`) |
-| `earliest_time` | string (optional) | Splunk earliest token (e.g., `-24h`, `-7d`). Falls back to the dashboard's TimeRange picker. |
+| `earliest_time` | string (optional) | Splunk earliest token (e.g., `-24h`, `-7d`). If omitted, the saved search's own configured time range applies; the AI's primer instructs it to pass an explicit window. |
 | `latest_time` | string (optional) | Splunk latest token (e.g., `now`). |
 | `render_hint` | string (optional) | One of `table` / `timechart` / `kpi` / `pie`. Falls back to the catalog's per-prompt `renderHint`. |
 | `top_n` | integer (optional, default 10, max 50) | Width of categorical aggregates the AI receives in Tier 2 summary. The AI passes this when the user asks for "top 25 X" or similar. |

@@ -4,7 +4,7 @@ v0.0.6 is a **dashboard-performance release** — the feature set is unchanged f
 
 !!! warning "The two things to know before you upgrade"
     1. **Dashboards look empty until the rollup cache is populated** — run the one-click backfill after upgrading (or wait for the hourly aggregation to fill them in over the following day).
-    2. **Enterprise Security searches that were running will stop** — v0.0.6 ships the ES content disabled by default; re-enable it if you use Splunk Enterprise Security.
+    2. **Enterprise Security search cadences change** — v0.0.6 ships the ES content enabled by default on a re-staggered, collision-free schedule; the eight previously-sub-hourly correlation searches now run hourly and the four anomaly searches run daily. Re-tune any of them in `local/savedsearches.conf` if you want different cadences.
 
 ## :material-circle-box:{ .taiconcolor } Data TA (`splunk_ta_sap_logserv`) — effectively a no-op
 
@@ -18,18 +18,18 @@ If you are already on the released v0.0.5 Data TA, installing the v0.0.6 Data TA
 
 v0.0.6 dashboards read most panels from **KV-Store rollup collections** that are created **empty** on upgrade. Until they are populated, rolled-up panels show no data. Two ways they fill:
 
-- **Run the backfill once** (recommended on any non-trivial install): **Settings → AI Assistant → Dashboard Data → Run backfill** seeds 30 days of history immediately. It is idempotent and resumable.
+- **Run the backfill once** (recommended on any non-trivial install): **Settings → Dashboard Data → Run backfill** seeds 30 days of history immediately. It is idempotent and resumable.
 - Otherwise the hourly aggregation searches fill the cache **one hour at a time going forward**, so dashboards fill in over the following day.
 
 The `tstats`-tier panels (Data Pipeline Overview, Host Details counts, Multi-Cloud Overview, and the count KPIs) work **immediately** — they read the index directly and need no rollup. See [Dashboard Performance & Data Freshness](../logserv-app/dashboards/performance.md).
 
-### Enterprise Security content becomes disabled
+### Enterprise Security content stays enabled, on a new schedule
 
-In v0.0.5 the 22 `splunk_sap_logserv_es_*` saved searches shipped enabled by default; v0.0.6 ships them **disabled** by default. On upgrade, if you ran them on the defaults they will stop running:
+The 22 `splunk_sap_logserv_es_*` saved searches ship **enabled** by default in v0.0.6 (as they did in v0.0.5), but on a re-staggered, **collision-free** schedule. To fit it, the eight correlation searches that previously ran every 5–15 minutes now run **hourly**, and the four behavioral-anomaly searches run **daily** instead of hourly — a daily run still evaluates every hourly bucket of the prior day, so no detections are missed, and the two heavy 30-day scans no longer run every hour.
 
-- **No ES installed** → zero impact (they were silently no-op-ing anyway), and this removes the two heaviest scheduled searches from the instance.
-- **ES installed and relying on the Notable / Risk / Asset & Identity output** → that output stops until you re-enable the searches. See [Enterprise Security → Enabling the ES content](../enterprise-security/overview.md#enabling-the-es-content).
-- If you had *explicitly* set ES search state in `local/savedsearches.conf`, that local override persists and wins over the new default.
+- **No ES installed** → the searches run but their `action.notable` / `action.risk` directives no-op; their results stay searchable and power the AI Assistant Security-pack prompts. If you'd rather not incur the scheduled load, see [Enterprise Security → Disabling or tuning the ES content](../enterprise-security/overview.md#disabling-or-tuning-the-es-content).
+- **ES installed** → Notable / Risk / Asset & Identity output continues, on the new cadence. See [Enterprise Security → The ES schedule](../enterprise-security/overview.md#the-es-schedule-collision-free).
+- If you had *explicitly* set ES search state or cadence in `local/savedsearches.conf`, that local override persists and wins over the new default.
 
 ### New scheduled searches, new collections, and a restart
 
@@ -55,7 +55,7 @@ The upgrade adds the rollup-aggregate / retention / beaconing scheduled searches
 1. Install the v0.0.6 **UI App** tarball over v0.0.5 (**Apps → Install app from file → Upgrade**), and restart when prompted.
 2. The **Data TA** is a no-op — skip it, or reinstall harmlessly (no behavior change).
 3. Hard-refresh the browser.
-4. Run **Settings → AI Assistant → Dashboard Data → Run backfill** to populate dashboard history immediately.
+4. Run **Settings → Dashboard Data → Run backfill** to populate dashboard history immediately.
 5. If you use Splunk Enterprise Security, **re-enable the `splunk_sap_logserv_es_*` searches**.
 
 ## :material-circle-box:{ .taiconcolor } Rollback

@@ -127,7 +127,7 @@ If you used a custom index name (not `sap_logserv_logs`), update the macro:
 7.<b style="color: #ff9100">c</b> Find `sap_logserv_idx_macro` and update its definition to `index=<your_index_name>`
 
 !!! tip "High-volume installs: seed dashboard history"
-    The dashboards read from an hourly KV-Store rollup layer for performance. On a large environment, run the one-time backfill so dashboards show history immediately: open **Settings → AI Assistant → Dashboard Data** and click **Run backfill**. Without it, rolled-up panels fill in one hour at a time from the next hourly aggregation. See [Dashboard Performance & Data Freshness](dashboards/performance.md).
+    The dashboards read from an hourly KV-Store rollup layer for performance. On a large environment, run the one-time backfill so dashboards show history immediately: open **Settings → Dashboard Data** and click **Run backfill**. Without it, rolled-up panels fill in one hour at a time from the next hourly aggregation. See [Dashboard Performance & Data Freshness](dashboards/performance.md).
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

@@ -3,20 +3,39 @@
 !!! warning "Current release: the Provider Credentials tab is hidden — LLM dispatch is disabled"
     The current release ships with the LLM-driven path **disabled at compile time pending internal review**. The Provider Credentials tab is hidden entirely in current builds, and the model picker on the General tab is non-functional even though the underlying setting persists. The General tab's `provider`, `default_model`, `tier`, `power_user_roles`, `tier2_pii_redaction`, `tier2_redact_hostname`, `rate_limit_per_hour`, `daily_spend_cap_usd`, and `session_tool_call_cap` fields are documented for the future release that re-enables the LLM path; in the current release, only `enabled`, `mcp_required`, `mcp_server_url`, and the audit-forwarder fields under Audit & Telemetry are operationally meaningful.
 
-The AI Assistant Settings page is at **`#/settings/ai-assistant`** within the LogServ App. Admin-only. Six tabs, each handling a different aspect of the app's configuration. (The page is named for the AI Assistant but also hosts the app-wide dashboard data-layer admin controls.)
+The **Application Settings** page is at **`#/settings`** within the LogServ App (the old `#/settings/ai-assistant` URL still works and redirects here). Admin-only. The page is organized as a **two-level tab hierarchy**:
 
-## :material-circle-box:{ .taiconcolor } The Six Tabs
+```
+Application Settings
+├── AI Assistant            (top-level tab)
+│   ├── General             (sub-tab)
+│   ├── Provider Credentials(sub-tab)
+│   ├── Splunk MCP          (sub-tab)
+│   └── Audit Log           (sub-tab)
+└── Dashboard Data          (top-level tab)
+```
+
+The two top-level tabs render with the standard tab chrome; the AI Assistant sub-tabs render as a lighter, secondary text-tab row beneath them.
+
+![Application Settings — two-level tab hierarchy (AI Assistant ▸ General sub-tab)](../../images/settings-general.png)
+
+## :material-circle-box:{ .taiconcolor } The Two Top-Level Tabs
 
 | Tab | Scope |
+|---|---|
+| **AI Assistant** | Everything specific to the AI Assistant feature, split across four sub-tabs (below). |
+| **Dashboard Data** | App-wide admin controls for the KV-Store rollup data layer that powers every dashboard **and** the Environment Topology view — aggregation master switch, retention, one-time backfill, per-rollup status, and clear ([see below](#dashboard-data-tab)). |
+
+### AI Assistant sub-tabs
+
+| Sub-tab | Scope |
 |---|---|
 | **General** | Org-wide AI Assistant defaults (enable/disable, provider, model, tier, MCP gate, server URL, rate limit, spend cap, Power Users, audit forwarder) |
 | **Provider Credentials** | LLM provider API keys (Anthropic / OpenAI / Azure OpenAI / AWS Bedrock) |
 | **Splunk MCP** | MCP Server bearer token + Audit Forwarder HEC token |
 | **Audit Log** | Read-only browser of every audit event in the `logserv_ai_assistant_audit` index |
-| **Topology** | Admin controls for the Environment Topology view's hourly KV-Store aggregation + on-demand backfill |
-| **Dashboard Data** | Admin controls for the dashboard KV-Store rollups — run the one-time backfill that seeds dashboard history ([see below](#dashboard-data-tab)) |
 
-In the [Templates-only build variant](templates-only-build.md), the Provider Credentials tab is hidden entirely (no LLM provider needed) and an info banner at the top of the page explains the build mode.
+In the [Templates-only build variant](templates-only-build.md), the Provider Credentials sub-tab is hidden entirely (no LLM provider needed) and an info banner at the top of the AI Assistant tab explains the build mode.
 
 ## :material-circle-box:{ .taiconcolor } General Tab
 
@@ -108,7 +127,7 @@ HEC token for tamper-evident audit forwarding to a separate Splunk / SIEM. The d
 
 ![Settings — Audit Log tab](../../images/settings-audit.png)
 
-Read-only browser of every event in the `logserv_ai_assistant_audit` index. Filters: time range (preset Last 24h / 7d / 30d / 90d), category multi-select (12 categories — `local_only`, `vendor_tier1`, `vendor_tier2`, `security_blocked_spl`, `rate_limited_prompt`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, `vendor_tier2_elevation`, `forwarder_disabled_acceptance`, `ai_assistant_enable_acceptance`), user-contains text filter, result limit (25 / 100 / 500 / 1000).
+Read-only browser of every event in the `logserv_ai_assistant_audit` index. The search window is driven by the global TimeRange picker in the navigation bar — the viewer re-runs on every picker change, and there is no separate time-range control. Filters: category multi-select (12 categories — `local_only`, `vendor_tier1`, `vendor_tier2`, `security_blocked_spl`, `rate_limited_prompt`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, `vendor_tier2_elevation`, `forwarder_disabled_acceptance`, `ai_assistant_enable_acceptance`), user-contains text filter, result limit (25 / 100 / 500 / 1000).
 
 Clicking a row's **+** expand button reveals the full event JSON. The page is paginated client-side at 25 rows per page; "Showing N-M of T events" + Previous / Next buttons render below the table when T > 25.
 
@@ -118,24 +137,11 @@ Clicking a row's **+** expand button reveals the full event JSON. The page is pa
 
 See [Audit Log](audit-log.md) for the threat model + forwarder configuration.
 
-## :material-circle-box:{ .taiconcolor } Topology Tab
-
-Admin controls for the time-bucketed KV Store that powers the [Environment Topology](../logserv-app/dashboards/topology.md) view. Hourly scheduled searches aggregate node + edge activity into the `logserv_topology_nodes` + `logserv_topology_edges` collections; the topology view reads from KV Store at render time, filtered by the global time-range picker. This tab surfaces the per-collection status and an on-demand backfill so an admin can populate topology history immediately after install rather than waiting for the hourly aggregation.
-
 ## :material-circle-box:{ .taiconcolor } Dashboard Data Tab
 
-Admin controls for the time-bucketed **KV-Store rollups that power the dashboard suite**. The 21 non-Topology dashboards read precomputed, hour-bucketed data from `logserv_*_rollup` collections instead of scanning raw events on every page load — see [Dashboard Performance & Data Freshness](../logserv-app/dashboards/performance.md) for the architecture.
+The **Dashboard Data** top-level tab is the admin control surface for the entire KV-Store rollup data layer that powers every dashboard **and** the Environment Topology view — a global hourly-aggregation master switch, a 365-day retention display, the one-time backfill, a per-rollup status + action table, and a global clear.
 
-This tab is where you run the **one-time backfill after a fresh install on a high-volume instance**:
-
-1. Review the per-rollup status. Collections without history show an "incomplete history" banner.
-2. Click **Run backfill**.
-3. Watch the progress bar; the run is idempotent and resumable, so it's safe to re-run.
-
-The backfill seeds **30 days** of history into every rollup collection, dispatching each rollup's component aggregation searches as **top-level Splunk jobs** (which complete correctly at customer scale — the bundled `*_backfill` saved searches truncate at high event volume because of a subsearch wall-clock limit). After this, the hourly aggregation keeps each collection current and the cache grows toward the 365-day retention window. You only need to run the backfill again if you reinstall or clear a collection.
-
-!!! note "You can skip the backfill"
-    Without it, rolled-up panels start populating from the next hourly aggregation onward, filling in one hour at a time. The backfill exists only to make 30 days of history available immediately.
+Because it manages the dashboard data layer (not the AI Assistant feature), its controls are documented alongside that architecture: see **[Dashboard Performance & Data Freshness → The Dashboard Data settings tab](../logserv-app/dashboards/performance.md#the-dashboard-data-settings-tab)**.
 
 ## :material-circle-box:{ .taiconcolor } Legal Acknowledgement Modals
 

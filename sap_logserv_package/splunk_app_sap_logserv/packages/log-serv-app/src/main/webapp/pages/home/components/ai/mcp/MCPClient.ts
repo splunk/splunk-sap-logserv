@@ -248,13 +248,23 @@ export class MCPClient {
      * Argument naming follows the official Splunk MCP Server (App 7931)
      * `splunk_run_saved_search` tool schema: the saved search identifier
      * is `saved_search_name` (NOT `name` — that's reserved for the
-     * outer tool name in the JSON-RPC envelope). The optional caller
-     * args go in `arguments`.
+     * outer tool name in the JSON-RPC envelope).
+     *
+     * App 7931's `run_saved_search` tool declares `earliest_time`,
+     * `latest_time`, and `app` as TOP-LEVEL tool arguments (alongside
+     * `saved_search_name`), NOT nested under an `arguments` object — the
+     * tool has no `arguments` property (its token-substitution field is
+     * the string `args`). Nesting the caller args under `arguments` made
+     * the MCP server silently drop the time range (extra keys are ignored
+     * by its validator), so every canned prompt ran unbounded over the
+     * full index and the AI-panel fetch timed out ("signal is aborted").
+     * Flatten the caller args to the top level so the time-range dropdown
+     * actually bounds the dispatched search.
      */
     async runSavedSearch(name: string, args: object = {}): Promise<Hidden<MCPToolResult>> {
         const result = await this.callTool('splunk_run_saved_search', {
             saved_search_name: name,
-            arguments: args,
+            ...args,
         });
         return markHidden(result);
     }

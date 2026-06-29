@@ -16,16 +16,22 @@ Below are the high level steps for installing the Data TA. Follow them in order.
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } 1. Indexes (auto-created on install)
+### :material-circle-box:{ .taiconcolor } 1. Create the indexes
 
-The Data TA ships with `default/indexes.conf` defining two indexes that Splunk auto-creates the first time the Data TA loads on an indexer:
+The solution uses two indexes:
 
 | Index | Purpose | Default name | Macro |
 |---|---|---|---|
-| **SAP data index** | Receives every event the Data TA forwards (logs ingested from S3 and routed to the appropriate sourcetype) | `sap_logserv_logs` | `sap_logserv_idx_macro` |
+| **SAP data index** | Receives every event the Data TA forwards (logs ingested from S3/Azure and routed to the appropriate sourcetype) | `sap_logserv_logs` | `sap_logserv_idx_macro` |
 | **AI Assistant audit index** | Receives every audit event the AI Assistant writes — canned-prompt dispatches, free-form vendor calls (when LLM path is enabled), security blocks, privacy-tier elevations, legal acknowledgements | `logserv_ai_assistant_audit` | `sap_logserv_audit_idx_macro` |
 
-No customer-side index provisioning is required for the default install.
+**How these indexes get created depends on your topology:**
+
+- **Single instance** (Data TA + LogServ App on one box) — **nothing to do.** The Data TA ships `default/indexes.conf` defining both indexes, and Splunk auto-creates them the first time the Data TA loads, because that one instance *is* the indexer.
+- **Any topology where the indexer is a separate tier** (Deployment Server + Heavy Forwarders + on-prem indexer(s), an indexer cluster, or Splunk Cloud) — **you create the indexes on the indexer tier yourself.** The Data TA is installed on the DS + HFs, which do not store data, so its bundled `indexes.conf` never reaches the indexer. See [Creating the indexes on a separate indexer tier](#creating-the-indexes-on-a-separate-indexer-tier) below.
+
+!!! note "Why the Data TA can't create the index on a separate indexer"
+    An `indexes.conf` stanza only takes effect on an instance that both **has the config** and **has an indexing role** (stores buckets on disk). In a distributed deployment the Data TA lives on the Deployment Server and Heavy Forwarders — neither of which indexes data (the DS distributes apps; HFs parse + forward to the indexer). So the index must be defined on the indexer tier independently of the Data TA. This is standard Splunk practice: index definitions are an indexer-tier concern, delivered the way that tier is managed.
 
 !!! note
     Both the Data TA and the LogServ App include a macro named **sap_logserv_idx_macro** that resolves to `index="sap_logserv_logs"`. The LogServ App also includes **sap_logserv_audit_idx_macro** for the audit index. If you use a different index name, follow the [Renaming an index](#renaming-an-index) procedure below.
@@ -58,7 +64,7 @@ The conf field controls writes; the macro controls reads. They MUST point at the
 
 ### :material-circle-box:{ .taiconcolor } 2. Download the Data TA
 
-Download `splunk_ta_sap_logserv-0.0.6.0.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
+Download `splunk_ta_sap_logserv-0.0.6.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
 
 !!! note "v0.0.4.3 changes — Path B Linux sourcetype migration"
     The v0.0.4.3 Data TA replaces the legacy `[set_srctype_for_syslog]` transform (which routed cron + warn + sudolog + slapd into Splunk's pretrained `syslog` sourcetype) with four dedicated transforms producing four new sourcetypes: `linux:cron`, `linux:warn`, `linux:sudolog`, `linux:slapd`. This clears Splunkbase precert's pretrained-sourcetype warning and avoids field-extraction collisions with `Splunk_TA_nix`'s built-in `[syslog]` stanza. Existing data with `sourcetype=syslog` ages out per index retention; the LogServ App's dashboards OR both old + new sourcetypes during the transition.
@@ -69,21 +75,51 @@ Download `splunk_ta_sap_logserv-0.0.6.0.tar.gz` from the <a href="https://github
 
 Refer to the [Architecture](../getting-started/architecture.md) page for the full install matrix. In summary:
 
-| Your Topology | Install the Data TA On |
-|---------------|----------------------|
-| **Single instance** | The single Splunk instance |
-| **Deployment Server + HFs + on-prem Indexer** | Deployment Server (manages filter rules + distributes to HFs); the **Indexer** (provides `default/indexes.conf` for `sap_logserv_logs` + `logserv_ai_assistant_audit`); HFs receive the TA automatically from the DS |
-| **Splunk Cloud Indexer** | Splunk Cloud admin manages the indexer tier — Data TA installed there provides the bundled index defs |
+| Your Topology | Install the Data TA On | Create the indexes On |
+|---|---|---|
+| **Single instance** | The single Splunk instance | Auto-created by the Data TA — nothing to do |
+| **Deployment Server + HFs + on-prem indexer(s)** | The Deployment Server (manages filter rules + distributes to HFs). **Not** on the indexer(s) or search head. | The indexer tier, manually — see [Creating the indexes on a separate indexer tier](#creating-the-indexes-on-a-separate-indexer-tier) |
+| **Splunk Cloud** | Your HF / Inputs Data Manager (IDM) ingest tier, per Splunk's add-on-on-Cloud guidance. The Cloud indexer tier is Splunk-managed. | Via the Splunk Cloud console / ACS — see below |
 
 !!! warning
-    If you are using a **Deployment Server** to manage Heavy Forwarders, install the TA on the Deployment Server only. Do **not** install the TA directly on the Heavy Forwarders — the DS will distribute it automatically when you configure filters. See [Configuring Filters](configure-filters.md) for details.
+    If you are using a **Deployment Server** to manage Heavy Forwarders, install the TA on the Deployment Server only. Do **not** install the TA directly on the Heavy Forwarders — the DS will distribute it automatically when you configure filters. See [Configuring Filters](configure-filters.md) for details. Likewise, do **not** install the Data TA on a standalone indexer or search head — it's a data-collection add-on, not an indexer/search-tier app.
 
-!!! note "Why does the Data TA need to go on the Indexer?"
-    Splunk only accepts events into an index that's **defined on the indexer that's receiving them**. The Data TA bundles `default/indexes.conf` (defining `sap_logserv_logs` + `logserv_ai_assistant_audit`) — that file is what tells the indexer those indexes exist. Without it, Heavy Forwarders would forward events tagged `index=sap_logserv_logs` and the indexer would reject them with "no such index" errors.
+### :material-circle-box:{ .taiconcolor } Creating the indexes on a separate indexer tier
 
-    **Honest trade-off:** the Data TA is ~9 MiB but only its `indexes.conf` actually does anything on a pure indexer (no Python is invoked there, no REST handlers fire, no transforms run on already-cooked events). The Python / REST / UCC / transforms code is dead weight on that tier. We chose this setup deliberately as a "two apps to install" simplification over a previous three-app split (Data TA + UI App + a separate Index App that was just `indexes.conf` + icons).
+When your indexer is a separate tier from where the Data TA runs (any distributed deployment), create the two indexes on the indexer tier yourself. Use the **same settings the Data TA's `default/indexes.conf` uses** so paths and retention match:
 
-    **Opt-out path for customers who want a clean indexer:** define both indexes manually on the indexer — either through Splunk Web (**Settings → Indexes → New Index** for `sap_logserv_logs` and `logserv_ai_assistant_audit` with the same `homePath`/`coldPath`/`thawedPath` settings) or via your own `etc/system/local/indexes.conf` — and then **don't install the Data TA on the indexer**. Splunk Cloud customers typically take this path because their Cloud admin team provisions indexes via the Cloud UI rather than installing customer apps on the indexer tier. The Data TA still goes on the DS + HFs as usual.
+```ini
+[sap_logserv_logs]
+homePath   = $SPLUNK_DB/sap_logserv_logs/db
+coldPath   = $SPLUNK_DB/sap_logserv_logs/colddb
+thawedPath = $SPLUNK_DB/sap_logserv_logs/thaweddb
+
+[logserv_ai_assistant_audit]
+homePath               = $SPLUNK_DB/logserv_ai_assistant_audit/db
+coldPath               = $SPLUNK_DB/logserv_ai_assistant_audit/colddb
+thawedPath             = $SPLUNK_DB/logserv_ai_assistant_audit/thaweddb
+frozenTimePeriodInSecs = 7776000
+```
+
+Pick the method that matches how your indexer tier is managed:
+
+#### :material-crop-square:{ .taiconcolor } Standalone indexer (Splunk Enterprise)
+
+Either:
+
+- **Splunk Web:** **Settings → Indexes → New Index** — create `sap_logserv_logs`, then `logserv_ai_assistant_audit`. Leave the default paths; set the audit index's retention (Frozen time period) to `7776000` seconds (~90 days) if you want to match the bundled default. Or
+- **Config file:** add the stanzas above to `$SPLUNK_HOME/etc/system/local/indexes.conf` (or a small index-definition app of your own) on the indexer and restart Splunkd.
+
+#### :material-crop-square:{ .taiconcolor } Indexer cluster
+
+Add the stanzas above to an `indexes.conf` inside a configuration bundle app under the cluster manager's `$SPLUNK_HOME/etc/manager-apps/<your_index_app>/local/` (or `master-apps/` on older versions), then push the bundle (**Settings → Indexer Clustering → Edit → Distribute Configuration Bundle**, or `splunk apply cluster-bundle`). All peer nodes receive the index definitions. Do **not** install the Data TA in the cluster bundle — only the `indexes.conf`.
+
+#### :material-crop-square:{ .taiconcolor } Splunk Cloud
+
+The Cloud indexer tier is Splunk-managed — you cannot install apps on it. Create both indexes through the **Splunk Cloud console** (**Settings → Indexes → New Index**) or with the **Admin Config Service (ACS)** CLI/API. Set the audit index's retention to match if desired. The Data TA still goes on your HF / IDM ingest tier as usual.
+
+!!! note "Why the Data TA can't do this for you on a separate indexer"
+    An `indexes.conf` only takes effect on an instance that both **has the config** and **indexes data**. In a distributed deployment the Data TA runs on the Deployment Server + Heavy Forwarders, which don't store data — so its bundled `indexes.conf` is inert there and never reaches the indexer. Index definitions are therefore an **indexer-tier concern**, managed through that tier's own mechanism (config file, cluster bundle, or Cloud console) — independent of the data-collection Data TA. (On a true single-instance the Data TA *is* the indexing box, which is the one case where its bundled `indexes.conf` auto-creates the indexes for you.)
 
 <br>
 
@@ -114,7 +150,7 @@ Install the Data TA to your instance of Splunk Enterprise:
 
 5.<b style="color: #ff9100">b</b> Click Install app from file.
 
-5.<b style="color: #ff9100">c</b> Locate the downloaded `splunk_ta_sap_logserv-0.0.6.0.tar.gz` file and click Upload.
+5.<b style="color: #ff9100">c</b> Locate the downloaded `splunk_ta_sap_logserv-0.0.6.tar.gz` file and click Upload.
 
 5.<b style="color: #ff9100">d</b> If Splunk Enterprise prompts you to restart, do so.
 

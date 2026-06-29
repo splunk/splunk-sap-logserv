@@ -3,7 +3,7 @@
  *
  * Reads org-wide defaults from `ai_assistant_settings.conf` via
  * `utils/aiConfigApi.ts`. Admins manage these values from the
- * Settings page (`#/settings/ai-assistant` → General panel); the
+ * Settings page (`#/settings` → AI Assistant → General); the
  * conf is the single source of truth for `enabled`, `provider`,
  * `default_model`, `tier`, `mcp_required`, and `mcp_server_url`.
  *

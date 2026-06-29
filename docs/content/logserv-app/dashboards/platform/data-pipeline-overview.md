@@ -7,7 +7,7 @@ The Data Pipeline Overview is your single pane of glass for the entire SAP LogSe
 The title row carries a **dashboard-wide host filter**: a Multiselect (with filter input + Select All Matches) plus a Top-N picker that scopes EVERY panel on BOTH tabs to the chosen hosts. The filter splices a `host="X"` (1 host) or `host IN (...)` (2+ hosts) clause into all 4 KPIs + their sparklines, the Events Over Time chart, the Sourcetype Summary table, the Host Latest Activity table, AND the linked-graph view on the second tab. Top N kicks in only when zero specific hosts are selected.
 
 !!! tip "Multi-cloud ingest split"
-    The Data Pipeline Overview aggregates across BOTH AWS S3 and Azure Blob Storage ingest channels without distinguishing them — events from either channel land under `sap_logserv_logs` and route to the same downstream sourcetypes. For a per-cloud-provider breakdown (AWS vs Azure event counts, sourcetype distribution per provider, recent activity), see the [Multi-Cloud Overview](multi-cloud-overview.md) dashboard in the same Platform group. See [Azure Setup Guide](../../../install-setup/azure-setup.md) for Azure-side configuration.
+    The Data Pipeline Overview aggregates across BOTH AWS S3 and Azure Blob Storage ingest channels without distinguishing them — events from either channel land under `sap_logserv_logs` and route to the same downstream sourcetypes. For a per-cloud-provider breakdown (AWS vs Azure event counts, sourcetype distribution per provider, recent activity), see the [Multi-Cloud Overview](multi-cloud-overview.md) dashboard in the same Platform group. See [Azure Setup Guide](../../../install-setup/azure-queue-setup.md) for Azure-side configuration.
 
 ## Tab 1 -- Overview
 

@@ -4,6 +4,13 @@
 
 The Windows Events dashboard monitors Windows hosts in the SAP landscape, which commonly run SAP application servers, database instances, and management consoles. Windows Event Logs capture service health, PowerShell execution, and system errors that indicate Windows-specific operational issues. This dashboard focuses on operational health and service state -- the authentication-failure story is owned by the [Cross-Stack Authentication](../security/cross-stack-authentication.md) dashboard so that all three layers (SAP / HANA / Windows) can be investigated together.
 
+!!! warning "Requires the Splunk Add-on for Microsoft Windows on the Search Head"
+    Several panels here depend on the **Splunk Add-on for Microsoft Windows** (<a href="https://splunkbase.splunk.com/app/742" target="_blank">Splunkbase 742</a>) being installed on the **Search Head** tier. The LogServ App ships **no `XmlWinEventLog` field extraction of its own** — `EventCode` and `severity` are search-time fields provided by add-on 742 (its `xmlwindows_severities.csv` lookup maps the event `<Level>` to severity: `1`→critical, `2`→high, `3`→medium, `0`/`4`/`5`→informational).
+
+    **Without add-on 742 on the search tier**, Windows events still index fine and the **Total Events**, **Event Volume by Log**, **Active Hosts**, and **PowerShell Activity** panels populate (they read envelope fields), but the **Top Event Codes** table shows `EventCode=(none)` for every row and the **Severity Distribution**, **Critical / Error**, and **Service Events** panels stay empty.
+
+    **Tier matters:** `EventCode`/`severity` are *search-time* extractions, so add-on 742 must be on the **Search Head** — installing it on a Heavy Forwarder or indexer does nothing for these panels. On Splunk Cloud, install it on the Cloud SH via self-service app management (it is replicated to the indexer search peers through the knowledge bundle). After installing it, re-run the **Windows** and **Environment Health** rollups (**Settings → Dashboard Data → Run backfill**) so the cached panels pick up the now-extracted fields. See the [Quick Install Reference](../../../getting-started/quick-install-reference.md#package-matrix) package matrix.
+
 ## Panels
 
 - **Total Events** -- Aggregate Windows event count

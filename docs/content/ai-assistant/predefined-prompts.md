@@ -24,7 +24,7 @@ Each card on the Dashboard Focused tab carries a small pack-origin chip (cyan-li
 
 ## :material-circle-box:{ .taiconcolor } What Happens When You Click a Prompt
 
-1. **Dispatch.** The orchestrator calls `splunk_run_saved_search` on the MCP server with the prompt's saved-search name and the dashboard's currently-selected time range.
+1. **Dispatch.** The orchestrator calls `splunk_run_saved_search` on the MCP server with the prompt's saved-search name and the time window selected in the prompt browser's own **Time range** dropdown (Last 1 hour … Last 30 days; default **Last 30 days**, remembered per browser tab in `sessionStorage`). That window is passed as the dispatched search's `earliest_time` / `latest_time`, so it bounds the saved search — narrowing the dropdown makes a heavier prompt return faster.
 2. **Tile renders.** The MCP server returns the rows. The orchestrator renders them in a tool-result tile in the right pane, with the prompt's pre-configured `renderHint` (`table` / `timechart` / `kpi` / `pie`) and optional companion `chartHint` (chart on top + table below for `renderHint=table` prompts that benefit from a visual).
 3. **Guidance card.** A "How to read this result" card appears in the left chat pane below the user's prompt label. The card has two parts:
     - **Interpretation** — one paragraph explaining what the result means and what shapes are normal vs. concerning. Sourced from the intent map's `interpretation` field.
@@ -32,6 +32,9 @@ Each card on the Dashboard Focused tab carries a small pack-origin chip (cyan-li
 4. **Drill-down chips on the tile.** Every tile carries `↗ Dashboard` chip(s) (one per resolvable dashboard from the prompt's `dashboard` field) and a `↗ Run SPL` chip in its actions slot. See [Drill-down Chips](drill-down-chips.md).
 
 **No LLM call.** No vendor traffic. No tokens. The dispatch is recorded as a `local_only` audit event with the prompt id + SPL + row count + execution time + ok flag. See [Audit Log](audit-log.md).
+
+!!! note "A few high-volume prompts read precomputed rollups"
+    Four whole-estate prompts — *Top hosts by event volume*, *Noisiest hosts trend*, *Distinct hosts seen*, and *Hosts with the biggest event-volume drop* — read the same hourly KV-Store rollups that power the dashboards instead of scanning every event live, so they stay sub-second even over a 30-day window on a large dataset. The trade-off is identical to the dashboards: results reflect data through the most-recently-completed hour, and on a fresh install these prompts populate older windows only after the [Dashboard Data backfill](../logserv-app/dashboards/performance.md) has run. Every other prompt dispatches a live search bounded by the Time range you select.
 
 ## :material-circle-box:{ .taiconcolor } The Tab Persistence Convention
 

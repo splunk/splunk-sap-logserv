@@ -5,6 +5,7 @@ import Multiselect from '@splunk/react-ui/Multiselect';
 import LinkGraph from '@splunk/visualizations/LinkGraph';
 import KpiCard, { formatInteger } from '../components/KpiCard';
 import FramedPanel from '../components/FramedPanel';
+import PanelLoading from '../components/PanelLoading';
 import DataTable, { ColumnDef } from '../components/DataTable';
 import TimeSeriesChart from '../components/TimeSeriesChart';
 import TabbedLayout from '../components/TabbedLayout';
@@ -150,6 +151,10 @@ const buildQueries = (HOST: string) => {
     const W = HOST
         ? `\`sap_logserv_idx_macro\` ${HOST}`
         : `\`sap_logserv_idx_macro\``;
+    // Build-243: the linked graph reads the logserv_stmap_rollup KV Store instead
+    // of a live tstats. HOST is the HOST_TS OR-fragment; applied AFTER inputlookup
+    // as a `| search` ('' = all hosts).
+    const HF = HOST ? ` | search ${HOST}` : '';
     return {
         totalEvents: `| tstats count WHERE ${W}`,
         activeHosts: `| tstats dc(host) AS hosts WHERE ${W}`,
@@ -177,12 +182,13 @@ const buildQueries = (HOST: string) => {
         sourcetypeSummary: `| tstats count, dc(host) AS hosts, max(_time) AS last_seen WHERE ${W} BY sourcetype | sort - count | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")`,
         hostLatestActivity: `| tstats count, dc(sourcetype) AS sts, max(_time) AS last_seen WHERE ${W} BY host | sort - last_seen | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M:%S")`,
 
-        // Linked graph: `| tstats count BY sourcetype, source, host | fields -
-        // count` yields the SAME distinct (sourcetype, source, host) triplet set
-        // as the old `dedup ... | stats count by ... | fields - count` (the
-        // count is dropped either way), but walks the tsidx instead of
-        // raw-scanning every event to dedup.
-        linkGraph: `| tstats count WHERE ${W} BY sourcetype, source, host | fields - count`,
+        // Linked graph: reads logserv_stmap_rollup (source normalized — UUID/date
+        // stripped — so the tuple count stays small + fast) instead of a live
+        // `| tstats … BY sourcetype, source, host` over date/UUID-stamped source
+        // (which ballooned to 49.7s / 4151 tuples over -30d). `| stats count by …`
+        // dedups to one row per (sourcetype, source, host); `| fields - count`
+        // drops the aggregate just like the legacy form.
+        linkGraph: `| inputlookup logserv_stmap_rollup | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time${HF} | stats count by sourcetype, source, host | fields - count`,
     };
 };
 
@@ -442,7 +448,7 @@ const LinkedGraphTab: React.FC<TabProps> = ({ selectedHosts, topN, resolvedTopHo
     }, [results]);
 
     if (error) return <div style={{ padding: 32, color: logservTheme.colors.red }}>{error.message || 'Search failed'}</div>;
-    if (loading && !dataSources) return <div style={{ padding: 32, color: logservTheme.colors.textMuted, textAlign: 'center' }}>Loading link graph…</div>;
+    if (loading && !dataSources) return <PanelLoading />;
     if (!dataSources) return <div style={{ padding: 32, color: logservTheme.colors.textMuted, textAlign: 'center' }}>No data in this time range.</div>;
 
     return (

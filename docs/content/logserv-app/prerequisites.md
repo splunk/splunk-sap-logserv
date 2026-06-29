@@ -1,6 +1,6 @@
 # LogServ App Prerequisites
 
-This page covers the prerequisites for the **LogServ App** (`splunk_app_sap_logserv`) — the React-based UI App that ships dashboards + the AI Assistant chat panel. For the Data TA's prerequisites (CIM add-ons), see [Data TA Prerequisites](../install-setup/prerequisites.md). The SAP data + AI Assistant audit indexes are auto-created by the Data TA when it installs on the indexer — see [Indexes (auto-created on install)](../install-setup/install-ta.md#1-indexes-auto-created-on-install).
+This page covers the prerequisites for the **LogServ App** (`splunk_app_sap_logserv`) — the React-based UI App that ships dashboards + the AI Assistant chat panel. For the Data TA's prerequisites (CIM add-ons), see [Data TA Prerequisites](../install-setup/prerequisites.md). The SAP data + AI Assistant audit indexes are auto-created by the Data TA on a single-instance deployment, or created on the indexer tier for distributed / indexer-cluster / Splunk Cloud deployments — see [Create the indexes](../install-setup/install-ta.md#1-create-the-indexes).
 
 ### :material-circle-box:{ .taiconcolor } Splunk Platform Requirements
 

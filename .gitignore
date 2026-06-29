@@ -36,8 +36,9 @@ coverage_report
 Thumbs.db
 
 # Tarballs — broad ignore so iteration / dev tarballs never accidentally
-# commit. The two final 0.0.6.0 canonical release artifacts are explicitly
-# allowed by the negation rules below.
+# commit. The three canonical release artifacts (App, Data TA, Azure TA) are
+# explicitly allowed by the negation rules below.
 *.tar.gz
 !release_binaries/splunk_app_sap_logserv-0.0.6.0.tar.gz
-!release_binaries/splunk_ta_sap_logserv-0.0.6.0.tar.gz
+!release_binaries/splunk_ta_sap_logserv-0.0.6.tar.gz
+!release_binaries/splunk_ta_sap_logserv_azure-0.0.6.tar.gz

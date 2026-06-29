@@ -64,7 +64,7 @@ The view reads from a **time-bucketed KV Store** fed by hourly scheduled saved s
 | `logserv_topology_edges` | one row per (edge, hourly bucket); 21 fields including pre-computed `response_time_p50/p95/max`, `icm_tasks_max/avg`, `hana_op_p95_ms/max`, `auth_success_count`/`fail_count`, `error_count`, plus canonical `spl_sourcetype` + `spl_filter_clauses` for right-pane drilldowns | `logserv_topology_aggregate_edges` (hourly cron `5 * * * *`) |
 | `logserv_topology_inventory` | flat (no bucket dimension), keyed by canonical_value; IP / host → SID mapping for retargeting raw IPs to their owning SID node | `logserv_topology_aggregate_inventory` (hourly cron `5 * * * *`) |
 
-Two retention searches keep the KV Store sized: `logserv_topology_retention` (daily 00:30 UTC) trims to 30 days of bucket history; `logserv_topology_backfill_*` (disabled by default) lets an admin re-populate the 30-day window after a fresh install via Settings → AI Assistant → Topology.
+Two retention searches keep the KV Store sized: `logserv_topology_retention` (daily 00:30 UTC) trims to 30 days of bucket history; `logserv_topology_backfill_*` (disabled by default) lets an admin re-populate the 30-day window after a fresh install via Settings → Dashboard Data.
 
 The aggregation searches read from the same six SPL sources as the legacy on-demand path:
 

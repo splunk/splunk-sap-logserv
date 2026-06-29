@@ -195,3 +195,13 @@ export = system
 [collections/logserv_beaconing_detail_rollup]
 access = read : [ * ], write : [ * ]
 export = system
+
+# Sourcetype Mapping rollup (build 243).
+[collections/logserv_stmap_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Host Role Activity rollup (build 243).
+[collections/logserv_hostrole_rollup]
+access = read : [ * ], write : [ * ]
+export = system

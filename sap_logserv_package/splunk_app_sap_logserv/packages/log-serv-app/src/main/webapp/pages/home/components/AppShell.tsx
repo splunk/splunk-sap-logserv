@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useCallback, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { variables } from '@splunk/themes';
 import NavigationBar from './NavigationBar';
@@ -191,7 +191,10 @@ const AppShell: React.FC<AppShellProps> = ({
                     <Route path="/platform/host-details" element={<HostDetails />} />
                     <Route path="/topology/integration-topology" element={<IntegrationTopology />} />
                     <Route path="/platform/multi-cloud-overview" element={<MultiCloudOverview />} />
-                    <Route path="/settings/ai-assistant" element={<AIAssistantSettings onConfigSaved={onAIConfigSaved} templatesOnlyMode={aiAssistantTemplatesOnlyMode} />} />
+                    <Route path="/settings" element={<AIAssistantSettings onConfigSaved={onAIConfigSaved} templatesOnlyMode={aiAssistantTemplatesOnlyMode} />} />
+                    {/* back-compat redirect — old bookmarks / help-icon links to the
+                        pre-build-245 route still land on the renamed Settings page. */}
+                    <Route path="/settings/ai-assistant" element={<Navigate to="/settings" replace />} />
                     {aiAssistantEnabled && (
                         <Route
                             path="/ai-assistant"

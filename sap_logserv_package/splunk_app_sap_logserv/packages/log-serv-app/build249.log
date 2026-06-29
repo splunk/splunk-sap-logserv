@@ -1,0 +1,57 @@
+yarn run v1.22.22
+$ node bin/build.js build --templates-only && yarn types:build && node bin/generate-sbom.js && node bin/generate-third-party-notices.js
+-> templates-only build (LOGSERV_TEMPLATES_ONLY=true)
+assets by path [1m[32m*.js[39m[22m 9.63 MiB
+  assets by chunk 3.05 MiB (id hint: vendors)
+    assets by status [1m[33m2.12 MiB[39m[22m [1m[33m[big][39m[22m
+      asset [1m[33melkjs-bundled.153.471cbe7cbac9da1f7dc9.js[39m[22m [1m[33m1.4 MiB[39m[22m [1m[32m[emitted][39m[22m [1m[32m[immutable][39m[22m [1m[32m[minimized][39m[22m [1m[33m[big][39m[22m (name: elkjs-bundled) (id hint: vendors)
+      + 2 assets
+    + 8 assets
+  + 27 assets
+assets by path [1m[32m../../[39m[22m 754 KiB
+  assets by path [1m[32m../../../default/[39m[22m 541 KiB 18 assets
+  assets by path [1m[32m../../../lookups/*.csv[39m[22m 8.63 KiB 10 assets
+  assets by path [1m[32m../../../static/*.png[39m[22m 24 KiB 4 assets
+  assets by path [1m[32m../../../LICENSES/*.txt[39m[22m 166 KiB
+    asset [1m[32m../../../LICENSES/LicenseRef-Splunk-8-2021.txt[39m[22m 83.9 KiB [1m[32m[emitted][39m[22m [from: src/main/resources/splunk/LICENSES/LicenseRef-Splunk-8-2021.txt] [1m[32m[copied][39m[22m
+    asset [1m[32m../../../LICENSES/LicenseRef-Splunk-1-2020.txt[39m[22m 82.2 KiB [1m[32m[emitted][39m[22m [from: src/main/resources/splunk/LICENSES/LicenseRef-Splunk-1-2020.txt] [1m[32m[copied][39m[22m
+  + 4 assets
+orphan modules 1.81 MiB [1m[33m[orphan][39m[22m 271 modules
+runtime modules 9.51 KiB 13 modules
+modules by path [1m../../node_modules/[39m[22m 16.2 MiB 1466 modules
+modules by path [1m./[39m[22m 3.56 MiB
+  modules by path [1m./src/main/webapp/pages/home/dashboards/*.tsx[39m[22m 1.13 MiB 23 modules
+  modules by path [1m./src/main/webapp/pages/home/components/[39m[22m 195 KiB 20 modules
+  modules by path [1m./src/main/webapp/pages/home/utils/*.ts[39m[22m 92.2 KiB 8 modules
+  modules by path [1m./src/main/webapp/pages/home/state/[39m[22m 35.7 KiB 4 modules
+  modules by path [1m./src/main/webapp/pages/home/styles/*.ts[39m[22m 5.36 KiB 2 modules
+  modules by path [1m./src/main/webapp/pages/home/hooks/*.ts[39m[22m 16.1 KiB 2 modules
+  modules by path [1m./src/main/webapp/pages/home/topology/*.ts[39m[22m 24.4 KiB 2 modules
+  + 3 modules
+
+[1m[33mWARNING[39m[22m in [1masset size limit: The following asset(s) exceed the recommended size limit (244 KiB).
+This can impact web performance.
+Assets: 
+  home.js (5.95 MiB)
+  550.550.4ce07261093f8cbf4ebc.js (395 KiB)
+  elkjs-bundled.153.471cbe7cbac9da1f7dc9.js (1.4 MiB)
+  19.19.1008e4b4714d202663c4.js (346 KiB)
+  ../../../default/savedsearches.conf (285 KiB)[39m[22m
+
+[1m[33mWARNING[39m[22m in [1mentrypoint size limit: The following entrypoint(s) combined asset size exceeds the recommended limit (244 KiB). This can impact web performance.
+Entrypoints:
+  home (5.95 MiB)
+      home.js
+[39m[22m
+
+webpack 5.106.2 compiled with [1m[33m2 warnings[39m[22m in 67379 ms
+$ tsc
+SBOM written: C:\ai_projects\logserv_comp\package_versions\splunk_sap_logserv_combined_v0.0.6.0_2026-06-08\sap_logserv_package\splunk_app_sap_logserv\packages\log-serv-app\stage\SBOM.json (1416 components)
+generate-third-party-notices: wrote C:\ai_projects\logserv_comp\package_versions\splunk_sap_logserv_combined_v0.0.6.0_2026-06-08\sap_logserv_package\splunk_app_sap_logserv\packages\log-serv-app\stage\THIRD-PARTY-NOTICES.md
+  app: Splunk for SAP LogServ 0.0.6
+  packages walked: 1236
+  with license field: 1234
+  with bundled license text: 1164
+  without license field: 2
+  output size: 9,053,547 bytes (8841.4 KiB)
+Done in 86.57s.

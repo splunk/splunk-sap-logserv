@@ -1,7 +1,7 @@
 {
   "$schema": "./logserv_intent_map.schema.json",
-  "version": "0.0.10",
-  "description": "LogServ AI Assistant predefined-prompt registry. Each entry maps a canonical user question to a saved search the official Splunk MCP Server (Splunkbase App 7931) can run. The chat-side time-range dropdown overrides any `earliest=`/`latest=` baked into the SPL via Splunk dispatch tokens. Entries are immutable per app release; per-customer overrides are deferred to v2 (see ai_assistant_design_v0.1_20260427.md \u00a77.6). v0.0.6 (Build 141) upgrades nextSteps entries to support deep-dive link objects: `{text, savedSearch}` resolves at runtime to that prompt's SPL; `{text, spl}` carries an ad-hoc deep-dive query. Both open Splunk's search app in a new browser tab with the dispatch's earliest/latest applied. v0.0.7 (Build 156) adds an optional `dashboard` field per prompt: either a single OOTB dashboard slug (e.g. \"hana-audit\") or an array of slugs for cross-cutting prompts (e.g. [\"hana-audit\", \"cross-stack-authentication\"]). Slugs match `dashboardRegistry.ts`. v0.0.8 (Build 158 / session 027 task 5) adds 6 new prompts targeting thin-coverage dashboards: integration-topology (top systems by calls + RFC partner failures), sap-services (host severity breakdown), cloud-connector + web-api-performance (SCC backend latency + top destinations), and environment-health (top error categories). Powers the new \"Dashboard Focused\" tab in the prompt browser. v0.0.9 (Build 170 / session 028) rewrites two nextStep SPLs from `| map maxsearches=1 search=\"...\"` to subsearch syntax (`[ search ... | top limit=1 host | fields host ]`) so they no longer trigger Splunk's risky-command safeguard modal \u2014 `map` is on Splunk's flagged list because it spawns per-row subsearches; subsearches are equivalent here and not flagged.",
+  "version": "0.0.11",
+  "description": "LogServ AI Assistant predefined-prompt registry. Each entry maps a canonical user question to a saved search the official Splunk MCP Server (Splunkbase App 7931) can run. The chat-side time-range dropdown overrides any `earliest=`/`latest=` baked into the SPL via Splunk dispatch tokens. Entries are immutable per app release; per-customer overrides are deferred to v2 (see ai_assistant_design_v0.1_20260427.md \u00a77.6). v0.0.6 (Build 141) upgrades nextSteps entries to support deep-dive link objects: `{text, savedSearch}` resolves at runtime to that prompt's SPL; `{text, spl}` carries an ad-hoc deep-dive query. Both open Splunk's search app in a new browser tab with the dispatch's earliest/latest applied. v0.0.7 (Build 156) adds an optional `dashboard` field per prompt: either a single OOTB dashboard slug (e.g. \"hana-audit\") or an array of slugs for cross-cutting prompts (e.g. [\"hana-audit\", \"cross-stack-authentication\"]). Slugs match `dashboardRegistry.ts`. v0.0.8 (Build 158 / session 027 task 5) adds 6 new prompts targeting thin-coverage dashboards: integration-topology (top systems by calls + RFC partner failures), sap-services (host severity breakdown), cloud-connector + web-api-performance (SCC backend latency + top destinations), and environment-health (top error categories). Powers the new \"Dashboard Focused\" tab in the prompt browser. v0.0.9 (Build 170 / session 028) rewrites two nextStep SPLs from `| map maxsearches=1 search=\"...\"` to subsearch syntax (`[ search ... | top limit=1 host | fields host ]`) so they no longer trigger Splunk's risky-command safeguard modal \u2014 `map` is on Splunk's flagged list because it spawns per-row subsearches; subsearches are equivalent here and not flagged. v0.0.11 (Build 249 / session 068) enables the 22 ES searches by default (re-staggered into a collision-free schedule) and reworks the 13 ES Security prompts to work as interactive prompts: fixed the anomaly_topology_edge_volume FATAL inputlookup-where error; replaced the broken is_business_hours/is_weekend EVAL-chain fields (constant-valued on real data) with inline _time-based off-hours logic in hana_user_creation_off_hours, after_hours_admin_data_access, and anomaly_after_hours_admin; fixed service_account_interactive to detect service accounts via executing_user; and converted the 3 heavy 30-day anomaly scans to a daily cadence.",
   "packs": {
     "sap_basis": {
       "label": "SAP Basis",
@@ -408,7 +408,7 @@
       "label": "Source IPs flagged by firewall and/or proxy",
       "description": "Cross-references linux_secure firewall drops and squid:access blocks by source IP. The `layers` column shows whether the IP appears in 1 layer (drop only or block only) or 2 layers (both \u2014 high-priority, indicates active reconnaissance or attempted egress).",
       "savedSearch": "logserv_firewall_proxy_correlation",
-      "spl": "`sap_logserv_idx_macro` (sourcetype=linux_secure (FW_DROP OR DROP)) OR (sourcetype=squid:access action=blocked) | rex field=_raw \"SRC=(?<fw_src>\\S+)\" | eval src_ip=coalesce(src, fw_src) | eval layer=if(sourcetype=\"linux_secure\",\"firewall\",\"proxy\") | stats dc(layer) AS layers count by src_ip | sort -layers -count | head 25",
+      "spl": "`sap_logserv_idx_macro` (sourcetype=linux_secure (FW_DROP OR DROP)) OR (sourcetype=squid:access action=\"denied\") | rex field=_raw \"SRC=(?<fw_src>\\S+)\" | eval src_ip=coalesce(src, fw_src) | eval layer=if(sourcetype=\"linux_secure\",\"firewall\",\"proxy\") | stats dc(layer) AS layers count by src_ip | sort -layers -count | head 25",
       "renderHint": "table",
       "interpretation": "Source IPs that appear in Linux firewall drops AND/OR Squid proxy blocks. The `layers` column is the priority signal: layers=2 means an IP was blocked at multiple network tiers (active reconnaissance or attempted egress), layers=1 means single-tier (often expected \u2014 internal scanners, monitoring fail-open).",
       "nextSteps": [
@@ -450,7 +450,7 @@
       "label": "Top blocked destinations from Squid proxy",
       "description": "Most-frequently blocked outbound destinations in squid:access (action=blocked). Highlights policy hits and suspicious egress patterns.",
       "savedSearch": "logserv_proxy_top_denied_urls",
-      "spl": "`sap_logserv_idx_macro` sourcetype=squid:access action=blocked | top limit=15 dest",
+      "spl": "`sap_logserv_idx_macro` sourcetype=squid:access action=\"denied\" | top limit=15 dest",
       "renderHint": "pie",
       "chartPalette": "errors",
       "interpretation": "Outbound destinations the Squid proxy refused. Routine: cloud-metadata endpoints (169.254.169.254), monitoring vendors not on the allowlist (newrelic, etc.), accidentally-typoed names. Suspicious: unfamiliar domains, IP-literal URLs, anything that looks like a C2 server.",
@@ -663,7 +663,7 @@
       "label": "Hosts with the biggest event-volume drop",
       "description": "Compares each host's event volume in the most recent hour against its hourly average over the prior period. Hosts with a drop > 50% from baseline appear at the top \u2014 typically indicates a data-collection failure or host outage.",
       "savedSearch": "logserv_event_volume_drop",
-      "spl": "`sap_logserv_idx_macro` | bin _time span=1h | stats count by host _time | stats latest(count) AS recent avg(count) AS baseline by host | eval drop_pct=round(100*(baseline-recent)/baseline, 1) | where drop_pct > 50 | sort -drop_pct",
+      "spl": "| inputlookup logserv_hostdetails_rollup where metric=\"vol\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search host!=\"(none)\" | eval _time=bucket_ts | stats sum(count) as count by host _time | stats latest(count) AS recent avg(count) AS baseline by host | eval drop_pct=round(100*(baseline-recent)/baseline, 1) | where drop_pct > 50 | sort -drop_pct",
       "renderHint": "table",
       "interpretation": "Hosts whose event volume in the last hour is more than 50% below their baseline. Most often this indicates a Splunk forwarder restart, a host outage, or a host being decommissioned. Occasionally it's a planned maintenance window.",
       "nextSteps": [
@@ -682,7 +682,7 @@
       "label": "Sourcetypes that have stopped receiving events",
       "description": "For each LogServ sourcetype, reports the timestamp of the most recent event. Sourcetypes with no events in the last 30 minutes (a fixed threshold, NOT affected by the time-range picker) are flagged. Useful as a quick canary for data-collection health, especially after a forwarder or DS reload.",
       "savedSearch": "logserv_data_freshness",
-      "spl": "`sap_logserv_idx_macro` | stats latest(_time) AS last_seen by sourcetype | eval seconds_ago=now()-last_seen | eval last_seen=strftime(last_seen, \"%Y-%m-%d %H:%M:%S\") | where seconds_ago > 1800 | sort -seconds_ago",
+      "spl": "| tstats max(_time) AS last_seen WHERE `sap_logserv_idx_macro` by sourcetype | eval seconds_ago=now()-last_seen | eval last_seen=strftime(last_seen, \"%Y-%m-%d %H:%M:%S\") | where seconds_ago > 1800 | sort -seconds_ago",
       "renderHint": "table",
       "chartHint": "pie",
       "chartPalette": "errors",
@@ -703,7 +703,7 @@
       "label": "Event volume by sourcetype trend",
       "description": "Per-hour volume of every LogServ sourcetype, top 10 as separate series. Quick visual on which sourcetypes are loud / quiet over the time range.",
       "savedSearch": "logserv_event_volume_by_sourcetype_trend",
-      "spl": "`sap_logserv_idx_macro` | timechart span=1h count by sourcetype limit=10 useother=t",
+      "spl": "| tstats count WHERE `sap_logserv_idx_macro` by sourcetype, _time span=1h | timechart span=1h sum(count) by sourcetype limit=10 useother=t",
       "renderHint": "timechart",
       "chartPalette": "categorical",
       "interpretation": "Per-hour event volume by sourcetype. Every sourcetype's curve should match its expected rhythm (business-hours ABAP traffic, continuous Linux/Windows host telemetry, batch-flavored HANA audit). Sudden growth = new integration or runaway log generator; sudden drop = ingest issue.",
@@ -723,7 +723,7 @@
       "label": "Top hosts by event volume",
       "description": "Top 15 hosts by total event count over the time range. Useful for indexing-cost attribution and noisy-host triage.",
       "savedSearch": "logserv_top_hosts_by_volume",
-      "spl": "`sap_logserv_idx_macro` | top limit=15 host",
+      "spl": "| inputlookup logserv_hostdetails_rollup where metric=\"vol\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search host!=\"(none)\" | stats sum(count) as count by host | eventstats sum(count) as total | eval percent=round(count/total*100,6) | sort - count | head 15 | fields host count percent",
       "renderHint": "pie",
       "chartPalette": "categorical",
       "interpretation": "Hosts ranked by total event count over the time range. Useful for indexing-cost attribution and noisy-host triage. The top 5 hosts typically account for 60-80% of volume \u2014 that's normal. Sudden new entrants or sustained growth warrant a look.",
@@ -749,7 +749,7 @@
       "label": "Event share by log category (clz_dir)",
       "description": "Distribution of all LogServ events across the top-level log categories (linux / windows / abap / hana / dns / proxy / etc.). Sanity check for ingest-balance assumptions.",
       "savedSearch": "logserv_events_by_clz_dir",
-      "spl": "`sap_logserv_idx_macro` clz_dir=* | stats count by clz_dir | sort -count",
+      "spl": "| tstats count WHERE `sap_logserv_idx_macro` clz_dir=* by clz_dir | sort -count",
       "renderHint": "pie",
       "chartPalette": "categorical",
       "interpretation": "Distribution of LogServ events across the top-level log categories (linux / windows / abap / hana / dns / proxy / etc.). Sanity check on ingest balance. Healthy installations have several major contributors and a long tail; a single category dominating to >70% indicates the others may be missing.",
@@ -890,7 +890,7 @@
       "label": "Noisiest hosts trend (top 10)",
       "description": "Per-hour event count for the 10 noisiest hosts. Rapid changes in ranking often correspond to a runaway log generator or a degraded host generating excessive trace.",
       "savedSearch": "logserv_noisy_hosts_trend",
-      "spl": "`sap_logserv_idx_macro` | timechart span=1h count by host limit=10 useother=f",
+      "spl": "| inputlookup logserv_hostdetails_rollup where metric=\"vol\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | eval host=if(host=\"(none)\", null(), host) | eval _time=bucket_ts | timechart span=1h sum(count) by host limit=10 useother=f | fillnull value=0",
       "renderHint": "timechart",
       "chartPalette": "categorical",
       "interpretation": "Per-hour event count for the 10 noisiest hosts. Each host's curve should match its expected operational rhythm. Rapid changes in ranking often correspond to a runaway log generator OR a degraded host emitting excessive trace.",
@@ -916,7 +916,7 @@
       "label": "Total LogServ events ingested",
       "description": "Single-number KPI: total event count over the chosen time range. The cheapest pulse-check on whether ingest is alive at all.",
       "savedSearch": "logserv_total_events_kpi",
-      "spl": "`sap_logserv_idx_macro` | stats count AS total_events",
+      "spl": "| tstats count AS total_events WHERE `sap_logserv_idx_macro`",
       "renderHint": "kpi",
       "interpretation": "Total LogServ events ingested over the selected time range. The cheapest pulse-check on whether ingest is alive. Compare to your historical baseline for the same window length \u2014 anything below ~50% of baseline warrants investigation.",
       "nextSteps": [
@@ -938,7 +938,7 @@
       "label": "Distinct hosts seen",
       "description": "Single-number KPI: distinct hosts that emitted at least one event over the time range. Sudden drops are alarming; sudden growth might indicate fleet expansion or a misnamed host.",
       "savedSearch": "logserv_distinct_hosts_kpi",
-      "spl": "`sap_logserv_idx_macro` | stats dc(host) AS distinct_hosts",
+      "spl": "| inputlookup logserv_hostdetails_rollup where metric=\"vol\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search host!=\"(none)\" | stats dc(host) AS distinct_hosts",
       "renderHint": "kpi",
       "interpretation": "Count of distinct hosts that emitted at least one event over the time range. Sudden drops mean hosts unreachable or forwarders crashed. Sudden growth means fleet expansion OR a misnamed/duplicate host (rare but happens after a forwarder reinstall).",
       "nextSteps": [
@@ -1177,11 +1177,11 @@
     {
       "id": "security.after_hours_admin_data_access",
       "pack": "security",
-      "label": "After-hours admin data access across HANA + webdispatcher",
-      "description": "Same user is active across HANA audit + webdispatcher access logs outside business hours, on the same host. Cross-source signal indicating a potential off-hours data-extraction pattern.",
+      "label": "After-hours admin activity on HANA (with same-host web traffic)",
+      "description": "Admin users (executing_user matching admin / <sid>adm) active on the HANA database tier outside business hours (before 08:00 or 18:00+ local time), grouped by user and host, annotated with the count of off-hours web-dispatcher requests on the same host. Off-hours admin activity on the data tier is a leading indicator of admin-account compromise.",
       "savedSearch": "splunk_sap_logserv_es_after_hours_admin_data_access",
       "renderHint": "table",
-      "interpretation": "Off-hours cross-plane activity is a leading indicator of admin-account compromise + data exfiltration. A user appearing in both HANA audit (database queries) AND webdispatcher access logs (HTTP-tier requests) outside business hours suggests coordinated activity. Healthy environments show this almost never; service accounts that legitimately do this should be tagged as such in the Identity feed.",
+      "interpretation": "Each row is an admin account with off-hours HANA activity on a host: the number of events and which action categories. The host_web_events column flags hosts that ALSO had off-hours web-dispatcher traffic, so a non-zero value means the same host saw both database-tier and HTTP-tier activity off-hours - a stronger cross-tier signal. Healthy environments show routine <sid>adm maintenance here; confirm each against a change ticket and watch for unexpected accounts or sensitive action categories off-hours (Permission Grant, User Creation, User Management).",
       "nextSteps": [
         {
           "text": "For each suspicious user, pull the recent off-hours webdispatcher + HANA timeline.",
@@ -1195,16 +1195,16 @@
         "hana-audit",
         "web-dispatcher"
       ],
-      "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:webdispatcher:access\") | eval auth_user = coalesce(executing_user, user, src_user) | eval is_off_hours_local = if(is_business_hours=\"false\" OR isnull(is_business_hours), 1, 0) | where is_off_hours_local=1 AND isnotnull(auth_user) | stats count, values(sourcetype) AS sourcetypes, dc(sourcetype) AS distinct_sourcetypes, latest(_time) AS last_seen by auth_user, host | where distinct_sourcetypes >= 2 | sort -distinct_sourcetypes -count"
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" | eval oh_hour=tonumber(strftime(_time, \"%H\")) | where oh_hour<8 OR oh_hour>=18 | stats count AS hana_events, dc(action_category) AS distinct_actions, values(action_category) AS actions, max(_time) AS last_seen by executing_user, host | join type=left host [ search `sap_logserv_idx_macro` sourcetype=\"sap:webdispatcher:access\" | eval oh_hour=tonumber(strftime(_time, \"%H\")) | where oh_hour<8 OR oh_hour>=18 | stats count AS host_web_events by host ] | eval host_web_events=coalesce(host_web_events, 0) | sort -hana_events"
     },
     {
       "id": "security.service_account_interactive",
       "pack": "security",
       "label": "Service account interactive HANA login",
-      "description": "Service accounts (flagged via the `is_service_account` field) generated interactive HANA CONNECT events. Service accounts should run programmatic workloads \u2014 interactive sessions strongly indicate misuse or compromise.",
+      "description": "Service / system accounts (executing_user matching service-account naming such as <sid>adm, sapservice*, *_svc) that generated interactive HANA CONNECT events. Service accounts should run programmatic workloads, so interactive sessions warrant a look at the source client_ip.",
       "savedSearch": "splunk_sap_logserv_es_service_account_interactive",
       "renderHint": "table",
-      "interpretation": "Each row is a service account with interactive CONNECT activity. Healthy environments show 0 rows. Investigate the client_ip column \u2014 a workstation IP from the office subnet is a strong indicator of admin misuse; an external IP indicates compromise.",
+      "interpretation": "Each row is a service / system account with interactive HANA CONNECT activity. The <sid>adm accounts that run the database appear here routinely, so triage by the client_ip column: a connection from a workstation / office subnet is a stronger misuse signal than one from a known application host or 127.0.0.1. Investigate any unexpected service account, or any connection from an external IP.",
       "nextSteps": [
         {
           "text": "Check the client_ip ranges against your office / VPN / production subnets. Anything outside is high-priority.",
@@ -1213,7 +1213,7 @@
         "If the activity is legitimate (e.g., DBA emergency intervention), document the change ticket and consider reclassifying the account in the Identity feed."
       ],
       "dashboard": "hana-audit",
-      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" result=\"SUCCESSFUL\" is_service_account=\"true\" action_type=\"CONNECT\" | stats count, latest(_time) AS last_seen, values(client_ip) AS client_ips, values(host) AS hosts by executing_user | sort -count"
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_category=\"Authentication\" result=\"SUCCESSFUL\" action_type=\"CONNECT\" | eval is_svc=if(match(executing_user, \"(?i)(adm$|^sapservice|_svc$|^svc_|_batch$|_daemon$|^sap_)\"), 1, 0) | where is_svc=1 | stats count, latest(_time) AS last_seen, values(client_ip) AS client_ips, values(host) AS hosts by executing_user | sort -count"
     },
     {
       "id": "security.hana_user_creation_off_hours",
@@ -1238,7 +1238,7 @@
         "hana-audit",
         "change-config"
       ],
-      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_type=\"CREATE USER\" (is_business_hours=\"false\" OR is_weekend=\"true\") | stats count, latest(_time) AS last_seen, values(target_user) AS new_users, values(host) AS hosts by executing_user | sort -count"
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" action_type=\"CREATE USER\" | eval oh_hour=tonumber(strftime(_time, \"%H\")), oh_dow=strftime(_time, \"%w\") | where (oh_hour<8 OR oh_hour>=18) OR (oh_dow=\"0\" OR oh_dow=\"6\") | stats count, latest(_time) AS last_seen, values(target_user) AS new_users, values(host) AS hosts by executing_user | sort -count"
     },
     {
       "id": "security.hana_mass_drop",
@@ -1334,10 +1334,10 @@
       "id": "security.anomaly_user_auth_volume",
       "pack": "security",
       "label": "Anomaly: per-user auth volume Z-score",
-      "description": "Per-user authentication-event volume Z-score against 30-day baseline. Fires when a user generates substantially more auth events than their own historical pattern.",
+      "description": "Per-user authentication-event volume Z-score against a 30-day baseline. Runs daily and flags any hour of the most recent day in which a user generated substantially more auth events than their own historical hourly pattern.",
       "savedSearch": "splunk_sap_logserv_es_anomaly_user_auth_volume",
       "renderHint": "table",
-      "interpretation": "Each row is a user whose most-recent-hour auth count is anomalous against their own 30-day baseline. Z-score > 3 indicates a statistically significant outlier (>99.7% of normal range). Combined with the `count > 10` floor, low-noise \u2014 most healthy environments show 0-2 rows.",
+      "interpretation": "Each row is a user whose hourly auth count on the most recent day is anomalous against their own 30-day baseline. Z-score > 3 indicates a statistically significant outlier (>99.7% of normal range). Combined with the count > 10 floor, this is low-noise - most healthy environments show 0-2 rows.",
       "nextSteps": [
         {
           "text": "For each anomalous user, pull the recent auth pattern to see what changed.",
@@ -1347,16 +1347,16 @@
         "If batch loaders are the cause, consider creating an Identity feed entry to suppress these alerts."
       ],
       "dashboard": "cross-stack-authentication",
-      "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:sapstartsrv\") action_category=\"Authentication\" earliest=-30d@h latest=now | eval auth_user = coalesce(executing_user, user) | where isnotnull(auth_user) | bin _time span=1h | stats count by auth_user, _time | eventstats avg(count) AS avg_count, stdev(count) AS stdev_count by auth_user | eval z_score = round((count - avg_count) / stdev_count, 2) | where _time >= relative_time(now(), \"-1h@h\") AND z_score > 3 AND count > 10 | sort -z_score"
+      "spl": "`sap_logserv_idx_macro` (sourcetype=\"sap:hana:audit\" OR sourcetype=\"sap:sapstartsrv\") action_category=\"Authentication\" earliest=-30d@h latest=now | eval auth_user = coalesce(executing_user, user) | where isnotnull(auth_user) | bin _time span=1h | stats count by auth_user, _time | eventstats avg(count) AS avg_count, stdev(count) AS stdev_count by auth_user | eval z_score = round((count - avg_count) / stdev_count, 2) | where _time >= relative_time(now(), \"-1d@d\") AND z_score > 3 AND count > 10 | sort -z_score"
     },
     {
       "id": "security.anomaly_webdisp_response",
       "pack": "security",
       "label": "Anomaly: webdispatcher P95 response time",
-      "description": "Per-host webdispatcher P95 latency Z-score against 30-day baseline. Detects latency excursions on a single host vs. its own historical pattern.",
+      "description": "Per-host web-dispatcher P95 latency Z-score against a 30-day baseline. Runs daily and detects hours of the most recent day where a host's P95 response time deviated sharply from its own historical pattern.",
       "savedSearch": "splunk_sap_logserv_es_anomaly_webdisp_response",
       "renderHint": "table",
-      "interpretation": "Each row is a host whose P95 response time in the most recent hour is statistically anomalous. Investigate backend health, network path, or cache state. Combined with the `p95_rt > 200ms` floor, this filters out noisy alerts on consistently fast hosts.",
+      "interpretation": "Each row is a host whose P95 response time in an hour of the most recent day is statistically anomalous. Investigate backend health, network path, or cache state. Combined with the p95_rt > 200ms floor, this filters out noisy alerts on consistently fast hosts.",
       "nextSteps": [
         {
           "text": "Pull the per-URI breakdown for the slow hour to see which endpoints dominate.",
@@ -1369,23 +1369,23 @@
         "web-dispatcher",
         "web-api-performance"
       ],
-      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:webdispatcher:access\" response_time_ms=* earliest=-30d@h latest=now | bin _time span=1h | stats avg(response_time_ms) AS avg_rt, perc95(response_time_ms) AS p95_rt, count by host, _time | eventstats avg(p95_rt) AS baseline_p95, stdev(p95_rt) AS stdev_p95 by host | eval z_score = round((p95_rt - baseline_p95) / stdev_p95, 2) | where _time >= relative_time(now(), \"-1h@h\") AND z_score > 3 AND p95_rt > 200 | sort -z_score"
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:webdispatcher:access\" response_time_ms=* earliest=-30d@h latest=now | bin _time span=1h | stats avg(response_time_ms) AS avg_rt, perc95(response_time_ms) AS p95_rt, count by host, _time | eventstats avg(p95_rt) AS baseline_p95, stdev(p95_rt) AS stdev_p95 by host | eval z_score = round((p95_rt - baseline_p95) / stdev_p95, 2) | where _time >= relative_time(now(), \"-1d@d\") AND z_score > 3 AND p95_rt > 200 | sort -z_score"
     },
     {
       "id": "security.anomaly_topology_edge_volume",
       "pack": "security",
       "label": "Anomaly: topology edge call volume",
-      "description": "Reads pre-aggregated edge bucket rows from the `logserv_topology_edges` KV Store. Detects edges whose most-recent-hour call_count is statistically anomalous vs. that edge's own 30-day baseline.",
+      "description": "Reads pre-aggregated edge bucket rows from the logserv_topology_edges KV Store. Runs daily and detects edges whose call_count in any hour of the most recent day is statistically anomalous vs. that edge's own 30-day baseline.",
       "savedSearch": "splunk_sap_logserv_es_anomaly_topology_edge_volume",
       "renderHint": "table",
-      "interpretation": "Each row is a topology edge (source -> target, with type) whose most-recent-hour call volume deviates from its own historical pattern. Surge = surge in cross-system traffic (could be brute-force or surge in legitimate workload); drop = integration outage. The Z-score sign tells you which direction. Reads from KV Store, no live SPL on raw indexes.",
+      "interpretation": "Each row is a topology edge (source to target, with type) whose hourly call volume on the most recent day deviates from its own historical pattern. Surge = surge in cross-system traffic (could be brute-force or a surge in legitimate workload); drop = integration outage. The Z-score sign tells you which direction. Reads from KV Store, no live SPL on raw indexes.",
       "nextSteps": [
         "For surge anomalies (positive Z), check whether the source system is making more requests than usual or whether the target is being targeted.",
         "For drop anomalies (negative Z), confirm the source service is healthy on its own dashboards before declaring an integration outage.",
         "Open the Environment Topology view, click the anomalous edge, and review the Activity tab for the historical trend visualization."
       ],
       "dashboard": "integration-topology",
-      "spl": "| inputlookup logserv_topology_edges where bucket_ts>=relative_time(now(), \"-30d@h\") | eventstats avg(call_count) AS baseline_avg, stdev(call_count) AS baseline_stdev by source, target, type | where bucket_ts >= relative_time(now(), \"-1h@h\") | eval z_score = round((call_count - baseline_avg) / baseline_stdev, 2) | where abs(z_score) > 3 AND call_count > 10 | sort -z_score"
+      "spl": "| inputlookup logserv_topology_edges | where bucket_ts >= relative_time(now(), \"-30d@h\") | eventstats avg(call_count) AS baseline_avg, stdev(call_count) AS baseline_stdev by source, target, type | where bucket_ts >= relative_time(now(), \"-1d@d\") | eval z_score = round((call_count - baseline_avg) / baseline_stdev, 2) | where abs(z_score) > 3 AND call_count > 10 | sort -z_score"
     },
     {
       "id": "security.anomaly_after_hours_admin",
@@ -1410,7 +1410,7 @@
         "hana-audit",
         "change-config"
       ],
-      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" is_business_hours=\"false\" earliest=-30d@d latest=now | eval auth_user = coalesce(executing_user, user) | where isnotnull(auth_user) | bin _time span=1d | stats count by auth_user, _time | eventstats avg(count) AS daily_avg, stdev(count) AS daily_stdev by auth_user | eval z_score = round((count - daily_avg) / daily_stdev, 2) | where _time >= relative_time(now(), \"-1d@d\") AND z_score > 2 AND count > 5 | sort -z_score"
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" earliest=-30d@d latest=now | eval auth_user = coalesce(executing_user, user), oh_hour = tonumber(strftime(_time, \"%H\")) | where isnotnull(auth_user) AND (oh_hour < 8 OR oh_hour >= 18) | bin _time span=1d | stats count by auth_user, _time | eventstats avg(count) AS daily_avg, stdev(count) AS daily_stdev by auth_user | eval z_score = round((count - daily_avg) / daily_stdev, 2) | where _time >= relative_time(now(), \"-1d@d\") AND z_score > 2 AND count > 5 | sort -z_score"
     }
   ]
 }

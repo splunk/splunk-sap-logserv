@@ -27,6 +27,9 @@ export const DOCS_ROOT = 'https://splunk.github.io/splunk-sap-logserv';
  * buildDocsUrl() below; everything else falls through to this map.
  */
 const STATIC_PATH_DOCS: Record<string, string> = {
+    '/settings': `${DOCS_ROOT}/content/ai-assistant/settings/`,
+    // alias for the pre-build-245 route, in case the help icon resolves before
+    // the AppShell redirect fires.
     '/settings/ai-assistant': `${DOCS_ROOT}/content/ai-assistant/settings/`,
 };
 

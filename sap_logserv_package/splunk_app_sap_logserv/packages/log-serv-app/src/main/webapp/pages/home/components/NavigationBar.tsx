@@ -177,7 +177,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({ onToggleAIAssistant, aiAs
             <Spacer />
 
             {isAdmin && (
-                <SettingsLink to="/settings/ai-assistant" aria-label="AI Assistant Settings">
+                <SettingsLink to="/settings" aria-label="Application Settings">
                     <span aria-hidden>⚙</span>
                     Settings
                 </SettingsLink>

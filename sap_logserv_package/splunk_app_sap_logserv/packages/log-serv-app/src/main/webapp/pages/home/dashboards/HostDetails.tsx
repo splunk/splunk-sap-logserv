@@ -6,6 +6,7 @@ import Multiselect from '@splunk/react-ui/Multiselect';
 import LinkGraph from '@splunk/visualizations/LinkGraph';
 import KpiCard, { formatInteger } from '../components/KpiCard';
 import FramedPanel from '../components/FramedPanel';
+import PanelLoading from '../components/PanelLoading';
 import DataTable, { ColumnDef } from '../components/DataTable';
 import TimeSeriesChart from '../components/TimeSeriesChart';
 import TabbedLayout from '../components/TabbedLayout';
@@ -335,6 +336,18 @@ const HD_RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_
 const R_VOL = `| inputlookup ${HD_ROLL} where metric="vol" ${HD_RANGE}`;
 const R_ERR = `| inputlookup ${HD_ROLL} where metric="err" ${HD_RANGE}`;
 const R_AUTH = `| inputlookup ${HD_ROLL} where metric="auth" ${HD_RANGE}`;
+
+// =====================================================================================
+// Build-243 rollups: the Role Activity tab (7 raw `top limit=0 <field>` scans) and
+// the Sourcetype Mapping tab (`| tstats … BY sourcetype, source, host` — slow because
+// `source` is date/UUID-stamped and balloons with the window) were the last raw-ish
+// panels here. They now read hourly KV-Store rollups. Read idiom mirrors HD_ROLL:
+//   | inputlookup <coll> [where metric=X] | addinfo | where bucket_ts in window
+//   [| search <host OR-fragment>] | <agg>
+// The host fragment is the HOST_TS dialect (pre-resolved Top-N); '' = all hosts.
+const HR_ROLL = 'logserv_hostrole_rollup';
+const ST_ROLL = 'logserv_stmap_rollup';
+const ROLL_RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
 
 // =====================================================================================
 // Tab 1 — Overview
@@ -696,16 +709,26 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
 // Tab 2 — Role Activity (with hideWhenNoData reshuffle)
 // =====================================================================================
 
-const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string }> = ({ hosts, topHosts }) => {
-    const HOST = combinedHostFilter(hosts, topHosts);
+const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHosts: string[] }> = ({ hosts, topHosts, resolvedTopHosts }) => {
+    // Read the hostrole rollup per panel. Host filter = the HOST_TS OR-fragment
+    // applied AFTER inputlookup (pre-resolved Top-N); '' = all hosts. `top limit=0`
+    // semantics are reproduced: value + count + percent (percent = count/Σcount,
+    // matching `top` which sums over non-null values only — the aggregate's
+    // `stats … by <field>` already dropped null values).
+    const HOST_TS = combinedHostFilterTstats(hosts, topHosts, resolvedTopHosts);
+    const HF = HOST_TS ? ` | search ${HOST_TS}` : '';
+    const roleRead = (metric: string, field: string): string =>
+        `| inputlookup ${HR_ROLL} where metric="${metric}" ${ROLL_RANGE}${HF}`
+        + ` | stats sum(count) as count by value | eventstats sum(count) as _t`
+        + ` | eval percent=round(count/_t*100, 6) | fields - _t | sort - count | rename value as ${field}`;
 
-    const hanaAudit = useSearch({ query: `\`sap_logserv_idx_macro\` ${HOST} sourcetype=sap:hana:audit | top limit=0 action_type` });
-    const abapWp = useSearch({ query: `\`sap_logserv_idx_macro\` ${HOST} sourcetype=sap:abap:workprocess | top limit=0 wp_type` });
-    const webDisp = useSearch({ query: `\`sap_logserv_idx_macro\` ${HOST} sourcetype=sap:webdispatcher:access | top limit=0 status` });
-    const sapRouter = useSearch({ query: `\`sap_logserv_idx_macro\` ${HOST} sourcetype=sap:saprouter | top limit=0 peer_ip` });
-    const winEvents = useSearch({ query: `\`sap_logserv_idx_macro\` ${HOST} sourcetype=XmlWinEventLog* | top limit=0 EventCode` });
-    const sudo = useSearch({ query: `\`sap_logserv_idx_macro\` ${HOST} sourcetype=linux_messages_syslog "sudo" | rex "sudo:\\s+(?<sudo_user>[^\\s:]+)" | top limit=0 sudo_user` });
-    const dns = useSearch({ query: `\`sap_logserv_idx_macro\` ${HOST} sourcetype=isc:bind:query | top limit=0 query` });
+    const hanaAudit = useSearch({ query: roleRead('hana_action', 'action_type') });
+    const abapWp = useSearch({ query: roleRead('abap_wp', 'wp_type') });
+    const webDisp = useSearch({ query: roleRead('webdisp_status', 'status') });
+    const sapRouter = useSearch({ query: roleRead('saprouter_peer', 'peer_ip') });
+    const winEvents = useSearch({ query: roleRead('win_eventcode', 'EventCode') });
+    const sudo = useSearch({ query: roleRead('sudo_user', 'sudo_user') });
+    const dns = useSearch({ query: roleRead('dns_query', 'query') });
 
     const allEmpty =
         (!hanaAudit.results || hanaAudit.results.length === 0) &&
@@ -763,16 +786,17 @@ interface LinkGraphResult {
 
 const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHosts: string[] }> = ({ hosts, topHosts, resolvedTopHosts }) => {
     const HOST_TS = combinedHostFilterTstats(hosts, topHosts, resolvedTopHosts);
-    const W = HOST_TS ? `\`sap_logserv_idx_macro\` ${HOST_TS}` : `\`sap_logserv_idx_macro\``;
+    const HF = HOST_TS ? ` | search ${HOST_TS}` : '';
 
     // count: 0 → "all rows". The link graph needs every unique
-    // sourcetype/source/host combination, which can easily exceed the
-    // default 100-row cap and silently drop hosts. `| tstats … BY a, b, c`
-    // already yields one row per distinct tuple (dedup is implicit in the BY
-    // grouping), so the trailing `| fields - count` drops the aggregate just
-    // like the legacy form. All three dims are default-indexed.
+    // sourcetype/source/host combination, which can exceed the default 100-row
+    // cap. Build 243: reads the logserv_stmap_rollup KV Store (source normalized
+    // — UUID/date stripped — so the tuple count stays small + fast) instead of a
+    // live `| tstats … BY sourcetype, source, host` over date/UUID-stamped source
+    // (13.8s/-7d, 49.7s/-30d, 4151 tuples). `| stats count by …` dedups to one row
+    // per tuple; `| fields - count` drops the aggregate just like the legacy form.
     const { results, loading, error } = useSearch<LinkGraphResult>({
-        query: `| tstats count WHERE ${W} BY sourcetype, source, host | fields - count`,
+        query: `| inputlookup ${ST_ROLL} ${ROLL_RANGE}${HF} | stats count by sourcetype, source, host | fields - count`,
         count: 0,
     });
 
@@ -832,7 +856,7 @@ const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolv
     }, [results]);
 
     if (error) return <div style={{ padding: 32, color: logservTheme.colors.red }}>{error.message || 'Search failed'}</div>;
-    if (loading && !dataSources) return <div style={{ padding: 32, color: logservTheme.colors.textMuted, textAlign: 'center' }}>Loading link graph…</div>;
+    if (loading && !dataSources) return <PanelLoading />;
     if (!dataSources) return <div style={{ padding: 32, color: logservTheme.colors.textMuted, textAlign: 'center' }}>No source/sourcetype data for {hostLabel(hosts)}.</div>;
 
     return (
@@ -1045,7 +1069,7 @@ const HostDetails: React.FC = () => {
             <TabbedLayout
                 tabs={[
                     { id: 'overview', label: 'Overview', content: <OverviewTab hosts={selectedHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
-                    { id: 'role-activity', label: 'Role Activity', content: <RoleActivityTab hosts={selectedHosts} topHosts={topHosts} /> },
+                    { id: 'role-activity', label: 'Role Activity', content: <RoleActivityTab hosts={selectedHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
                     { id: 'sourcetype-mapping', label: 'Sourcetype Mapping', content: <SourcetypeMappingTab hosts={selectedHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
                 ]}
             />
