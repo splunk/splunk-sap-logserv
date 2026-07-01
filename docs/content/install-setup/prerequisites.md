@@ -29,7 +29,7 @@ Additional configuration instructions for the Splunk Add-on for Amazon Web Servi
 
 If your SAP ECS data lands in Microsoft Azure Blob Storage, install the first-party **Splunk TA for SAP LogServ on Azure** add-on (`splunk_ta_sap_logserv_azure`) on each Heavy Forwarder — the Azure counterpart to the Splunk Add-on for AWS, and shipped alongside the LogServ App + Data TA in this release. Its **`sap_logserv_azure_queue`** modular input consumes Azure Event Grid → Storage Queue notifications, fetches each blob over a SAS, and emits its NDJSON into the same index-time pipeline as the AWS path. In a RISE / SAP ECS deployment, SAP provisions and manages the storage account, Storage Queue, Event Grid subscription, and SAS in the SAP ECS Azure account — you create nothing in Azure; you only install the add-on and configure one input with the values SAP gives you.
 
-Installation + configuration instructions — installing the add-on per Heavy Forwarder (directly, not via the Deployment Server), the parameter values to obtain from your SAP support contact, and the input fields — are in the [Azure Setup Guide](azure-queue-setup.md). The downstream pipeline (sourcetype routing, dashboards, ES integration) is identical between AWS and Azure deployments.
+Installation + configuration instructions — installing the add-on per Heavy Forwarder (directly, not via the Deployment Server), the parameter values to obtain from your SAP support contact, and the input fields — are in the [Azure Setup Guide](azure-setup.md). The downstream pipeline (sourcetype routing, dashboards, ES integration) is identical between AWS and Azure deployments.
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

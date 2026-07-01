@@ -88,7 +88,7 @@ nav:
         - AWS Remote S3 Copy Setup Guide: 'content/install-setup/aws-remote-s3-copy-guide.md'
     - AWS Migrations Guide:
         - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md'
-    - Azure Setup: 'content/install-setup/azure-queue-setup.md'
+    - Azure Setup: 'content/install-setup/azure-setup.md'
 - LogServ UI App:
     - Prerequisites: 'content/logserv-app/prerequisites.md'
     - Installing the LogServ App: 'content/logserv-app/installation.md'
