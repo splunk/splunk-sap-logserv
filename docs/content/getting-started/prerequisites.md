@@ -2,6 +2,21 @@
 
 Splunk for SAP LogServ ships as **two separately installable packages** with distinct prerequisites. Use this page to plan what you need before starting installation.
 
+### :material-circle-box:{ .taiconcolor } Cloud Provider
+
+Before installing, confirm the SAP-side prerequisites for the cloud provider where your SAP RISE / SAP ECS environment runs.
+
+#### :material-crop-square:{ .taiconcolor } SAP RISE on AWS
+
+1. LogServ service must be enabled by the SAP LogServ team.
+2. Customer must have a non-SAP RISE AWS account.
+3. SAP LogServ team must grant the required permissions to the customer's AWS account.
+
+#### :material-crop-square:{ .taiconcolor } SAP RISE on Azure
+
+1. LogServ service must be enabled by the SAP LogServ team.
+2. Customer must have network connectivity to the SAP RISE Azure subscription from the instance where the Splunk TA is installed.
+
 ### :material-circle-box:{ .taiconcolor } The Two Packages
 
 | Package | App ID | Role | Where it installs |

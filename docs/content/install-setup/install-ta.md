@@ -178,5 +178,5 @@ What the DS *does* push usefully to HFs from this Data TA: **filter rules** (whi
 
 1. Install the [LogServ App](../logserv-app/installation.md) on your Search Head
 2. Install the [Splunk MCP Server](../ai-assistant/mcp-setup.md) on your Search Head if you want to use the AI Assistant
-3. Complete the [AWS Setup Guide](setup-guides.md) to configure data collection
+3. Complete the [Setup Guides](setup-guides.md) to configure data collection (**AWS S3** or **Azure Blob Storage**, depending on where your SAP ECS data lands — Azure also requires the first-party **LogServ Azure add-on**, `splunk_ta_sap_logserv_azure`, on each Heavy Forwarder)
 4. Configure [index-time filters](configure-filters.md) to control which log types are indexed

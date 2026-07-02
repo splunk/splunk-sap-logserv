@@ -80,3 +80,17 @@ The table below lists the different features supported by each deployment scenar
     - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-copy.yaml" target="_blank">CloudFormation Template</a> provided    
     
     ![image](../../images/aws-remote-s3-copy-architecture.png "Local S3 Copy Deployment Architecture")
+
+### :material-circle-box:{ .taiconcolor } Microsoft Azure
+
+When your SAP ECS environment runs in **Microsoft Azure**, LogServ logs land in an Azure Blob Storage container instead of Amazon S3. Ingest is handled by the first-party **Splunk TA for SAP LogServ on Azure** add-on (`splunk_ta_sap_logserv_azure`) — the Azure counterpart to the Splunk Add-on for AWS — installed on **each Heavy Forwarder** (directly, **not** distributed by the Deployment Server, since its SAS credential lives in the add-on's own `local/`). Its `sap_logserv_azure_queue` modular input consumes Azure **Event Grid → Storage Queue** `BlobCreated` notifications and fetches each blob over a SAS, emitting `sourcetype = sap_logserv_logs` into the same downstream pipeline (routing, filtering, dashboards, ES integration) as the AWS path.
+
+In a RISE / SAP ECS deployment, SAP provisions and manages the Azure storage account, Storage Queue, Event Grid subscription, and SAS in the SAP-managed Azure account — you create nothing in Azure; you install the add-on and configure one input with the values SAP provides.
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-crop-square:{ .cboxmove } [Azure Setup Guide](azure-setup.md)
+??? indented-note "Note"
+    Queue-based Azure Blob ingest — the Azure equivalent of the AWS SQS-Based S3 Connect scenario.
+
+    - Install the LogServ Azure add-on per Heavy Forwarder (directly, not via the Deployment Server)
+    - Configure one `sap_logserv_azure_queue` input with the storage account, queue name, and SAS values SAP provides
+    - No AWS-style secondary account or cross-account IAM role — Azure uses a SAS token scoped to the Storage Queue + Blob container
