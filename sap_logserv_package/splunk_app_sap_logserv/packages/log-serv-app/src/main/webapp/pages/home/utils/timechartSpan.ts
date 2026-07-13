@@ -40,7 +40,7 @@ export const chooseTimechartSpan = (earliest: string, latest: string): string =>
  * 30 days for unparseable inputs so the caller still gets a sensible
  * default span.
  */
-const estimateWindowSeconds = (earliest: string, latest: string): number => {
+export const estimateWindowSeconds = (earliest: string, latest: string): number => {
     if (!earliest || earliest === '0') return 365 * 86400; // "all time" — assume long
     const e = parseRelativeOffsetSeconds(earliest);
     const l = parseRelativeOffsetSeconds(latest);

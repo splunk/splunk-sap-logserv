@@ -6,6 +6,7 @@ import NavigationBar from './NavigationBar';
 import PlaceholderDashboard from './PlaceholderDashboard';
 import { dashboards } from '../routes/dashboardRegistry';
 import { logservTheme } from '../styles/logservTheme';
+import { GlobalRefreshProvider } from '../state/GlobalRefreshProvider';
 import { AIAssistant, SidePanel } from './ai/chat';
 
 const SESSION_KEY_AI_PANEL_OPEN = 'logserv.aiAssistant.sidePanel.expanded';
@@ -56,13 +57,62 @@ const Page = styled.div`
     min-height: 100vh;
     background: ${logservTheme.colors.pageBackground};
     color: ${logservTheme.colors.textActive};
-    font-family: ${variables.fontFamily};
+    /* Magnetic body stack (Phase 1b, build 254) — Inter first, Splunk Web's
+       own stack as the fallback (both directly and via the appended
+       variables.fontFamily) so a failed font load degrades gracefully. */
+    font-family: ${logservTheme.font.body}, ${variables.fontFamily};
 
-    /* Force descendants (h1-h6, buttons, inputs, code) to inherit the Splunk
+    /* Force descendants (h1-h6, buttons, inputs, code) to inherit the page
        font family — they don't inherit by default. Without this rule, headings
        and buttons fall back to the browser default serif. */
     button, input, select, textarea, h1, h2, h3, h4, h5, h6, code, pre, kbd, samp {
         font-family: inherit;
+    }
+
+    /* Code/SPL elements get the Magnetic mono stack (Roboto Mono). Declared
+       AFTER the inherit rule above so it wins at equal specificity. */
+    code, pre, kbd, samp {
+        font-family: ${logservTheme.font.mono};
+    }
+
+    /* Splunk Web's page-level stylesheet (set once by layout() at load) styles
+       raw text elements DIRECTLY (e.g. dark-chrome p { color: <near-white> }),
+       which beats inheritance. When the user runtime-toggles our mode away
+       from the chrome theme, that leaves white text on white cards (or vice
+       versa) — Phase 1a bug on Multi-Cloud Overview's info panel. Class-scoped
+       inherit (0,1,1) outranks the global element rules so text always follows
+       our token-driven parent color. Deliberately EXCLUDES span/button/input —
+       @splunk/react-ui components own those. Build 248. */
+    p, li, strong, em, code, pre, kbd, samp, blockquote {
+        color: inherit;
+    }
+
+    /* @splunk/visualizations (Highcharts) tooltips ship their own legacy
+       chrome (dark #27292e box in dark, gray bevel in light) set as SVG
+       presentation ATTRIBUTES — plain CSS rules outrank those, so this
+       restyles every chart tooltip to match our token-styled Sparkline
+       tooltip in BOTH modes (user request, build 249). The :not([fill="none"])
+       guard leaves the stacked shadow paths alone; the span/div rules cover
+       Highcharts' useHTML tooltip variant (inline-styled → !important). */
+    .highcharts-tooltip path.highcharts-tooltip-box:not([fill='none']) {
+        /* !important beats any stray inline style.fill left by a pre-build-251
+           GradientWrap pass within the same page session. */
+        fill: ${logservTheme.colors.tableHeaderBackground} !important;
+        stroke: ${logservTheme.colors.panelBorder} !important;
+    }
+    /* Kill the 3 stacked black-stroke shadow layers so chart tooltips are
+       indistinguishable from the (shadow-less) Sparkline tooltip. Build 250. */
+    .highcharts-tooltip path.highcharts-shadow[fill='none'] {
+        display: none;
+    }
+    .highcharts-tooltip text,
+    .highcharts-tooltip tspan {
+        fill: ${logservTheme.colors.textActive} !important;
+    }
+    div.highcharts-tooltip,
+    div.highcharts-tooltip span,
+    .highcharts-tooltip span {
+        color: ${logservTheme.colors.textActive} !important;
     }
 `;
 
@@ -148,10 +198,11 @@ const AppShell: React.FC<AppShellProps> = ({
 
     return (
         <Page>
-            <NavigationBar
-                onToggleAIAssistant={aiAssistantEnabled ? toggleAiPanel : undefined}
-                aiAssistantOpen={aiPanelOpen}
-            />
+            <GlobalRefreshProvider>
+                <NavigationBar
+                    onToggleAIAssistant={aiAssistantEnabled ? toggleAiPanel : undefined}
+                    aiAssistantOpen={aiPanelOpen}
+                />
             {aiAssistantEnabled && (
                 <SidePanel
                     templatesOnlyMode={aiAssistantTemplatesOnlyMode}
@@ -249,6 +300,7 @@ const AppShell: React.FC<AppShellProps> = ({
                     <Route path="*" element={<PlaceholderDashboard fallback />} />
                 </Routes>
             </Suspense>
+            </GlobalRefreshProvider>
         </Page>
     );
 };

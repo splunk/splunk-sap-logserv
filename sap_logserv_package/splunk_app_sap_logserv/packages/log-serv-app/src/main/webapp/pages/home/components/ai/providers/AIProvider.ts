@@ -77,4 +77,28 @@ export interface AIProvider {
      * once on app load. Should be cheap (e.g., GET /v1/models).
      */
     validateConfig(): Promise<ConfigValidation>;
+    /**
+     * Fetch the vendor's CURRENT model list (metadata-only GET using the
+     * stored credential — same trust envelope as validateConfig: no
+     * message content, no event data, nothing through the outbound
+     * guard). OPTIONAL: providers without a usable listing endpoint
+     * simply omit it and keep their static `models` baseline.
+     *
+     * Contract for implementers:
+     *   - Resolve/reject fast (single-digit seconds; no streaming).
+     *   - Reject with a plain Error whose message is safe to show in
+     *     the Settings UI (never echo response payload content).
+     *   - Return raw vendor rows mapped to ModelDescriptor; the caller
+     *     (`modelDiscovery.refreshProviderModels`) sanitizes ids/labels
+     *     and enriches contextWindow/supportsTools before anything is
+     *     stored or rendered. Set contextWindow to 0 when the vendor
+     *     doesn't report it — the metadata overlay fills it in.
+     *
+     * `provider.models` KEEPS its meaning as the static curated
+     * baseline (synchronous, never empty). Discovery produces an
+     * ADDITIONAL list merged at the state layer (`effectiveModels`) —
+     * no consumer ever sees an empty or async-undefined model list.
+     * AI model discovery / session 079 / build 275.
+     */
+    listModels?(): Promise<ReadonlyArray<ModelDescriptor>>;
 }

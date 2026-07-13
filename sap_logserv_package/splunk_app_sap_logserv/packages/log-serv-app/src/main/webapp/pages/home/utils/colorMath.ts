@@ -34,3 +34,20 @@ export const darken = (hex: string, amount: number): string => {
  */
 export const verticalGradient = (hex: string, amount: number): string =>
     `linear-gradient(to bottom, ${hex} 0%, ${darken(hex, amount)} 100%)`;
+
+/** Mix a #rrggbb color toward white by `amount` (0 = unchanged, 1 = white).
+ *  Mirror of `darken` — used for gradient highlight stops (severity dots,
+ *  spinner beads) where the light stop must track the mode-resolved base.
+ *  Phase 4 / build 258. Non-hex input returns unchanged (same soft-fail
+ *  contract as darken). */
+export const lighten = (hex: string, amount: number): string => {
+    const m = /^#([0-9a-fA-F]{6})$/.exec(hex);
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    const mix = (c: number): number => Math.round(c + (255 - c) * amount);
+    const r = mix((n >> 16) & 0xff);
+    const g = mix((n >> 8) & 0xff);
+    const b = mix(n & 0xff);
+    // eslint-disable-next-line no-bitwise
+    return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+};

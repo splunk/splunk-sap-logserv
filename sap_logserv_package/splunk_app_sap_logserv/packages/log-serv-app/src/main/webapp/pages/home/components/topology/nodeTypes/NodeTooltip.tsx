@@ -42,18 +42,22 @@ const Wrap = styled.div`
      * tooltip's bottom-center to the (top, left) coordinates so it
      * floats above the node, horizontally centered. */
     transform: translate(-50%, calc(-100% - ${FIXED_OFFSET_PX}px));
-    background: ${logservTheme.colors.panelBackground};
-    color: ${logservTheme.colors.textActive};
-    border: 1px solid ${logservTheme.colors.cyanAccent};
-    border-radius: 7px;
+    /* Magnetic INVERSE-SURFACE tooltip (Phase 3, build 257): dark surface
+     * with light text in BOTH modes — the mode-invariant tooltip idiom.
+     * Borderless (the inverse fill carries the contrast); the caret below
+     * matches the fill. The portal still inherits the --lsv-* vars from
+     * <body> (session-075 spike b), so var() tokens resolve here. */
+    background: ${logservTheme.colors.surfaceInverse};
+    color: ${logservTheme.colors.inverseText};
+    border-radius: 6px;
     padding: 10px 14px;
-    box-shadow: 0 5px 18px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
     font-size: 13px;
     /* Portal mounts on document.body, outside AppShell's font scope —
-     * declare Splunk-Sans here so the tooltip matches the rest of the
-     * dashboard. Plus subpixel-AA hints for crisp glyph edges on macOS
-     * Retina + Windows ClearType. Build 144. */
-    font-family: ${variables.fontFamily};
+     * declare the Magnetic body stack here (Splunk stack as fallback) so
+     * the tooltip matches the rest of the dashboard. Plus subpixel-AA
+     * hints for crisp glyph edges. Build 144; stack updated build 257. */
+    font-family: ${logservTheme.font.body}, ${variables.fontFamily};
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: geometricPrecision;
@@ -72,13 +76,13 @@ const Wrap = styled.div`
     }
 
     .tt-label {
-        color: ${logservTheme.colors.textMuted};
+        color: ${logservTheme.colors.inverseTextMuted};
         font-size: 16px;
         font-weight: ${logservTheme.fontWeight.semibold};
     }
 
     .tt-value {
-        color: ${logservTheme.colors.textDefault};
+        color: ${logservTheme.colors.inverseText};
         font-weight: ${logservTheme.fontWeight.semibold};
         font-variant-numeric: tabular-nums;
     }
@@ -93,7 +97,7 @@ const Wrap = styled.div`
         left: 50%;
         transform: translateX(-50%);
         border: 7px solid transparent;
-        border-top-color: ${logservTheme.colors.cyanAccent};
+        border-top-color: ${logservTheme.colors.surfaceInverse};
     }
 `;
 

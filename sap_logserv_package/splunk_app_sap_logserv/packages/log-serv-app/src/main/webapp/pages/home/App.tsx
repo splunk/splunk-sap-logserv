@@ -5,6 +5,8 @@ import { HashRouter } from 'react-router-dom';
 // string when not running inside Splunk Web (tests, local dev).
 import { username as splunkUsername } from '@splunk/splunk-utils/config';
 import { TimeRangeProvider } from './state/TimeRangeProvider';
+import { CloudProviderProvider } from './state/CloudProviderProvider';
+import { ThemeModeProvider, SplunkThemeScope } from './state/ThemeModeProvider';
 import { AIAssistantProvider } from './state/AIAssistantProvider';
 import {
     AIAssistantConfig,
@@ -122,29 +124,40 @@ const App: React.FC = () => {
     }, [applyAIConfig]);
 
     return (
-        <TimeRangeProvider>
-            <AIAssistantProvider
-                providerName={aiConfig.provider}
-                defaultModel={aiConfig.defaultModel}
-                user={typeof splunkUsername === 'string' ? splunkUsername : ''}
-            >
-                <HashRouter>
-                    <AppShell
-                        aiAssistantEnabled={aiConfig.enabled}
-                        aiAssistantTemplatesOnlyMode={aiConfig.templatesOnlyMode}
-                        aiAssistantTier={aiConfig.tier}
-                        aiAssistantMcpRequired={aiConfig.mcpRequired}
-                        aiAssistantRateLimitPerHour={aiConfig.rateLimitPerHour}
-                        aiAssistantToolCallsPerSessionCap={aiConfig.toolCallsPerSessionCap}
-                        aiAssistantDailySpendCapUsd={aiConfig.dailySpendCapUsd}
-                        aiAssistantTier2PiiRedaction={aiConfig.tier2PiiRedaction}
-                        aiAssistantTier2RedactHostnames={aiConfig.tier2RedactHostnames}
-                        aiAssistantPowerUserRoles={aiConfig.powerUserRoles}
-                        onAIConfigSaved={refreshAIConfig}
-                    />
-                </HashRouter>
-            </AIAssistantProvider>
-        </TimeRangeProvider>
+        /* ThemeModeProvider owns light/dark mode + the --lsv-* variable
+         * block; SplunkThemeScope re-themes the @splunk/react-ui +
+         * @splunk/visualizations subtree to the matching prisma
+         * colorScheme. Cisco Magnetic re-theme Phase 0 (build 246). */
+        <ThemeModeProvider>
+            <SplunkThemeScope>
+                <TimeRangeProvider>
+                    <CloudProviderProvider>
+                    <AIAssistantProvider
+                        providerName={aiConfig.provider}
+                        defaultModel={aiConfig.defaultModel}
+                        modelDiscoveryEnabled={aiConfig.modelDiscoveryEnabled}
+                        user={typeof splunkUsername === 'string' ? splunkUsername : ''}
+                    >
+                        <HashRouter>
+                            <AppShell
+                                aiAssistantEnabled={aiConfig.enabled}
+                                aiAssistantTemplatesOnlyMode={aiConfig.templatesOnlyMode}
+                                aiAssistantTier={aiConfig.tier}
+                                aiAssistantMcpRequired={aiConfig.mcpRequired}
+                                aiAssistantRateLimitPerHour={aiConfig.rateLimitPerHour}
+                                aiAssistantToolCallsPerSessionCap={aiConfig.toolCallsPerSessionCap}
+                                aiAssistantDailySpendCapUsd={aiConfig.dailySpendCapUsd}
+                                aiAssistantTier2PiiRedaction={aiConfig.tier2PiiRedaction}
+                                aiAssistantTier2RedactHostnames={aiConfig.tier2RedactHostnames}
+                                aiAssistantPowerUserRoles={aiConfig.powerUserRoles}
+                                onAIConfigSaved={refreshAIConfig}
+                            />
+                        </HashRouter>
+                    </AIAssistantProvider>
+                    </CloudProviderProvider>
+                </TimeRangeProvider>
+            </SplunkThemeScope>
+        </ThemeModeProvider>
     );
 };
 

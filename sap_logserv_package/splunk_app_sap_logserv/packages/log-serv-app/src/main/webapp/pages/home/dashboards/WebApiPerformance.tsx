@@ -7,6 +7,8 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -79,7 +81,7 @@ const CIPHER = `| inputlookup ${ROLL} where metric="cipher" ${RANGE}`;
 const CLIENT = `| inputlookup ${ROLL} where metric="client" ${RANGE}`;
 const SLOWURI = `| inputlookup ${ROLL} where metric="slowuri" ${RANGE}`;
 
-const Q = {
+const Q_BASE = {
     kpiTotal: `${CORE} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiErrorRate: `${CORE} | stats count as n, sum(err_count) as errs, sum(count) as total | fillnull value=0 errs total | eval pct = if(total>0, round(errs*100/total, 2), 0) | eval display=tostring(pct)."%" | fields display`,
     kpiAvgRt: `${CORE} | stats count as n, sum(sum_rt) as s, sum(cnt_rt) as c | fillnull value=0 s c | eval avg_ms = if(c>0, s/c, 0) | eval display=tostring(round(avg_ms, 0))." ms" | fields display`,
@@ -106,9 +108,42 @@ const Q = {
     err500: `\`sap_logserv_idx_macro\` ${ST_BOTH} status>=500 | head 200 | eval src_log = if(sourcetype="sap:webdispatcher:access", "WebDisp", "CC") | eval resp_time = if(isnotnull(response_time_ms), tostring(response_time_ms) . " ms", "-") | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, src_log, host, clientip, method, uri, status, resp_time | rename src_log as "Source", host as "Host", clientip as "Client IP", method as "Method", uri as "URI", status as "Status", resp_time as "Response Time"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw ST_BOTH
+ * (or WD-only, for timing/tls) scan its rollup metric precomputes, reconciled to
+ * the cached read's exact output columns (byte-verified equal at wide windows —
+ * the wa_v_*_x / _v2_wa_*_x staged pairs). response_time_ms is the native
+ * search-time field (WD fractional / CC integer) that sum_rt/cnt_rt sum. Only
+ * ROLLUP reads are hybridised; err500 is already raw and the sparklines stay
+ * cached (cosmetic). percentiles + timing keep the UNROUNDED avg (float-tolerant
+ * ~1e-13); the sum/count form makes empty-bin behavior (Avg=0/Max=null) match.
+ * ------------------------------------------------------------------------- */
+const ST_BOTH_RAW = '`sap_logserv_idx_macro` (sourcetype="sap:webdispatcher:access" OR sourcetype="sap:scc:http_access")';
+const ST_WD_RAW = '`sap_logserv_idx_macro` sourcetype="sap:webdispatcher:access"';
+const QRAW_BASE = {
+    kpiTotal: `${ST_BOTH_RAW} | stats count`,
+    kpiErrorRate: `${ST_BOTH_RAW} | eval is_err=if(tonumber(status)>=400,1,0) | stats sum(is_err) as errs, count as total | eval pct=if(total>0,round(errs*100/total,2),0) | eval display=tostring(pct)."%" | fields display`,
+    kpiAvgRt: `${ST_BOTH_RAW} response_time_ms=* | stats sum(response_time_ms) as s, count(response_time_ms) as c | eval avg_ms=if(c>0,s/c,0) | eval display=tostring(round(avg_ms,0))." ms" | fields display`,
+    kpiAuthFail: `${ST_BOTH_RAW} ((sourcetype="sap:webdispatcher:access" AND (status=401 OR status=403)) OR (sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"))) | stats count`,
+    kpiUniqueUrls: `${ST_BOTH_RAW} uri=* | stats dc(uri) as urls`,
+    timing: `${ST_WD_RAW} dt1_us=* dt2_us=* dt3_us=* dt4_us=* | eval dt1_ms=dt1_us/1000, dt2_ms=dt2_us/1000, dt3_ms=dt3_us/1000, dt4_ms=dt4_us/1000 | timechart span=1d avg(dt1_ms) as "Receive (dt1)", avg(dt2_ms) as "Handler (dt2)", avg(dt3_ms) as "Response (dt3)", avg(dt4_ms) as "Send (dt4)" | fields _time, "Receive (dt1)", "Handler (dt2)", "Response (dt3)", "Send (dt4)"`,
+    percentiles: `${ST_BOTH_RAW} response_time_ms=* | timechart span=1d sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" | eval "Avg (ms)" = if(c>0, s/c, 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+    slowUris: `${ST_BOTH_RAW} response_time_ms=* uri=* | eval src_log=if(sourcetype="sap:webdispatcher:access","WebDisp","CC") | stats count as events, avg(response_time_ms) as avg_ms, max(response_time_ms) as max_ms, sum(eval(if(tonumber(status)>=400,1,0))) as errors by uri, src_log | eval avg_ms=round(avg_ms,0), max_ms=round(max_ms,0) | sort -avg_ms | rename uri as "URI", src_log as "Source", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", errors as "Errors"`,
+    errorAuth: `${ST_BOTH_RAW} | eval is_http_err=if(tonumber(status)>=400,1,0) | eval is_cc=if(sourcetype="sap:scc:http_access",1,0) | eval is_cc_auth_fail=if(sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"),1,0) | timechart span=1d count as total_all, sum(is_http_err) as http_err, sum(is_cc) as total_cc, sum(is_cc_auth_fail) as cc_auth_fail | eval "HTTP Error Rate (%)" = if(total_all>0, round(http_err*100/total_all, 2), 0) | eval "CC Auth Failure Rate (%)" = if(total_cc>0, round(cc_auth_fail*100/total_cc, 2), 0) | fields _time, "HTTP Error Rate (%)", "CC Auth Failure Rate (%)"`,
+    tlsVersion: `${ST_WD_RAW} tls_version=* | stats count by tls_version | sort tls_version`,
+    tlsCipher: `${ST_WD_RAW} cipher_suite=* | stats count by cipher_suite | sort -count | rename cipher_suite as "Cipher Suite"`,
+    slowClients: `${ST_BOTH_RAW} response_time_ms=* clientip=* | stats count as events, avg(response_time_ms) as avg_ms, max(response_time_ms) as max_ms, dc(uri) as unique_uris by clientip | eval avg_ms=round(avg_ms,0), max_ms=round(max_ms,0) | sort -max_ms | rename clientip as "Client IP", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", unique_uris as "Unique URIs"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -144,16 +179,26 @@ const ERR500_COLS: ColumnDef[] = [
 ];
 
 const WebApiPerformance: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const errorRate = useFirstRowField(Q.kpiErrorRate, 'display');
-    const avgRt = useFirstRowField(Q.kpiAvgRt, 'display');
-    const authFail = useFirstRowField(Q.kpiAuthFail, 'count');
-    const uniqueUrls = useFirstRowField(Q.kpiUniqueUrls, 'urls');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const errorRate = useFirstRowFieldHybrid(Q.kpiErrorRate, QRAW.kpiErrorRate, 'display');
+    const avgRt = useFirstRowFieldHybrid(Q.kpiAvgRt, QRAW.kpiAvgRt, 'display');
+    const authFail = useFirstRowFieldHybrid(Q.kpiAuthFail, QRAW.kpiAuthFail, 'count');
+    const uniqueUrls = useFirstRowFieldHybrid(Q.kpiUniqueUrls, QRAW.kpiUniqueUrls, 'urls');
 
-    const slowUris = useSearch({ query: Q.slowUris });
-    const tlsCipher = useSearch({ query: Q.tlsCipher });
-    const slowClients = useSearch({ query: Q.slowClients });
+    const slowUris = useHybridSearch({ cached: Q.slowUris, raw: QRAW.slowUris });
+    const tlsCipher = useHybridSearch({ cached: Q.tlsCipher, raw: QRAW.tlsCipher });
+    const slowClients = useHybridSearch({ cached: Q.slowClients, raw: QRAW.slowClients });
     const err500 = useSearch({ query: Q.err500 });
+
+    // Charts take a query string → route once each (sub-hour -> raw).
+    const qTiming = useRoutedQuery(Q.timing, QRAW.timing);
+    const qPercentiles = useRoutedQuery(Q.percentiles, QRAW.percentiles);
+    const qErrorAuth = useRoutedQuery(Q.errorAuth, QRAW.errorAuth);
+    const qTlsVersion = useRoutedQuery(Q.tlsVersion, QRAW.tlsVersion);
 
     const errorRateNum = parseFloat(String(errorRate.value ?? '0').replace('%', ''));
     const errorTone = errorRateNum > 5 ? 'critical' : errorRateNum > 1 ? 'warning' : 'positive';
@@ -214,10 +259,10 @@ const WebApiPerformance: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Four-Stage Request Timing Breakdown (avg ms per stage)" subtitle="Web Dispatcher dt1–dt4 average timing per day">
-                    <TimeSeriesChart query={Q.timing} height={280} palette="volume" />
+                    <TimeSeriesChart query={qTiming} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="Response Time (Avg / Max) Over Time" subtitle="Average and peak response time per day across both sources">
-                    <TimeSeriesChart query={Q.percentiles} height={280} palette="volume" />
+                    <TimeSeriesChart query={qPercentiles} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -229,13 +274,13 @@ const WebApiPerformance: React.FC = () => {
 
             <FullWidthPanel>
                 <FramedPanel title="HTTP Error Rate vs Cloud Connector Auth Failure Rate" subtitle="Two correlated rates — daily">
-                    <TimeSeriesChart query={Q.errorAuth} height={280} palette="errors" />
+                    <TimeSeriesChart query={qErrorAuth} height={280} palette="errors" />
                 </FramedPanel>
             </FullWidthPanel>
 
             <PanelGrid2>
                 <FramedPanel title="TLS Version Distribution" subtitle="Web Dispatcher TLS protocol mix">
-                    <TimeSeriesChart query={Q.tlsVersion} height={260} palette="volume" />
+                    <TimeSeriesChart query={qTlsVersion} height={260} palette="volume" />
                 </FramedPanel>
                 <FramedPanel search={tlsCipher} title="TLS Cipher Suite Distribution" subtitle="Negotiated cipher suites ranked by count">
                     <DataTable columns={TLS_CIPHER_COLS} rows={tlsCipher.results} loading={tlsCipher.loading} error={tlsCipher.error} emptyMessage="No TLS cipher data in this time range." />

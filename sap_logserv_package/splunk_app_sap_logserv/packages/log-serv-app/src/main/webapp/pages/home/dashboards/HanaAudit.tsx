@@ -7,6 +7,8 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import {
     buildDashboardUrl,
@@ -67,7 +69,7 @@ const PW = `| inputlookup ${ROLL} where metric="password" ${RANGE}`;
 const FAIL = 'status!="SUCCESSFUL" status!="(none)"';
 const DCU = 'dc(eval(if(executing_user="(none)",null(),executing_user)))';
 
-const Q = {
+const Q_BASE = {
     kpiTotal: `${MAIN} | stats sum(count) as count`,
     kpiFailures: `${MAIN} | search ${FAIL} | stats sum(count) as count`,
     kpiUsers: `${MAIN} | stats ${DCU} as users`,
@@ -92,9 +94,47 @@ const Q = {
     afterHoursAdmin: `\`sap_logserv_idx_macro\` ${ST} is_admin_user=true | eval is_weekend=if(strftime(_time,"%w") IN ("0","6"), 1, 0) | where is_business_hours=false OR is_weekend=1 | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Day=strftime(_time, "%a") | eval Hour=strftime(_time, "%H:%M") | eval Period=case(is_weekend=1 AND is_business_hours=false, "Weekend / After Hours", is_weekend=1, "Weekend", 1=1, "After Hours") | sort -_time | table Time, Day, Period, executing_user, action_type, status, host, client_ip`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw
+ * sap:hana:audit scan its rollup metric precomputes (reconstructed from
+ * [logserv_hana_aggregate]; action_category + risk_level are always present on
+ * this sourcetype, so the main-metric scope == the raw scope). The strict-
+ * failure guard `status!="SUCCESSFUL"` already excludes null status on raw
+ * (null-comparison is false), matching the cached `status!="(none)"` sentinel
+ * exclusion; afterHours keeps the LOOSE `if(status="SUCCESSFUL",…)` (null →
+ * Failures on both arms). UA/SEC/PW classifications + the `password \*\*\*`
+ * regex are reused verbatim. highRiskEvents/afterHoursAdmin stay raw; sparklines
+ * cached. hour/day derive from _time (== hour-aligned bucket_ts on whole-hour TZ).
+ * ------------------------------------------------------------------------- */
+const RAW_HANA = '`sap_logserv_idx_macro` sourcetype=sap:hana:audit';
+const UA_CLASS = 'eval admin_action=case(match(sql_statement,"(?i)reset connect"),"Password Reset", match(sql_statement,"(?i)activate user"),"User Activation", match(sql_statement,"(?i)deactivate user"),"User Deactivation", match(sql_statement,"(?i)disable password"),"Policy Change", 1=1,"Other Admin")';
+const SEC_CLASS = 'eval event_type=case(status!="SUCCESSFUL","Failed Operation", match(action_type,"(?i)grant"),"Permission Grant", match(action_type,"(?i)revoke"),"Permission Revoke", match(action_type,"(?i)(create|drop)"),"Object Modification", 1=1,"Other Security Event")';
+const PW_CLASS = 'eval password_action=case(match(sql_statement,"password \\*\\*\\*"),"Password Change", match(sql_statement,"disable password"),"Disable Lifetime", match(sql_statement,"reset.*connect"),"Reset Attempts", 1=1,"Other")';
+const QRAW_BASE = {
+    kpiTotal: `${RAW_HANA} | stats count`,
+    kpiFailures: `${RAW_HANA} status!="SUCCESSFUL" | stats count`,
+    kpiUsers: `${RAW_HANA} | stats dc(executing_user) as users`,
+    userAdminTimeline: `${RAW_HANA} | where match(audit_category,"HEC Audit - User Administration") | ${UA_CLASS} | timechart span=1d count by admin_action | fillnull value=0`,
+    securityEventsTimeline: `${RAW_HANA} | where status!="SUCCESSFUL" OR match(action_type,"(?i)(grant|revoke|create|drop)") | ${SEC_CLASS} | timechart span=1d count by event_type | fillnull value=0`,
+    auditCategoryBreakdown: `${RAW_HANA} | stats count by action_category | sort -count`,
+    riskTimeline: `${RAW_HANA} | timechart span=1d count by risk_level | fillnull value=0`,
+    afterHours: `${RAW_HANA} | eval hour=strftime(_time, "%H") | eval result=if(status="SUCCESSFUL", "Successes", "Failures") | chart count over hour by result | fillnull value=0`,
+    healthScore: `${RAW_HANA} | eval day = strftime(_time, "%Y-%m-%d") | stats count as daily_events, dc(executing_user) as active_users, sum(eval(if(status!="SUCCESSFUL", 1, 0))) as daily_failures by day | eval success_rate = round(((daily_events - daily_failures)/daily_events)*100, 1) | sort day | table day, daily_events, active_users, daily_failures, success_rate`,
+    passwordMgmt: `${RAW_HANA} | where match(sql_statement,"(?i)password") | ${PW_CLASS} | stats count by password_action, target_user, executing_user, client_ip | sort -count, password_action`,
+    failedByHost: `${RAW_HANA} status!="SUCCESSFUL" host=* | stats count by host | sort -count`,
+    topUsers: `${RAW_HANA} executing_user=* | stats count as Events, dc(action_type) as ActionTypes, sum(eval(if(status!="SUCCESSFUL",1,0))) as Failures by executing_user | sort -Events`,
+    clientIps: `${RAW_HANA} client_ip=* | stats count as Events, dc(executing_user) as Users, sum(eval(if(status!="SUCCESSFUL",1,0))) as Failures, max(_time) as last_seen by client_ip | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M") | sort -Events`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -157,18 +197,28 @@ const AFTER_HOURS_COLS: ColumnDef[] = [
 ];
 
 const HanaAudit: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const failures = useFirstRowField(Q.kpiFailures, 'count');
-    const users = useFirstRowField(Q.kpiUsers, 'users');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const failures = useFirstRowFieldHybrid(Q.kpiFailures, QRAW.kpiFailures, 'count');
+    const users = useFirstRowFieldHybrid(Q.kpiUsers, QRAW.kpiUsers, 'users');
 
-    const healthScore = useSearch({ query: Q.healthScore });
-    const auditCategory = useSearch({ query: Q.auditCategoryBreakdown });
-    const passwordMgmt = useSearch({ query: Q.passwordMgmt });
-    const failedByHost = useSearch({ query: Q.failedByHost });
-    const topUsers = useSearch({ query: Q.topUsers });
-    const clientIps = useSearch({ query: Q.clientIps });
-    const highRisk = useSearch({ query: Q.highRiskEvents });
-    const afterHoursAdmin = useSearch({ query: Q.afterHoursAdmin });
+    const healthScore = useHybridSearch({ cached: Q.healthScore, raw: QRAW.healthScore });
+    const auditCategory = useHybridSearch({ cached: Q.auditCategoryBreakdown, raw: QRAW.auditCategoryBreakdown });
+    const passwordMgmt = useHybridSearch({ cached: Q.passwordMgmt, raw: QRAW.passwordMgmt });
+    const failedByHost = useHybridSearch({ cached: Q.failedByHost, raw: QRAW.failedByHost });
+    const topUsers = useHybridSearch({ cached: Q.topUsers, raw: QRAW.topUsers });
+    const clientIps = useHybridSearch({ cached: Q.clientIps, raw: QRAW.clientIps });
+    const highRisk = useSearch({ query: Q.highRiskEvents }); // raw listing
+    const afterHoursAdmin = useSearch({ query: Q.afterHoursAdmin }); // raw listing
+
+    // Charts take a query string → route once each (sub-hour -> raw).
+    const qUserAdminTimeline = useRoutedQuery(Q.userAdminTimeline, QRAW.userAdminTimeline);
+    const qSecurityEventsTimeline = useRoutedQuery(Q.securityEventsTimeline, QRAW.securityEventsTimeline);
+    const qRiskTimeline = useRoutedQuery(Q.riskTimeline, QRAW.riskTimeline);
+    const qAfterHours = useRoutedQuery(Q.afterHours, QRAW.afterHours);
 
     const failuresTone = Number(failures.value ?? 0) > 0 ? 'critical' : 'neutral';
 
@@ -230,11 +280,11 @@ const HanaAudit: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="User Administration Activity Timeline" subtitle="Password resets, activations, deactivations, policy changes">
-                    <TimeSeriesChart query={Q.userAdminTimeline} height={260} palette="auth" />
+                    <TimeSeriesChart query={qUserAdminTimeline} height={260} palette="auth" />
                 </FramedPanel>
                 <FramedPanel title="Security Events Timeline" subtitle="Failures + grants/revokes/DDL by event type">
                     <TimeSeriesChart
-                        query={Q.securityEventsTimeline}
+                        query={qSecurityEventsTimeline}
                         height={260}
                         seriesColorsByField={{
                             'Failed Operation': '#b50101',
@@ -250,7 +300,7 @@ const HanaAudit: React.FC = () => {
                     <DataTable columns={CATEGORY_COLS} rows={auditCategory.results} loading={auditCategory.loading} error={auditCategory.error} emptyMessage="No HANA audit events in this time range." />
                 </FramedPanel>
                 <FramedPanel title="Risk-Tiered Event Timeline" subtitle="Daily volume by risk_level">
-                    <TimeSeriesChart query={Q.riskTimeline} height={260} palette="status" />
+                    <TimeSeriesChart query={qRiskTimeline} height={260} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -281,7 +331,7 @@ const HanaAudit: React.FC = () => {
             <FullWidthPanel>
                 <FramedPanel title="Activity by Hour of Day" subtitle="Successes vs Failures by hour">
                     <TimeSeriesChart
-                        query={Q.afterHours}
+                        query={qAfterHours}
                         height={240}
                         seriesColorsByField={{ Failures: '#dc4e41', Successes: '#009ceb' }}
                     />

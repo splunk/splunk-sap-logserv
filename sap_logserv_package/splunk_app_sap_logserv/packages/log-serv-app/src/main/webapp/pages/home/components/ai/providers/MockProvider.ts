@@ -97,4 +97,25 @@ export class MockProvider implements AIProvider {
     async validateConfig(): Promise<ConfigValidation> {
         return { ok: true };
     }
+
+    /**
+     * Mock model discovery — returns the static baseline PLUS one
+     * discovered-only entry after a tick. Exercises the full discovery
+     * pipeline (sanitize → KV Store cache → merge → picker/audit) with
+     * no vendor key: after a refresh the picker shows 3 models instead
+     * of 2, making the mechanism visibly verifiable on any install.
+     * Session 079 / build 275.
+     */
+    async listModels(): Promise<ReadonlyArray<ModelDescriptor>> {
+        await new Promise<void>((resolve) => setTimeout(resolve, 50));
+        return [
+            ...MOCK_MODELS,
+            {
+                id: 'mock-discovered',
+                label: 'Mock — Discovered (via model discovery)',
+                contextWindow: 128_000,
+                supportsTools: true,
+            },
+        ];
+    }
 }

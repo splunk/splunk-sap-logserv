@@ -94,3 +94,17 @@ In a RISE / SAP ECS deployment, SAP provisions and manages the Azure storage acc
     - Install the LogServ Azure add-on per Heavy Forwarder (directly, not via the Deployment Server)
     - Configure one `sap_logserv_azure_queue` input with the storage account, queue name, and SAS values SAP provides
     - No AWS-style secondary account or cross-account IAM role — Azure uses a SAS token scoped to the Storage Queue + Blob container
+
+### :material-circle-box:{ .taiconcolor } Google Cloud Platform (GCP)
+
+When your SAP ECS environment runs in **Google Cloud Platform**, LogServ logs land in a Google Cloud Storage (GCS) bucket instead of Amazon S3. Ingest is handled by the first-party **Splunk TA for SAP LogServ on GCP** add-on (`splunk_ta_sap_logserv_gcp`) — the GCP counterpart to the Splunk Add-on for AWS — installed on **each Heavy Forwarder** (directly, **not** distributed by the Deployment Server, since its service-account key lives in the add-on's own `local/`). Its `sap_logserv_gcp_pubsub` modular input pulls a **Pub/Sub subscription** fed by the bucket's `OBJECT_FINALIZE` notifications and fetches each object with a service-account key, emitting `sourcetype = sap_logserv_logs` into the same downstream pipeline (routing, filtering, dashboards, ES integration) as the AWS path.
+
+In a RISE / SAP ECS deployment, SAP provisions and manages the GCS bucket, bucket notification, Pub/Sub topic, and subscription in the SAP-managed GCP project — you create nothing in GCP; you install the add-on and configure one input with the values SAP provides (project ID, subscription name, service-account JSON key).
+
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-crop-square:{ .cboxmove } [GCP Setup Guide](gcp-setup.md)
+??? indented-note "Note"
+    Notification-driven GCS ingest — the GCP equivalent of the AWS SQS-Based S3 Connect scenario.
+
+    - Install the LogServ GCP add-on per Heavy Forwarder (directly, not via the Deployment Server)
+    - Configure one `sap_logserv_gcp_pubsub` input with the project ID, subscription name, and service-account key SAP provides
+    - No AWS-style secondary account or cross-account IAM role — GCP uses a service-account key with `roles/pubsub.subscriber` + `roles/storage.objectViewer`

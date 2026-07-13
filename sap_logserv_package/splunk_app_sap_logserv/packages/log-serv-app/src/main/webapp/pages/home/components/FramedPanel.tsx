@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
 import { PanelMeta, PanelMetaContext, PanelActions } from './PanelMeta';
@@ -16,31 +16,57 @@ interface PanelRootProps {
      *  state that brightens the border + lifts with a subtle shadow.
      *  Build 157 / session 027 task 4 — wires KPI / chart drilldowns. */
     $clickable?: boolean;
+    /** When true, the panel stretches to 100% of its parent's height and
+     *  the Body becomes a min-height:0 flex column so children can scroll
+     *  internally instead of being clipped by an ancestor's
+     *  overflow:hidden. Opt-in — used by the topology Live Activity panel
+     *  (build 280); no effect on any other panel. */
+    $fillHeight?: boolean;
 }
 
 const Root = styled.section<PanelRootProps>`
+    /* Magnetic container-card (§6, build 254): surface bg, 1px border,
+       4px radius, resting xs shadow. Hover (clickable) swaps the border to
+       the interact accent and lifts to the md shadow — replaces the old
+       cyan glow. Transitions at Magnetic's fast timing (150ms). */
     background: ${logservTheme.colors.panelBackground};
     border: 1px solid ${logservTheme.colors.panelBorder};
-    border-radius: ${logservTheme.radius.small};
+    border-radius: ${logservTheme.radius.medium};
     padding: ${(p) => (p.$compact ? logservTheme.spacing.md : logservTheme.spacing.lg)};
     color: ${logservTheme.colors.textActive};
     overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 
     ${(p) =>
         p.$clickable
             ? `
         cursor: pointer;
-        transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+        transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 
         &:hover {
-            border-color: ${logservTheme.colors.cyanLight};
-            box-shadow: 0 0 0 1px ${logservTheme.colors.cyanAccent};
+            border-color: ${logservTheme.colors.cyanAccent};
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
         }
 
         &:focus-visible {
-            outline: 2px solid ${logservTheme.colors.cyanLight};
+            outline: 2px solid ${logservTheme.colors.focusRing};
             outline-offset: 2px;
         }
+    `
+            : ''}
+
+    ${(p) =>
+        p.$fillHeight
+            ? `
+        /* border-box is explicit: the app has no global box-sizing reset
+         * (ambient default is content-box), and height:100% must mean the
+         * BORDER box fills the parent — otherwise padding + borders push
+         * the panel's bottom outline past the parent's overflow:hidden. */
+        box-sizing: border-box;
+        height: 100%;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
     `
             : ''}
 `;
@@ -51,12 +77,17 @@ const Header = styled.header`
     justify-content: space-between;
     gap: ${logservTheme.spacing.sm};
     margin-bottom: ${logservTheme.spacing.md};
+    /* Only meaningful when Root is a fillHeight flex column: keep the
+     * header at its natural height so the Body absorbs all flexing. Inert
+     * in the default block layout. */
+    flex-shrink: 0;
 `;
 
 const Title = styled.h2`
     margin: 0;
     color: ${logservTheme.colors.textActive};
-    font-size: ${logservTheme.fontSize.body};
+    /* Magnetic sub-section title: 14px semibold (§6, build 254). */
+    font-size: 14px;
     font-weight: ${logservTheme.fontWeight.semibold};
 `;
 
@@ -65,8 +96,18 @@ const Subtitle = styled.div`
     font-size: ${logservTheme.fontSize.small};
 `;
 
-const Body = styled.div`
+const Body = styled.div<{ $fill?: boolean }>`
     color: ${logservTheme.colors.textDefault};
+
+    ${(p) =>
+        p.$fill
+            ? `
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    `
+            : ''}
 `;
 
 /** Right-side header cluster: any caller-supplied `actions` plus the build-234
@@ -92,15 +133,19 @@ interface FramedPanelProps {
      *  panels, or where the chrome would be redundant). */
     noToolbar?: boolean;
     compact?: boolean;
+    /** Stretch the panel to fill its parent's height and let children
+     *  manage their own internal scrolling (Body becomes a min-height:0
+     *  flex column). See PanelRootProps.$fillHeight. */
+    fillHeight?: boolean;
     children?: ReactNode;
     className?: string;
     /** Click handler — when set, the whole panel becomes interactive
      *  (cursor: pointer + hover state) and clicking anywhere in the panel
-     *  fires the handler. Used for drilldowns. Inner clickable elements
-     *  (e.g., chart points, table cells) still capture their own clicks
-     *  before the panel-level handler fires; the panel's handler only
-     *  catches clicks on the chrome and on chart background area.
-     *  Build 157 / session 027 task 4. */
+     *  fires the handler. Used for drilldowns. Clicks on interactive
+     *  descendants (buttons, links, form controls, Highcharts chrome) and
+     *  clicks synthesized at the end of a drag (chart zoom selection) do
+     *  NOT fire the handler — see the guards in the click handler below.
+     *  Build 157 / session 027 task 4; guards build 253. */
     onClick?: () => void;
     /** Tooltip / aria-label for the click affordance. Optional but
      *  strongly recommended when `onClick` is set. */
@@ -114,6 +159,7 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
     search,
     noToolbar,
     compact,
+    fillHeight,
     children,
     className,
     onClick,
@@ -124,6 +170,11 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
     // PanelActions toolbar.
     const [captured, setCaptured] = useState<PanelMeta | null>(null);
     const ctx = useMemo(() => ({ report: setCaptured }), []);
+    /* Build 253 — pointer travel between pointerdown and click. A drag inside
+     * the panel (chart zoom selection, text selection) ends with a browser-
+     * synthesized click on the common ancestor of the down/up targets — this
+     * panel — which must not count as a drilldown click. */
+    const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
     const meta = search ?? captured;
     const showToolbar = !noToolbar && !!meta;
     const headerRight =
@@ -140,8 +191,63 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
             <Root
                 $compact={compact}
                 $clickable={isClickable}
+                $fillHeight={fillHeight}
                 className={className}
-                onClick={onClick}
+                onPointerDown={
+                    isClickable
+                        ? (e: React.PointerEvent) => {
+                              pointerDownRef.current = { x: e.clientX, y: e.clientY };
+                          }
+                        : undefined
+                }
+                onClick={
+                    isClickable
+                        ? (e: React.MouseEvent) => {
+                              /* Ignore clicks originating on interactive elements
+                               * INSIDE the panel — they handle themselves and must
+                               * not ALSO fire the drilldown (which opens a new tab
+                               * on top of the control's own action). This guard
+                               * must be GENERIC: @splunk/charting-bundle renders
+                               * its zoom chrome (Reset Zoom / pan-left / pan-right)
+                               * as plain HTML <button>s whose class names are
+                               * build-hashed CSS-module strings (e.g.
+                               * resetZoomButton_button-styles_<hash>) — a class
+                               * allowlist can never match them (build-252 lesson;
+                               * verified against the live control, build 253).
+                               * The Root itself carries role="button" for a11y,
+                               * hence the currentTarget exclusion. The
+                               * .highcharts-* entries cover Highcharts' SVG chrome
+                               * (legend items, SVG buttons, scrollbar), which are
+                               * not HTML interactive elements. */
+                              const t = e.target as Element | null;
+                              if (t && typeof t.closest === 'function') {
+                                  const interactive = t.closest(
+                                      'button, a, input, select, textarea, label, summary, ' +
+                                          '[role="button"], [role="link"], [role="menuitem"], ' +
+                                          '[role="tab"], [role="option"], [role="checkbox"], [role="switch"], ' +
+                                          '.highcharts-reset-zoom, .highcharts-button, ' +
+                                          '.highcharts-legend, .highcharts-scrollbar',
+                                  );
+                                  if (interactive && interactive !== e.currentTarget) {
+                                      return;
+                                  }
+                              }
+                              /* Drag guard: pointer travel > 8px between
+                               * pointerdown and click means a drag ended inside
+                               * the panel, not a click on it. */
+                              const down = pointerDownRef.current;
+                              pointerDownRef.current = null;
+                              if (down) {
+                                  const dx = e.clientX - down.x;
+                                  const dy = e.clientY - down.y;
+                                  if (dx * dx + dy * dy > 64) {
+                                      return;
+                                  }
+                              }
+                              if (onClick) onClick();
+                          }
+                        : undefined
+                }
                 role={isClickable ? 'button' : undefined}
                 tabIndex={isClickable ? 0 : undefined}
                 title={isClickable ? clickTitle : undefined}
@@ -166,7 +272,7 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
                         {headerRight}
                     </Header>
                 )}
-                <Body>{children}</Body>
+                <Body $fill={fillHeight}>{children}</Body>
             </Root>
         </PanelMetaContext.Provider>
     );

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import SearchJob from '@splunk/search-job';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useRefreshContext } from '../state/RefreshProvider';
+import { useGlobalRefresh } from '../state/GlobalRefreshProvider';
 
 export interface UseSearchOptions {
     query: string;
@@ -63,6 +64,7 @@ export const useSearch = <TRow = Record<string, unknown>>({
 }: UseSearchOptions): UseSearchResult<TRow> => {
     const { timeRange } = useTimeRange();
     const { refreshNonce: contextNonce } = useRefreshContext();
+    const { globalRefreshNonce } = useGlobalRefresh();
     const [results, setResults] = useState<TRow[] | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
@@ -77,8 +79,10 @@ export const useSearch = <TRow = Record<string, unknown>>({
     const effectiveLatest = latest ?? timeRange.latest;
     /** Combined re-run trigger: explicit prop (manual refresh button etc.)
      *  + per-dashboard auto-refresh tick from the RefreshProvider context
-     *  + this panel's own Refresh-action nonce (build 234). */
-    const effectiveRefreshNonce = (refreshNonce ?? 0) + contextNonce + localNonce;
+     *  + this panel's own Refresh-action nonce (build 234)
+     *  + the global nav-bar Refresh button nonce (session 088). */
+    const effectiveRefreshNonce =
+        (refreshNonce ?? 0) + contextNonce + localNonce + globalRefreshNonce;
 
     useEffect(() => {
         if (!enabled || !query) {

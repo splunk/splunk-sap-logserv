@@ -9,7 +9,7 @@ Every panel reads from the cheapest *correct* data source for what it shows. The
 | Tier | Used for | Freshness | Cost |
 |---|---|---|---|
 | **`tstats` on indexed fields** | Pure counts and averages over indexed dimensions (event volumes, host / sourcetype / cloud-provider breakdowns) | Real-time | Very low — reads the index's tsidx, no raw-event scan |
-| **KV-Store precompute rollups** | Most charts, tables, and KPIs across the dashboard suite | Hourly (most-recently-completed hour) | Near-zero at read time — a scheduled search precomputes the data once per hour |
+| **KV-Store precompute rollups** | Most charts, tables, and KPIs across the dashboard suite | Hourly for wide ranges; **real-time for sub-hour ranges** (automatic — see below) | Near-zero at read time — a scheduled search precomputes the data once per hour |
 | **Raw events** | Per-event listings, streamstats periodicity (beaconing), and a few timing traces that cannot be rolled up | Real-time | Bounded with `\| head N` where the panel is a time-ordered listing |
 
 !!! info "No CIM data-model acceleration is required"
@@ -130,10 +130,17 @@ How these scheduled searches behave depends on the search-head topology:
 ## :material-circle-box:{ .taiconcolor } What "data freshness" means per panel
 
 - **`tstats` and raw panels are real-time** — they reflect events the instant they are indexed.
-- **Rolled-up panels are accurate to the most-recently-completed hour.** The hourly aggregation runs at five minutes past each hour, so within the current partial hour a rolled-up panel shows data through the last completed hour, not the live partial hour.
+- **Rolled-up panels are accurate to the most-recently-completed hour, for time ranges of 90 minutes or wider.** The hourly aggregation runs at five minutes past each hour, so within the current partial hour a rolled-up panel shows data through the last completed hour, not the live partial hour.
+- **Sub-hour time ranges are real-time** — every rolled-up panel switches to raw events automatically (see below).
 
-!!! lightning "Investigating live, sub-hour activity"
-    For minute-level investigation, use a panel's **Open in Search** toolbar action (see below) to jump into Splunk's Search app with the panel's SPL and your selected time range pre-applied — that runs against raw events in real time. The rolled-up dashboard panels are tuned for trend and volume analysis over the hourly grain, not live tailing.
+### Sub-hour time ranges (automatic)
+
+The rollups are keyed on whole-hour buckets, so a **sub-hour** time range — anything narrower than 90 minutes, such as Splunk's *Last 15 minutes* or *Last 60 minutes* — cannot be answered correctly from the hourly cache alone: a window that falls inside a single hour matches no completed bucket (the panel would read **empty**), and a window that straddles an hour boundary would pull the whole hour (**over-counting**). To keep short ranges correct, every rolled-up panel **automatically routes a sub-hour window to its underlying raw-event query** instead of the cache — so a *Last 15 minutes* range shows accurate, real-time data at minute granularity with **no action needed**. For a window of 90 minutes or wider, the panel reads the fast hourly cache as usual.
+
+The switch is based purely on the selected range's span (a 90-minute threshold), is transparent to the user, and applies across every rolled-up dashboard — including the two Sourcetype Mapping link graphs and the Host Details Role Activity tab. Because the sub-hour path runs the panel's actual raw query, it is **exact** — not an approximation of the cache. (The trade-off is only speed, not correctness: a sub-hour raw query is inexpensive because it scans a small window, while a multi-day raw scan is what the hourly cache exists to avoid.)
+
+!!! lightning "Investigating live activity"
+    Sub-hour ranges are already real-time (above), so you can simply narrow the time-range picker to see live activity on any rolled-up dashboard. For deeper ad-hoc investigation at any range, a panel's **Open in Search** toolbar action jumps into Splunk's Search app with the panel's SPL and your selected time range pre-applied, against raw events.
 
 ## :material-circle-box:{ .taiconcolor } The Dashboard Data settings tab
 
@@ -195,8 +202,9 @@ KPI single-value cards show the loading spinner but no toolbar (they have no tab
 
 ## :material-lightning-bolt:{ .taiconcolor } What to know at a glance
 
-- **Most panels are hourly-fresh; counts and per-event listings are real-time.** If a rolled-up trend looks an hour behind, that's expected.
+- **Most panels are hourly-fresh; counts and per-event listings are real-time.** If a rolled-up trend looks an hour behind at a multi-day range, that's expected.
+- **Sub-hour time ranges (under 90 minutes) are real-time automatically** — a rolled-up panel routes a *Last 15 minutes*-style window to its raw query, so short ranges stay minute-accurate with no manual step.
 - **Scheduled searches are staggered into collision-free bands** — hourly aggregates at `:03`–`:28`, daily retention at `:30`–`:58`, and the ES content (enabled by default) in the disjoint minutes (`:00`–`:02`, `:29`, odd `:31`–`:59`) — so no two enabled scheduled searches collide.
 - **On a new high-volume install, run Settings → Dashboard Data → Run backfill once** to populate 30 days of history immediately.
 - **No CIM acceleration is needed** for dashboard performance.
-- **Use a panel's Open in Search action** for live, sub-hour investigation against raw events.
+- **Use a panel's Open in Search action** for ad-hoc raw-event investigation at any range (sub-hour ranges are already real-time on the dashboard itself).

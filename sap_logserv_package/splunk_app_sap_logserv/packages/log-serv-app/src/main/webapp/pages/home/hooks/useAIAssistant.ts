@@ -1781,7 +1781,7 @@ const runOneTurn = async (
     await provider.stream({
         messages: history,
         tools,
-        model: ctx.selectedModel || provider.models[0]?.id || 'claude-sonnet-4-6',
+        model: ctx.selectedModel || provider.models[0]?.id || 'claude-sonnet-5',
         onChunk,
         abortSignal: controller.signal,
         maxTokens: MAX_OUTPUT_TOKENS,

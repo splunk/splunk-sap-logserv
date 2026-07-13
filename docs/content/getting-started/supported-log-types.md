@@ -12,14 +12,14 @@ All events are in NDJSON format with metadata (like _time, host, source, etc.) a
 To limit index size, only the _raw field is ingested from each event -- metadata fields are either mapped to Splunk's native metadata fields or dropped.
 However `clz_dir` and `clz_subdir` fields are preserved to maintain backtracking capabilities. These fields correspond to the directory tree of the original data in object storage.
 
-The Data TA also stamps two attribution fields at index time on every event: `splunk_solution` (always `splunk_for_sap_logserv`, identifying events that flowed through this solution) and `cloud_provider` (`aws` or `azure`, identifying the cloud the data was ingested from). The `cloud_provider` value is controlled by the Data TA's **Configuration → Cloud Provider** tab; see [Configuring Filters → Cloud Provider Attribution](../install-setup/configure-filters.md#cloud-provider-attribution) for details.
+The Data TA also stamps two attribution fields at index time on every event: `splunk_solution` (always `splunk_for_sap_logserv`, identifying events that flowed through this solution) and `cloud_provider` (`aws`, `azure`, or `gcp`, identifying the cloud the data was ingested from). The `cloud_provider` value is controlled by the Data TA's **Configuration → Cloud Provider** tab; see [Configuring Filters → Cloud Provider Attribution](../install-setup/configure-filters.md#cloud-provider-attribution) for details.
 
-!!! note "Ingest channel: AWS S3 or Azure Blob Storage"
-    The sourcetype mappings below apply identically to both ingest channels — **AWS S3** (via the Splunk Add-on for AWS) and **Azure Blob Storage** (via the Splunk TA for SAP LogServ on Azure add-on). The Data TA's index-time routing transforms key on the `source` field's `clz_dir/clz_subdir` segments, which the SAP LogServ collector writes the same way regardless of object-storage destination. See [Azure Setup Guide](../install-setup/azure-setup.md) for Azure-specific configuration; AWS S3 is covered under [Prerequisites](../install-setup/prerequisites.md). Events from either channel carry an indexed `cloud_provider` field (`aws` or `azure`) for cross-cloud reporting.
+!!! note "Ingest channel: AWS S3, Azure Blob Storage, or Google Cloud Storage"
+    The sourcetype mappings below apply identically to all three ingest channels — **AWS S3** (via the Splunk Add-on for AWS), **Azure Blob Storage** (via the Splunk TA for SAP LogServ on Azure add-on), and **Google Cloud Storage** (via the Splunk TA for SAP LogServ on GCP add-on). The Data TA's index-time routing transforms key on the `source` field's `clz_dir/clz_subdir` segments, which the SAP LogServ collector writes the same way regardless of object-storage destination. See the [Azure Setup Guide](../install-setup/azure-setup.md) and the [GCP Setup Guide](../install-setup/gcp-setup.md) for cloud-specific configuration; AWS S3 is covered under [Prerequisites](../install-setup/prerequisites.md). Events from any channel carry an indexed `cloud_provider` field (`aws`, `azure`, or `gcp`) for cross-cloud reporting.
 
 ### :material-circle-box:{ .taiconcolor } LogServ Object Storage Path Structure
 
-The log files in the SAP LogServ object storage location (AWS S3 bucket OR Azure Blob Storage container) follow this path pattern:
+The log files in the SAP LogServ object storage location (AWS S3 bucket, Azure Blob Storage container, or GCS bucket) follow this path pattern:
 
 ```
 logserv/<clz_dir>/<clz_subdir>/<YYYY>/<MM>/<DD>/<filename>.json.gz
@@ -35,7 +35,9 @@ logserv/dns/binddns/2025/11/20/dns-def456.json.gz
 
 The `clz_dir/clz_subdir` values are used by the index-time filter to match include/exclude patterns. See [Configuring Filters](../install-setup/configure-filters.md) for details.
 
-## :material-circle-box:{ .taiconcolor } Sourcetype Mapping
+## :material-circle-box:{ .taiconcolor } Primary Supported Log Types
+
+These log types have **dedicated parsing logic** — index-time routing to a specific final sourcetype, plus search-time field extractions — to provide the most accurate parsing. The tables below show the sourcetype mapping for each.
 
 ### SAP HANA Audit (LogServ App)
 
@@ -60,14 +62,25 @@ The LogServ App provides search-time field extractions for 9 SAP ABAP applicatio
 | Source field value | Sourcetype assigned | Filter path |
 |-------------------|-------------------|-------------|
 | ABAP security audit log | `sap:abap:audit` | `abap/audit` |
-| ABAP dispatcher log | `sap:abap:dispatcher` | `abap/dispatcher` |
+| ABAP dispatcher log † | `sap:abap:dispatcher` | `abap/dispatcher` |
 | ABAP enqueue server log | `sap:abap:enqueueserver` | `abap/enqueueserver` |
-| ABAP event log | `sap:abap:event` | `abap/event` |
+| ABAP event log † | `sap:abap:event` | `abap/event` |
 | ABAP gateway log | `sap:abap:gateway` | `abap/gateway` |
 | ABAP ICM (Internet Communication Manager) log | `sap:abap:icm` | `abap/icm` |
 | ABAP message server log | `sap:abap:messageserver` | `abap/messageserver` |
 | ABAP sapstartsrv log | `sap:abap:sapstartsrv` | `abap/sapstartsrv` |
-| ABAP work process log | `sap:abap:workprocess` | `abap/workprocess` |
+| ABAP work process log † | `sap:abap:workprocess` | `abap/workprocess` |
+
+!!! warning "† Discontinued from LogServ scope — effective April 2026"
+    SAP discontinued three of the ABAP log types above from LogServ delivery **effective April 2026**:
+
+    - **ABAP work process log** — `sap:abap:workprocess`
+    - **ABAP dispatcher log** — `sap:abap:dispatcher`
+    - **ABAP event log** (external events) — `sap:abap:event`
+
+    LogServ no longer delivers new events for these sourcetypes. The LogServ App retains their parsing logic and dashboards, and any data already ingested remains fully searchable — but no new events will arrive through LogServ going forward.
+
+    **If you require continued collection of these logs, please contact SAP directly** to discuss the options available for your environment.
 
 ### SAP HANA Trace Logs (LogServ App)
 
@@ -157,3 +170,20 @@ Parsing absorbed natively into the LogServ App in v0.0.5.0 build 184 (from the a
 
 !!! tip "Filter Path Column"
     The **Filter path** column shows the `clz_dir/clz_subdir` value used in the index-time filter include/exclude patterns. A `--` means the log type does not currently have a filter-eligible transform. See [Configuring Filters](../install-setup/configure-filters.md) for details.
+
+## :material-circle-box:{ .taiconcolor } Secondary Supported Log Types
+
+The log types below are within LogServ's scope and **are ingested and fully searchable**, but they do not have the dedicated index-time routing and search-time field extractions that the Primary types above have. They remain under the base `sap_logserv_logs` sourcetype in raw form; detailed, per-type parsing may be added in a future release.
+
+These data sources are drawn from Section 2 ("Data sources") of the SAP LogServ service description and are the sources not covered by a Primary parser above.
+
+- **Network / Flow logs** — VPC/VNET network-traffic flow logs (source/destination IPs, ports, protocols, and traffic statistics). *Category-level in the source document; no dedicated `clz_dir/clz_subdir`.*
+- **WAF / F5 logs** — Web Application Firewall / F5 traffic and firewall system events (successful and failed connection attempts). *Category-level; no dedicated `clz_dir/clz_subdir`.*
+- **Database — SAP ASE (Sybase)** — ASE error log, Backup Server log, and Job scheduler error log (`sybase/install`).
+- **Database — Microsoft SQL Server** — MSSQL database audit logs (`MSSQLDBAudit`).
+- **SAP NetWeaver Java** — deploy, JSMON, JStart, server, ICM, security, and general trace/log files (`java/*`).
+- **SAP BusinessObjects (BOBJ — BI / BODS / IPS)** — BI/IPS, BODS and Jobserver, Webapp, Tomcat, and SAC Agent logs (`bobj_bi/*`, `bobj_bods/*`, `bobj_sacagent/*`).
+- **DP Agent (Data Provisioning Agent)** — framework alert and trace logs (`dpagent/alert`, `dpagent/trace`).
+
+!!! note "Out of scope"
+    Per the LogServ service description, **DB2 and MaxDB database logs are not in LogServ scope**, and are therefore not listed above.

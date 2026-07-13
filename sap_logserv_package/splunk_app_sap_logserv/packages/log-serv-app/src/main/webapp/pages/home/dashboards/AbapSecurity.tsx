@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildDashboardUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -86,7 +88,7 @@ const ICMERR = `| inputlookup ${ROLL} where metric="icmerr" ${RANGE}`;
 const GWHOST = `| inputlookup ${ROLL} where metric="gwhost" ${RANGE}`;
 const GWLATEST = `| inputlookup ${ROLL} where metric="gwlatest" ${RANGE}`;
 
-const Q = {
+const Q_BASE = {
     // Count KPIs use the empty-safe `stats count as n, …` idiom (icmerr is a
     // 0-row metric → kpiIcmErrors must read 0, not blank).
     kpiTotal: `${VOL} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
@@ -119,9 +121,44 @@ const Q = {
     sidInstance: `${VOL} | search sap_sid!="(none)" sap_instance!="(none)" | stats sum(count) as count by sap_sid sap_instance | sort -count`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw ABAP
+ * scan its rollup metric precomputes (reconstructed from
+ * [logserv_abapnet_aggregate] — status_cat + the ICM request-type decode are
+ * reused). "(none)" sentinels map to raw `field=*` / stats-by null-drop. gwHosts
+ * folds latest(gw_error_detail) into one pass (latest = latest NON-NULL, and
+ * gw_error_detail is null on non-error events, so it = the latest error detail —
+ * no join needed). "Last Error" is a latest-value column (byte-exact on real
+ * distinct-timestamp data, tie-ambiguous on the bulk-loaded demo).
+ * ------------------------------------------------------------------------- */
+const RAW_ABAP3 = '`sap_logserv_idx_macro` sourcetype IN ("sap:abap:audit","sap:abap:gateway","sap:abap:icm")';
+const RAW_ICM = '`sap_logserv_idx_macro` sourcetype="sap:abap:icm"';
+const RAW_GW = '`sap_logserv_idx_macro` sourcetype="sap:abap:gateway"';
+const STATUS_CAT = 'eval status_cat=case(icm_status_code>=200 AND icm_status_code<300, "2xx", icm_status_code>=300 AND icm_status_code<400, "3xx", icm_status_code>=400 AND icm_status_code<500, "4xx", icm_status_code>=500, "5xx", 1=1, "Other")';
+const ICM_REQ_DECODE = 'eval icm_request_type = case(icm_request_type=="ASYNC_RFC", "Asynchronous RFC", icm_request_type=="HTTP_NORMAL", "HTTP Request", icm_request_type=="INTERNAL", "Internal Call", 1=1, icm_request_type)';
+const QRAW_BASE = {
+    kpiTotal: `${RAW_ABAP3} | stats count`,
+    kpiIcmErrors: `${RAW_ICM} icm_is_error="true" | stats count`,
+    kpiGwErrors: `${RAW_GW} gw_error_detail=* gw_error_detail!="" | stats count`,
+    volumeByType: `${RAW_ABAP3} | timechart span=1d count by sourcetype | fillnull value=0`,
+    icmStatus: `${RAW_ICM} icm_status_code=* | ${STATUS_CAT} | timechart span=1d count by status_cat | fillnull value=0`,
+    icmStatusPie: `${RAW_ICM} icm_status_code=* | ${STATUS_CAT} | stats count by status_cat | sort status_cat`,
+    icmPeers: `${RAW_ICM} icm_peer_ip=* | stats count as Requests, dc(icm_transaction_id) as Transactions, values(icm_protocol) as Protocols by icm_peer_ip | sort -Requests | rename icm_peer_ip as "Peer IP"`,
+    icmRequestTypes: `${RAW_ICM} icm_request_type=* | ${ICM_REQ_DECODE} | stats count by icm_request_type | sort -count`,
+    gwHosts: `${RAW_GW} | stats count as Events, values(gw_service) as Services, latest(gw_error_detail) as "Last Error" by gw_remote_host gw_function | sort -Events | rename gw_remote_host as "Remote Host" gw_function as "Function"`,
+    gwErrorsTimeline: `${RAW_GW} gw_error_detail=* gw_error_detail!="" | timechart span=1d count as "Gateway Errors" | fillnull value=0`,
+    sidInstance: `${RAW_ABAP3} | stats count by sap_sid sap_instance | sort -count`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -141,12 +178,24 @@ const GW_HOST_COLS: ColumnDef[] = [
 ];
 
 const AbapSecurity: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const icmErrors = useFirstRowField(Q.kpiIcmErrors, 'count');
-    const gwErrors = useFirstRowField(Q.kpiGwErrors, 'count');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const icmErrors = useFirstRowFieldHybrid(Q.kpiIcmErrors, QRAW.kpiIcmErrors, 'count');
+    const gwErrors = useFirstRowFieldHybrid(Q.kpiGwErrors, QRAW.kpiGwErrors, 'count');
 
-    const icmPeers = useSearch({ query: Q.icmPeers });
-    const gwHosts = useSearch({ query: Q.gwHosts });
+    const icmPeers = useHybridSearch({ cached: Q.icmPeers, raw: QRAW.icmPeers });
+    const gwHosts = useHybridSearch({ cached: Q.gwHosts, raw: QRAW.gwHosts });
+
+    // Charts / pies take a query string → route once each (sub-hour -> raw).
+    const qVolumeByType = useRoutedQuery(Q.volumeByType, QRAW.volumeByType);
+    const qIcmStatus = useRoutedQuery(Q.icmStatus, QRAW.icmStatus);
+    const qIcmStatusPie = useRoutedQuery(Q.icmStatusPie, QRAW.icmStatusPie);
+    const qIcmRequestTypes = useRoutedQuery(Q.icmRequestTypes, QRAW.icmRequestTypes);
+    const qGwErrorsTimeline = useRoutedQuery(Q.gwErrorsTimeline, QRAW.gwErrorsTimeline);
+    const qSidInstance = useRoutedQuery(Q.sidInstance, QRAW.sidInstance);
 
     const icmTone = Number(icmErrors.value ?? 0) > 0 ? 'critical' : 'neutral';
     const gwTone = Number(gwErrors.value ?? 0) > 0 ? 'critical' : 'neutral';
@@ -186,10 +235,10 @@ const AbapSecurity: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Event Volume by Sourcetype" subtitle="Daily volume across audit / gateway / ICM">
-                    <TimeSeriesChart query={Q.volumeByType} height={280} palette="volume" />
+                    <TimeSeriesChart query={qVolumeByType} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="ICM Status Codes Over Time" subtitle="Daily ICM responses bucketed 2xx/3xx/4xx/5xx">
-                    <TimeSeriesChart query={Q.icmStatus} height={280} palette="status" />
+                    <TimeSeriesChart query={qIcmStatus} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -199,10 +248,10 @@ const AbapSecurity: React.FC = () => {
                 </FramedPanel>
                 <PieStack>
                     <FramedPanel title="ICM Request Types" subtitle="Distribution by HTTP method">
-                        <PieChart query={Q.icmRequestTypes} categoryField="icm_request_type" valueField="count" height={310} donut />
+                        <PieChart query={qIcmRequestTypes} categoryField="icm_request_type" valueField="count" height={310} donut />
                     </FramedPanel>
                     <FramedPanel title="ICM Status Code Distribution" subtitle="Overall mix of 2xx / 3xx / 4xx / 5xx responses">
-                        <PieChart query={Q.icmStatusPie} categoryField="status_cat" valueField="count" height={310} donut palette="status" />
+                        <PieChart query={qIcmStatusPie} categoryField="status_cat" valueField="count" height={310} donut palette="status" />
                     </FramedPanel>
                 </PieStack>
                 <FramedPanel search={gwHosts} title="Gateway Remote Hosts" subtitle="Gateway peer hosts + functions ranked by event count — click a row for that host's full gateway event log">
@@ -212,11 +261,11 @@ const AbapSecurity: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Gateway Errors Over Time" subtitle="Daily gateway error count">
-                    <TimeSeriesChart query={Q.gwErrorsTimeline} height={280} palette="errors" />
+                    <TimeSeriesChart query={qGwErrorsTimeline} height={280} palette="errors" />
                 </FramedPanel>
                 <FramedPanel title="Activity by SID / Instance" subtitle="SID + instance combos ranked by event volume — click to open ABAP Operations"
                     onClick={goSidInstanceChart} clickTitle="Open ABAP Operations dashboard">
-                    <TimeSeriesChart query={Q.sidInstance} height={280} palette="volume" />
+                    <TimeSeriesChart query={qSidInstance} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
         </DashboardLayout>

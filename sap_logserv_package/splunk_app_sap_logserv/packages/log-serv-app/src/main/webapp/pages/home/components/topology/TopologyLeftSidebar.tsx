@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import FramedPanel from '../FramedPanel';
 import { logservTheme } from '../../styles/logservTheme';
 import { ALL_INTEGRATION_TYPES, edgeColor, integrationTypeLabel } from '../../topology/edgeStyle';
+import { useThemeMode } from '../../state/ThemeModeProvider';
 import type { IntegrationType, TopologyEdge, TopologyNode } from '../../topology/types';
 
 /**
@@ -215,6 +216,9 @@ const TopologyLeftSidebar: React.FC<TopologyLeftSidebarProps> = ({
     onSelectNode,
     onCollapse,
 }) => {
+    /* Resolved tokens for edgeColor() — swatches match the graph edges
+     * (build 246 / Phase 0). */
+    const { tokens } = useThemeMode();
     const sidNodes = nodes.filter((n) => n.kind !== 'partner');
     const allTypesOn = enabledTypes.size === ALL_INTEGRATION_TYPES.length;
 
@@ -295,7 +299,7 @@ const TopologyLeftSidebar: React.FC<TopologyLeftSidebarProps> = ({
                                         checked={active}
                                         onChange={() => onToggleType(t)}
                                     />
-                                    <TypeSwatch $color={edgeColor(t)} aria-hidden />
+                                    <TypeSwatch $color={edgeColor(t, tokens)} aria-hidden />
                                     <TypeLabelText $active={active}>
                                         {integrationTypeLabel(t)}
                                     </TypeLabelText>

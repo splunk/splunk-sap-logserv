@@ -71,7 +71,16 @@ export type AuditCategory =
      *  disclaimer hash, tcVersion, and yes/no choice. Per Splunk's
      *  standard optInVersion pattern — both choices are recorded.
      *  Build 100 / session 022. */
-    | 'ai_assistant_enable_acceptance';
+    | 'ai_assistant_enable_acceptance'
+    /** Governance event — a dynamic model-discovery fetch ran against
+     *  the active AI vendor's model-listing API (Settings refresh
+     *  button, credential save, or the lazy 24h TTL on chat-panel
+     *  mount). Records who triggered it, the provider, how many models
+     *  were discovered, duration, and ok/error — SOC analysts can see
+     *  every vendor-list call and when the pickable model set changed.
+     *  Metadata-only GET; no message content leaves the browser.
+     *  Session 079 / build 275. */
+    | 'model_discovery';
 
 export interface AuditEventBase {
     /** ISO-8601 timestamp client-side (Splunk also stamps _time). */
@@ -450,6 +459,40 @@ export interface AiAssistantEnableAcceptanceEvent extends AuditEventBase {
     optInChoice: 'yes' | 'no';
 }
 
+/** What initiated a model-discovery fetch. */
+export type ModelDiscoveryTrigger = 'settings_refresh' | 'credential_save' | 'ttl';
+
+/**
+ * Governance event recorded for every dynamic model-discovery fetch
+ * against the active provider's model-listing API. The fetch itself is
+ * an authenticated metadata GET (same trust envelope as the provider's
+ * `validateConfig` probe) — no message content, no event data.
+ *
+ * Both successes and failures are recorded. On failure, `error`
+ * carries the sanitized failure string (HTTP status / network error —
+ * never response payload content) so SOC analysts can distinguish
+ * "vendor list changed" from "key stopped working".
+ *
+ * Posted as a one-off event via `AuditWriter.postOneOff`, so it works
+ * from the Settings page, the credential-save hook, and the chat
+ * panel's TTL trigger uniformly. Session 079 / build 275.
+ */
+export interface ModelDiscoveryEvent extends AuditEventBase {
+    category: 'model_discovery';
+    /** Provider whose list was refreshed (e.g. 'anthropic'). */
+    provider: string;
+    /** What initiated the fetch. */
+    trigger: ModelDiscoveryTrigger;
+    /** Whether the vendor list fetch succeeded. */
+    ok: boolean;
+    /** Number of models discovered (post-sanitization; 0 on failure). */
+    modelCount: number;
+    /** Wall-clock duration of the vendor fetch in ms. */
+    durationMs: number;
+    /** Present when ok=false — sanitized failure string (≤300 chars). */
+    error?: string;
+}
+
 export type AuditEvent =
     | LocalOnlyEvent
     | VendorTier1Event
@@ -462,4 +505,5 @@ export type AuditEvent =
     | DailySpendCapHitEvent
     | ForwarderDisabledAcceptanceEvent
     | AuditForwarderFailureEvent
-    | AiAssistantEnableAcceptanceEvent;
+    | AiAssistantEnableAcceptanceEvent
+    | ModelDiscoveryEvent;

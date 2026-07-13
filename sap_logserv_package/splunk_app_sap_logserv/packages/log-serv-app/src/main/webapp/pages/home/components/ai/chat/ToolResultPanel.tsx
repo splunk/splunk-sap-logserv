@@ -4,7 +4,9 @@ import Column from '@splunk/visualizations/Column';
 import Line from '@splunk/visualizations/Line';
 import Pie from '@splunk/visualizations/Pie';
 import { logservTheme } from '../../../styles/logservTheme';
-import { paletteColors, ChartPalette, STATUS_FIELD_COLORS } from '../../../styles/chartPalettes';
+import { paletteColors, ChartPalette, statusFieldColors } from '../../../styles/chartPalettes';
+import { ThemeMode } from '../../../styles/magneticTokens';
+import { useThemeMode } from '../../../state/ThemeModeProvider';
 import FramedPanel from '../../FramedPanel';
 import DataTable, { ColumnDef } from '../../DataTable';
 import GradientWrap from '../../GradientWrap';
@@ -34,7 +36,6 @@ import { buildSplunkSearchUrl } from '../../../utils/drilldownUrls';
  * cannot accept React nodes.
  */
 
-const DEFAULT_GRADIENT_DARKEN = 0.4;
 const TIME_SERIES_HEIGHT = 320;
 const PIE_HEIGHT = 280;
 
@@ -249,6 +250,10 @@ const ToolResultPanel: React.FC<ToolResultPanelProps> = ({
     onClear,
 }) => {
     const inner = unwrapHidden(result);
+    // Phase 1b (build 254) — chart series colors are literal hex (Surface 2);
+    // resolve the active mode here (hooks can't run in the render helpers
+    // below, which are plain functions) and thread it through renderBody.
+    const { mode } = useThemeMode();
     const rows = useMemo(() => extractRows(inner), [inner]);
     const dashboardLinks = useMemo(() => resolveDashboardLinks(dashboard), [dashboard]);
     // Build 172 — drill-down URL for the "↗ Run SPL" chip in the
@@ -300,7 +305,7 @@ const ToolResultPanel: React.FC<ToolResultPanelProps> = ({
     return (
         <Wrapper>
             <FramedPanel title={title} subtitle={subtitle} actions={actions}>
-                {renderBody(inner, rows, renderHint, chartHint, chartPalette)}
+                {renderBody(inner, rows, renderHint, chartHint, chartPalette, mode)}
             </FramedPanel>
         </Wrapper>
     );
@@ -312,6 +317,7 @@ const renderBody = (
     renderHint: ToolResultPanelProps['renderHint'],
     chartHint?: ToolResultPanelProps['chartHint'],
     chartPalette?: ToolResultPanelProps['chartPalette'],
+    mode: ThemeMode = 'dark',
 ): React.ReactNode => {
     // Hard JSON-RPC errors AND soft MCP-server-domain errors
     // (`{status_code: 4xx, content: "..."}` embedded in content[0].text)
@@ -353,8 +359,8 @@ const renderBody = (
     );
     const renderChart = (hint: 'timechart' | 'kpi' | 'pie'): React.ReactNode => {
         switch (hint) {
-            case 'timechart': return renderTimeSeries(rows, chartPalette);
-            case 'pie': return renderPie(rows, chartPalette);
+            case 'timechart': return renderTimeSeries(rows, chartPalette, mode);
+            case 'pie': return renderPie(rows, chartPalette, mode);
             case 'kpi': return renderKpi(rows);
         }
     };
@@ -538,7 +544,7 @@ const buildDataSources = (
  *
  *   1. Severity-bucket field names (INFO / WARNING / ERROR / FATAL /
  *      UNKNOWN / CRITICAL, any case) → `status`. The `status` palette
- *      uses STATUS_FIELD_COLORS to map each severity to a fixed color
+ *      uses statusFieldColors(mode) to map each severity to a fixed color
  *      so the meaning sticks (red = error regardless of legend order).
  *   2. HTTP-status bucket names (`2xx`, `3xx`, `4xx`, `5xx`) → `status`
  *      for the same reason.
@@ -565,6 +571,7 @@ const autoDetectChartPalette = (valueKeys: string[]): ChartPalette => {
 const renderTimeSeries = (
     rows: Array<Record<string, unknown>>,
     chartPalette?: ChartPalette,
+    mode: ThemeMode = 'dark',
 ): React.ReactNode => {
     const allKeys = collectAllKeys(rows);
     const hasTime = allKeys.includes('_time');
@@ -583,7 +590,7 @@ const renderTimeSeries = (
     const fieldNames = ['_time', ...valueKeys];
     const dataSources = buildDataSources(rows, fieldNames);
     // Resolve palette: explicit > auto-detect. Status palette also wires
-    // up STATUS_FIELD_COLORS so severity field names get fixed colors.
+    // up statusFieldColors(mode) so severity field names get fixed colors.
     const effectivePalette = chartPalette ?? autoDetectChartPalette(valueKeys);
     const options: Record<string, unknown> = {
         backgroundColor: 'transparent',
@@ -592,9 +599,9 @@ const renderTimeSeries = (
         legendTruncation: 'ellipsisMiddle',
     };
     if (effectivePalette === 'status') {
-        options.seriesColorsByField = STATUS_FIELD_COLORS;
+        options.seriesColorsByField = statusFieldColors(mode);
     } else {
-        const colors = paletteColors(effectivePalette);
+        const colors = paletteColors(effectivePalette, mode);
         if (colors) options.seriesColors = colors;
     }
     const Viz = useLine ? Line : Column;
@@ -604,7 +611,8 @@ const renderTimeSeries = (
         </ChartContainer>
     );
     const wrapped = useLine ? chart : (
-        <GradientWrap darkenAmount={DEFAULT_GRADIENT_DARKEN}>{chart}</GradientWrap>
+        // GradientWrap self-resolves its darken per theme mode (build 254).
+        <GradientWrap>{chart}</GradientWrap>
     );
     return <LegendTitleTooltips>{wrapped}</LegendTitleTooltips>;
 };
@@ -612,6 +620,7 @@ const renderTimeSeries = (
 const renderPie = (
     rows: Array<Record<string, unknown>>,
     chartPalette?: ChartPalette,
+    mode: ThemeMode = 'dark',
 ): React.ReactNode => {
     const keys = collectAllKeys(rows);
     if (keys.length < 2) {
@@ -699,7 +708,7 @@ const renderPie = (
     // ramp's wide hue spread is the right default for pies because pie
     // wedges typically represent arbitrary categorical breakdowns
     // (top destinations, top users, top peers, etc.).
-    const pieColors = paletteColors(chartPalette ?? 'categorical') ?? paletteColors('categorical');
+    const pieColors = paletteColors(chartPalette ?? 'categorical', mode) ?? paletteColors('categorical', mode);
     const options = {
         backgroundColor: 'transparent',
         showProgressBar: false,
@@ -710,7 +719,7 @@ const renderPie = (
     };
     return (
         <LegendTitleTooltips>
-            <GradientWrap darkenAmount={DEFAULT_GRADIENT_DARKEN}>
+            <GradientWrap>
                 <ChartContainer $height={PIE_HEIGHT}>
                     <Pie dataSources={dataSources} width="100%" height={PIE_HEIGHT} options={options} />
                 </ChartContainer>

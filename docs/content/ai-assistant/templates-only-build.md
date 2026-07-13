@@ -22,6 +22,7 @@ The runtime alternative — an admin toggle in Settings that disables the LLM pa
 - **Privacy banner model picker** — hidden (no model = no picker).
 - **Top-of-chat info banner** — cyan-info-tone banner reads: *"Templates-only build — free-form prompts and LLM dispatch are disabled. Use 'Browse predefined prompts' to run any of the 61 saved searches against your Splunk data via MCP."*
 - **Settings page** — the **Provider Credentials tab is hidden entirely**. Top-of-page info banner explains the build mode. Other tabs (General / Splunk MCP / Audit Log) remain fully visible since partners need MCP config + audit visibility.
+- **Dynamic model discovery** — fully inert. The vendor model-listing refresh (a full-LLM-line feature) is compile-time gated: no vendor model-listing call can ever fire, and the Settings → General "Model discovery" toggle + "Discovered models" status row are hidden. The `model_discovery` audit category never occurs in this build.
 
 ### Defense-in-depth runtime guard
 

@@ -1,11 +1,14 @@
 import React, { useMemo } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
+import { useThemeMode } from '../state/ThemeModeProvider';
 import { verticalGradient } from '../utils/colorMath';
 
 /** Match TimeSeriesChart's DEFAULT_GRADIENT_DARKEN so HTML waterfall bars
  *  share the exact visual fade as the SVG charts on the same dashboard. */
-const STAGE_GRADIENT_DARKEN = 0.4;
+/** Per-mode fade depth — matches GradientWrap's MODE_DARKEN (build 254)
+ *  so the HTML waterfall bars keep visual parity with the SVG chart bars. */
+const STAGE_GRADIENT_DARKEN: Record<'light' | 'dark', number> = { dark: 0.4, light: 0.15 };
 
 /**
  * TraceWaterfall — per-request timing breakdown shown as stacked horizontal
@@ -37,12 +40,12 @@ interface Props {
     maxRows?: number;
 }
 
-const STAGE_COLORS = {
-    dt1: logservTheme.colors.cyanLight,
-    dt2: logservTheme.colors.teal,
-    dt3: logservTheme.colors.purple,
-    dt4: logservTheme.colors.orange,
-};
+/* Phase 0 Magnetic re-theme (build 246): stage colors come from the
+ * RESOLVED mode tokens inside the component (useThemeMode) rather than
+ * module-level logservTheme constants — the Swatch/Segment styled
+ * components run these through colorMath.verticalGradient(), which
+ * parses `#rrggbb` and can't operate on var(--lsv-*) references. */
+type StageKey = 'dt1' | 'dt2' | 'dt3' | 'dt4';
 
 const STAGE_LABELS = {
     dt1: 'dt1 — request parse / dispatch',
@@ -72,12 +75,12 @@ const LegendItem = styled.div`
     gap: ${logservTheme.spacing.xs};
 `;
 
-const Swatch = styled.span<{ $color: string }>`
+const Swatch = styled.span<{ $color: string; $darken: number }>`
     display: inline-block;
     width: 12px;
     height: 12px;
     border-radius: 2px;
-    background: ${(p) => verticalGradient(p.$color, STAGE_GRADIENT_DARKEN)};
+    background: ${(p) => verticalGradient(p.$color, p.$darken)};
 `;
 
 const Header = styled.div`
@@ -129,9 +132,9 @@ const Bar = styled.div`
     align-self: center;
 `;
 
-const Segment = styled.div<{ $width: number; $color: string }>`
+const Segment = styled.div<{ $width: number; $color: string; $darken: number }>`
     width: ${(p) => p.$width.toFixed(2)}%;
-    background: ${(p) => verticalGradient(p.$color, STAGE_GRADIENT_DARKEN)};
+    background: ${(p) => verticalGradient(p.$color, p.$darken)};
     height: 100%;
 
     &:not(:last-child) {
@@ -177,6 +180,17 @@ const formatMs = (us: number): string => {
 };
 
 const TraceWaterfall: React.FC<Props> = ({ rows, loading = false, error = null, maxRows = 20 }) => {
+    const { tokens, mode } = useThemeMode();
+    const stageDarken = STAGE_GRADIENT_DARKEN[mode];
+    const stageColors = useMemo<Record<StageKey, string>>(
+        () => ({
+            dt1: tokens.cyanLight,
+            dt2: tokens.teal,
+            dt3: tokens.purple,
+            dt4: tokens.orange,
+        }),
+        [tokens],
+    );
     const computed = useMemo(() => {
         if (!rows) return null;
         const limited = rows.slice(0, maxRows);
@@ -200,9 +214,9 @@ const TraceWaterfall: React.FC<Props> = ({ rows, loading = false, error = null, 
     return (
         <Wrapper>
             <Legend>
-                {(Object.keys(STAGE_COLORS) as Array<keyof typeof STAGE_COLORS>).map((stage) => (
+                {(Object.keys(stageColors) as StageKey[]).map((stage) => (
                     <LegendItem key={stage} title={STAGE_LABELS[stage]}>
-                        <Swatch $color={STAGE_COLORS[stage]} />
+                        <Swatch $color={stageColors[stage]} $darken={stageDarken} />
                         <span>{STAGE_LABELS[stage]}</span>
                     </LegendItem>
                 ))}
@@ -234,10 +248,10 @@ const TraceWaterfall: React.FC<Props> = ({ rows, loading = false, error = null, 
                         <MonoCell title={String(row.uri ?? '')}>{row.uri ?? '—'}</MonoCell>
                         <Cell>{row.status ?? '—'}</Cell>
                         <Bar>
-                            <Segment $width={pct(dt1)} $color={STAGE_COLORS.dt1} />
-                            <Segment $width={pct(dt2)} $color={STAGE_COLORS.dt2} />
-                            <Segment $width={pct(dt3)} $color={STAGE_COLORS.dt3} />
-                            <Segment $width={pct(dt4)} $color={STAGE_COLORS.dt4} />
+                            <Segment $width={pct(dt1)} $color={stageColors.dt1} $darken={stageDarken} />
+                            <Segment $width={pct(dt2)} $color={stageColors.dt2} $darken={stageDarken} />
+                            <Segment $width={pct(dt3)} $color={stageColors.dt3} $darken={stageDarken} />
+                            <Segment $width={pct(dt4)} $color={stageColors.dt4} $darken={stageDarken} />
                         </Bar>
                         <Cell $align="right">{row.method ?? ''}</Cell>
                         <Cell $align="right">{formatMs(total)}</Cell>

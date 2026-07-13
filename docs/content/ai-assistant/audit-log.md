@@ -2,7 +2,7 @@
 
 Every action the AI Assistant takes — predefined-prompt dispatches, free-form vendor calls, security blocks, privacy-tier elevations, legal acknowledgements — produces an audit event in a dedicated `logserv_ai_assistant_audit` index. The audit trail is the evidence layer for compliance reviews, SOC investigations, and tamper-resistance posture.
 
-## :material-circle-box:{ .taiconcolor } The Twelve Audit Categories
+## :material-circle-box:{ .taiconcolor } The Thirteen Audit Categories
 
 | Category | When | Key fields |
 |---|---|---|
@@ -18,6 +18,7 @@ Every action the AI Assistant takes — predefined-prompt dispatches, free-form 
 | `audit_forwarder_failure` | HEC forwarder POST failed (DNS, network, 4xx/5xx response). | `destinationUrl` (sanitized), `reason`, `batchSize` |
 | `forwarder_disabled_acceptance` | Admin acknowledged the forwarder-disabled legal modal. | Admin user, `host` (Splunk-stamped IP), `tcVersion`, `optInChoice`, `disclaimerHash` |
 | `ai_assistant_enable_acceptance` | Admin acknowledged the AI-Assistant-enable legal modal. | Same as forwarder acceptance, plus the seven-clause enable-disclaimer hash |
+| `model_discovery` | A dynamic model-discovery refresh ran. **Never fires in this templates-only build** — model discovery is a full-LLM-line (v0.1.1) feature and is compile-time inert here; the category chip exists in the viewer for cross-line consistency. | `provider`, `trigger`, `ok`, `modelCount`, `durationMs`, `error` |
 
 Every event also carries a small set of common fields:
 
@@ -35,7 +36,7 @@ The Audit Log tab in [Settings → AI Assistant](settings.md#audit-log-tab) prov
 | Filter | Default | Notes |
 |---|---|---|
 | **Time range** | Last 7 days | Reads from the global TimeRange picker; not a separate field. Re-runs on picker change. |
-| **Category** | (all 12) | Multi-select with colored chips. Each category has its own gradient (cyan-light SAP-Basis-style for `local_only`, gold-orange for vendor calls, red for security blocks, etc.). |
+| **Category** | (all 13) | Multi-select with colored chips. Each category has its own gradient (cyan-light SAP-Basis-style for `local_only`, gold-orange for vendor calls, red for security blocks, etc.). |
 | **User contains** | (empty) | Substring filter on the `user` field. Useful for "what did admin X do?" reviews. |
 | **Limit** | 100 | One of 25 / 100 / 500 / 1000. Larger values slow page rendering. |
 

@@ -2,6 +2,8 @@ import React, { useCallback, useState } from 'react';
 import styled from 'styled-components';
 import FramedPanel from '../FramedPanel';
 import { logservTheme } from '../../styles/logservTheme';
+import { useThemeMode } from '../../state/ThemeModeProvider';
+import type { ColorTokens } from '../../styles/magneticTokens';
 import { darken } from '../../utils/colorMath';
 import { formatCallCount } from '../../topology/edgeStyle';
 import type { TopologyNode, TopologyEdge } from '../../topology/types';
@@ -48,7 +50,8 @@ const NodeIdRow = styled.div`
 
 const SidBadge = styled.div<{ $kind: TopologyNode['kind'] }>`
     background: ${(p) => (p.$kind === 'sid_focused' ? logservTheme.colors.red : logservTheme.colors.cyanAccent)};
-    color: ${logservTheme.colors.textActive};
+    /* Light text on the colored fill in BOTH modes (build 259). */
+    color: ${logservTheme.colors.inverseText};
     padding: 4px 8px;
     border-radius: ${logservTheme.radius.small};
     font-weight: ${logservTheme.fontWeight.bold};
@@ -238,16 +241,19 @@ const shortSourcetype = (st: string): string => {
     return st.startsWith('sap:') ? st.slice(4) : st;
 };
 
-/** Color palette for top-partner donut wedges — rotated through deterministically. */
-const PARTNER_PALETTE = [
-    logservTheme.colors.teal,
-    logservTheme.colors.cyanAccent,
-    logservTheme.colors.orange,
-    logservTheme.colors.purple,
-    logservTheme.colors.cyanLight,
-    logservTheme.colors.orangeLight,
-    logservTheme.colors.redLight,
-    logservTheme.colors.textMuted,
+/** Color palette for top-partner donut wedges — rotated through
+ *  deterministically. Built from the RESOLVED mode tokens (not logservTheme
+ *  var() refs) because the wedge colors land on SVG `fill` attributes in
+ *  DonutChart, where CSS variables don't resolve. Build 246 / Phase 0. */
+const partnerPalette = (c: ColorTokens): string[] => [
+    c.teal,
+    c.cyanAccent,
+    c.orange,
+    c.purple,
+    c.cyanLight,
+    c.orangeLight,
+    c.redLight,
+    c.textMuted,
 ];
 
 /**
@@ -324,15 +330,19 @@ const DonutChart: React.FC<{ data: { code: string; count: number; color: string 
     };
 
     return (
+        /* Build 246 / Phase 0: fill/stroke moved to inline `style` — the
+         * logservTheme values are var(--lsv-*) refs, which resolve in CSS
+         * positions (inline style) but not attribute positions. Wedge
+         * colors (d.color) are already resolved hex from partnerPalette. */
         <svg width={W} height={W} role="img" aria-label="Top tcodes by call volume">
             {data.map((d) => {
                 const start = cum / total;
                 const end = (cum + d.count) / total;
                 cum += d.count;
-                return <path key={d.code} d={arcPath(start, end)} fill={d.color} stroke={logservTheme.colors.panelBackground} strokeWidth={1} />;
+                return <path key={d.code} d={arcPath(start, end)} fill={d.color} style={{ stroke: logservTheme.colors.panelBackground }} strokeWidth={1} />;
             })}
-            <text x={cx} y={cy - 2} textAnchor="middle" fontSize="11" fontWeight="600" fill={logservTheme.colors.textActive}>{formatCallCount(total)}</text>
-            <text x={cx} y={cy + 12} textAnchor="middle" fontSize="9" fill={logservTheme.colors.textMuted}>calls</text>
+            <text x={cx} y={cy - 2} textAnchor="middle" fontSize="11" fontWeight="600" style={{ fill: logservTheme.colors.textActive }}>{formatCallCount(total)}</text>
+            <text x={cx} y={cy + 12} textAnchor="middle" fontSize="9" style={{ fill: logservTheme.colors.textMuted }}>calls</text>
         </svg>
     );
 };
@@ -424,7 +434,8 @@ const EndpointRow = styled.div`
 const EdgeTypeBadge = styled.span<{ $color: string }>`
     display: inline-block;
     background: ${(p) => p.$color};
-    color: ${logservTheme.colors.textActive};
+    /* Light text on the accent fill in BOTH modes (build 259). */
+    color: ${logservTheme.colors.inverseText};
     padding: 3px 10px;
     border-radius: ${logservTheme.radius.small};
     font-weight: ${logservTheme.fontWeight.bold};
@@ -603,6 +614,9 @@ export type EdgeRightTab = 'overview' | 'activity' | 'operations' | 'performance
 const ActivityTrendChart: React.FC<{
     data: { time: number; count: number; errorCount: number }[];
 }> = ({ data }) => {
+    /* Resolved hex tokens — stopColor is an SVG attribute + darken() needs
+     * literal hex (build 246 / Phase 0). */
+    const { tokens } = useThemeMode();
     const VB_W = 280;
     const VB_H = 90;
     if (data.length === 0) return null;
@@ -620,12 +634,12 @@ const ActivityTrendChart: React.FC<{
         >
             <defs>
                 <linearGradient id="activity-grad-success" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={logservTheme.colors.cyanLight} stopOpacity="1" />
-                    <stop offset="100%" stopColor={darken(logservTheme.colors.cyanLight, 0.4)} stopOpacity="1" />
+                    <stop offset="0%" stopColor={tokens.cyanLight} stopOpacity="1" />
+                    <stop offset="100%" stopColor={darken(tokens.cyanLight, 0.4)} stopOpacity="1" />
                 </linearGradient>
                 <linearGradient id="activity-grad-error" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={logservTheme.colors.red} stopOpacity="1" />
-                    <stop offset="100%" stopColor={darken(logservTheme.colors.red, 0.4)} stopOpacity="1" />
+                    <stop offset="0%" stopColor={tokens.red} stopOpacity="1" />
+                    <stop offset="100%" stopColor={darken(tokens.red, 0.4)} stopOpacity="1" />
                 </linearGradient>
             </defs>
             {data.map((d, i) => {
@@ -717,6 +731,12 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
     edgeTab: controlledEdgeTab,
     onEdgeTabChange,
 }) => {
+    /* Resolved hex tokens for the donut wedge palette + HourlyChart color
+     * (SVG fill attributes + darken() — var() refs don't work there).
+     * Named PARTNER_PALETTE to match the pre-build-246 module constant so
+     * the existing usage sites below stay textually identical. */
+    const { tokens } = useThemeMode();
+    const PARTNER_PALETTE = React.useMemo(() => partnerPalette(tokens), [tokens]);
     const [internalTab, setInternalTab] = useState<RightTab>('overview');
     const tab = controlledTab ?? internalTab;
     const setTab = useCallback(
@@ -782,7 +802,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
             });
         }
         return list;
-    }, [selectedNode, selectedNodeIncomingEdges, selectedNodeOutgoingEdges, labelForEndpoint]);
+    }, [selectedNode, selectedNodeIncomingEdges, selectedNodeOutgoingEdges, labelForEndpoint, PARTNER_PALETTE]);
 
     const collapseAction = onCollapse ? (
         <CollapseChevron type="button" onClick={onCollapse} title="Collapse panel" aria-label="Collapse details panel">
@@ -1136,8 +1156,8 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
     const totalCalls = [...selectedNodeIncomingEdges, ...selectedNodeOutgoingEdges]
         .reduce((s, e) => s + e.callCount, 0);
     const sparklineColor = selectedNode.kind === 'sid_focused'
-        ? logservTheme.colors.red
-        : logservTheme.colors.cyanLight;
+        ? tokens.red
+        : tokens.cyanLight;
 
     return (
         <Stack>

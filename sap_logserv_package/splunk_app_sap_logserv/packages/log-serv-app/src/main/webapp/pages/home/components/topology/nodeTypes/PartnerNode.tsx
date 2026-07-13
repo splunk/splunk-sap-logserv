@@ -243,7 +243,7 @@ const Wrapper = styled.div<{ $selected: boolean }>`
         border-radius: 50%;
         background: ${logservTheme.colors.panelBackground};
         border: 2px solid ${(p) => (p.$selected ? logservTheme.colors.cyanLight : logservTheme.colors.textDefault)};
-        box-shadow: ${(p) => (p.$selected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLight}80` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
+        box-shadow: ${(p) => (p.$selected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLightGlow}` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
         display: flex;
         align-items: center;
         justify-content: center;

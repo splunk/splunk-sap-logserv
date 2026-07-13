@@ -3,13 +3,12 @@ import styled from 'styled-components';
 import Pie from '@splunk/visualizations/Pie';
 import { useSearch } from '../hooks/useSearch';
 import { logservTheme } from '../styles/logservTheme';
-import { ChartPalette, paletteColors, STATUS_FIELD_COLORS } from '../styles/chartPalettes';
+import { ChartPalette, paletteColors, statusFieldColors } from '../styles/chartPalettes';
+import { useThemeMode } from '../state/ThemeModeProvider';
 import GradientWrap from './GradientWrap';
 import LegendTitleTooltips from './LegendTitleTooltips';
 import PanelLoading from './PanelLoading';
 import { usePanelMetaReporter } from './PanelMeta';
-
-const DEFAULT_GRADIENT_DARKEN = 0.4;
 
 /**
  * PieChart — wraps @splunk/visualizations/Pie with our SearchJob hook +
@@ -74,6 +73,9 @@ const PieChart: React.FC<PieChartProps> = ({
     const { results, loading, error, sid, spl, dispatchedAt, refresh } = useSearch({ query });
     // build 234 — report search meta to the enclosing FramedPanel (toolbar).
     usePanelMetaReporter({ spl, sid, dispatchedAt, refresh });
+    // Phase 1b (build 254) — slice colors are literal hex (Surface 2), so
+    // the palettes resolve per mode and the chart re-renders on mode flips.
+    const { mode } = useThemeMode();
 
     const dataSources = useMemo(() => {
         if (!results || results.length === 0) return null;
@@ -110,9 +112,9 @@ const PieChart: React.FC<PieChartProps> = ({
         return <Container $height={height}><StatusLine>No data in this time range.</StatusLine></Container>;
     }
 
-    const paletteSeriesColors = paletteColors(palette);
+    const paletteSeriesColors = paletteColors(palette, mode);
     const finalSeriesColors = seriesColorsProp ?? paletteSeriesColors;
-    const paletteFieldColors = palette === 'status' ? STATUS_FIELD_COLORS : undefined;
+    const paletteFieldColors = palette === 'status' ? statusFieldColors(mode) : undefined;
     const finalFieldColors = seriesColorsByFieldProp
         ? { ...(paletteFieldColors ?? {}), ...seriesColorsByFieldProp }
         : paletteFieldColors;
@@ -134,7 +136,8 @@ const PieChart: React.FC<PieChartProps> = ({
 
     return (
         <LegendTitleTooltips>
-            <GradientWrap darkenAmount={DEFAULT_GRADIENT_DARKEN}>
+            {/* GradientWrap self-resolves its darken per theme mode (build 254). */}
+            <GradientWrap>
                 <Container $height={height}>
                     <Pie
                         dataSources={dataSources}

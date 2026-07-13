@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
+import { useThemeMode } from '../state/ThemeModeProvider';
+import { ACCENT_PALETTE, ColorTokens, ThemeMode } from '../styles/magneticTokens';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import {
     AUDIT_CATEGORIES,
@@ -52,7 +54,7 @@ const FilterCell = styled.label`
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     color: ${logservTheme.colors.textMuted};
 `;
 
@@ -68,7 +70,7 @@ const Select = styled.select`
     border: 1px solid ${logservTheme.colors.panelBorderWeak};
     border-radius: 3px;
     padding: 6px 8px;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     font-family: inherit;
     height: 32px;
 `;
@@ -79,7 +81,7 @@ const TextInput = styled.input`
     border: 1px solid ${logservTheme.colors.panelBorderWeak};
     border-radius: 3px;
     padding: 6px 8px;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     font-family: inherit;
     height: 32px;
 `;
@@ -98,7 +100,7 @@ const Button = styled.button<{ $variant?: 'primary' | 'subtle' }>`
                 : logservTheme.colors.panelBorderWeak};
     border-radius: 3px;
     padding: 6px 14px;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     font-family: inherit;
     cursor: pointer;
     height: 32px;
@@ -120,7 +122,7 @@ const CategoryGrid = styled.div`
     flex-wrap: wrap;
     gap: 10px 18px;
     padding: 6px 0;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
 `;
 
 const CategoryCheckbox = styled.label`
@@ -138,16 +140,18 @@ const CategoryCheckbox = styled.label`
 `;
 
 const Disclaimer = styled.div`
-    background: ${logservTheme.colors.panelBackground};
+    /* Magnetic warning-banner treatment (Phase 4 / build 258): sentiment
+       tint fill + strong left border. */
+    background: ${logservTheme.colors.warningTint};
     border: 1px solid ${logservTheme.colors.panelBorderWeak};
-    border-left: 3px solid #f1813f;
+    border-left: 3px solid ${logservTheme.colors.orange};
     padding: ${logservTheme.spacing.md};
     margin-bottom: ${logservTheme.spacing.md};
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     color: ${logservTheme.colors.textActive};
     line-height: 1.5;
     & strong {
-        color: #f1813f;
+        color: ${logservTheme.colors.orange};
     }
     & p {
         margin: 0 0 8px 0;
@@ -165,7 +169,7 @@ const Disclaimer = styled.div`
 
 const ResultStatus = styled.div`
     color: ${logservTheme.colors.textMuted};
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     margin-bottom: ${logservTheme.spacing.sm};
 `;
 
@@ -180,7 +184,7 @@ const PaginationFooter = styled.div`
     gap: ${logservTheme.spacing.md};
     padding: ${logservTheme.spacing.sm} 0;
     color: ${logservTheme.colors.textMuted};
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
 
     & > span {
         margin-right: auto;
@@ -188,24 +192,24 @@ const PaginationFooter = styled.div`
 `;
 
 const ErrorBanner = styled.div`
-    background: rgba(220, 78, 65, 0.12);
-    border: 1px solid #dc4e41;
-    color: #ff7a6b;
+    background: ${logservTheme.colors.negativeTint};
+    border: 1px solid ${logservTheme.colors.red};
+    color: ${logservTheme.colors.red};
     padding: ${logservTheme.spacing.md};
     border-radius: 3px;
     margin-bottom: ${logservTheme.spacing.md};
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
 `;
 
 const Table = styled.table`
     width: 100%;
     border-collapse: collapse;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     color: ${logservTheme.colors.textActive};
     & th {
         text-align: left;
         font-weight: 600;
-        background: #1e2a3d;
+        background: ${logservTheme.colors.tableHeaderBackground};
         color: ${logservTheme.colors.textActive};
         padding: 8px 10px;
         border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
@@ -219,7 +223,7 @@ const Table = styled.table`
         vertical-align: top;
     }
     & tr:nth-child(odd) td {
-        background: #0d1520;
+        background: ${logservTheme.colors.tableRowOdd};
     }
     & tr.expanded td {
         background: rgba(8, 119, 166, 0.08);
@@ -240,37 +244,35 @@ const Table = styled.table`
  * see at a glance which categories they've toggled on. When $selected is
  * `true`, a subtle outer ring + drop shadow lifts the chip slightly. When
  * $selected is undefined (table cell), neither dim nor ring applies. */
-const CategoryChip = styled.span<{ $gradient: string; $selected?: boolean }>`
+const CategoryChip = styled.span<{ $color: string; $selected?: boolean }>`
+    /* Flat Magnetic tag (Phase 4 / build 258 — replaces the 3-stop gradient
+     * chips + the dim/saturate unchecked hack): selected/table-cell = accent
+     * FILL with light text; unselected filter chip = OUTLINE (transparent
+     * fill, accent border + text). Accent comes from the mode-resolved
+     * dataviz palette via chipColorForCategory. Constant 1px border in all
+     * states so toggling never shifts layout. */
     display: inline-flex;
     align-items: center;
-    padding: 3px 10px;
-    border-radius: 12px;
+    padding: 2px 9px;
+    border-radius: 2px;
     font-size: 11px;
     font-weight: 600;
-    color: #ffffff;
-    background: ${(p) => p.$gradient};
     white-space: nowrap;
-    /* Drop-shadow on the glyphs themselves so #fff text stays readable
-     * across the lighter top-left corner of the 3-stop gradient. */
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
-    transition: background 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid ${(p) => p.$color};
+    transition: background 150ms ease-out, color 150ms ease-out, box-shadow 150ms ease-out;
 
-    ${(p) => p.$selected === false && `
-        /* Build 153 — dim the BACKGROUND ONLY (was opacity-on-chip, which
-         * dimmed the white text too). Layering a 55%-black overlay on top
-         * of the gradient mutes the colors; the saturate filter further
-         * desaturates them. Pure white text (#ffffff) is unaffected by
-         * saturate (no saturation to reduce) and renders at full
-         * brightness above the dimmed background. */
-        background:
-            linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)),
-            ${p.$gradient};
-        filter: saturate(0.55);
+    ${(p) => p.$selected === false
+        ? `
+        background: transparent;
+        color: ${p.$color};
+    `
+        : `
+        background: ${p.$color};
+        color: ${logservTheme.colors.inverseText};
     `}
+
     ${(p) => p.$selected === true && `
-        box-shadow:
-            0 0 0 1px rgba(255, 255, 255, 0.28),
-            0 2px 6px rgba(0, 0, 0, 0.35);
+        box-shadow: 0 0 0 2px ${logservTheme.colors.focusRing};
     `}
 `;
 
@@ -326,26 +328,31 @@ const JsonBlock = styled.pre`
 // Each gradient's mid-stop sits around 35-45 % luminance so #fff text stays
 // readable. The text-shadow on CategoryChip provides extra anti-aliasing
 // against the lighter top-left corner of the gradient.
-const CATEGORY_GRADIENTS: Record<string, string> = {
-    local_only:                     'linear-gradient(135deg, #1abf9c 0%, #0d8772 50%, #075249 100%)',
-    ai_assistant_enable_acceptance: 'linear-gradient(135deg, #6b80c8 0%, #4a5d9a 50%, #2b3461 100%)',
-    forwarder_disabled_acceptance:  'linear-gradient(135deg, #d4ac56 0%, #a8843a 50%, #6c5524 100%)',
-    vendor_tier1:                   'linear-gradient(135deg, #d4953d 0%, #a06b25 50%, #5f3f17 100%)',
-    vendor_tier2:                   'linear-gradient(135deg, #d4824a 0%, #a55a2c 50%, #62351a 100%)',
-    vendor_tier2_elevation:         'linear-gradient(135deg, #cd6648 0%, #9c4631 50%, #5e2a1d 100%)',
-    audit_forwarder_failure:        'linear-gradient(135deg, #9176bd 0%, #654b86 50%, #392946 100%)',
-    rate_limited_prompt:            'linear-gradient(135deg, #c2738f 0%, #91546b 50%, #563243 100%)',
-    daily_spend_cap_hit:            'linear-gradient(135deg, #b95f87 0%, #884261 50%, #50253a 100%)',
-    session_tool_cap_hit:           'linear-gradient(135deg, #ba585a 0%, #893b3d 50%, #51232a 100%)',
-    security_blocked_spl:           'linear-gradient(135deg, #c84e3f 0%, #993125 50%, #5d1d15 100%)',
-    user_prompt_jailbreak_flag:     'linear-gradient(135deg, #ab2f2f 0%, #791d1c 50%, #4a1110 100%)',
+/** Category -> flat accent color (Phase 4 / build 258). The 11 ordered
+ *  categories map onto the mode-resolved Magnetic dataviz accent palette
+ *  a-k; `user_prompt_jailbreak_flag` gets the sentiment red (a security
+ *  flag outranks a chart accent); anything unknown falls back to dormant
+ *  gray. Replaces the legacy 12x 3-stop gradient table. */
+const CATEGORY_ACCENT_ORDER = [
+    'local_only',
+    'ai_assistant_enable_acceptance',
+    'forwarder_disabled_acceptance',
+    'vendor_tier1',
+    'vendor_tier2',
+    'vendor_tier2_elevation',
+    'audit_forwarder_failure',
+    'rate_limited_prompt',
+    'daily_spend_cap_hit',
+    'session_tool_cap_hit',
+    'security_blocked_spl',
+];
+
+const chipColorForCategory = (cat: string, tokens: ColorTokens, mode: ThemeMode): string => {
+    if (cat === 'user_prompt_jailbreak_flag') return tokens.red;
+    const idx = CATEGORY_ACCENT_ORDER.indexOf(cat);
+    if (idx >= 0) return ACCENT_PALETTE[mode][idx];
+    return tokens.dormant;
 };
-
-const FALLBACK_GRADIENT =
-    'linear-gradient(135deg, #5b6680 0%, #3a4255 50%, #21263a 100%)';
-
-const gradientForCategory = (cat: string): string =>
-    CATEGORY_GRADIENTS[cat] ?? FALLBACK_GRADIENT;
 
 // ─── per-category highlight string ───────────────────────────────────────
 //
@@ -382,6 +389,8 @@ const renderHighlight = (row: AuditRow): string => {
             return `cap=${row.cap ?? '?'}, attempted=${row.attemptedCount ?? '?'}, tool=${row.toolName ?? '?'}`;
         case 'daily_spend_cap_hit':
             return `cap=$${row.capUsd ?? '?'}, spent=$${row.spentTodayUsd ?? '?'}`;
+        case 'model_discovery':
+            return `provider=${row.provider ?? '?'}, trigger=${row.trigger ?? '?'}, models=${row.modelCount ?? '?'}, ok=${row.ok ?? '?'}${row.error ? `, error=${String(row.error).slice(0, 60)}` : ''}`;
         default:
             return '';
     }
@@ -425,6 +434,8 @@ const AuditLogViewer: React.FC = () => {
     // now the single source of truth for the search window. earliest+latest
     // get spread into AuditQueryFilters whenever runSearch fires.
     const { timeRange } = useTimeRange();
+    // Phase 4 / build 258 — accent colors are literal hex (Surface 2).
+    const { tokens, mode } = useThemeMode();
 
     const [filters, setFilters] = useState<AuditQueryFilters>(() => ({
         earliest: '-7d',
@@ -655,7 +666,7 @@ const AuditLogViewer: React.FC = () => {
                                     onChange={() => toggleCategory(cat)}
                                 />
                                 <CategoryChip
-                                    $gradient={gradientForCategory(cat)}
+                                    $color={chipColorForCategory(cat, tokens, mode)}
                                     $selected={isSelected}
                                 >
                                     {cat}
@@ -701,7 +712,7 @@ const AuditLogViewer: React.FC = () => {
                                         </td>
                                         <td>{formatTime(row._time)}</td>
                                         <td>
-                                            <CategoryChip $gradient={gradientForCategory(row.category)}>
+                                            <CategoryChip $color={chipColorForCategory(row.category, tokens, mode)}>
                                                 {row.category}
                                             </CategoryChip>
                                         </td>

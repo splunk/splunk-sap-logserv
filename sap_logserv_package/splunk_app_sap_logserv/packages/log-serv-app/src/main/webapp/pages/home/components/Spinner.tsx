@@ -1,5 +1,7 @@
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
+import { useThemeMode } from '../state/ThemeModeProvider';
+import { darken } from '../utils/colorMath';
 
 /**
  * Windows 11-style "circle of dots" loading spinner.
@@ -9,13 +11,14 @@ import styled, { keyframes } from 'styled-components';
  * shared component in build 166 (session 028) so other dashboards can
  * reuse the same visual language for "something is in flight".
  *
- * Eight orange radial-gradient dots arranged on a circle of `radius` px;
- * the brightness wave travels around once per `periodSec` seconds.
+ * Eight radial-gradient dots arranged on a circle of `radius` px; the
+ * brightness wave travels around once per `periodSec` seconds. Since the
+ * Magnetic re-theme (Phase 1b, build 254) the dots use the interact-blue
+ * accent, mode-resolved via useThemeMode — the gradient stops need color
+ * MATH (darken) so they're Surface-2 literal hex, not var() refs.
  *
- * Pure CSS — no GIF, no JS animation loop. Sharper at any DPI than a
- * rasterized image, and the orange tone matches the medium-severity dot
- * used elsewhere in the chat narrative so the visual language reads as
- * "in flight, working on it".
+ * Pure CSS animation — no GIF, no JS loop. Sharper at any DPI than a
+ * rasterized image.
  */
 
 interface SpinnerProps {
@@ -56,6 +59,9 @@ const Dot = styled.span<{
     $radius: number;
     $dotSize: number;
     $periodSec: number;
+    $c1: string;
+    $c2: string;
+    $c3: string;
 }>`
     position: absolute;
     top: 50%;
@@ -65,7 +71,7 @@ const Dot = styled.span<{
     margin-left: ${(p) => -p.$dotSize / 2}px;
     margin-top: ${(p) => -p.$dotSize / 2}px;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #ffb785 0%, #f1813f 55%, #a04f1d 100%);
+    background: radial-gradient(circle at 35% 30%, ${(p) => p.$c1} 0%, ${(p) => p.$c2} 55%, ${(p) => p.$c3} 100%);
     --angle: ${(p) => p.$angle}deg;
     transform: rotate(${(p) => p.$angle}deg) translateY(-${(p) => p.$radius}px);
     animation: ${(p) => dotPulse(p.$radius)} ${(p) => p.$periodSec}s ease-in-out infinite;
@@ -78,19 +84,30 @@ const Spinner: React.FC<SpinnerProps> = ({
     dotSize = DEFAULT_DOT_SIZE,
     periodSec = DEFAULT_PERIOD_S,
     label = 'Loading',
-}) => (
-    <Wrap $radius={radius} $dotSize={dotSize} aria-label={label} role="status">
-        {Array.from({ length: DOT_COUNT }).map((_, i) => (
-            <Dot
-                key={i}
-                $angle={i * (360 / DOT_COUNT)}
-                $delay={i * (periodSec / DOT_COUNT)}
-                $radius={radius}
-                $dotSize={dotSize}
-                $periodSec={periodSec}
-            />
-        ))}
-    </Wrap>
-);
+}) => {
+    // Magnetic interact-blue dot gradient: highlight = hover-blue, body =
+    // interact, edge = darkened interact (§6 Spinner recolor, build 254).
+    const { tokens } = useThemeMode();
+    const c1 = tokens.cyanLight;
+    const c2 = tokens.cyanAccent;
+    const c3 = darken(tokens.cyanAccent, 0.45);
+    return (
+        <Wrap $radius={radius} $dotSize={dotSize} aria-label={label} role="status">
+            {Array.from({ length: DOT_COUNT }).map((_, i) => (
+                <Dot
+                    key={i}
+                    $angle={i * (360 / DOT_COUNT)}
+                    $delay={i * (periodSec / DOT_COUNT)}
+                    $radius={radius}
+                    $dotSize={dotSize}
+                    $periodSec={periodSec}
+                    $c1={c1}
+                    $c2={c2}
+                    $c3={c3}
+                />
+            ))}
+        </Wrap>
+    );
+};
 
 export default Spinner;

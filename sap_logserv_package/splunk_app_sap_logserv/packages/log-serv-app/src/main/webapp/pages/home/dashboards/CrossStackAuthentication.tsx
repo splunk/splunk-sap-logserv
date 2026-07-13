@@ -7,6 +7,8 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -79,7 +81,7 @@ const FAILIP = `| inputlookup ${ROLL} where metric="failip" ${RANGE}`;
 const HANAUSER = `| inputlookup ${ROLL} where metric="hanauser" ${RANGE}`;
 const LAYER_DECODE = 'eval layer=case(sourcetype="sap:sapstartsrv","SAP",sourcetype="sap:hana:audit","HANA",sourcetype="XmlWinEventLog","Windows")';
 
-const Q = {
+const Q_BASE = {
     // Count KPIs use the empty-safe idiom (`stats count as n, …`): an empty
     // `| inputlookup | stats sum(count)` returns 0 ROWS (not count=0), so the
     // `count as n` anchor forces a row → fillnull → clean 0 (per-layer KPIs can
@@ -110,9 +112,36 @@ const Q = {
     sapAuth: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | head 200 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | table Time, auth_user, remote_ip, source_location, host | sort -Time | rename auth_user as "User", remote_ip as "Remote IP", source_location as "Source Location"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw cross-
+ * source auth-failure scan its rollup metric precomputes, reconciled to the
+ * cached read's exact output columns (byte-verified equal at wide windows — the
+ * xa_v_* staged pairs). The hanaUsers raw `if(status!="SUCCESSFUL",1,0)` is
+ * null-is-0-equivalent to the cached STRICT guard (status!="(none)"). Only
+ * ROLLUP reads are hybridised; windowsEvents/sapAuth are already raw and the
+ * sparklines stay cached (cosmetic).
+ * ------------------------------------------------------------------------- */
+const AAF = `\`sap_logserv_idx_macro\` ${ANY_AUTH_FAIL}`;
+const QRAW_BASE = {
+    kpiTotal: `${AAF} | stats count`,
+    kpiSap: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | stats count`,
+    kpiHana: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" action_category="Authentication" status!="SUCCESSFUL" | stats count`,
+    kpiWin: `\`sap_logserv_idx_macro\` sourcetype="XmlWinEventLog" action="failure" | stats count`,
+    failuresTrend: `${AAF} | eval layer=case(sourcetype="sap:sapstartsrv", "SAP", sourcetype="sap:hana:audit", "HANA", sourcetype="XmlWinEventLog", "Windows") | timechart span=1d count by layer | fillnull value=0`,
+    topUsers: `${AAF} | eval failed_user=coalesce(auth_user, src_user, user) | where isnotnull(failed_user) AND failed_user!="" | stats count as "Failures" by failed_user | sort -Failures | rename failed_user as "User"`,
+    sourceIps: `${AAF} | eval src=coalesce(remote_ip, client_ip, src_ip, IpAddress) | where isnotnull(src) AND src!="" AND src!="127.0.0.1" | stats count as "Failures", dc(sourcetype) as "Layers Hit", values(eval(case(sourcetype="sap:sapstartsrv","SAP",sourcetype="sap:hana:audit","HANA",sourcetype="XmlWinEventLog","Windows"))) as "Layers", latest(_time) as last_seen by src | eval "Last Seen"=strftime(last_seen, "%Y-%m-%d %H:%M:%S") | sort -Failures | fields - last_seen | rename src as "Source IP"`,
+    hanaUsers: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" action_category="Authentication" | stats count as "Events", dc(action_type) as "Action Types", sum(eval(if(status!="SUCCESSFUL",1,0))) as "Failures", values(risk_level) as "Risk Level", latest(_time) as last_seen by src_user | eval "Last Seen"=strftime(last_seen, "%Y-%m-%d %H:%M:%S") | sort -Failures | fields - last_seen | rename src_user as "User"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -153,16 +182,23 @@ const SAP_AUTH_COLS: ColumnDef[] = [
 ];
 
 const CrossStackAuthentication: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const sap = useFirstRowField(Q.kpiSap, 'count');
-    const hana = useFirstRowField(Q.kpiHana, 'count');
-    const win = useFirstRowField(Q.kpiWin, 'count');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const sap = useFirstRowFieldHybrid(Q.kpiSap, QRAW.kpiSap, 'count');
+    const hana = useFirstRowFieldHybrid(Q.kpiHana, QRAW.kpiHana, 'count');
+    const win = useFirstRowFieldHybrid(Q.kpiWin, QRAW.kpiWin, 'count');
 
-    const topUsers = useSearch({ query: Q.topUsers });
-    const sourceIps = useSearch({ query: Q.sourceIps });
-    const hanaUsers = useSearch({ query: Q.hanaUsers });
-    const winEvents = useSearch({ query: Q.windowsEvents });
-    const sapAuth = useSearch({ query: Q.sapAuth });
+    const topUsers = useHybridSearch({ cached: Q.topUsers, raw: QRAW.topUsers });
+    const sourceIps = useHybridSearch({ cached: Q.sourceIps, raw: QRAW.sourceIps });
+    const hanaUsers = useHybridSearch({ cached: Q.hanaUsers, raw: QRAW.hanaUsers });
+    const winEvents = useSearch({ query: Q.windowsEvents }); // raw listing
+    const sapAuth = useSearch({ query: Q.sapAuth }); // raw listing
+
+    // Chart takes a query string → route once (sub-hour -> raw).
+    const qFailuresTrend = useRoutedQuery(Q.failuresTrend, QRAW.failuresTrend);
 
     const totalTone = Number(total.value ?? 0) > 0 ? 'critical' : 'neutral';
     const sapTone = Number(sap.value ?? 0) > 0 ? 'critical' : 'neutral';
@@ -211,7 +247,7 @@ const CrossStackAuthentication: React.FC = () => {
 
             <FullWidthPanel>
                 <FramedPanel title="Auth Failures Over Time by Layer" subtitle="Daily count split SAP / HANA / Windows">
-                    <TimeSeriesChart query={Q.failuresTrend} height={300} palette="auth" />
+                    <TimeSeriesChart query={qFailuresTrend} height={300} palette="auth" />
                 </FramedPanel>
             </FullWidthPanel>
 

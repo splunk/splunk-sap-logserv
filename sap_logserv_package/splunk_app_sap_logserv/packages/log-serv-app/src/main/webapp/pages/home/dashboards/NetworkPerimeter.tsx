@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -98,7 +100,7 @@ const bytesFmt = (f: string): string =>
 const PROTO_NAME = 'case(fw_proto="TCP" OR fw_proto="6", "TCP", fw_proto="UDP" OR fw_proto="17", "UDP", fw_proto="ICMP" OR fw_proto="1", "ICMP", 1=1, fw_proto)';
 const QTYPE_LABEL = 'case(query_type="A", "A (IPv4 Address)", query_type="AAAA", "AAAA (IPv6 Address)", query_type="CNAME", "CNAME (Canonical Name)", query_type="MX", "MX (Mail Exchange)", query_type="NS", "NS (Name Server)", query_type="PTR", "PTR (Reverse DNS)", query_type="SOA", "SOA (Start of Authority)", query_type="SRV", "SRV (Service)", query_type="TXT", "TXT (Text)", query_type="HINFO", "HINFO (Host Info)", query_type="ANY", "ANY (Any Type)", query_type="NAPTR", "NAPTR (Naming Authority Pointer)", query_type="DS", "DS (Delegation Signer)", query_type="DNSKEY", "DNSKEY (DNS Key)", query_type="RRSIG", "RRSIG (Resource Record Signature)", query_type="NSEC", "NSEC (Next Secure)", query_type="CAA", "CAA (Certificate Authority Authorization)", 1=1, query_type)';
 
-const Q = {
+const Q_BASE = {
     kpiFw: `${FW} | search fw_action="IN_DROP" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiProxy: `${PROXY} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiDns: `${DNSCOUNT} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
@@ -132,9 +134,44 @@ const Q = {
     suspicious: `${BCN_QS} | search src!="(none)" | stats sum(cnt) as beacon_query_count, sum(n_gap) as ng, sum(sum_gap) as sg, sum(sumsq_gap) as ssg by query, src | eval avg_gap=if(ng>0,sg/ng,0), var_gap=if(ng>1,(ssg - sg*sg/ng)/(ng-1),null()) | where var_gap < 60 AND avg_gap > 0 AND beacon_query_count > 2 | stats dc(query) as beacon_domains, sum(beacon_query_count) as beacon_queries by src | append [ ${BCN_DENIED} | search src!="(none)" | stats sum(denied_count) as denied_requests by src ] | stats max(beacon_domains) as beacon_domains, max(beacon_queries) as beacon_queries, max(denied_requests) as denied_requests by src | fillnull value=0 beacon_domains beacon_queries denied_requests | eval signal_score = (beacon_domains * 3) + denied_requests | where signal_score > 0 | sort -signal_score | rename src as "Host", beacon_domains as "Beaconing Domains", beacon_queries as "Beaconing Queries", denied_requests as "Denied Proxy Requests", signal_score as "Signal Score"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw
+ * linux_secure / squid:access / DNS scan its rollup metric precomputes,
+ * reconciled to the cached read's exact output columns (byte-verified equal at
+ * wide windows — the np_v_* staged pairs). fw_* fields are rex'd from _raw (same
+ * patterns the fw metric was built from); PROTO_NAME / QTYPE_LABEL / bytesFmt
+ * are reused. COUNT timecharts append `| fillnull value=0` (both arms 0-fill).
+ * Beaconing panels (kpiBeacon / sparkBeacon / suspicious) + sparklines stay
+ * cached — beaconing has no meaningful sub-hour answer.
+ * ------------------------------------------------------------------------- */
+const RAW_LSEC = '`sap_logserv_idx_macro` sourcetype="linux_secure"';
+const RAW_SQUID = '`sap_logserv_idx_macro` sourcetype="squid:access"';
+const RAW_DNS = '`sap_logserv_idx_macro` tag=dns message_type="Query"';
+const QRAW_BASE = {
+    kpiFw: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | stats count`,
+    kpiProxy: `${RAW_SQUID} | stats count`,
+    kpiDns: `${RAW_DNS} | stats count`,
+    kpiDenied: `${RAW_SQUID} (status=403 OR vendor_action="TCP_DENIED") | stats count`,
+    kpiBw: `${RAW_SQUID} bytes_out=* | stats sum(bytes_out) as total_bytes | eval display = ${bytesFmt('total_bytes')} | table display`,
+    activity: `\`sap_logserv_idx_macro\` (sourcetype="linux_secure" OR sourcetype="squid:access" OR (tag=dns message_type="Query")) | eval source_type = case(sourcetype="linux_secure" AND match(_raw, "IN_DROP"), "Firewall Drops", sourcetype="squid:access", "Proxy Requests", sourcetype="isc:bind:query", "DNS Queries", 1=1, "other") | where source_type != "other" | timechart span=1d count by source_type | fillnull value=0`,
+    blockedSrc: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops, dc(fw_dst) as "Unique Targets", values(fw_proto) as Protocols by fw_src | sort -Drops | rename fw_src as "Source IP"`,
+    blockedPort: `${RAW_LSEC} | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops, dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
+    fwProto: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_proto) | eval proto_name = ${PROTO_NAME} | timechart span=1d count by proto_name | fillnull value=0`,
+    proxyDenied: `${RAW_SQUID} (status=403 OR vendor_action="TCP_DENIED") | timechart span=1d count as "Denied Requests" | fillnull value=0`,
+    outDomains: `${RAW_SQUID} url_domain=* bytes_out=* | stats count as Requests, sum(bytes_out) as bytes, dc(src_ip) as "Unique Clients" by url_domain | eval Bandwidth = ${bytesFmt('bytes')} | sort -bytes | table url_domain, Requests, Bandwidth, "Unique Clients" | rename url_domain as "Domain"`,
+    dnsType: `${RAW_DNS} query_type=* | eval query_type_label = ${QTYPE_LABEL} | stats count by query_type_label | sort -count | rename query_type_label as "Query Type"`,
+    queried: `${RAW_DNS} query=* | stats count as Queries, dc(src) as "Unique Clients", sum(eval(if(query_type="TXT", 1, 0))) as txt_count, sum(eval(if(query_type="MX", 1, 0))) as mx_count by query | eval pct_txt = tostring(round(txt_count*100/Queries, 1)) . "%" | eval pct_mx = tostring(round(mx_count*100/Queries, 1)) . "%" | sort -Queries | table query, Queries, "Unique Clients", pct_txt, pct_mx | rename query as "Domain", pct_txt as "%TXT", pct_mx as "%MX"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -173,18 +210,28 @@ const SUSPICIOUS_COLS: ColumnDef[] = [
 ];
 
 const NetworkPerimeter: React.FC = () => {
-    const fw = useFirstRowField(Q.kpiFw, 'count');
-    const proxy = useFirstRowField(Q.kpiProxy, 'count');
-    const dns = useFirstRowField(Q.kpiDns, 'count');
-    const beacon = useFirstRowField(Q.kpiBeacon, 'count');
-    const denied = useFirstRowField(Q.kpiDenied, 'count');
-    const bw = useFirstRowField(Q.kpiBw, 'display');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const fw = useFirstRowFieldHybrid(Q.kpiFw, QRAW.kpiFw, 'count');
+    const proxy = useFirstRowFieldHybrid(Q.kpiProxy, QRAW.kpiProxy, 'count');
+    const dns = useFirstRowFieldHybrid(Q.kpiDns, QRAW.kpiDns, 'count');
+    const beacon = useFirstRowField(Q.kpiBeacon, 'count'); // beaconing — cached (no sub-hour answer)
+    const denied = useFirstRowFieldHybrid(Q.kpiDenied, QRAW.kpiDenied, 'count');
+    const bw = useFirstRowFieldHybrid(Q.kpiBw, QRAW.kpiBw, 'display');
 
-    const blockedSrc = useSearch({ query: Q.blockedSrc });
-    const blockedPort = useSearch({ query: Q.blockedPort });
-    const outDomains = useSearch({ query: Q.outDomains });
-    const queried = useSearch({ query: Q.queried });
-    const suspicious = useSearch({ query: Q.suspicious });
+    const blockedSrc = useHybridSearch({ cached: Q.blockedSrc, raw: QRAW.blockedSrc });
+    const blockedPort = useHybridSearch({ cached: Q.blockedPort, raw: QRAW.blockedPort });
+    const outDomains = useHybridSearch({ cached: Q.outDomains, raw: QRAW.outDomains });
+    const queried = useHybridSearch({ cached: Q.queried, raw: QRAW.queried });
+    const suspicious = useSearch({ query: Q.suspicious }); // beaconing detection — cached
+
+    // Charts / pie take a query string → route once each (sub-hour -> raw).
+    const qActivity = useRoutedQuery(Q.activity, QRAW.activity);
+    const qFwProto = useRoutedQuery(Q.fwProto, QRAW.fwProto);
+    const qProxyDenied = useRoutedQuery(Q.proxyDenied, QRAW.proxyDenied);
+    const qDnsType = useRoutedQuery(Q.dnsType, QRAW.dnsType);
 
     const fwTone = Number(fw.value ?? 0) > 1000 ? 'critical' : Number(fw.value ?? 0) > 0 ? 'warning' : 'neutral';
     const beaconTone = Number(beacon.value ?? 0) > 0 ? 'critical' : 'neutral';
@@ -245,7 +292,7 @@ const NetworkPerimeter: React.FC = () => {
             <FullWidthPanel>
                 <FramedPanel title="Perimeter Activity Over Time (log scale)" subtitle="Firewall + proxy + DNS daily counts overlaid">
                     <TimeSeriesChart
-                        query={Q.activity}
+                        query={qActivity}
                         height={300}
                         seriesColorsByField={{
                             'Firewall Drops': '#b50101',
@@ -267,10 +314,10 @@ const NetworkPerimeter: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Firewall Drops by Protocol" subtitle="Daily protocol mix (TCP / UDP / ICMP)">
-                    <TimeSeriesChart query={Q.fwProto} height={280} palette="errors" />
+                    <TimeSeriesChart query={qFwProto} height={280} palette="errors" />
                 </FramedPanel>
                 <FramedPanel title="Proxy Denied Traffic Over Time" subtitle="Daily denied request count">
-                    <TimeSeriesChart query={Q.proxyDenied} height={280} palette="errors" />
+                    <TimeSeriesChart query={qProxyDenied} height={280} palette="errors" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -282,7 +329,7 @@ const NetworkPerimeter: React.FC = () => {
 
             <PanelGrid30_70>
                 <FramedPanel title="DNS Query Type Distribution" subtitle="Share of total DNS queries by record type">
-                    <PieChart query={Q.dnsType} categoryField="Query Type" valueField="count" height={300} donut />
+                    <PieChart query={qDnsType} categoryField="Query Type" valueField="count" height={300} donut />
                 </FramedPanel>
                 <FramedPanel search={queried} title="Queried Domains" subtitle="Domains with %TXT and %MX columns (DNS exfil heuristic), ranked by query count">
                     <DataTable columns={QUERIED_COLS} rows={queried.results} loading={queried.loading} error={queried.error} emptyMessage="No DNS queries in this time range." initialSortKey="Queries" initialSortDir="desc" onRowClick={goQueried} />

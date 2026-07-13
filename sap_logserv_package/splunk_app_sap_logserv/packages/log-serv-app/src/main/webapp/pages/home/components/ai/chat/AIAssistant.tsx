@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
+import { useThemeMode } from '../../../state/ThemeModeProvider';
+import { darken } from '../../../utils/colorMath';
 import { useAIAssistantContext } from '../../../state/AIAssistantProvider';
 import { useAIAssistant } from '../../../hooks/useAIAssistant';
 import { useIsPowerUser } from '../../../hooks/useIsPowerUser';
@@ -154,7 +156,7 @@ const SpinnerWrap = styled.span`
     vertical-align: middle;
 `;
 
-const SpinnerDot = styled.span<{ $angle: number; $delay: number }>`
+const SpinnerDot = styled.span<{ $angle: number; $delay: number; $c1: string; $c2: string; $c3: string }>`
     position: absolute;
     top: 50%;
     left: 50%;
@@ -163,7 +165,7 @@ const SpinnerDot = styled.span<{ $angle: number; $delay: number }>`
     margin-left: ${-SPINNER_DOT_PX / 2}px;
     margin-top: ${-SPINNER_DOT_PX / 2}px;
     border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #ffb785 0%, #f1813f 55%, #a04f1d 100%);
+    background: radial-gradient(circle at 35% 30%, ${(p) => p.$c1} 0%, ${(p) => p.$c2} 55%, ${(p) => p.$c3} 100%);
     /* Each dot's --angle CSS variable feeds the keyframe transform so the
      * dot stays at its position on the circle while the brightness wave
      * travels around. */
@@ -174,17 +176,25 @@ const SpinnerDot = styled.span<{ $angle: number; $delay: number }>`
     will-change: opacity, transform;
 `;
 
-const Spinner: React.FC = () => (
-    <SpinnerWrap aria-label="Loading" role="status">
-        {Array.from({ length: SPINNER_DOT_COUNT }).map((_, i) => (
-            <SpinnerDot
-                key={i}
-                $angle={i * (360 / SPINNER_DOT_COUNT)}
-                $delay={i * (SPINNER_PERIOD_S / SPINNER_DOT_COUNT)}
-            />
-        ))}
-    </SpinnerWrap>
-);
+const Spinner: React.FC = () => {
+    // Magnetic interact-blue bead (Phase 4 / build 258) — same treatment as
+    // the shared components/Spinner.tsx, mode-resolved.
+    const { tokens } = useThemeMode();
+    return (
+        <SpinnerWrap aria-label="Loading" role="status">
+            {Array.from({ length: SPINNER_DOT_COUNT }).map((_, i) => (
+                <SpinnerDot
+                    key={i}
+                    $angle={i * (360 / SPINNER_DOT_COUNT)}
+                    $delay={i * (SPINNER_PERIOD_S / SPINNER_DOT_COUNT)}
+                    $c1={tokens.cyanLight}
+                    $c2={tokens.cyanAccent}
+                    $c3={darken(tokens.cyanAccent, 0.45)}
+                />
+            ))}
+        </SpinnerWrap>
+    );
+};
 
 const ErrorLine = styled.div`
     color: ${logservTheme.colors.red};
@@ -327,6 +337,18 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
     });
     const [healthRetryNonce, setHealthRetryNonce] = useState<number>(0);
     const health = useMCPHealth({ enabled: mcpRequired, retryNonce: healthRetryNonce });
+    /* Lazy model-discovery TTL trigger (session 079 / build 275) — the
+     * chat panel opening is the signal that this browser session is
+     * actually using the AI Assistant, so it's the right moment for
+     * the background vendor model-list refresh (governed by the
+     * `model_discovery_enabled` admin setting; skips the mock
+     * provider; at most one attempt per provider per page load; the
+     * 24h TTL lives in modelDiscovery.ts). Fire-and-forget — never
+     * blocks the panel. */
+    const { maybeRefreshModels } = ctx;
+    useEffect(() => {
+        maybeRefreshModels();
+    }, [maybeRefreshModels]);
     const [showPromptBrowser, setShowPromptBrowser] = useState<boolean>(false);
     const [showAuditModal, setShowAuditModal] = useState<boolean>(false);
     const [leftPct, setLeftPct] = useState<number>(readPctFromSession);
@@ -440,6 +462,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
                 onOpenAudit={() => setShowAuditModal(true)}
                 selectedModel={ctx.selectedModel}
                 onModelChange={ctx.setSelectedModel}
+                models={ctx.effectiveModels}
                 templatesOnlyMode={templatesOnlyMode}
             />
             {!mcpRequired && (

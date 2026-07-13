@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import styled from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
+import { useThemeMode } from '../../../state/ThemeModeProvider';
 import { darken } from '../../../utils/colorMath';
 import { isDatabaseTag } from '../../../topology/types';
 import CylinderIcon from './CylinderIcon';
@@ -64,18 +65,22 @@ const arcPath = (cx: number, cy: number, r: number, startAngle: number, endAngle
  * (teal was a hold-over from build 206; user feedback said "green not teal"
  * to match the rest of the dashboard chart conventions). The vertical
  * gradient pattern (top-to-bottom, 100%→darken(0.4)) matches HourlyChart /
- * ActivityTrendChart / TimeSeriesChart's GradientWrap aesthetic. */
-const BUCKET_NORMAL_COLOR = logservTheme.colors.green;
-const BUCKET_WARNING_COLOR = logservTheme.colors.orange;
-const BUCKET_ERROR_COLOR = logservTheme.colors.red;
+ * ActivityTrendChart / TimeSeriesChart's GradientWrap aesthetic.
+ *
+ * Build 246 / Phase 0 Magnetic re-theme — the bucket colors are read from
+ * the RESOLVED mode tokens inside BucketGradientDefs (useThemeMode) rather
+ * than module-level logservTheme constants: SVG stopColor is an ATTRIBUTE
+ * (var() refs don't resolve there) and darken() needs literal hex. */
 /* Build 212 / session 036 — gradient darken halved (0.4 → 0.2) per
  * user feedback that the existing gradient was too pronounced. The
  * lighter falloff keeps the top-to-bottom shading subtle while still
  * matching the dashboard chart aesthetic (HourlyChart / ActivityTrendChart
  * still use 0.4 because their bars span more vertical pixels than a
  * thin ring stroke; the visual weight of the gradient on a 5.5 px
- * stroke at canvas-zoom is roughly 1/4 of an HourlyChart bar). */
-const BUCKET_GRAD_DARKEN = 0.2;
+ * stroke at canvas-zoom is roughly 1/4 of an HourlyChart bar).
+ * Phase 3 / build 257 — per-mode: light gets 0.15 (near-flat, matching
+ * GradientWrap's light fade per plan §8), dark keeps 0.2. */
+const BUCKET_GRAD_DARKEN: Record<'light' | 'dark', number> = { dark: 0.2, light: 0.15 };
 
 /** Render the 3 vertical-gradient `<linearGradient>` SVG defs used by both
  *  the circular and square call-bucket indicators. Same structure as
@@ -85,22 +90,29 @@ const BUCKET_GRAD_DARKEN = 0.2;
 interface BucketGradientDefsProps {
     idPrefix: string; // e.g. 'sid-focused-1' to scope ids
 }
-const BucketGradientDefs: React.FC<BucketGradientDefsProps> = ({ idPrefix }) => (
-    <defs>
-        <linearGradient id={`${idPrefix}-normal`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={BUCKET_NORMAL_COLOR} stopOpacity="1" />
-            <stop offset="100%" stopColor={darken(BUCKET_NORMAL_COLOR, BUCKET_GRAD_DARKEN)} stopOpacity="1" />
-        </linearGradient>
-        <linearGradient id={`${idPrefix}-warning`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={BUCKET_WARNING_COLOR} stopOpacity="1" />
-            <stop offset="100%" stopColor={darken(BUCKET_WARNING_COLOR, BUCKET_GRAD_DARKEN)} stopOpacity="1" />
-        </linearGradient>
-        <linearGradient id={`${idPrefix}-error`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={BUCKET_ERROR_COLOR} stopOpacity="1" />
-            <stop offset="100%" stopColor={darken(BUCKET_ERROR_COLOR, BUCKET_GRAD_DARKEN)} stopOpacity="1" />
-        </linearGradient>
-    </defs>
-);
+const BucketGradientDefs: React.FC<BucketGradientDefsProps> = ({ idPrefix }) => {
+    const { tokens, mode } = useThemeMode();
+    const bucketDarken = BUCKET_GRAD_DARKEN[mode];
+    const normal = tokens.green;
+    const warning = tokens.orange;
+    const error = tokens.red;
+    return (
+        <defs>
+            <linearGradient id={`${idPrefix}-normal`} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={normal} stopOpacity="1" />
+                <stop offset="100%" stopColor={darken(normal, bucketDarken)} stopOpacity="1" />
+            </linearGradient>
+            <linearGradient id={`${idPrefix}-warning`} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={warning} stopOpacity="1" />
+                <stop offset="100%" stopColor={darken(warning, bucketDarken)} stopOpacity="1" />
+            </linearGradient>
+            <linearGradient id={`${idPrefix}-error`} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={error} stopOpacity="1" />
+                <stop offset="100%" stopColor={darken(error, bucketDarken)} stopOpacity="1" />
+            </linearGradient>
+        </defs>
+    );
+};
 
 /** Compute proportional segment ranges along a 0..1 normalized span for
  *  the 3 bucket buckets. Returns [{key, gradKey, t0, t1}] where t-coords
@@ -259,9 +271,6 @@ const CallBucketRing: React.FC<CallBucketRingProps> = ({ diameter, buckets, isFo
  *  database with a health ring with same HANA rules applied" — DB-tagged
  *  partner nodes should look + behave like SidNode database SIDs. */
 export {
-    BUCKET_NORMAL_COLOR,
-    BUCKET_WARNING_COLOR,
-    BUCKET_ERROR_COLOR,
     BUCKET_GRAD_DARKEN,
     BucketGradientDefs,
     computeBucketSegments,
@@ -306,13 +315,23 @@ const Wrapper = styled.div<{
          * top:50% + left:50% + translate(-50%,-50%) on discWrap)
          * landed at (46, 46) — visibly offset from the disc by the
          * border-width.
-         * Fix: discWrap = 100×100 (focused) or 68×68 (secondary), so
+         * Fix: discWrap = 100×100 (focused) or 90×90 (secondary), so
          * its center matches the disc visual center exactly. Confirmed
          * in build-207 DOM diagnostic: XCP discWrap=92 vs disc=100 →
-         * 4-px offset per direction. */
+         * 4-px offset per direction.
+         *
+         * Build 277 / session 080 — secondary SIDs enlarged to 90% of
+         * the focused size (border-box 68 → 90; disc CSS 64 → 86 with
+         * the 2 px border unchanged). Inner label / cylinder scale in
+         * proportion. Derived geometry updated in lockstep:
+         * FloatingEdge.tsx anchorFor (sid_secondary cy +34 → +45,
+         * r 52 → 63), layoutLayered/layoutMrtree sizeForNode
+         * (115×145 → 135×165), layout.ts DEFAULT_COLLIDE_SECONDARY
+         * (100 → 120). DB-tagged PARTNER nodes keep the old 68 px
+         * disc — they are partners, not SIDs. */
         position: relative;
-        width: ${(p) => (p.$kind === 'sid_focused' ? '100px' : '68px')};
-        height: ${(p) => (p.$kind === 'sid_focused' ? '100px' : '68px')};
+        width: ${(p) => (p.$kind === 'sid_focused' ? '100px' : '90px')};
+        height: ${(p) => (p.$kind === 'sid_focused' ? '100px' : '90px')};
         /* Build 207 — explicit overflow:visible so the larger SVG ring
          * (now further out from the disc) isn't clipped by the wrapper. */
         overflow: visible;
@@ -325,12 +344,12 @@ const Wrapper = styled.div<{
     }
 
     .disc {
-        width: ${(p) => (p.$kind === 'sid_focused' ? '92px' : '64px')};
-        height: ${(p) => (p.$kind === 'sid_focused' ? '92px' : '64px')};
+        width: ${(p) => (p.$kind === 'sid_focused' ? '92px' : '86px')};
+        height: ${(p) => (p.$kind === 'sid_focused' ? '92px' : '86px')};
         border-radius: 50%;
         background: ${logservTheme.colors.panelBackground};
         border: ${(p) => (p.$kind === 'sid_focused' ? `4px solid ${p.$halo}` : `2px solid ${logservTheme.colors.textDefault}`)};
-        box-shadow: ${(p) => (p.$selected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLight}80` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
+        box-shadow: ${(p) => (p.$selected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLightGlow}` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
         display: flex;
         align-items: center;
         justify-content: center;
@@ -342,8 +361,11 @@ const Wrapper = styled.div<{
         flex-direction: ${(p) => (p.$isDb ? 'column' : 'row')};
         gap: ${(p) => (p.$isDb ? '1px' : '0')};
         font-size: ${(p) => {
-            if (p.$isDb) return p.$kind === 'sid_focused' ? '14px' : '11px';
-            return p.$kind === 'sid_focused' ? '20px' : '14px';
+            /* Build 277 — secondary font scales with the 90%-of-focused
+             * disc (20 * 0.9 = 18; DB 14 * 0.9 ≈ 13) so label/disc
+             * proportions match the focused variant. */
+            if (p.$isDb) return p.$kind === 'sid_focused' ? '14px' : '13px';
+            return p.$kind === 'sid_focused' ? '20px' : '18px';
         }};
     }
 
@@ -375,7 +397,7 @@ const SidNode: React.FC<NodeProps> = ({ id, data, selected }) => {
     const tagPlusCount = `${d.tag} · ${d.eventCount.toLocaleString()}`;
     const cylSize = d.kind === 'sid_focused'
         ? { w: 28, h: 32 }
-        : { w: 22, h: 26 };
+        : { w: 25, h: 29 };
     const kindLabel = d.kind === 'sid_focused' ? 'Focused SAP SID' : 'Secondary SAP SID';
 
     // Build 141: hover-driven anchor rect for the portaled tooltip. The
@@ -395,7 +417,7 @@ const SidNode: React.FC<NodeProps> = ({ id, data, selected }) => {
      * CSS width. Disc has content-box + border, so border-box = visible
      * disc diameter. Ring radius computes from this so the gap between
      * disc visual edge and ring inner is consistent. */
-    const discDiameter = d.kind === 'sid_focused' ? 100 : 68;
+    const discDiameter = d.kind === 'sid_focused' ? 100 : 90;
 
     return (
         <Wrapper

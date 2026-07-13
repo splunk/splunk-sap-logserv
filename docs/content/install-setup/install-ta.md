@@ -22,7 +22,7 @@ The solution uses two indexes:
 
 | Index | Purpose | Default name | Macro |
 |---|---|---|---|
-| **SAP data index** | Receives every event the Data TA forwards (logs ingested from S3/Azure and routed to the appropriate sourcetype) | `sap_logserv_logs` | `sap_logserv_idx_macro` |
+| **SAP data index** | Receives every event the Data TA forwards (logs ingested from S3/Azure/GCS and routed to the appropriate sourcetype) | `sap_logserv_logs` | `sap_logserv_idx_macro` |
 | **AI Assistant audit index** | Receives every audit event the AI Assistant writes — canned-prompt dispatches, free-form vendor calls (when LLM path is enabled), security blocks, privacy-tier elevations, legal acknowledgements | `logserv_ai_assistant_audit` | `sap_logserv_audit_idx_macro` |
 
 **How these indexes get created depends on your topology:**
@@ -146,15 +146,15 @@ If you are using separate forwarders in conjunction with Splunk Cloud, be sure t
 
 Install the Data TA to your instance of Splunk Enterprise:
 
-5.<b style="color: #ff9100">a</b> From the Splunk Web home screen, click the gear icon next to Apps.
+5.<b class="taiconcolor">a</b> From the Splunk Web home screen, click the gear icon next to Apps.
 
-5.<b style="color: #ff9100">b</b> Click Install app from file.
+5.<b class="taiconcolor">b</b> Click Install app from file.
 
-5.<b style="color: #ff9100">c</b> Locate the downloaded `splunk_ta_sap_logserv-0.0.6.tar.gz` file and click Upload.
+5.<b class="taiconcolor">c</b> Locate the downloaded `splunk_ta_sap_logserv-0.0.6.tar.gz` file and click Upload.
 
-5.<b style="color: #ff9100">d</b> If Splunk Enterprise prompts you to restart, do so.
+5.<b class="taiconcolor">d</b> If Splunk Enterprise prompts you to restart, do so.
 
-5.<b style="color: #ff9100">e</b> Verify that the add-on appears in the list of apps and add-ons. You can also find it on the server at `$SPLUNK_HOME/etc/apps/splunk_ta_sap_logserv`.
+5.<b class="taiconcolor">e</b> Verify that the add-on appears in the list of apps and add-ons. You can also find it on the server at `$SPLUNK_HOME/etc/apps/splunk_ta_sap_logserv`.
 
 <br>
 
@@ -178,5 +178,5 @@ What the DS *does* push usefully to HFs from this Data TA: **filter rules** (whi
 
 1. Install the [LogServ App](../logserv-app/installation.md) on your Search Head
 2. Install the [Splunk MCP Server](../ai-assistant/mcp-setup.md) on your Search Head if you want to use the AI Assistant
-3. Complete the [Setup Guides](setup-guides.md) to configure data collection (**AWS S3** or **Azure Blob Storage**, depending on where your SAP ECS data lands — Azure also requires the first-party **LogServ Azure add-on**, `splunk_ta_sap_logserv_azure`, on each Heavy Forwarder)
+3. Complete the [Setup Guides](setup-guides.md) to configure data collection (**AWS S3**, **Azure Blob Storage**, or **Google Cloud Storage**, depending on where your SAP ECS data lands — Azure and GCP each require their first-party add-on, `splunk_ta_sap_logserv_azure` / `splunk_ta_sap_logserv_gcp`, on each Heavy Forwarder)
 4. Configure [index-time filters](configure-filters.md) to control which log types are indexed

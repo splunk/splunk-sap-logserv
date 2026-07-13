@@ -119,7 +119,12 @@ const Button = styled.button<{ $variant?: 'primary' | 'warn' }>`
             : p.$variant === 'primary'
               ? logservTheme.colors.cyanAccent
               : 'transparent'};
-    color: ${logservTheme.colors.textActive};
+    /* Filled variants get light text in BOTH modes (Phase-5 sweep) —
+       textActive resolves near-black in light mode, unreadable on the fill. */
+    color: ${(p) =>
+        p.$variant === 'warn' || p.$variant === 'primary'
+            ? logservTheme.colors.inverseText
+            : logservTheme.colors.textActive};
     border: 1px solid ${(p) =>
         p.$variant === 'warn'
             ? logservTheme.colors.orange

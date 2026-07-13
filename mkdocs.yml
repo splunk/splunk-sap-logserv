@@ -34,14 +34,14 @@ theme:
     - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: black
-      accent: orange
+      accent: blue
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: black
-      accent: orange
+      accent: blue
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -86,9 +86,10 @@ nav:
         - AWS Remote S3 Connect Setup Guide: 'content/install-setup/aws-remote-s3-connect-guide.md'
         - AWS Remote S3 Filter Setup Guide: 'content/install-setup/aws-remote-s3-filter-guide.md'
         - AWS Remote S3 Copy Setup Guide: 'content/install-setup/aws-remote-s3-copy-guide.md'
-    - AWS Migrations Guide:
-        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md'
-    - Azure Setup: 'content/install-setup/azure-setup.md'
+#    - AWS Migrations Guide:
+#        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md'
+    - Azure Setup Guide: 'content/install-setup/azure-setup.md'
+    - GCP Setup Guide: 'content/install-setup/gcp-setup.md'
 - LogServ UI App:
     - Prerequisites: 'content/logserv-app/prerequisites.md'
     - Installing the LogServ App: 'content/logserv-app/installation.md'

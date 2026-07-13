@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../../styles/logservTheme';
 import { ALL_INTEGRATION_TYPES, edgeColor, integrationTypeLabel } from '../../topology/edgeStyle';
+import { useThemeMode } from '../../state/ThemeModeProvider';
 import type { IntegrationType } from '../../topology/types';
 import type { LayoutSummary } from '../../topology/persistence';
 import {
@@ -80,7 +81,9 @@ const Button = styled.button<{ $accent?: boolean; $active?: boolean }>`
             : p.$accent
               ? logservTheme.colors.hoverBackground
               : 'transparent'};
-    color: ${(p) => (p.$active ? logservTheme.colors.textActive : logservTheme.colors.textActive)};
+    /* Active (filled) state gets light text in BOTH modes (Phase-5 sweep) —
+       textActive resolves near-black in light mode, unreadable on the fill. */
+    color: ${(p) => (p.$active ? logservTheme.colors.inverseText : logservTheme.colors.textActive)};
     border: 1px solid ${(p) => (p.$active ? logservTheme.colors.cyanLight : logservTheme.colors.panelBorderWeak)};
     border-radius: ${logservTheme.radius.small};
     padding: 4px 10px;
@@ -91,7 +94,10 @@ const Button = styled.button<{ $accent?: boolean; $active?: boolean }>`
     transition: background-color 80ms ease-out, border-color 80ms ease-out;
 
     &:hover {
-        background: ${logservTheme.colors.hoverBackground};
+        /* Keep the active fill on hover — hoverBackground under inverseText
+           would be light-on-light in light mode (Phase-5 sweep). */
+        background: ${(p) =>
+            p.$active ? logservTheme.colors.cyanAccent : logservTheme.colors.hoverBackground};
         border-color: ${logservTheme.colors.cyanAccent};
     }
 
@@ -386,6 +392,9 @@ const TopologyToolbar: React.FC<TopologyToolbarProps> = ({
     onDeleteLayout,
     onOpenManageLayouts,
 }) => {
+    /* Resolved tokens for edgeColor() — the legend swatches share the exact
+     * per-type colors the graph edges use (build 246 / Phase 0). */
+    const { tokens } = useThemeMode();
     return (
         <Bar role="toolbar" aria-label="Topology toolbar">
             <TopRow>
@@ -439,7 +448,7 @@ const TopologyToolbar: React.FC<TopologyToolbarProps> = ({
             <LegendRow>
                 {ALL_INTEGRATION_TYPES.map((t) => (
                     <LegendItem key={t}>
-                        <Swatch $color={edgeColor(t)} />
+                        <Swatch $color={edgeColor(t, tokens)} />
                         {integrationTypeLabel(t)}
                     </LegendItem>
                 ))}

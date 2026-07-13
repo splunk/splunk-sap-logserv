@@ -233,7 +233,12 @@ export interface SavedLayout {
 export const DEFAULT_PANEL_LAYOUT: PanelLayoutState = {
     leftWidth: 240,
     rightWidth: 320,
-    bottomHeight: 220,
+    /* 220 → 300 in build 280 (session 081): the default Live Activity
+     * height showed only ~5 of the 8 partner rows. 300 px shows ~7-8 with
+     * the panel's new internal scroll covering the rest; saved layouts
+     * keep whatever height the user persisted (the expand gesture floors
+     * a smaller saved height up to this default — see toggleBottom). */
+    bottomHeight: 300,
     leftCollapsed: false,
     rightCollapsed: false,
     bottomCollapsed: false,

@@ -79,6 +79,11 @@ export interface AIAssistantConfig {
      *  preserves it cleanly; parsed to `string[]` at consumption sites
      *  via `parsePowerUserRoles()`. Build 166 / session 028. */
     powerUserRoles: string;
+    /** Dynamic model discovery. When true (default), the model picker
+     *  refreshes itself from the active vendor's model-listing API and
+     *  merges with the shipped static baseline; when false, zero vendor
+     *  list calls fire. Session 079 / build 275. */
+    modelDiscoveryEnabled: boolean;
 }
 
 /** Parse the CSV-encoded `powerUserRoles` config into a deduped, trimmed
@@ -117,6 +122,7 @@ export const DEFAULT_AI_ASSISTANT_CONFIG: AIAssistantConfig = {
     auditForwarderIndex: '',
     auditForwarderSource: 'logserv_ai_assistant_remote',
     powerUserRoles: '',
+    modelDiscoveryEnabled: true,
 };
 
 /**
@@ -147,5 +153,6 @@ export const loadAIAssistantConfig = async (): Promise<AIAssistantConfig> => {
         auditForwarderIndex: stored.audit_forwarder_index,
         auditForwarderSource: stored.audit_forwarder_source,
         powerUserRoles: stored.power_user_roles,
+        modelDiscoveryEnabled: stored.model_discovery_enabled,
     };
 };

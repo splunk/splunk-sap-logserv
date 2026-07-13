@@ -16,10 +16,14 @@ import {
     applyNodeChanges,
     applyEdgeChanges,
     MarkerType,
+    useStoreApi,
+    type EdgeTypes,
 } from '@xyflow/react';
+import FloatingEdge from './FloatingEdge';
 import '@xyflow/react/dist/style.css';
 import styled from 'styled-components';
 import { logservTheme } from '../../styles/logservTheme';
+import { useThemeMode } from '../../state/ThemeModeProvider';
 import SidNode from './nodeTypes/SidNode';
 import PartnerNode from './nodeTypes/PartnerNode';
 import type { TopologyNode, TopologyEdge, IntegrationType } from '../../topology/types';
@@ -54,7 +58,8 @@ const FlowWrap = styled.div`
     --xy-controls-button-color-hover: ${logservTheme.colors.cyanLight};
     --xy-controls-button-border-color: ${logservTheme.colors.panelBorderWeak};
     --xy-minimap-background-color: ${logservTheme.colors.panelBackground};
-    --xy-minimap-mask-background-color: rgba(0, 0, 0, 0.6);
+    /* minimap mask: set via the <MiniMap maskColor> PROP (mode-aware,
+     * build 257) — the prop renders inline and always beats this var. */
     --xy-attribution-background-color: transparent;
 
     /* Edge labels — keep them readable on the dark canvas. */
@@ -98,6 +103,23 @@ const nodeTypes: NodeTypes = {
     partner: PartnerNode,
 };
 
+/* Build 268 — P4 floating edges: paths run center-to-center clipped at the
+ * node's visible shape instead of the fixed top/bottom handles, so
+ * arrowheads meet nodes head-on along the actual node-to-node direction
+ * (see FloatingEdge.tsx). */
+const edgeTypes: EdgeTypes = {
+    floating: FloatingEdge,
+};
+
+/* Build 264/265 — zoom clamps + fit padding, shared by the ReactFlow props
+ * and the manual fit math. minZoom 0.25 -> 0.1: the 262 star-system
+ * layout's world bbox (~4300x2500) needs fit zoom ~0.17 on the
+ * Live-Activity-expanded canvas; at 0.25 every fit CLAMPED to the floor
+ * and the content rendered cropped. */
+const MIN_ZOOM = 0.1;
+const MAX_ZOOM = 2.5;
+const FIT_PADDING = 0.05;
+
 interface TopologyGraphProps {
     nodes: TopologyNode[];
     edges: TopologyEdge[];
@@ -118,6 +140,12 @@ interface TopologyGraphProps {
      *  lazy-loaded), 'tree' = ELK mrtree (async, lazy-loaded). Build 202 /
      *  session 036 added Tree. */
     layoutMode?: LayoutMode;
+    /** Returns the target canvas size (CSS px) the layout should design
+     *  for — the center canvas AS IF the Live Activity panel is collapsed
+     *  (build 262 / session 077 Task 2). Read at layout-compute time (not
+     *  a reactive dep) so panel resizes don't churn re-layouts. Null when
+     *  measurement isn't available; the layout falls back to defaults. */
+    getLayoutWorld?: () => { width: number; height: number } | null;
     /** Notified when the user clicks a node (for the right side panel). */
     onNodeClick?: (nodeId: string) => void;
     /** Notified when the user clicks an edge (for the right side panel's
@@ -135,6 +163,10 @@ interface TopologyGraphProps {
 export interface TopologyGraphHandle {
     getViewport(): { x: number; y: number; zoom: number } | null;
     setViewport(v: { x: number; y: number; zoom: number }): void;
+    /** Refit the viewport to the current node bbox — used after the Live
+     *  Activity panel toggles so the layout actually claims the vertical
+     *  space the collapse frees (build 262 / session 077 Task 2). */
+    fitView(): void;
 }
 
 const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
@@ -146,12 +178,82 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
     selectedNodeId,
     selectedEdgeId,
     layoutMode = 'force',
+    getLayoutWorld,
     onNodeClick,
     onEdgeClick,
     onPaneClick,
     onLayoutChange,
 }, ref) => {
     const flowRef = useRef<ReactFlowInstance | null>(null);
+    /* ReactFlow's own zustand store — the authoritative live canvas
+     * dimensions (kept current by RF's internal ResizeObserver). Available
+     * because IntegrationTopology wraps us in <ReactFlowProvider>. */
+    const storeApi = useStoreApi();
+    /* Latest measurement callback in a ref so the layout effect reads the
+     * current canvas size WITHOUT re-triggering on parent re-renders. */
+    const getLayoutWorldRef = useRef(getLayoutWorld);
+    getLayoutWorldRef.current = getLayoutWorld;
+
+    /* Build 265/266 — MANUAL fit-to-bounds. Empirically (live on v12.10.2,
+     * session 077) every runtime `inst.fitView()` call is a SILENT NO-OP
+     * in our setup — the built-in Controls fit button included; only the
+     * `fitView` mount prop ever fit the viewport. `setViewport` with
+     * duration 0 is the proven-working primitive (build 220/221 minimap
+     * navigation), so fit = compute node bounds + centering transform
+     * ourselves and set the viewport directly. Canvas dims come from RF's
+     * store (266) — NOT a styled-component ref on FlowWrap, whose
+     * forwarding is unreliable here (session-036 sticky, re-confirmed live
+     * when the 265 ref-based fit silently bailed). Zoom clamps mirror the
+     * ReactFlow props below. */
+    const manualFitView = useCallback(() => {
+        const inst = flowRef.current;
+        if (!inst || typeof inst.setViewport !== 'function' || typeof inst.getNodes !== 'function') return;
+        /* Prefer a LIVE synchronous canvas measurement over the RF store
+         * (Phase-5 sweep, build 272). getBoundingClientRect() forces a
+         * style+layout flush and is current even in occluded/backgrounded
+         * windows, where RF's ResizeObserver (paint-driven) can lag one
+         * paint behind — proven live: after a Live-Activity toggle the
+         * store still reported the pre-toggle height while gBCR already
+         * returned the final one, so all three staggered fit timers
+         * computed a fit for the OLD canvas. The store stays as fallback
+         * (single .react-flow instance per page — same querySelector
+         * pattern as the build-266 getLayoutWorld fallbacks). */
+        const rfEl = document.querySelector('.react-flow');
+        const rect = rfEl ? rfEl.getBoundingClientRect() : null;
+        const store = storeApi.getState();
+        const width = rect && rect.width >= 50 ? rect.width : store.width;
+        const height = rect && rect.height >= 50 ? rect.height : store.height;
+        if (!width || !height || width < 50 || height < 50) return;
+        const rfNodes = inst.getNodes();
+        if (rfNodes.length === 0) return;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+        rfNodes.forEach((n) => {
+            const w = n.measured?.width ?? n.width ?? 0;
+            const h = n.measured?.height ?? n.height ?? 0;
+            minX = Math.min(minX, n.position.x);
+            minY = Math.min(minY, n.position.y);
+            maxX = Math.max(maxX, n.position.x + w);
+            maxY = Math.max(maxY, n.position.y + h);
+        });
+        const bw = Math.max(1, maxX - minX);
+        const bh = Math.max(1, maxY - minY);
+        const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min(
+            width / (bw * (1 + 2 * FIT_PADDING)),
+            height / (bh * (1 + 2 * FIT_PADDING)),
+        )));
+        const x = (width - bw * zoom) / 2 - minX * zoom;
+        const y = (height - bh * zoom) / 2 - minY * zoom;
+        inst.setViewport({ x, y, zoom }, { duration: 0 });
+    }, [storeApi]);
+    /* Phase 0 Magnetic re-theme (build 246): resolved literal-hex tokens
+     * for @xyflow plumbing that can't take CSS var() references —
+     * markerEnd.color (SVG marker defs), MiniMap nodeColor (fill
+     * attributes), Background dot color. Mode flips re-run the edge-sync
+     * effect below via the `tokens` dep. */
+    const { tokens, mode } = useThemeMode();
 
     useImperativeHandle(
         ref,
@@ -169,8 +271,9 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                  * instant, like a checkpoint restore — not an animated zoom. */
                 inst.setViewport(v, { duration: 0 });
             },
+            fitView: manualFitView,
         }),
-        [],
+        [manualFitView],
     );
 
     /**
@@ -193,7 +296,24 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                 return;
             }
             try {
-                const positioned = await computeLayout(layoutMode, nodes, edges);
+                /* Build 262 / session 077 Task 2 — derive the layout world
+                 * from the measured canvas (as if Live Activity is
+                 * collapsed): hold width at 4000 world units and aspect-
+                 * match the height. Absolute numbers don't matter (fitView
+                 * normalizes) — the aspect + width feed the slot spread and
+                 * vertical mid-line. Clamped so a mid-mount degenerate
+                 * measurement can't produce a silly world. */
+                const canvas = getLayoutWorldRef.current?.() ?? null;
+                let worldW: number | undefined;
+                let worldH: number | undefined;
+                if (canvas && canvas.width >= 200 && canvas.height >= 150) {
+                    const aspect = Math.min(1.2, Math.max(0.22, canvas.height / canvas.width));
+                    worldW = 4000;
+                    worldH = Math.round(4000 * aspect);
+                }
+                const positioned = worldW !== undefined && worldH !== undefined
+                    ? await computeLayout(layoutMode, nodes, edges, worldW, worldH)
+                    : await computeLayout(layoutMode, nodes, edges);
                 if (cancelled) return;
                 const posMap = new Map(positioned.map((p) => [p.id, { x: p.x, y: p.y }]));
                 const positions = nodes.map((n) => posMap.get(n.id) ?? { x: 0, y: 0 });
@@ -245,16 +365,18 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
          * occasionally reads pre-layout bounds and over-zooms. */
         window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
-                const inst = flowRef.current;
-                if (!inst || typeof inst.fitView !== 'function') return;
                 /* Build 194 — padding tightened from 0.12 to 0.05 so default
-                 * zoom uses more of the viewport. Combined with the layered
-                 * forceX/forceY centering pull in layout.ts, outlier
-                 * clusters are tugged in and the dense main clusters get
-                 * proportionally more pixels at the auto-fit zoom level. */
-                inst.fitView({ duration: 600, padding: 0.05 });
+                 * zoom uses more of the viewport. Build 265 — routed through
+                 * the manual fit: the previous inst.fitView() call here was
+                 * a silent no-op (see manualFitView above); layout
+                 * recomputes without a remount (e.g. time-range changes)
+                 * were never actually refitting. */
+                manualFitView();
             });
         });
+        /* Timer fallback (build 267): rAF freezes in occluded windows —
+         * make sure a recompute still refits there. Idempotent. */
+        window.setTimeout(manualFitView, 400);
         // Intentionally exclude selectedNodeId from the dep array — selection
         // updates are handled by the second effect below to avoid clobbering
         // user-dragged positions.
@@ -266,18 +388,28 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
         setFlowNodes((prev) => prev.map((fn) => ({ ...fn, selected: fn.id === selectedNodeId })));
     }, [selectedNodeId]);
 
-    /** Edge sync — re-run when edges, filter set, or edge selection changes
-     *  (filter affects opacity; selection affects stroke width + glow). */
+    /** Edge sync — re-run when edges, filter set, edge selection, or theme
+     *  mode changes (filter affects opacity; selection affects stroke width
+     *  + glow; mode swaps the resolved token palette). Edge colors use the
+     *  RESOLVED hex tokens (not logservTheme var() refs) because
+     *  `markerEnd.color` flows into @xyflow's SVG <marker> defs and the
+     *  label fills flow into SVG text/rect fills — attribute positions
+     *  where CSS variables don't resolve. Build 246 / Phase 0. */
     React.useEffect(() => {
+        /* Build 268 — P4: mark edges whose REVERSE direction also exists so
+         * FloatingEdge can offset the two straight lines apart (they would
+         * otherwise overlap exactly). */
+        const directions = new Set(edges.map((e) => `${e.source}=>${e.target}`));
         setFlowEdges(
             edges.map((e) => {
                 const enabled = enabledTypes.has(e.type);
                 const isSelected = e.id === selectedEdgeId;
-                const styleBits = edgeStyleFor(e);
+                const styleBits = edgeStyleFor(e, tokens);
+                const hasReverse = directions.has(`${e.target}=>${e.source}`);
                 /* Selected edges get a thicker stroke + cyan-light highlight
                  * stroke color so the user can see which edge they picked.
                  * Build 202 / session 036. */
-                const stroke = isSelected ? logservTheme.colors.cyanLight : styleBits.stroke;
+                const stroke = isSelected ? tokens.cyanLight : styleBits.stroke;
                 const strokeWidth = isSelected
                     ? Math.max(3, styleBits.strokeWidth + 1.5)
                     : styleBits.strokeWidth;
@@ -285,6 +417,9 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                     id: e.id,
                     source: e.source,
                     target: e.target,
+                    /* Build 268 — P4 floating edges (center-to-center,
+                     * shape-clipped straight paths; see FloatingEdge.tsx). */
+                    type: 'floating',
                     label: e.callCount.toLocaleString(),
                     selected: isSelected,
                     style: {
@@ -304,15 +439,15 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                         width: 16,
                         height: 16,
                     },
-                    labelStyle: { fill: logservTheme.colors.textActive, fontSize: 10, fontWeight: 600 },
-                    labelBgStyle: { fill: logservTheme.colors.panelBackground, fillOpacity: 0.85 },
+                    labelStyle: { fill: tokens.textActive, fontSize: 10, fontWeight: 600 },
+                    labelBgStyle: { fill: tokens.panelBackground, fillOpacity: 0.85 },
                     labelBgBorderRadius: 3,
                     labelBgPadding: [4, 6],
-                    data: { type: e.type, callCount: e.callCount, direction: e.direction },
+                    data: { type: e.type, callCount: e.callCount, direction: e.direction, hasReverse },
                 };
             }),
         );
-    }, [edges, enabledTypes, selectedEdgeId]);
+    }, [edges, enabledTypes, selectedEdgeId, tokens]);
 
     const handleNodesChange = useCallback((changes: NodeChange[]) => {
         setFlowNodes((nds) => applyNodeChanges(changes, nds));
@@ -469,6 +604,7 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                 nodes={flowNodes}
                 edges={flowEdges}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 onNodesChange={handleNodesChange}
                 onEdgesChange={handleEdgesChange}
                 onNodeDragStop={handleNodeDragStop}
@@ -477,17 +613,21 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                 onPaneClick={handlePaneClick}
                 onInit={(inst) => { flowRef.current = inst; }}
                 fitView
-                colorMode="dark"
+                colorMode={mode}
                 attributionPosition="bottom-right"
                 proOptions={{ hideAttribution: true }}
-                minZoom={0.25}
-                maxZoom={2.5}
+                minZoom={MIN_ZOOM}
+                maxZoom={MAX_ZOOM}
             >
+                {/* Faint Magnetic dot-grid (plan §8, Phase 3 / build 257):
+                  * near-invisible texture, not a visible grid — low-alpha
+                  * ink per mode instead of a border token (whose light
+                  * value is indistinguishable from the page bg). */}
                 <Background
                     variant={BackgroundVariant.Dots}
                     gap={20}
                     size={1.2}
-                    color={logservTheme.colors.panelBorderWeak}
+                    color={mode === 'light' ? 'rgba(15, 18, 20, 0.07)' : 'rgba(247, 247, 247, 0.06)'}
                 />
                 <Controls showInteractive={false} />
                 {/* Build 222 / session 037 — `pannable` and `zoomable` props
@@ -501,11 +641,13 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                 <MiniMap
                     nodeColor={(n) => {
                         const k = (n.data as { kind?: string })?.kind;
-                        if (k === 'sid_focused') return logservTheme.colors.red;
-                        if (k === 'sid_secondary') return logservTheme.colors.cyanLight;
-                        return logservTheme.colors.textMuted;
+                        if (k === 'sid_focused') return tokens.red;
+                        if (k === 'sid_secondary') return tokens.cyanLight;
+                        return tokens.textMuted;
                     }}
-                    maskColor="rgba(0, 0, 0, 0.55)"
+                    // Magnetic minimap mask per mode (plan §8): a light wash
+                    // in light mode, the heavy dark scrim in dark mode.
+                    maskColor={mode === 'light' ? 'rgba(0, 0, 0, 0.08)' : 'rgba(0, 0, 0, 0.55)'}
                     style={{ width: 140, height: 100, cursor: 'grab' }}
                 />
             </ReactFlow>

@@ -83,8 +83,9 @@ const getElk = async (): Promise<ElkInstance> => {
  *   - sid_focused: disc 100 + ring 19.5 px each side = 139 wide;
  *     ring 19.5 below + 22 label margin + 14 label = 55.5 below disc;
  *     total height ~159. Pad to 145 x 175.
- *   - sid_secondary: disc 68 + ring 19.5 each side = 107 wide;
- *     ring 19.5 + 22 + 14 = 55.5 below; total ~125. Pad to 115 x 145.
+ *   - sid_secondary (build 277 — enlarged to 90% of focused): disc 90
+ *     + ring 19.5 each side = 129 wide; ring 19.5 + 22 + 14 = 55.5
+ *     below; total ~145.5. Pad to 135 x 165.
  *   - partner: square 53 + outline 17 each side = 87 wide;
  *     outline 17 + 20 label margin + 14 label + 2 + 10 tag = 63
  *     below; total ~133. Pad to 95 x 145.
@@ -96,7 +97,7 @@ const getElk = async (): Promise<ElkInstance> => {
  */
 const sizeForNode = (n: TopologyNode): { width: number; height: number } => {
     if (n.kind === 'sid_focused') return { width: 145, height: 175 };
-    if (n.kind === 'sid_secondary') return { width: 115, height: 145 };
+    if (n.kind === 'sid_secondary') return { width: 135, height: 165 };
     return { width: 95, height: 145 };
 };
 

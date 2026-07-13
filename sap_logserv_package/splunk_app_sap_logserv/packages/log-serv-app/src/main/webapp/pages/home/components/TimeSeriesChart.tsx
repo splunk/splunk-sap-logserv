@@ -3,16 +3,15 @@ import styled from 'styled-components';
 import Column from '@splunk/visualizations/Column';
 import Line from '@splunk/visualizations/Line';
 import Area from '@splunk/visualizations/Area';
+import Bar from '@splunk/visualizations/Bar';
 import { useSearch } from '../hooks/useSearch';
 import { logservTheme } from '../styles/logservTheme';
-import { ChartPalette, paletteColors, STATUS_FIELD_COLORS } from '../styles/chartPalettes';
+import { ChartPalette, paletteColors, statusFieldColors } from '../styles/chartPalettes';
+import { useThemeMode } from '../state/ThemeModeProvider';
 import GradientWrap from './GradientWrap';
 import LegendTitleTooltips from './LegendTitleTooltips';
 import PanelLoading from './PanelLoading';
 import { usePanelMetaReporter } from './PanelMeta';
-
-/** Default vertical-gradient darkness (0 = same color, 1 = black). */
-const DEFAULT_GRADIENT_DARKEN = 0.4;
 
 /**
  * TimeSeriesChart — wraps @splunk/visualizations/Column with our SearchJob
@@ -40,11 +39,14 @@ interface TimeSeriesChartProps {
      *  - 'column' (default) — stacked vertical bars; good for low-density volume
      *  - 'line'             — multi-line; good for trend comparison across series
      *  - 'area'             — stacked area fill; good for cumulative composition
+     *  - 'bar'              — horizontal bars; best for ranked categorical data
+     *                         with long labels, since the category label sits on
+     *                         the roomy y-axis instead of clipping on the x-axis
      *
      *  When switching from column to line, also consider whether your data
      *  density still fits the canvas — if you have >300 points, use a wider
      *  bin via `chooseTimechartSpan` from utils/timechartSpan.ts. */
-    chartType?: 'column' | 'line' | 'area';
+    chartType?: 'column' | 'line' | 'area' | 'bar';
 }
 
 const Container = styled.div<{ $height: number }>`
@@ -105,6 +107,9 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // build 234 — report search meta up to the enclosing FramedPanel so it can
     // render the Open-in-Search / Download / Inspect / Refresh toolbar.
     usePanelMetaReporter({ spl, sid, dispatchedAt, refresh });
+    // Phase 1b (build 254) — series colors are literal hex (Surface 2), so
+    // the palettes resolve per mode and the chart re-renders on mode flips.
+    const { mode } = useThemeMode();
 
     const dataSources = useMemo(() => {
         if (!results || results.length === 0) {
@@ -168,9 +173,9 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         );
     }
 
-    const paletteSeriesColors = paletteColors(palette);
+    const paletteSeriesColors = paletteColors(palette, mode);
     const finalSeriesColors = seriesColorsProp ?? paletteSeriesColors;
-    const paletteFieldColors = palette === 'status' ? STATUS_FIELD_COLORS : undefined;
+    const paletteFieldColors = palette === 'status' ? statusFieldColors(mode) : undefined;
     const finalFieldColors = seriesColorsByFieldProp
         ? { ...(paletteFieldColors ?? {}), ...seriesColorsByFieldProp }
         : paletteFieldColors;
@@ -194,7 +199,8 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         ...(finalFieldColors ? { seriesColorsByField: finalFieldColors } : {}),
     };
 
-    const Viz = chartType === 'line' ? Line : chartType === 'area' ? Area : Column;
+    const Viz =
+        chartType === 'line' ? Line : chartType === 'area' ? Area : chartType === 'bar' ? Bar : Column;
 
     // Line chart wrappers don't benefit from the column-bar gradient and
     // can render slightly cleaner without it. Skip the wrap for line type.
@@ -204,7 +210,8 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         </Container>
     );
     const wrapped = chartType === 'line' ? chart : (
-        <GradientWrap darkenAmount={DEFAULT_GRADIENT_DARKEN}>{chart}</GradientWrap>
+        // GradientWrap self-resolves its darken per theme mode (build 254).
+        <GradientWrap>{chart}</GradientWrap>
     );
     // LegendTitleTooltips adds native HTML `title` attributes to legend
     // items so hover reveals the full label even when it's been truncated

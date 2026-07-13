@@ -37,6 +37,11 @@ interface PrivacyBannerProps {
     selectedModel?: string;
     /** Setter invoked when the user picks a different model. */
     onModelChange?: (id: string) => void;
+    /** Model list for the picker. Pass the context's `effectiveModels`
+     *  (static baseline ∪ vendor-discovered — session 079 / build 275)
+     *  so newly-discovered models are pickable; falls back to the
+     *  provider's static baseline when absent. */
+    models?: ReadonlyArray<ModelDescriptor>;
     /** Runtime templates-only mode. When true, the model picker is
      *  hidden (no LLM dispatch, so no model to choose). Replaces the
      *  prior compile-time TEMPLATES_ONLY build flag. */
@@ -139,8 +144,12 @@ const PrivacyBanner: React.FC<PrivacyBannerProps> = ({
     onOpenAudit,
     selectedModel,
     onModelChange,
+    models,
     templatesOnlyMode = false,
 }) => {
+    // Baseline ∪ discovered when the caller passes effectiveModels;
+    // static baseline otherwise (older call sites / tests).
+    const pickerModels = models ?? provider.models;
     // Templates-only mode hides the model picker — the model is
     // irrelevant when no LLM call is ever made; surfacing it would be
     // confusing.
@@ -148,7 +157,7 @@ const PrivacyBanner: React.FC<PrivacyBannerProps> = ({
         !templatesOnlyMode &&
         typeof selectedModel === 'string' &&
         typeof onModelChange === 'function' &&
-        provider.models.length > 1;
+        pickerModels.length > 1;
 
     return (
         <Banner $tier={tier}>
@@ -174,7 +183,7 @@ const PrivacyBanner: React.FC<PrivacyBannerProps> = ({
                             onChange={(e) => onModelChange!(e.target.value)}
                             aria-label="AI model"
                         >
-                            {provider.models.map((m: ModelDescriptor) => (
+                            {pickerModels.map((m: ModelDescriptor) => (
                                 <option key={m.id} value={m.id}>
                                     {m.label}
                                 </option>
@@ -255,7 +264,7 @@ const EventRow = styled.div`
     font-size: ${logservTheme.fontSize.small};
 
     & code {
-        font-family: monospace;
+        font-family: ${logservTheme.font.mono};
         background: rgba(0,0,0,0.3);
         padding: 1px 4px;
         border-radius: 2px;

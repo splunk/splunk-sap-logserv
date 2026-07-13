@@ -75,7 +75,7 @@ const getElk = async (): Promise<ElkInstance> => {
  */
 const sizeForNode = (n: TopologyNode): { width: number; height: number } => {
     if (n.kind === 'sid_focused') return { width: 145, height: 175 };
-    if (n.kind === 'sid_secondary') return { width: 115, height: 145 };
+    if (n.kind === 'sid_secondary') return { width: 135, height: 165 };
     return { width: 95, height: 145 };
 };
 

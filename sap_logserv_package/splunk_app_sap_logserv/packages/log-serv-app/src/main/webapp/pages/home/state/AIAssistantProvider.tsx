@@ -1,6 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import { Hidden, Message, MockProvider, AIProvider } from '../components/ai';
 import { createProviderByName, ProviderName } from '../components/ai/providers';
+import { ModelDescriptor } from '../components/ai/providers/AIProvider';
+import {
+    maybeRefreshModelsTtl,
+    mergeModels,
+    readModelCacheRow,
+} from '../components/ai/modelDiscovery';
 import { MCPClient } from '../components/ai/mcp/MCPClient';
 import { MCPToolResult } from '../components/ai/mcp/MCPClient';
 import { AuditWriter } from '../components/ai/audit/auditWriter';
@@ -147,10 +153,22 @@ export interface AIAssistantContextValue {
     nextAuditSeq: () => number;
     /** Splunk username for audit attribution; empty string if unknown. */
     user: string;
-    /** Currently selected model id (one of provider.models[].id). */
+    /** Currently selected model id (one of `effectiveModels[].id`). */
     selectedModel: string;
     /** Update the selected model; persists to sessionStorage. */
     setSelectedModel: (id: string) => void;
+    /** The model list consumers should render: the provider's static
+     *  curated baseline merged with the vendor-DISCOVERED list cached
+     *  in KV Store (`logserv_ai_models`). Initializes synchronously to
+     *  `provider.models` and never goes empty — discovery only ever
+     *  appends. Session 079 / build 275. */
+    effectiveModels: ReadonlyArray<ModelDescriptor>;
+    /** Lazy TTL discovery trigger — called by the chat panel on mount.
+     *  Fire-and-forget: refreshes the vendor model list in the
+     *  background when discovery is enabled, the provider supports it,
+     *  and the cached list is absent/stale (>24h). Never throws, never
+     *  blocks chat. */
+    maybeRefreshModels: () => void;
     /** Power Mode toggle state (build 166 / session 028). When true,
      *  the system primer adds a rule forcing the AI to call
      *  `splunk_run_saved_search` at least once before generating any
@@ -180,6 +198,12 @@ interface ProviderProps {
     auditOverride?: AuditWriter;
     /** Splunk user; pass through from app config. */
     user?: string;
+    /** Governance knob for dynamic model discovery (admin Settings →
+     *  General). When false: no vendor model-list fetch ever fires AND
+     *  the KV-cached discovered list is ignored, so the picker
+     *  immediately reverts to the shipped static baseline. Default
+     *  true (Q1 resolution). Session 079 / build 275. */
+    modelDiscoveryEnabled?: boolean;
 }
 
 export const AIAssistantProvider: React.FC<ProviderProps> = ({
@@ -190,6 +214,7 @@ export const AIAssistantProvider: React.FC<ProviderProps> = ({
     mcpClientOverride,
     auditOverride,
     user = '',
+    modelDiscoveryEnabled = true,
 }) => {
     // Generate a per-tab session id once and keep it stable.
     const sessionIdRef = useRef<string>(`s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
@@ -207,13 +232,34 @@ export const AIAssistantProvider: React.FC<ProviderProps> = ({
     );
     const mcpClient = useMemo(() => mcpClientOverride ?? new MCPClient(), [mcpClientOverride]);
 
+    // ── Dynamic model discovery (session 079 / build 275) ────────────
+    //
+    // `effectiveModels` = static curated baseline (provider.models) ∪
+    // vendor-DISCOVERED list cached in KV Store. Initializes
+    // synchronously to the baseline so no consumer ever sees an empty
+    // or async-undefined list; hydrates from the KV row on mount /
+    // provider change. `modelsHydrated` gates the selected-model
+    // invalidation below (session-042 sticky: async hydration that
+    // races a synchronous validity check needs an explicit gate —
+    // otherwise a stored per-user pick of a DISCOVERED model would be
+    // reset to the baseline fallback before the merged list arrives).
+    const [effectiveModels, setEffectiveModels] = useState<ReadonlyArray<ModelDescriptor>>(
+        provider.models,
+    );
+    const [modelsHydrated, setModelsHydrated] = useState<boolean>(false);
+
     // Selected model — sessionStorage-persisted, validated against the
-    // current provider's model list. Resolution order:
+    // effective (baseline ∪ discovered) model list. Resolution order:
     //   1. sessionStorage (per-user pick from the chat panel, valid only
-    //      if it's still in this provider's models[])
+    //      if it's still in this provider's effective list)
     //   2. defaultModel prop (admin's default from the Settings page),
     //      again only if valid for this provider
-    //   3. provider.models[0].id (first model from the provider's list)
+    //   3. effectiveModels[0].id (baseline-first merge order means this
+    //      is always the provider's first curated model)
+    //
+    // The useState initializer runs against the synchronous baseline;
+    // a stored pick that's only in the DISCOVERED set is re-applied by
+    // the hydration effect once the merged list is known.
     //
     // The admin's defaultModel may not match every provider — if an
     // admin switches the active provider in Settings, the saved
@@ -231,26 +277,82 @@ export const AIAssistantProvider: React.FC<ProviderProps> = ({
         return provider.models[0]?.id ?? '';
     };
     const [selectedModel, setSelectedModelState] = useState<string>(resolveInitialModel);
-    // Re-validate when the provider changes (e.g., via providerName prop).
+
+    // Hydrate the discovered-model cache on mount + provider change.
+    // With discovery disabled, serve the static baseline and mark
+    // hydration resolved immediately (nothing async to wait for).
     useEffect(() => {
-        const isValid = provider.models.some((m) => m.id === selectedModel);
+        let cancelled = false;
+        setEffectiveModels(provider.models);
+        setModelsHydrated(false);
+        if (!modelDiscoveryEnabled) {
+            setModelsHydrated(true);
+            return undefined;
+        }
+        (async () => {
+            const row = await readModelCacheRow(provider.name);
+            if (cancelled) return;
+            const discovered = row && row.models ? row.models : [];
+            const merged = mergeModels(provider.models, discovered);
+            setEffectiveModels(merged);
+            setModelsHydrated(true);
+            // Re-apply a stored per-user pick that only became valid
+            // with the merged list (verification-protocol #3: a
+            // sessionStorage selection of a DISCOVERED model survives
+            // reload).
+            try {
+                const stored = window.sessionStorage.getItem(SESSION_KEY_SELECTED_MODEL);
+                if (stored && merged.some((m) => m.id === stored)) {
+                    setSelectedModelState(stored);
+                }
+            } catch (_e) { /* ignore */ }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [provider, modelDiscoveryEnabled]);
+
+    // Re-validate when the provider or the effective list changes —
+    // GATED on hydration so the async KV read can't race the check.
+    useEffect(() => {
+        if (!modelsHydrated) return;
+        const isValid = effectiveModels.some((m) => m.id === selectedModel);
         if (!isValid) {
             const fallback =
-                (defaultModel && provider.models.some((m) => m.id === defaultModel)
+                (defaultModel && effectiveModels.some((m) => m.id === defaultModel)
                     ? defaultModel
-                    : provider.models[0]?.id) ?? '';
+                    : effectiveModels[0]?.id) ?? '';
             setSelectedModelState(fallback);
             try {
                 window.sessionStorage.setItem(SESSION_KEY_SELECTED_MODEL, fallback);
             } catch (_e) { /* ignore */ }
         }
-    }, [provider, selectedModel, defaultModel]);
+    }, [modelsHydrated, effectiveModels, selectedModel, defaultModel]);
     const setSelectedModel = useCallback((id: string): void => {
         setSelectedModelState(id);
         try {
             window.sessionStorage.setItem(SESSION_KEY_SELECTED_MODEL, id);
         } catch (_e) { /* ignore */ }
     }, []);
+
+    // Lazy TTL discovery — invoked by the chat panel on mount (NOT by
+    // this provider itself: AIAssistantProvider mounts unconditionally
+    // at the app root, and a user who never opens the AI panel should
+    // trigger zero vendor calls). modelDiscovery.ts enforces the
+    // skip-mock / once-per-page-load / 24h-TTL rules.
+    const maybeRefreshModels = useCallback((): void => {
+        if (!modelDiscoveryEnabled) return;
+        void (async () => {
+            try {
+                const fresh = await maybeRefreshModelsTtl(provider, user);
+                if (fresh) {
+                    setEffectiveModels(mergeModels(provider.models, fresh));
+                }
+            } catch (_e) {
+                // background refresh is best-effort; static floor stands
+            }
+        })();
+    }, [provider, user, modelDiscoveryEnabled]);
 
     /* Power Mode (build 166 / session 028) — per-tab sessionStorage so
      * the user's last choice survives reloads but doesn't leak across
@@ -369,10 +471,12 @@ export const AIAssistantProvider: React.FC<ProviderProps> = ({
             user,
             selectedModel,
             setSelectedModel,
+            effectiveModels,
+            maybeRefreshModels,
             powerMode,
             setPowerMode,
         }),
-        [messages, vendorMessages, status, error, auditEvents, provider, mcpClient, audit, user, selectedModel, setSelectedModel, powerMode, setPowerMode],
+        [messages, vendorMessages, status, error, auditEvents, provider, mcpClient, audit, user, selectedModel, setSelectedModel, effectiveModels, maybeRefreshModels, powerMode, setPowerMode],
     );
 
     return <AIAssistantContext.Provider value={value}>{children}</AIAssistantContext.Provider>;

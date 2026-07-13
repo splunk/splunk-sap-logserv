@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -100,7 +102,7 @@ const RC_DECODE =
     + `1=1, return_code . " = Other"`
     + `)`;
 
-const Q = {
+const Q_BASE = {
     // Count KPIs use the empty-safe idiom (`stats count as n, …`): an empty
     // `| inputlookup | stats sum(count)` returns 0 ROWS (not count=0), so the
     // `count as n` anchor forces a row → fillnull → clean 0.
@@ -125,9 +127,40 @@ const Q = {
     connLog: `\`sap_logserv_idx_macro\` ${ST} is_connection_event="true" | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval has_error=if(is_error="true", "Yes", "No") | table Time, action, connection_id, peer_ip, src_ip, src_port, has_error | sort -Time | rename peer_ip as "Peer IP", src_ip as "Source IP", src_port as "Source Port", has_error as "Error", connection_id as "Conn ID"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw
+ * sap:saprouter scan its rollup metric precomputes (reconstructed from the
+ * [logserv_saprouter_aggregate] definition — action/peer_ip/return_code/
+ * is_error/error_function are search-time fields). The "(none)" fillnull
+ * sentinels map to raw `field=*` / stats-by null-drop; RC_DECODE is reused;
+ * errorDetail is a raw self-join for the latest(error_detail) column. Only
+ * connLog stays raw + the sparklines cached (cosmetic).
+ * ------------------------------------------------------------------------- */
+const SRRAW = `\`sap_logserv_idx_macro\` ${ST}`;
+const QRAW_BASE = {
+    kpiTotal: `${SRRAW} | stats count`,
+    kpiErrors: `${SRRAW} is_error="true" | stats count`,
+    kpiInval: `${SRRAW} action="INVAL DATA" | stats count`,
+    kpiPeers: `${SRRAW} | stats dc(peer_ip) as peers`,
+    connTrend: `${SRRAW} action=* | timechart span=1d count by action | fillnull value=0`,
+    errorTrend: `${SRRAW} is_error="true" | timechart span=1d count as "Errors" | fillnull value=0`,
+    topPeers: `${SRRAW} peer_ip=* | stats count as "Connections" by peer_ip | sort -Connections | rename peer_ip as "Peer IP"`,
+    returnCodes: `${SRRAW} return_code=* | ${RC_DECODE} | stats count by return_code | sort -count | rename return_code as "Return Code"`,
+    // Single-pass stats (latest(error_detail) folded into the same aggregation,
+    // no join) — byte-equal to the cached errdetail-metric join, avoids join
+    // subsearch finalization flakiness at scale.
+    errorDetail: `${SRRAW} is_error="true" error_function=* | stats count as Count, dc(peer_ip) as "Unique Peers", values(return_code) as "Return Codes", latest(error_detail) as "Last Error Detail" by error_function | sort -Count | rename error_function as "Function"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -154,14 +187,23 @@ const CONN_LOG_COLS: ColumnDef[] = [
 ];
 
 const SapRouter: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const errors = useFirstRowField(Q.kpiErrors, 'count');
-    const inval = useFirstRowField(Q.kpiInval, 'count');
-    const peers = useFirstRowField(Q.kpiPeers, 'peers');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
+    const inval = useFirstRowFieldHybrid(Q.kpiInval, QRAW.kpiInval, 'count');
+    const peers = useFirstRowFieldHybrid(Q.kpiPeers, QRAW.kpiPeers, 'peers');
 
-    const topPeers = useSearch({ query: Q.topPeers });
-    const errorDetail = useSearch({ query: Q.errorDetail });
-    const connLog = useSearch({ query: Q.connLog });
+    const topPeers = useHybridSearch({ cached: Q.topPeers, raw: QRAW.topPeers });
+    const errorDetail = useHybridSearch({ cached: Q.errorDetail, raw: QRAW.errorDetail });
+    const connLog = useSearch({ query: Q.connLog }); // raw listing
+
+    // Charts / pie take a query string → route once each (sub-hour -> raw).
+    const qConnTrend = useRoutedQuery(Q.connTrend, QRAW.connTrend);
+    const qErrorTrend = useRoutedQuery(Q.errorTrend, QRAW.errorTrend);
+    const qReturnCodes = useRoutedQuery(Q.returnCodes, QRAW.returnCodes);
 
     const errorTone = Number(errors.value ?? 0) > 0 ? 'critical' : 'neutral';
     const invalTone = Number(inval.value ?? 0) > 0 ? 'warning' : 'neutral';
@@ -209,10 +251,10 @@ const SapRouter: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Connection Actions Over Time" subtitle="Daily volume by action (CONNECT/DISCONNECT/etc.)">
-                    <TimeSeriesChart query={Q.connTrend} height={280} palette="volume" />
+                    <TimeSeriesChart query={qConnTrend} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="Router Errors Over Time" subtitle="Daily error count">
-                    <TimeSeriesChart query={Q.errorTrend} height={280} palette="errors" />
+                    <TimeSeriesChart query={qErrorTrend} height={280} palette="errors" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -221,7 +263,7 @@ const SapRouter: React.FC = () => {
                     <DataTable columns={TOP_PEERS_COLS} rows={topPeers.results} loading={topPeers.loading} error={topPeers.error} emptyMessage="No router events in this time range." onRowClick={goPeerRow} />
                 </FramedPanel>
                 <FramedPanel title="Return Code Distribution" subtitle="Share of router events by return code">
-                    <PieChart query={Q.returnCodes} categoryField="Return Code" valueField="count" height={280} donut />
+                    <PieChart query={qReturnCodes} categoryField="Return Code" valueField="count" height={280} donut />
                 </FramedPanel>
             </PanelGrid2>
 

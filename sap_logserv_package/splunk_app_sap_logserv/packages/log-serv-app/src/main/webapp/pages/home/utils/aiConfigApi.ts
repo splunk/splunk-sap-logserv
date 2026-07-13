@@ -81,6 +81,16 @@ export interface AIConfigSettings {
     tier: PrivacyTier;
     mcp_required: boolean;
     mcp_server_url: string;
+    /** Client-side MCP request timeout, in SECONDS. Each MCP request
+     *  (tool dispatch, saved-search run, health probe) is aborted
+     *  browser-side after this many seconds — the source of the
+     *  "signal is aborted without reason" chat error when a prompt's
+     *  saved search legitimately runs long on a high-ingest instance.
+     *  MCPClient reads this per-call (like `mcp_server_url`) and
+     *  clamps it to 5–600. Separate from the MCP server's own REST
+     *  timeout (mcp.conf [server] timeout); the effective ceiling is
+     *  the lower of the two. Default 60. */
+    mcp_timeout_seconds: number;
     /** Per-user free-form prompt rate limit (rolling 1-hour window).
      *  0 = disabled. Maps to OWASP LLM10 (Unbounded Consumption).
      *  Build 80 / session 019. */
@@ -128,6 +138,13 @@ export interface AIConfigSettings {
      *  aggressive AI behavior to authorized users only).
      *  Build 166 / session 028. */
     power_user_roles: string;
+    /** Dynamic model discovery. When true (default), the per-provider
+     *  model list refreshes itself from the vendor's model-listing API
+     *  (metadata-only GET with the stored credential) and merges with
+     *  the shipped static baseline. When false, zero vendor list calls
+     *  fire and the picker shows the static baseline only.
+     *  Session 079 / build 275. */
+    model_discovery_enabled: boolean;
 }
 
 /** Safe in-process fallback used when the conf can't be read (e.g.,
@@ -141,6 +158,7 @@ export const DEFAULT_AI_CONFIG: AIConfigSettings = {
     tier: 1,
     mcp_required: true,
     mcp_server_url: '',
+    mcp_timeout_seconds: 60,
     rate_limit_per_hour: 30,
     tool_calls_per_session_cap: 100,
     daily_spend_cap_usd: 50.0,
@@ -152,6 +170,7 @@ export const DEFAULT_AI_CONFIG: AIConfigSettings = {
     audit_forwarder_index: '',
     audit_forwarder_source: 'logserv_ai_assistant_remote',
     power_user_roles: '',
+    model_discovery_enabled: true,
 };
 
 const VALID_PROVIDERS: ReadonlyArray<ProviderName> = [
@@ -178,6 +197,7 @@ const parseRawContent = (
 ): AIConfigSettings => {
     const r = raw ?? {};
     const tierNum = Number(r.tier);
+    const timeoutSecNum = Number(r.mcp_timeout_seconds);
     const rlNum = Number(r.rate_limit_per_hour);
     const toolCapNum = Number(r.tool_calls_per_session_cap);
     const spendCapNum = Number(r.daily_spend_cap_usd);
@@ -207,6 +227,10 @@ const parseRawContent = (
             r.mcp_required === 1,
         mcp_server_url:
             typeof r.mcp_server_url === 'string' ? r.mcp_server_url : '',
+        mcp_timeout_seconds:
+            Number.isFinite(timeoutSecNum) && timeoutSecNum >= 5 && timeoutSecNum <= 600
+                ? Math.floor(timeoutSecNum)
+                : DEFAULT_AI_CONFIG.mcp_timeout_seconds,
         rate_limit_per_hour:
             Number.isFinite(rlNum) && rlNum >= 0 && rlNum <= 10000
                 ? Math.floor(rlNum)
@@ -264,6 +288,15 @@ const parseRawContent = (
             typeof r.power_user_roles === 'string'
                 ? r.power_user_roles
                 : DEFAULT_AI_CONFIG.power_user_roles,
+        // Default ON when the key is absent (pre-275 KV rows / conf
+        // stanzas) — matches the shipped default and Q1 resolution.
+        model_discovery_enabled:
+            r.model_discovery_enabled === undefined
+                ? DEFAULT_AI_CONFIG.model_discovery_enabled
+                : r.model_discovery_enabled === '1' ||
+                  r.model_discovery_enabled === 'true' ||
+                  r.model_discovery_enabled === true ||
+                  r.model_discovery_enabled === 1,
     };
 };
 
@@ -378,6 +411,7 @@ const settingsToKvRecord = (cfg: AIConfigSettings): Record<string, unknown> => (
     tier: cfg.tier,
     mcp_required: cfg.mcp_required ? 1 : 0,
     mcp_server_url: cfg.mcp_server_url,
+    mcp_timeout_seconds: cfg.mcp_timeout_seconds,
     rate_limit_per_hour: cfg.rate_limit_per_hour,
     tool_calls_per_session_cap: cfg.tool_calls_per_session_cap,
     daily_spend_cap_usd: cfg.daily_spend_cap_usd,
@@ -389,6 +423,7 @@ const settingsToKvRecord = (cfg: AIConfigSettings): Record<string, unknown> => (
     audit_forwarder_index: cfg.audit_forwarder_index,
     audit_forwarder_source: cfg.audit_forwarder_source,
     power_user_roles: cfg.power_user_roles,
+    model_discovery_enabled: cfg.model_discovery_enabled ? 1 : 0,
     updated_at: new Date().toISOString(),
 });
 
@@ -476,6 +511,7 @@ export const migrateConfFileSettingsToKvStore = async (): Promise<void> => {
             fromConf.tier === DEFAULT_AI_CONFIG.tier &&
             fromConf.mcp_required === DEFAULT_AI_CONFIG.mcp_required &&
             fromConf.mcp_server_url === DEFAULT_AI_CONFIG.mcp_server_url &&
+            fromConf.mcp_timeout_seconds === DEFAULT_AI_CONFIG.mcp_timeout_seconds &&
             fromConf.audit_forwarder_enabled === DEFAULT_AI_CONFIG.audit_forwarder_enabled &&
             fromConf.audit_forwarder_url === DEFAULT_AI_CONFIG.audit_forwarder_url &&
             fromConf.power_user_roles === DEFAULT_AI_CONFIG.power_user_roles;

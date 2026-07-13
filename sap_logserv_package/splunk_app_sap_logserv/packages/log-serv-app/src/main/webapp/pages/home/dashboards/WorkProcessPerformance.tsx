@@ -8,7 +8,9 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { useTimeRange } from '../state/TimeRangeProvider';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
 
@@ -73,7 +75,11 @@ const WP = `| inputlookup ${ROLL} where metric="wp" ${RANGE}`;
 const DP = `| inputlookup ${ROLL} where metric="dp" ${RANGE}`;
 const ICM = `| inputlookup ${ROLL} where metric="icm" ${RANGE}`;
 
-const Q = {
+// Base queries with NO cloud-provider filter. The component wraps this in a
+// useMemo over mapCloudProviderQueries (session 082) so the global picker
+// filters every panel — cloud_provider is injected after the RANGE for rollup
+// reads and after the index macro for the RAW Recent Errors listing.
+const Q_BASE = {
     kpiTotal: `${WP} | stats sum(count) as count`,
     kpiSids: `${WP} | stats dc(eval(if(sap_sid="(none)",null(),sap_sid))) as sids`,
     kpiErrors: `${DP} | search dp_severity="ERROR" | stats sum(count) as count`,
@@ -108,9 +114,40 @@ const Q = {
     topProgramsByTasks: `${ICM} | search icm_program!="(none)" | stats sum(count) as Calls, sum(sum_tasks) as st, max(max_tasks) as "Max Tasks", max(max_mem) as "Max Mem (KB)" by icm_program | eval Avg = round(st/Calls, 1) | sort -"Max Tasks" | head 20 | rename icm_program AS Program | table Program Calls Avg "Max Tasks" "Max Mem (KB)"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw scan its
+ * rollup metric precomputes (reconstructed from [logserv_wp_perf_aggregate]).
+ * bySid groups by the fillnull'd sap_sid/sap_instance (the cached doesn't
+ * exclude "(none)"), so the raw fillnull's them too. Avg Queue Depth =
+ * Σ(icm_tasks)/count is UNROUNDED (float-tolerant, matching the cached
+ * sum(sum_tasks)/sum(count)). recentErrors stays raw; sparklines cached.
+ * ------------------------------------------------------------------------- */
+const RAW_WP = '`sap_logserv_idx_macro` sourcetype="sap:abap:workprocess"';
+const RAW_DP = '`sap_logserv_idx_macro` sourcetype="sap:abap:dispatcher"';
+const RAW_ICM = '`sap_logserv_idx_macro` sourcetype="sap:abap:icm"';
+const QRAW_BASE = {
+    kpiTotal: `${RAW_WP} | stats count`,
+    kpiSids: `${RAW_WP} | stats dc(sap_sid) as sids`,
+    kpiErrors: `${RAW_DP} dp_severity="ERROR" | stats count`,
+    kpiFunctions: `${RAW_WP} wp_function=* | stats dc(wp_function) as functions`,
+    categoryTrend: `${RAW_WP} wp_category_name=* | timechart span=1d count by wp_category_name limit=14 | fillnull value=0`,
+    categoryMix: `${RAW_WP} wp_category_name=* | stats count by wp_category_name | sort -count`,
+    topFunctions: `${RAW_WP} wp_function=* | stats count by wp_function | sort -count | rename wp_function as "Function", count as "Events"`,
+    severityTrend: `${RAW_DP} dp_severity=* | timechart span=1d count by dp_severity | fillnull value=0`,
+    bySid: `${RAW_WP} | fillnull value="(none)" sap_sid sap_instance | stats count as "Total Events", dc(wp_function) as "Unique Functions", dc(wp_category_name) as "WP Categories" by sap_sid, sap_instance | sort -"Total Events" | rename sap_sid as "SID", sap_instance as "Instance"`,
+    asyncRfcQueueTrend: `${RAW_ICM} icm_tasks=* icm_request_type="ASYNC_RFC" | timechart span=1d sum(icm_tasks) as st, count as ct, max(icm_tasks) as "Max Queue Depth" | eval "Avg Queue Depth"=st/ct | fields _time, "Avg Queue Depth", "Max Queue Depth"`,
+    topProgramsByTasks: `${RAW_ICM} icm_tasks=* icm_program=* | stats count as Calls, sum(icm_tasks) as st, max(icm_tasks) as "Max Tasks", max(icm_memory) as "Max Mem (KB)" by icm_program | eval Avg = round(st/Calls, 1) | sort -"Max Tasks" | head 20 | rename icm_program AS Program | table Program Calls Avg "Max Tasks" "Max Mem (KB)"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -144,15 +181,26 @@ const TOP_PROGRAMS_COLS: ColumnDef[] = [
 ];
 
 const WorkProcessPerformance: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const sids = useFirstRowField(Q.kpiSids, 'sids');
-    const errors = useFirstRowField(Q.kpiErrors, 'count');
-    const functions = useFirstRowField(Q.kpiFunctions, 'functions');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
 
-    const topFunctions = useSearch({ query: Q.topFunctions });
-    const bySid = useSearch({ query: Q.bySid });
-    const recentErrors = useSearch({ query: Q.recentErrors });
-    const topPrograms = useSearch({ query: Q.topProgramsByTasks });
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const sids = useFirstRowFieldHybrid(Q.kpiSids, QRAW.kpiSids, 'sids');
+    const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
+    const functions = useFirstRowFieldHybrid(Q.kpiFunctions, QRAW.kpiFunctions, 'functions');
+
+    const topFunctions = useHybridSearch({ cached: Q.topFunctions, raw: QRAW.topFunctions });
+    const bySid = useHybridSearch({ cached: Q.bySid, raw: QRAW.bySid });
+    const recentErrors = useSearch({ query: Q.recentErrors }); // raw listing
+    const topPrograms = useHybridSearch({ cached: Q.topProgramsByTasks, raw: QRAW.topProgramsByTasks });
+
+    // Charts / pie take a query string → route once each (sub-hour -> raw).
+    const qCategoryTrend = useRoutedQuery(Q.categoryTrend, QRAW.categoryTrend);
+    const qCategoryMix = useRoutedQuery(Q.categoryMix, QRAW.categoryMix);
+    const qSeverityTrend = useRoutedQuery(Q.severityTrend, QRAW.severityTrend);
+    const qAsyncRfcQueueTrend = useRoutedQuery(Q.asyncRfcQueueTrend, QRAW.asyncRfcQueueTrend);
 
     const errorTone = Number(errors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
@@ -198,10 +246,10 @@ const WorkProcessPerformance: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Work Process Category Trend" subtitle="Daily volume by wp_category_name">
-                    <TimeSeriesChart query={Q.categoryTrend} height={280} palette="categorical" />
+                    <TimeSeriesChart query={qCategoryTrend} height={280} palette="categorical" />
                 </FramedPanel>
                 <FramedPanel title="Category Distribution" subtitle="Share of total events by category">
-                    <PieChart query={Q.categoryMix} categoryField="wp_category_name" valueField="count" height={280} donut palette="categorical" />
+                    <PieChart query={qCategoryMix} categoryField="wp_category_name" valueField="count" height={280} donut palette="categorical" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -210,7 +258,7 @@ const WorkProcessPerformance: React.FC = () => {
                     <DataTable columns={TOP_FUNC_COLS} rows={topFunctions.results} loading={topFunctions.loading} error={topFunctions.error} emptyMessage="No work-process events in this time range." />
                 </FramedPanel>
                 <FramedPanel title="Dispatcher Severity Over Time" subtitle="Dispatcher event severity trend">
-                    <TimeSeriesChart query={Q.severityTrend} height={280} palette="status" />
+                    <TimeSeriesChart query={qSeverityTrend} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -228,7 +276,7 @@ const WorkProcessPerformance: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Async RFC Queue Depth" subtitle="ICM ASYNC_RFC tasks-in-queue per dispatch (sap:abap:icm `icm_tasks` field) — daily avg + max">
-                    <TimeSeriesChart query={Q.asyncRfcQueueTrend} height={280} palette="categorical" chartType="line" />
+                    <TimeSeriesChart query={qAsyncRfcQueueTrend} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
                 <FramedPanel search={topPrograms} title="Top Programs by Queue Depth" subtitle="ABAP programs ranked by max queue depth at dispatch — saturated programs surface here">
                     <DataTable columns={TOP_PROGRAMS_COLS} rows={topPrograms.results} loading={topPrograms.loading} error={topPrograms.error} emptyMessage="No ICM ASYNC_RFC events with task counts in this time range." />

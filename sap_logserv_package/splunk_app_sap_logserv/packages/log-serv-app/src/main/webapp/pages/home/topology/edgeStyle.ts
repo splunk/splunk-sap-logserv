@@ -1,23 +1,31 @@
-import { logservTheme } from '../styles/logservTheme';
+import type { ColorTokens } from '../styles/magneticTokens';
 import type { IntegrationType, TopologyEdge } from './types';
 
 /**
  * Edge styling helpers — keep all integration-type → color / thickness /
  * dasharray decisions in one place so the legend (TopologyToolbar) and the
  * actual rendered edges (TopologyGraph) stay in sync.
+ *
+ * Phase 0 Magnetic re-theme (build 246): the helpers take the RESOLVED
+ * color tokens (`useThemeMode().tokens`) as a parameter instead of
+ * importing logservTheme. Edge colors feed @xyflow/react's
+ * `markerEnd.color` (SVG marker plumbing) and the MiniMap, where CSS
+ * var(--lsv-*) references don't resolve — literal hex is required. Passing
+ * tokens per-call also makes edges re-color automatically on mode flips
+ * (callers re-render when the ThemeModeProvider context changes).
  */
 
-export const edgeColor = (type: IntegrationType): string => {
+export const edgeColor = (type: IntegrationType, c: ColorTokens): string => {
     switch (type) {
-        case 'rfc':         return logservTheme.colors.teal;       // sync RFC — primary positive flow
-        case 'idoc':        return logservTheme.colors.cyanAccent; // async iDoc
-        case 'qrfc':        return logservTheme.colors.orange;     // queued
-        case 'trfc':        return logservTheme.colors.yellow;     // transactional
-        case 'bgrfc':       return logservTheme.colors.purple;     // background
-        case 'web_service': return logservTheme.colors.redLight;   // SOAP/REST
-        case 'odata':       return logservTheme.colors.cyanLight;  // OData / Gateway
-        case 'btp_iflow':   return logservTheme.colors.orangeLight;// BTP iFlow / CPI
-        default:            return logservTheme.colors.textMuted;
+        case 'rfc':         return c.teal;        // sync RFC — primary positive flow
+        case 'idoc':        return c.cyanAccent;  // async iDoc
+        case 'qrfc':        return c.orange;      // queued
+        case 'trfc':        return c.yellow;      // transactional
+        case 'bgrfc':       return c.purple;      // background
+        case 'web_service': return c.redLight;    // SOAP/REST
+        case 'odata':       return c.cyanLight;   // OData / Gateway
+        case 'btp_iflow':   return c.orangeLight; // BTP iFlow / CPI
+        default:            return c.textMuted;
     }
 };
 
@@ -57,8 +65,9 @@ export const formatCallCount = (n: number): string => {
  */
 export const edgeStyleFor = (
     edge: TopologyEdge,
+    c: ColorTokens,
 ): { stroke: string; strokeWidth: number; strokeDasharray?: string; animated: boolean } => {
-    const stroke = edgeColor(edge.type);
+    const stroke = edgeColor(edge.type, c);
     const strokeWidth = edgeThickness(edge.callCount);
     const strokeDasharray = edge.direction === 'server' ? '6,4' : undefined;
     // Animate the highest-volume edges to draw the eye to traffic hot spots.

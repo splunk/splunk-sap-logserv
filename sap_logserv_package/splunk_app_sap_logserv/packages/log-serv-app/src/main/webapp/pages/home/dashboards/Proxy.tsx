@@ -7,6 +7,8 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -89,7 +91,7 @@ const formatBytes = (raw: unknown): string => {
     return `${n} B`;
 };
 
-const Q = {
+const Q_BASE = {
     // --- tstats-now (pure counts on default-indexed fields) ------------------
     kpiTotal: `| tstats count ${TS_WHERE}`,
 
@@ -125,9 +127,43 @@ const Q = {
     responseTimeTrend: `${R_DUR} | eval _time=bucket_ts | timechart span=1d sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 0), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 085/086). Each is the raw
+ * squid:access scan that its rollup metric precomputes, reconciled to the
+ * cached read's exact output columns (byte-verified equal at wide windows).
+ * The rollup measures map to raw as: bytes_sum -> sum(bytes_out); sum(count)
+ * -> count; denied_count -> the action="denied" filter; sum_dur/cnt_dur/max_dur
+ * -> sum/count/max(duration) over the access.log+duration=* subset. The
+ * "(none)" fillnull sentinels don't exist on raw (stats-by drops nulls). Only
+ * the ROLLUP reads are hybridised; kpiTotal/requestVolume (tstats) are already
+ * correct at any range and the sparklines stay cached (cosmetic).
+ * ------------------------------------------------------------------------- */
+const SQRAW = '`sap_logserv_idx_macro` sourcetype="squid:access"';
+const QRAW_BASE = {
+    kpiBandwidth: `${SQRAW} | stats count as n, sum(bytes_out) as total_bytes | fillnull value=0 total_bytes | eval total = case(total_bytes >= 1073741824, round(total_bytes/1073741824, 1) . " GB", total_bytes >= 1048576, round(total_bytes/1048576, 1) . " MB", total_bytes >= 1024, round(total_bytes/1024, 1) . " KB", 1=1, tostring(total_bytes) . " B")`,
+    kpiDenied: `${SQRAW} action="denied" | stats count`,
+    statusCodes: `${SQRAW} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "2xx", tonumber(status)>=300 AND tonumber(status)<400, "3xx", tonumber(status)>=400 AND tonumber(status)<500, "4xx", tonumber(status)>=500, "5xx", 1=1, "Other") | timechart span=1d count by status_cat | fillnull value=0`,
+    topDomains: `${SQRAW} url_domain=* | stats count as Requests, sum(bytes_out) as "Total Bytes", dc(src) as "Unique Clients" by url_domain | sort -Requests | rename url_domain as Domain`,
+    topClients: `${SQRAW} src=* | stats count as Requests, sum(bytes_out) as "Total Bytes", dc(url_domain) as "Unique Domains" by src | sort -Requests | rename src as "Client IP"`,
+    clientDomainDiversity: `${SQRAW} src=* | stats dc(url_domain) as "Unique Domains" by src | sort -"Unique Domains" | rename src as "Client IP"`,
+    contentTypes: `${SQRAW} vendor_action=* | stats count as Events by vendor_action | sort -Events | rename vendor_action as "Cache Action"`,
+    topDomainsByBytes: `${SQRAW} url_domain=* | stats sum(bytes_out) as bytes_out by url_domain | eval mb_out = round(bytes_out/1048576, 2) | sort -mb_out | rename url_domain as "Domain", mb_out as "MB Out" | table "Domain", "MB Out"`,
+    slowDestinations: `${SQRAW} source="*access.log*" duration=* | stats sum(duration) as s, count(duration) as c, max(duration) as max_ms, count as Requests by dest | eval "Avg (ms)" = round(if(c>0, s/c, 0), 0), "Max (ms)" = round(max_ms, 0) | sort -"Max (ms)" | head 20 | rename dest AS Destination | table Destination, Requests, "Avg (ms)", "Max (ms)"`,
+    bandwidthTimeline: `${SQRAW} | timechart span=1d sum(bytes_out) as "Bytes Out" | fillnull value=0`,
+    bandwidthByDomain: `${SQRAW} url_domain=* | timechart span=1d sum(bytes_out) by url_domain limit=5 useother=f`,
+    responseTimeTrend: `${SQRAW} source="*access.log*" duration=* | timechart span=1d avg(duration) as "Avg (ms)", max(duration) as "Max (ms)" | eval "Avg (ms)"=round('Avg (ms)',0), "Max (ms)"=round('Max (ms)',0) | fields _time, "Avg (ms)", "Max (ms)"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 085) — sub-hour
+ *  ranges read the raw query, wide ranges the rollup. */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -166,16 +202,27 @@ const SLOW_DEST_COLS: ColumnDef[] = [
 ];
 
 const Proxy: React.FC = () => {
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 085/086); same cloud mapping
+    // so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
     const total = useFirstRowField(Q.kpiTotal, 'count');
-    const bandwidth = useFirstRowField(Q.kpiBandwidth, 'total');
-    const denied = useFirstRowField(Q.kpiDenied, 'count');
+    const bandwidth = useFirstRowFieldHybrid(Q.kpiBandwidth, QRAW.kpiBandwidth, 'total');
+    const denied = useFirstRowFieldHybrid(Q.kpiDenied, QRAW.kpiDenied, 'count');
 
-    const topDomains = useSearch({ query: Q.topDomains });
-    const topClients = useSearch({ query: Q.topClients });
-    const clientDiversity = useSearch({ query: Q.clientDomainDiversity });
-    const cacheActions = useSearch({ query: Q.contentTypes });
-    const topDomBytes = useSearch({ query: Q.topDomainsByBytes });
-    const slowDestinations = useSearch({ query: Q.slowDestinations });
+    const topDomains = useHybridSearch({ cached: Q.topDomains, raw: QRAW.topDomains });
+    const topClients = useHybridSearch({ cached: Q.topClients, raw: QRAW.topClients });
+    const clientDiversity = useHybridSearch({ cached: Q.clientDomainDiversity, raw: QRAW.clientDomainDiversity });
+    const cacheActions = useHybridSearch({ cached: Q.contentTypes, raw: QRAW.contentTypes });
+    const topDomBytes = useHybridSearch({ cached: Q.topDomainsByBytes, raw: QRAW.topDomainsByBytes });
+    const slowDestinations = useHybridSearch({ cached: Q.slowDestinations, raw: QRAW.slowDestinations });
+
+    // Chart panels take a query STRING → route once here (sub-hour -> raw).
+    const qStatusCodes = useRoutedQuery(Q.statusCodes, QRAW.statusCodes);
+    const qBandwidthTimeline = useRoutedQuery(Q.bandwidthTimeline, QRAW.bandwidthTimeline);
+    const qBandwidthByDomain = useRoutedQuery(Q.bandwidthByDomain, QRAW.bandwidthByDomain);
+    const qResponseTimeTrend = useRoutedQuery(Q.responseTimeTrend, QRAW.responseTimeTrend);
 
     const deniedTone = Number(denied.value ?? 0) > 0 ? 'warning' : 'neutral';
 
@@ -213,7 +260,7 @@ const Proxy: React.FC = () => {
                     <TimeSeriesChart query={Q.requestVolume} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="Status Code Distribution" subtitle="Daily volume bucketed 2xx/3xx/4xx/5xx">
-                    <TimeSeriesChart query={Q.statusCodes} height={280} palette="status" />
+                    <TimeSeriesChart query={qStatusCodes} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -234,7 +281,7 @@ const Proxy: React.FC = () => {
                     <DataTable columns={CACHE_COLS} rows={cacheActions.results} loading={cacheActions.loading} error={cacheActions.error} emptyMessage="No proxy events in this time range." />
                 </FramedPanel>
                 <FramedPanel title="Bandwidth Over Time" subtitle="Daily bytes-out volume">
-                    <TimeSeriesChart query={Q.bandwidthTimeline} height={280} palette="volume" />
+                    <TimeSeriesChart query={qBandwidthTimeline} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -243,7 +290,7 @@ const Proxy: React.FC = () => {
                     <DataTable columns={TOP_DOM_BYTES_COLS} rows={topDomBytes.results} loading={topDomBytes.loading} error={topDomBytes.error} emptyMessage="No proxy events in this time range." initialSortKey="MB Out" initialSortDir="desc" onRowClick={goDomainRow} />
                 </FramedPanel>
                 <FramedPanel title="Bandwidth Over Time by Domain (Top 5)" subtitle="Daily bytes by top 5 domains">
-                    <TimeSeriesChart query={Q.bandwidthByDomain} height={280} palette="volume" />
+                    <TimeSeriesChart query={qBandwidthByDomain} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -252,7 +299,7 @@ const Proxy: React.FC = () => {
                     <DataTable columns={SLOW_DEST_COLS} rows={slowDestinations.results} loading={slowDestinations.loading} error={slowDestinations.error} emptyMessage="No access.log events with duration in this time range." initialSortKey="Max (ms)" initialSortDir="desc" />
                 </FramedPanel>
                 <FramedPanel title="Response Time (Avg / Max)" subtitle="Daily average and peak response time (ms) — Squid access.log duration field">
-                    <TimeSeriesChart query={Q.responseTimeTrend} height={280} palette="categorical" chartType="line" />
+                    <TimeSeriesChart query={qResponseTimeTrend} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>
         </DashboardLayout>

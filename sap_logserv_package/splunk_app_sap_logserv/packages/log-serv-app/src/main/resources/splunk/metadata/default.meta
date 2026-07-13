@@ -83,6 +83,16 @@ export = system
 access = read : [ * ], write : [ * ]
 export = system
 
+# AI Assistant discovered-model cache (session 079 / build 275). Read by
+# every user on chat-panel mount (merged into the model picker); written by
+# the model-discovery refresh triggers (Settings refresh button, provider
+# credential save, 24h lazy TTL). One row per provider, ids/labels
+# allowlist-sanitized on write AND read; the static baseline always
+# survives the merge so a poisoned row can't break chat.
+[collections/logserv_ai_models]
+access = read : [ * ], write : [ * ]
+export = system
+
 # Work Process Performance dashboard rollup (session 050 / build 206). Read by
 # the dashboard's panels (via | inputlookup) at render time; written by the
 # logserv_wp_perf_aggregate / _backfill saved searches. Same all-authenticated

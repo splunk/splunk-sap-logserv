@@ -196,7 +196,9 @@ const Footer = styled.div`
 
 const Button = styled.button<{ $primary?: boolean }>`
     background: ${(p) => (p.$primary ? logservTheme.colors.cyanAccent : 'transparent')};
-    color: ${logservTheme.colors.textActive};
+    /* Filled variant gets light text in BOTH modes (Phase-5 sweep) —
+       textActive resolves near-black in light mode, unreadable on the fill. */
+    color: ${(p) => (p.$primary ? logservTheme.colors.inverseText : logservTheme.colors.textActive)};
     border: 1px solid ${(p) =>
         p.$primary ? logservTheme.colors.cyanAccent : logservTheme.colors.panelBorderWeak};
     border-radius: ${logservTheme.radius.small};

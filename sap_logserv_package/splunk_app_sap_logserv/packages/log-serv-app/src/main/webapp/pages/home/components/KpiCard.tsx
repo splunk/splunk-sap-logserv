@@ -14,37 +14,43 @@ import Spinner from './Spinner';
 
 export type KpiTone = 'neutral' | 'positive' | 'warning' | 'critical' | 'severe';
 
+/** Tone → sentiment token (Magnetic vocabulary, §6 build 254):
+ *  positive = sentiment green (was teal pre-re-theme). */
 const toneToColor: Record<KpiTone, string> = {
     neutral: logservTheme.colors.textActive,
-    positive: logservTheme.colors.teal,
+    positive: logservTheme.colors.green,
     warning: logservTheme.colors.orange,
     critical: logservTheme.colors.red,
     severe: logservTheme.colors.redSevere,
 };
 
 const Card = styled.div<{ $clickable: boolean }>`
+    /* Magnetic basic-statistics card (§6, build 254) — same container-card
+       chrome as FramedPanel: 4px radius, resting xs shadow, interact-accent
+       hover at 150ms. */
     background: ${logservTheme.colors.panelBackground};
     border: 1px solid ${logservTheme.colors.panelBorder};
-    border-radius: ${logservTheme.radius.small};
+    border-radius: ${logservTheme.radius.medium};
     padding: ${logservTheme.spacing.lg};
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     min-height: 120px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 
     ${(p) =>
         p.$clickable
             ? `
         cursor: pointer;
-        transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+        transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
 
         &:hover {
-            border-color: ${logservTheme.colors.cyanLight};
-            box-shadow: 0 0 0 1px ${logservTheme.colors.cyanAccent};
+            border-color: ${logservTheme.colors.cyanAccent};
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
         }
 
         &:focus-visible {
-            outline: 2px solid ${logservTheme.colors.cyanLight};
+            outline: 2px solid ${logservTheme.colors.focusRing};
             outline-offset: 2px;
         }
     `
@@ -52,17 +58,22 @@ const Card = styled.div<{ $clickable: boolean }>`
 `;
 
 const Label = styled.div`
+    /* KPI card labels match FramedPanel's panel-title treatment — textActive
+       (white in dark / near-black in light) at 14px semibold — so KPI tiles
+       and chart panels read as one title system (user feedback, build 255;
+       the Magnetic secondary-muted label tried in build 254 was rejected).
+       Sentence case stays (uppercase dropped in build 254 per §6). */
     color: ${logservTheme.colors.textActive};
-    font-size: ${logservTheme.fontSize.small};
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 14px;
+    font-weight: ${logservTheme.fontWeight.semibold};
     margin-bottom: ${logservTheme.spacing.sm};
 `;
 
 const Value = styled.div<{ $tone: KpiTone; $loading: boolean }>`
     color: ${(p) => (p.$loading ? logservTheme.colors.textMuted : toneToColor[p.$tone])};
-    font-size: ${logservTheme.fontSize.kpi};
-    font-weight: ${logservTheme.fontWeight.bold};
+    /* Magnetic statistics value: 32px semibold (was 36px bold), §6 b254. */
+    font-size: 32px;
+    font-weight: ${logservTheme.fontWeight.semibold};
     line-height: 1.1;
     font-feature-settings: 'tnum' 1;
 `;

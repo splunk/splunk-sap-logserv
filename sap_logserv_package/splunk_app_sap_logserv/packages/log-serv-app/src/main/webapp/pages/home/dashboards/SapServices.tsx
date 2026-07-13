@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -55,7 +57,7 @@ const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max
 const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
 const SSL = `| inputlookup ${ROLL} where metric="ssl" ${RANGE}`;
 
-const Q = {
+const Q_BASE = {
     kpiTotal: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiAuthFail: `${MAIN} | search sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiSslEvents: `${MAIN} | search sourcetype="sap:sapstartsrv" is_ssl_event="true" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
@@ -70,9 +72,35 @@ const Q = {
     hostexecSeverity: `${MAIN} | search sourcetype="sap:saphostexec" severity!="(none)" | stats sum(count) as count by severity | sort -count`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw
+ * sapstartsrv / saphostexec scan its rollup metric precomputes, reconciled to
+ * the cached read's exact output columns (byte-verified equal at wide windows —
+ * the sap_v_* staged pairs). sslEvents first/last use earliest/latest(_time)
+ * (= min/max, deterministic across buckets). Only ROLLUP reads are hybridised;
+ * authEvents is already raw and the sparklines stay cached (cosmetic).
+ * ------------------------------------------------------------------------- */
+const RAW_BOTH = '`sap_logserv_idx_macro` sourcetype IN ("sap:sapstartsrv", "sap:saphostexec")';
+const RAW_SSRV = '`sap_logserv_idx_macro` sourcetype="sap:sapstartsrv"';
+const RAW_HEXEC = '`sap_logserv_idx_macro` sourcetype="sap:saphostexec"';
+const QRAW_BASE = {
+    kpiTotal: `${RAW_BOTH} | stats count`,
+    kpiAuthFail: `${RAW_SSRV} is_auth_event="true" auth_result="failure" | stats count`,
+    kpiSslEvents: `${RAW_SSRV} is_ssl_event="true" | stats count`,
+    volumeByType: `${RAW_BOTH} | eval is_error_event = case(sourcetype="sap:sapstartsrv" AND is_auth_event="true" AND auth_result="failure", 1, sourcetype="sap:saphostexec" AND severity IN ("ERROR", "WARNING"), 1, 1=1, 0) | eval series = case(sourcetype="sap:sapstartsrv" AND is_error_event=1, "sapstartsrv (errors)", sourcetype="sap:sapstartsrv", "sapstartsrv (normal)", sourcetype="sap:saphostexec" AND is_error_event=1, "saphostexec (errors)", sourcetype="sap:saphostexec", "saphostexec (normal)") | timechart span=1d count by series | fillnull value=0`,
+    sslEvents: `${RAW_SSRV} is_ssl_event="true" auth_result="failure" | stats count as failures, dc(auth_user) as users, values(auth_user) as user_list, latest(_time) as last_seen_ts, earliest(_time) as first_seen_ts by remote_ip | eval first_seen = strftime(first_seen_ts, "%Y-%m-%d %H:%M:%S") | eval last_seen = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | eval span_h = round((last_seen_ts - first_seen_ts)/3600, 1) | sort -failures | table remote_ip, failures, users, user_list, first_seen, last_seen, span_h | rename remote_ip as "Source IP", failures as "Failures", users as "Distinct Users", user_list as "Users Tried", first_seen as "First Seen", last_seen as "Last Seen", span_h as "Activity Span (h)"`,
+    hostexecSeverity: `${RAW_HEXEC} severity=* | stats count by severity | sort -count`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -95,12 +123,20 @@ const SSL_COLS: ColumnDef[] = [
 ];
 
 const SapServices: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const authFail = useFirstRowField(Q.kpiAuthFail, 'count');
-    const sslEvents = useFirstRowField(Q.kpiSslEvents, 'count');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const authFail = useFirstRowFieldHybrid(Q.kpiAuthFail, QRAW.kpiAuthFail, 'count');
+    const sslEvents = useFirstRowFieldHybrid(Q.kpiSslEvents, QRAW.kpiSslEvents, 'count');
 
-    const authEvents = useSearch({ query: Q.authEvents });
-    const sslSources = useSearch({ query: Q.sslEvents });
+    const authEvents = useSearch({ query: Q.authEvents }); // raw listing
+    const sslSources = useHybridSearch({ cached: Q.sslEvents, raw: QRAW.sslEvents });
+
+    // Chart / pie take a query string → route once each (sub-hour -> raw).
+    const qVolumeByType = useRoutedQuery(Q.volumeByType, QRAW.volumeByType);
+    const qHostexecSeverity = useRoutedQuery(Q.hostexecSeverity, QRAW.hostexecSeverity);
 
     const authFailTone = Number(authFail.value ?? 0) > 0 ? 'critical' : 'neutral';
     const sslTone = Number(sslEvents.value ?? 0) > 0 ? 'warning' : 'neutral';
@@ -142,7 +178,7 @@ const SapServices: React.FC = () => {
             <FullWidthPanel>
                 <FramedPanel title="Event Volume by Service (Normal vs Errors)" subtitle="Daily volume per service / errors split">
                     <TimeSeriesChart
-                        query={Q.volumeByType}
+                        query={qVolumeByType}
                         height={280}
                         seriesColorsByField={{
                             'saphostexec (errors)': '#b50101',
@@ -160,7 +196,7 @@ const SapServices: React.FC = () => {
                 </FramedPanel>
                 <FramedPanel title="Host Agent Severity" subtitle="saphostexec severity distribution"
                     onClick={goSeverityPie} clickTitle="Open severity-by-host breakdown in Splunk Search">
-                    <PieChart query={Q.hostexecSeverity} categoryField="severity" valueField="count" height={300} donut palette="status" />
+                    <PieChart query={qHostexecSeverity} categoryField="severity" valueField="count" height={300} donut palette="status" />
                 </FramedPanel>
             </PanelGrid2Wide>
 

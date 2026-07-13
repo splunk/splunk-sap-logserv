@@ -1,0 +1,261 @@
+{
+    "meta": {
+        "name": "splunk_ta_sap_logserv_gcp",
+        "restRoot": "splunk_ta_sap_logserv_gcp",
+        "displayName": "Splunk TA for SAP LogServ on GCP",
+        "version": "0.0.6",
+        "schemaVersion": "0.0.9",
+        "isVisible": true
+    },
+    "pages": {
+        "inputs": {
+            "title": "Inputs",
+            "description": "GCP Pub/Sub inputs that ingest SAP LogServ objects from Google Cloud Storage via OBJECT_FINALIZE notifications — the GCP counterpart to the AWS SQS-based S3 input. Install on Heavy Forwarders.",
+            "table": {
+                "actions": ["edit", "delete", "clone", "search"],
+                "header": [
+                    {"field": "name", "label": "Name"},
+                    {"field": "project_id", "label": "Project"},
+                    {"field": "subscription_name", "label": "Subscription"},
+                    {"field": "interval", "label": "Interval"},
+                    {"field": "disabled", "label": "Status"}
+                ],
+                "moreInfo": [
+                    {"field": "name", "label": "Name"},
+                    {"field": "interval", "label": "Interval (seconds)"},
+                    {"field": "project_id", "label": "Project"},
+                    {"field": "subscription_name", "label": "Subscription"},
+                    {"field": "index", "label": "Target index"},
+                    {"field": "event_sourcetype", "label": "Sourcetype"},
+                    {"field": "batch_size", "label": "Messages per pull"},
+                    {"field": "max_objects_per_fire", "label": "Max objects per fire"},
+                    {"field": "poison_threshold", "label": "Poison threshold"},
+                    {"field": "include_filters", "label": "Include filters"},
+                    {"field": "exclude_filters", "label": "Exclude filters"},
+                    {"field": "verify_ssl", "label": "Verify SSL"},
+                    {"field": "disabled", "label": "Status"}
+                ]
+            },
+            "services": [
+                {
+                    "name": "sap_logserv_gcp_pubsub",
+                    "title": "GCP Pub/Sub subscription",
+                    "hook": {
+                        "type": "external",
+                        "src": "gcp_pubsub_input_hook"
+                    },
+                    "entity": [
+                        {
+                            "field": "name",
+                            "label": "Input name",
+                            "type": "text",
+                            "required": true,
+                            "help": "A unique identifier for this input. Letters, digits, dashes, and underscores only.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+                                    "errorMsg": "Input name must start with a letter and contain only letters, digits, dashes, or underscores."
+                                },
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64,
+                                    "errorMsg": "Input name must be 1–64 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "interval",
+                            "label": "Interval (seconds)",
+                            "type": "text",
+                            "required": true,
+                            "defaultValue": "60",
+                            "help": "How often the input polls the subscription (10–3600 seconds). Each firing drains the subscription up to the time budget and the Max objects per fire cap. Default 60 seconds.",
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [10, 3600],
+                                    "errorMsg": "Interval must be between 10 and 3600 seconds."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "project_id",
+                            "label": "GCP project ID",
+                            "type": "text",
+                            "required": true,
+                            "help": "The GCP project that hosts the LogServ Pub/Sub subscription (SAP's LogServ project, e.g. from the LOGSERV_PROJECT_ID your SAP support contact provides). 6–30 lowercase letters, digits, and hyphens.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$",
+                                    "errorMsg": "Project ID must be 6–30 chars: lowercase letters, digits, and hyphens, starting with a letter."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "subscription_name",
+                            "label": "Subscription name",
+                            "type": "text",
+                            "required": true,
+                            "help": "Name of the Pub/Sub PULL subscription that receives the GCS bucket's OBJECT_FINALIZE notifications. Obtain from your SAP support contact; the subscription must be dedicated to this Splunk consumer (competing consumers split messages). Recommended: ack deadline 300s+ and a dead-letter policy.",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9-_.~+%]{2,254}$",
+                                    "errorMsg": "Subscription name must be 3–255 chars, starting with a letter (letters, digits, and - _ . ~ + %)."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "service_account_key",
+                            "label": "Service-account key (JSON)",
+                            "type": "textarea",
+                            "required": true,
+                            "encrypted": true,
+                            "help": "Paste the full Google service-account JSON key file. The account needs roles/pubsub.subscriber on the subscription and roles/storage.objectViewer on the LogServ bucket. Stored encrypted in passwords.conf. On Edit the field shows '******'; saving without changing it preserves the existing key.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 6,
+                                    "maxLength": 16384,
+                                    "errorMsg": "Paste the complete service-account JSON key (up to 16 KB)."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "index",
+                            "label": "Target index",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "sap_logserv_logs",
+                            "help": "Splunk index the ingested events are written to. Defaults to sap_logserv_logs (the index the LogServ dashboards read).",
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[a-z0-9][a-z0-9_-]*$",
+                                    "errorMsg": "Index name must start with a lowercase letter or digit and contain only lowercase letters, digits, dashes, or underscores."
+                                },
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64,
+                                    "errorMsg": "Index name must be 1–64 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "event_sourcetype",
+                            "label": "Sourcetype",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "sap_logserv_logs",
+                            "help": "Fixed at sap_logserv_logs. The add-on HARD-CODES this sourcetype (it is NOT read from the input stanza), since the Data TA's index-time routing / Filters / cloud_provider+splunk_solution stamping all key on it. Shown read-only (disabled when editing an existing input); leave it as sap_logserv_logs.",
+                            "options": {
+                                "disableonEdit": true
+                            },
+                            "validators": [
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9:._-]*$",
+                                    "errorMsg": "Sourcetype must start with a letter or digit and contain only letters, digits, colons, dots, dashes, or underscores."
+                                },
+                                {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 256,
+                                    "errorMsg": "Sourcetype must be 1-256 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "batch_size",
+                            "label": "Messages per pull",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "10",
+                            "help": "How many Pub/Sub messages to request per pull call (maxMessages; the service caps this at 1000). Default 10.",
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [1, 1000],
+                                    "errorMsg": "Messages per pull must be between 1 and 1000."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "max_objects_per_fire",
+                            "label": "Max objects per fire",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "500",
+                            "help": "Safety cap on objects ingested per firing, bounding burst load during backlog drain. The input also stops at a per-firing time budget. Range 1–100000. Default 500.",
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [1, 100000],
+                                    "errorMsg": "Max objects per fire must be between 1 and 100000."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "poison_threshold",
+                            "label": "Poison threshold",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "5",
+                            "help": "A message redelivered more than this many times (Pub/Sub deliveryAttempt — reported when the subscription has a dead-letter policy) is acked and dropped so a permanently-bad object can't loop forever. With a dead-letter policy Pub/Sub also dead-letters natively; this is a local backstop. Range 1–100. Default 5.",
+                            "validators": [
+                                {
+                                    "type": "number",
+                                    "range": [1, 100],
+                                    "errorMsg": "Poison threshold must be between 1 and 100."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "include_filters",
+                            "label": "Include filters",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "",
+                            "help": "Optional comma-separated substrings applied to the GCS object path as a cheap pre-filter — only objects whose path contains at least one substring are downloaded. Leave empty to accept all LogServ objects. The canonical clz_dir/clz_subdir allow/deny policy lives in the Data TA Filters tab; this only avoids downloading obviously-irrelevant objects.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 0,
+                                    "maxLength": 4096,
+                                    "errorMsg": "Include filters must be less than 4096 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "exclude_filters",
+                            "label": "Exclude filters",
+                            "type": "text",
+                            "required": false,
+                            "defaultValue": "",
+                            "help": "Optional comma-separated substrings applied to the GCS object path; an object whose path matches any of these is skipped (not downloaded). Exclude always wins over include.",
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 0,
+                                    "maxLength": 4096,
+                                    "errorMsg": "Exclude filters must be less than 4096 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "verify_ssl",
+                            "label": "Verify SSL",
+                            "type": "checkbox",
+                            "defaultValue": 1,
+                            "help": "Verify the TLS certificates of the Google API endpoints. Leave enabled for production (Google uses valid public certificates)."
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

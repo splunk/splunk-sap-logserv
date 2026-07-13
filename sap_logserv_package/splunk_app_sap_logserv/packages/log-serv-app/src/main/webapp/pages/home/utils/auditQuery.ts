@@ -43,13 +43,15 @@ const ONESHOT_URL =
  *  Build 136 / session 024 — added the 3 categories that landed in
  *  session 022 (`ai_assistant_enable_acceptance`,
  *  `audit_forwarder_failure`, `forwarder_disabled_acceptance`) and
- *  were never reflected here, leaving 18-of-38 events unfilterable. */
+ *  were never reflected here, leaving 18-of-38 events unfilterable.
+ *  Session 079 / build 275 — added `model_discovery`. */
 export const AUDIT_CATEGORIES = [
     'ai_assistant_enable_acceptance',
     'audit_forwarder_failure',
     'daily_spend_cap_hit',
     'forwarder_disabled_acceptance',
     'local_only',
+    'model_discovery',
     'rate_limited_prompt',
     'security_blocked_spl',
     'session_tool_cap_hit',

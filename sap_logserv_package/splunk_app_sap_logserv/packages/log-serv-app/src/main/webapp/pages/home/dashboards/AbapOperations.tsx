@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildDashboardUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -60,7 +62,7 @@ const UPTIME = `| inputlookup ${ROLL} where metric="uptime" ${RANGE}`;
 const WP = `| inputlookup ${ROLL} where metric="wp" ${RANGE}`;
 const DP = `| inputlookup ${ROLL} where metric="dp" ${RANGE}`;
 
-const Q = {
+const Q_BASE = {
     kpiTotal: `${ABAP} | stats sum(count) as count`,
     kpiSids: `${ABAP} | stats dc(eval(if(sap_sid="(none)",null(),sap_sid))) as sids`,
     kpiWpErrors: `${DP} | search (dp_severity="ERROR" OR dp_severity="FATAL") | stats sum(count) as count`,
@@ -79,9 +81,41 @@ const Q = {
     sidInstance: `${ABAP} | stats sum(count) as count by sap_sid, sourcetype | sort -count`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw ABAP
+ * scan its rollup metric precomputes (reconstructed from
+ * [logserv_wp_perf_aggregate]). sidInstance groups by the fillnull'd sap_sid
+ * (the cached read doesn't exclude "(none)"), so the raw fillnull's it too.
+ * uptime is latest-of-per-bucket-latest = latest event uptime. Only the
+ * sparklines stay cached.
+ * ------------------------------------------------------------------------- */
+const RAW_ABAP6 = '`sap_logserv_idx_macro` (sourcetype="sap:abap:dispatcher" OR sourcetype="sap:abap:enqueueserver" OR sourcetype="sap:abap:event" OR sourcetype="sap:abap:messageserver" OR sourcetype="sap:abap:sapstartsrv" OR sourcetype="sap:abap:workprocess")';
+const RAW_WP = '`sap_logserv_idx_macro` sourcetype="sap:abap:workprocess"';
+const RAW_DP = '`sap_logserv_idx_macro` sourcetype="sap:abap:dispatcher"';
+const RAW_ENQ = '`sap_logserv_idx_macro` sourcetype="sap:abap:enqueueserver"';
+const RAW_EVENT = '`sap_logserv_idx_macro` sourcetype="sap:abap:event"';
+const QRAW_BASE = {
+    kpiTotal: `${RAW_ABAP6} | stats count`,
+    kpiSids: `${RAW_ABAP6} | stats dc(sap_sid) as sids`,
+    kpiWpErrors: `${RAW_DP} (dp_severity="ERROR" OR dp_severity="FATAL") | stats count`,
+    volumeByType: `${RAW_ABAP6} | timechart span=1d count by sourcetype | fillnull value=0`,
+    dispatcherSeverity: `${RAW_DP} dp_severity=* | timechart span=1d count by dp_severity | fillnull value=0`,
+    enqueueTimeline: `${RAW_ENQ} | timechart span=1d count as "Lock Operations" | fillnull value=0`,
+    uptime: `${RAW_EVENT} uptime_days=* | stats latest(uptime_days) as uptime_days latest(uptime_hours) as uptime_hours by sap_sid, sap_instance | sort sap_sid sap_instance`,
+    wpCategories: `${RAW_WP} wp_category_name=* | stats count by wp_category_name | sort -count`,
+    wpFunctions: `${RAW_WP} wp_function=* | stats count as Events by wp_function, wp_sub_function | sort -Events`,
+    sidInstance: `${RAW_ABAP6} | fillnull value="(none)" sap_sid | stats count by sap_sid, sourcetype | sort -count`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -104,13 +138,23 @@ const SID_COLS: ColumnDef[] = [
 ];
 
 const AbapOperations: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const sids = useFirstRowField(Q.kpiSids, 'sids');
-    const wpErrors = useFirstRowField(Q.kpiWpErrors, 'count');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const sids = useFirstRowFieldHybrid(Q.kpiSids, QRAW.kpiSids, 'sids');
+    const wpErrors = useFirstRowFieldHybrid(Q.kpiWpErrors, QRAW.kpiWpErrors, 'count');
 
-    const uptime = useSearch({ query: Q.uptime });
-    const wpFunctions = useSearch({ query: Q.wpFunctions });
-    const sidInstance = useSearch({ query: Q.sidInstance });
+    const uptime = useHybridSearch({ cached: Q.uptime, raw: QRAW.uptime });
+    const wpFunctions = useHybridSearch({ cached: Q.wpFunctions, raw: QRAW.wpFunctions });
+    const sidInstance = useHybridSearch({ cached: Q.sidInstance, raw: QRAW.sidInstance });
+
+    // Charts / pie take a query string → route once each (sub-hour -> raw).
+    const qVolumeByType = useRoutedQuery(Q.volumeByType, QRAW.volumeByType);
+    const qDispatcherSeverity = useRoutedQuery(Q.dispatcherSeverity, QRAW.dispatcherSeverity);
+    const qEnqueueTimeline = useRoutedQuery(Q.enqueueTimeline, QRAW.enqueueTimeline);
+    const qWpCategories = useRoutedQuery(Q.wpCategories, QRAW.wpCategories);
 
     const wpErrorsTone = Number(wpErrors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
@@ -150,17 +194,17 @@ const AbapOperations: React.FC = () => {
 
             <FullWidthPanel>
                 <FramedPanel title="Event Volume by Sourcetype" subtitle="Daily volume across the 6 ABAP runtime sourcetypes">
-                    <TimeSeriesChart query={Q.volumeByType} height={280} palette="volume" />
+                    <TimeSeriesChart query={qVolumeByType} height={280} palette="volume" />
                 </FramedPanel>
             </FullWidthPanel>
 
             <PanelGrid2>
                 <FramedPanel title="Dispatcher Severity Over Time" subtitle="Daily dp_severity breakdown — click to open Work Process Performance"
                     onClick={goWpPerformance} clickTitle="Open Work Process Performance dashboard">
-                    <TimeSeriesChart query={Q.dispatcherSeverity} height={260} palette="status" />
+                    <TimeSeriesChart query={qDispatcherSeverity} height={260} palette="status" />
                 </FramedPanel>
                 <FramedPanel title="Enqueue Lock Activity" subtitle="Daily lock operation count">
-                    <TimeSeriesChart query={Q.enqueueTimeline} height={260} palette="volume" />
+                    <TimeSeriesChart query={qEnqueueTimeline} height={260} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -172,7 +216,7 @@ const AbapOperations: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Work Process Categories" subtitle="Share of events by wp_category_name">
-                    <PieChart query={Q.wpCategories} categoryField="wp_category_name" valueField="count" height={320} donut palette="volume" />
+                    <PieChart query={qWpCategories} categoryField="wp_category_name" valueField="count" height={320} donut palette="volume" />
                 </FramedPanel>
                 <FramedPanel search={wpFunctions} title="Work Process Functions" subtitle="wp_function + sub-function combinations ranked by volume">
                     <DataTable columns={FUNCTION_COLS} rows={wpFunctions.results} loading={wpFunctions.loading} error={wpFunctions.error} emptyMessage="No work-process events in this time range." />

@@ -1,52 +1,37 @@
 /**
- * LogServ "framed dark cards" theme — codified from the v0.0.4.2 dashboards.
+ * LogServ theme — token indirection layer.
  *
- * Used by the React shell's custom components (NavigationBar, AppShell,
- * PlaceholderDashboard, future panel chrome) to give the v0.0.5.0 React app
- * the same visual identity users already know from v0.0.4.2.
+ * Since Phase 0 of the Cisco Magnetic re-theme (build 246, plan:
+ * cisco_magnetic_theme_plan_v0.1_20260705.md) every COLOR value here is a
+ * `var(--lsv-*)` CSS custom-property reference instead of a hex literal.
+ * The actual per-mode values (light/dark) are defined on <body> by
+ * <GlobalThemeVars> in state/ThemeModeProvider.tsx, sourced from
+ * styles/magneticTokens.ts — the single source of truth.
  *
- * Splunk's @splunk/react-ui components (Select, TimeRange dialog, Button popups)
- * still render via the prismaDark theme passed to @splunk/react-page; that is
- * intentional so they remain visually first-class Splunk components.
+ * Consequences for consumers:
+ *  - styled-components / inline `style={{…}}` (CSS positions): keep using
+ *    `logservTheme.colors.*` exactly as before — the var() resolves at
+ *    paint time and flips automatically with the mode class.
+ *  - SVG presentation ATTRIBUTES (stopColor= / fill= / stroke=), color
+ *    MATH (colorMath.darken / verticalGradient), and JS color plumbing
+ *    (@splunk/visualizations seriesColors, @xyflow markers/minimap):
+ *    var() strings DO NOT work there. Use the resolved literal-hex tokens
+ *    from `useThemeMode().tokens` (state/ThemeModeProvider.tsx) instead.
+ *  - NEVER string-concatenate an alpha suffix onto a color token
+ *    (`${colors.cyanLight}80` was the old idiom) — use the dedicated
+ *    alpha token (e.g. `cyanLightGlow`) or an rgba literal.
+ *
+ * Splunk's @splunk/react-ui components render via the nested
+ * SplunkThemeScope provider (prisma, colorScheme following our mode);
+ * that is intentional so they remain visually first-class Splunk
+ * components in both modes.
  */
+import { LSV_VARS } from './magneticTokens';
+
 export const logservTheme = {
-    colors: {
-        // Backgrounds
-        pageBackground: '#0d1117',
-        panelBackground: '#141b2d',
-        navBackground: '#0d1117',
-
-        // Borders
-        panelBorder: '#0877a6', // cyan accent — outline of dashboard cards
-        panelBorderWeak: '#2a3a52', // subtle separators
-
-        // Text
-        textActive: '#ffffff',
-        textDefault: '#cdd9e5',
-        textMuted: '#7b8ea8', // KPI labels, secondary copy
-
-        // Status colors (use directly in panels and KPIs)
-        red: '#dc4e41', // standard error
-        redSevere: '#b50101',
-        redLight: '#ff7a6b',
-        orange: '#f1813f',
-        orangeLight: '#f4a535',
-        yellow: '#ffcc00',
-        teal: '#00d4b4', // positive / success
-        green: '#65c878', // healthy / normal — used by topology call-bucket ring (build 207)
-        cyanAccent: '#0877a6',
-        cyanLight: '#7ee8fa',
-        purple: '#9c6aff',
-
-        // Tables
-        tableHeaderBackground: '#1e2a3d',
-        tableRowOdd: '#0d1520',
-        tableRowEven: 'transparent',
-
-        // Interactive states
-        hoverBackground: '#1e2a3d',
-        activeAccent: '#0877a6',
-    },
+    /** All values are `var(--lsv-*)` references — see file header. The key
+     *  set is derived from magneticTokens.MODE_TOKENS so it can't drift. */
+    colors: LSV_VARS,
     spacing: {
         xs: '4px',
         sm: '8px',
@@ -68,12 +53,23 @@ export const logservTheme = {
         semibold: 600,
         bold: 700,
     },
+    /** Magnetic font stacks (Phase 1b, build 254). The families are bundled
+     *  in appserver/static/fonts/ and @font-face-injected pre-mount by
+     *  styles/fonts.ts; the fallbacks are Splunk Web's own stack so the app
+     *  degrades to the pre-re-theme look if a font file fails to load.
+     *  `heading` (Sharp Sans) ships weight 700 ONLY — always pair it with
+     *  fontWeight.bold. */
+    font: {
+        body: '"Inter", "Splunk Platform Sans", "Proxima Nova", Roboto, "Helvetica Neue", Helvetica, Arial, sans-serif',
+        heading: '"Sharp Sans", "Inter", "Splunk Platform Sans", "Proxima Nova", Roboto, Arial, sans-serif',
+        mono: '"Roboto Mono", ui-monospace, Menlo, Consolas, "Courier New", monospace',
+    },
     radius: {
         small: '3px',
         medium: '4px',
     },
     elevation: {
-        panelOutline: '1px solid #0877a6',
+        panelOutline: `1px solid ${LSV_VARS.panelBorder}`,
         panelGap: '12px',
     },
 } as const;

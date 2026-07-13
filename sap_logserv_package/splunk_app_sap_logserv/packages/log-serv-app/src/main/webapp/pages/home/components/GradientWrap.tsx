@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect, useRef } from 'react';
 import { darken } from '../utils/colorMath';
+import { useThemeMode } from '../state/ThemeModeProvider';
 
 /**
  * GradientWrap — wraps a Splunk chart and post-processes its rendered SVG so
@@ -39,15 +40,31 @@ const normalizeFill = (raw: string | null | undefined): string | null => {
 
 interface Props {
     children: ReactNode;
-    /** Bottom-stop darkness fraction (0 = same color, 1 = black). Default 0.35. */
+    /** Bottom-stop darkness fraction (0 = same color, 1 = black). When
+     *  omitted (the normal case since build 254), resolves per theme mode:
+     *  0.4 in dark, 0.15 in light — the dark-mode fade turns muddy on
+     *  light-mode pastels, so light gets a much subtler treatment. */
     darkenAmount?: number;
 }
 
+/** Per-mode default fade depth (Phase 1b, build 254 — plan §4.3). */
+const MODE_DARKEN: Record<'light' | 'dark', number> = { dark: 0.4, light: 0.15 };
+
+/** Relative luminance of a #rrggbb hex (0 = black, 1 = white). */
+const hexLuminance = (hex: string): number => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+};
+
 let nextWrapId = 0;
 
-const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
+const GradientWrap: React.FC<Props> = ({ children, darkenAmount }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const wrapIdRef = useRef<string>(`gw${nextWrapId++}`);
+    const { mode } = useThemeMode();
+    const resolvedDarken = darkenAmount ?? MODE_DARKEN[mode];
 
     useEffect(() => {
         const container = containerRef.current;
@@ -57,7 +74,11 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
         let applying = false;
 
         const ensureGradient = (svg: SVGSVGElement, hex: string): string => {
-            const id = `${wrapIdRef.current}-${hex.slice(1)}`;
+            // The darken depth is part of the id so a mode flip (different
+            // resolvedDarken) can't dangle onto a stale-depth gradient — the
+            // url() branch below sees the expected id missing and recreates
+            // the gradient with the current depth.
+            const id = `${wrapIdRef.current}-${hex.slice(1)}-${Math.round(resolvedDarken * 100)}`;
 
             let defs = svg.querySelector(':scope > defs.logserv-gradients') as SVGDefsElement | null;
             // Reuse the gradient ONLY if it still lives in THIS svg. On a chart
@@ -86,7 +107,7 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
             stop1.setAttribute('stop-color', hex);
             const stop2 = document.createElementNS(SVG_NS, 'stop');
             stop2.setAttribute('offset', '100%');
-            stop2.setAttribute('stop-color', darken(hex, darkenAmount));
+            stop2.setAttribute('stop-color', darken(hex, resolvedDarken));
             gradient.appendChild(stop1);
             gradient.appendChild(stop2);
             defs.appendChild(gradient);
@@ -95,6 +116,19 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
         };
 
         const applyToElement = (el: SVGElement, svg: SVGSVGElement): void => {
+            /* Never gradient-ize tooltip chrome. The walker's [fill] arm used
+             * to catch `path.highcharts-tooltip-box`, turning the tooltip's
+             * flat background into a vertical white→gray bevel (the light-mode
+             * "legacy tooltip" the user flagged) via an inline style.fill that
+             * outranked the AppShell token CSS. Tooltip boxes must stay flat so
+             * the AppShell rules keep them byte-identical to the Sparkline
+             * tooltip in both modes. Build 251. */
+            if (
+                (typeof el.closest === 'function' && el.closest('.highcharts-tooltip')) ||
+                (el.getAttribute('class') || '').includes('highcharts-label-box')
+            ) {
+                return;
+            }
             const currentInline = el.style && el.style.fill;
             if (currentInline && currentInline.startsWith('url(')) {
                 // Already gradient-ized by a prior pass. Decide whether to leave
@@ -109,7 +143,7 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
                 // WITHOUT mutating, so the observer stops firing.
                 const storedHex = el.getAttribute('data-gw-hex');
                 if (!storedHex) return; // not ours / unrecoverable — leave it
-                const expectedId = `${wrapIdRef.current}-${storedHex.slice(1)}`;
+                const expectedId = `${wrapIdRef.current}-${storedHex.slice(1)}-${Math.round(resolvedDarken * 100)}`;
                 if (svg.querySelector(`[id="${expectedId}"]`)) return; // intact
                 // Gradient was wiped (svg swapped / defs cleared on re-render) —
                 // recreate it in the current svg and re-point the element.
@@ -132,6 +166,11 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
             if (!hex) return;
             // Skip transparent / black backgrounds (chart background, axes).
             if (hex === '#000000') return;
+            // Near-white skip (build 254): in light mode the chart/plot
+            // backgrounds and other near-white fills would take a visible
+            // dirty white→gray fade. Anything this bright is chrome, not a
+            // data series — leave it flat.
+            if (hexLuminance(hex) > 0.93) return;
 
             const id = ensureGradient(svg, hex);
             // Stash the source hex so a later pass can recover the gradient if
@@ -186,7 +225,7 @@ const GradientWrap: React.FC<Props> = ({ children, darkenAmount = 0.35 }) => {
             initialTimers.forEach((t) => window.clearTimeout(t));
             observer.disconnect();
         };
-    }, [darkenAmount]);
+    }, [resolvedDarken]);
 
     return <div ref={containerRef}>{children}</div>;
 };

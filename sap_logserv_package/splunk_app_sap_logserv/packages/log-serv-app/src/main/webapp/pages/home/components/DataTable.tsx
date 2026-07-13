@@ -63,13 +63,13 @@ const Wrapper = styled.div<{ $zebra: boolean; $clickableRows: boolean }>`
         width: 100%;
     }
 
+    /* Magnetic table header (§6, build 254): 12px semibold sentence case
+       (the old uppercase + letter-spacing dropped), default text color. */
     & thead th {
         background: ${logservTheme.colors.tableHeaderBackground} !important;
-        color: ${logservTheme.colors.textActive} !important;
-        font-size: ${logservTheme.fontSize.small};
+        color: ${logservTheme.colors.textDefault} !important;
+        font-size: 12px;
         font-weight: ${logservTheme.fontWeight.semibold};
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
         border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
     }
 
@@ -78,6 +78,12 @@ const Wrapper = styled.div<{ $zebra: boolean; $clickableRows: boolean }>`
         font-size: ${logservTheme.fontSize.body};
         border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
         background: transparent !important;
+        transition: background-color 150ms ease-out;
+    }
+
+    /* Magnetic row hover wash — on every table, not just clickable ones. */
+    & tbody tr:hover td {
+        background: ${logservTheme.colors.hoverBackground} !important;
     }
 
     ${(p) =>
@@ -93,14 +99,13 @@ const Wrapper = styled.div<{ $zebra: boolean; $clickableRows: boolean }>`
         p.$clickableRows
             ? `
         /* Drilldown affordance — when the table has an onRowClick handler,
-           every row reads as interactive (cursor: pointer + hover wash).
+           rows additionally read as interactive: cursor + interact-accent
+           text on hover (the bg wash itself applies to every table above).
            Build 157 / session 027 task 4. */
         & tbody tr {
             cursor: pointer;
-            transition: background-color 80ms ease-out;
         }
         & tbody tr:hover td {
-            background: ${logservTheme.colors.hoverBackground} !important;
             color: ${logservTheme.colors.cyanLight};
         }
     `
@@ -158,21 +163,29 @@ const PageButtons = styled.div`
 `;
 
 const PageBtn = styled.button`
+    /* Magnetic outline-button grammar (§6, build 254): 4px radius, 150ms
+       transitions, focus ring token. */
     background: transparent;
     border: 1px solid ${logservTheme.colors.panelBorderWeak};
     color: ${logservTheme.colors.textActive};
     padding: 2px 8px;
     cursor: pointer;
-    border-radius: 2px;
+    border-radius: ${logservTheme.radius.medium};
     font-size: 12px;
     line-height: 1.4;
     min-width: 24px;
     font-family: inherit;
+    transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
 
     &:hover:not(:disabled) {
         background: ${logservTheme.colors.hoverBackground};
         border-color: ${logservTheme.colors.panelBorder};
         color: ${logservTheme.colors.cyanLight};
+    }
+
+    &:focus-visible {
+        outline: 2px solid ${logservTheme.colors.focusRing};
+        outline-offset: 1px;
     }
 
     &:disabled {

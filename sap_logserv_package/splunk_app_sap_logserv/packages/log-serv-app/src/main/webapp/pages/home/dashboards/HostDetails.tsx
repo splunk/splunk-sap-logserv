@@ -12,9 +12,18 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import TabbedLayout from '../components/TabbedLayout';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
+import LinkGraphContainer from '../components/LinkGraphContainer';
 import { useSearch, UseSearchResult } from '../hooks/useSearch';
+import { useHybridSearch } from '../hooks/useHybridSearch';
+import {
+    useCloudProvider,
+    mapCloudProviderQueries,
+    withCloudProvider,
+} from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
+import { useThemeMode } from '../state/ThemeModeProvider';
 import { chooseTimechartSpan } from '../utils/timechartSpan';
+import { buildStmapRawQuery } from '../utils/stmapRaw';
 import {
     buildDashboardUrl,
     buildSplunkSearchUrl,
@@ -67,22 +76,10 @@ const ReshuffleGrid = styled.div`
     margin-bottom: ${logservTheme.elevation.panelGap};
 `;
 
-/** Wrapper around Splunk's LinkGraph that suppresses every horizontal
- *  scrollbar inside the viz. Splunk renders an `overflow: auto` div around
- *  its 3-column body; even with our outer container using `overflow-x:
- *  hidden`, that inner element still draws its own scrollbar. Cascading
- *  `overflow-x: hidden !important` to every descendant kills it while
- *  leaving vertical scrolling intact. Mirrors the implementation in
- *  DataPipelineOverview (Linked Graph tab). */
-const LinkGraphContainer = styled.div<{ $height: number }>`
-    width: 100%;
-    height: ${(p) => p.$height}px;
-    overflow-x: hidden;
-
-    & * {
-        overflow-x: hidden !important;
-    }
-`;
+/* The LinkGraph wrapper (horizontal-scrollbar suppression + the build-281
+ * node-bar restyle) lives in the shared components/LinkGraphContainer —
+ * this tab must style identically to DataPipelineOverview's Sourcetype
+ * Mapping tab. */
 
 /** Canvas height for the link graph — matches v0.0.4.2 layout_2 (~3260 px),
  *  large enough that the tallest column (typically `host`) can render every
@@ -109,6 +106,13 @@ const LINK_GRAPH_NODE_WIDTH_FALLBACK = 540;
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 085) — sub-hour
+ *  ranges read the raw query, wide ranges the rollup. See hooks/useHybridSearch. */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -378,7 +382,8 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
     // Host filter for the build-233 rollup inputlookup reads: the HOST_TS
     // OR-fragment as a post-inputlookup `| search` clause (empty = all hosts).
     const HOST_ROLL = useMemo(() => (HOST_TS ? `| search ${HOST_TS} ` : ''), [HOST_TS]);
-    const Q = useMemo(() => ({
+    const { provider } = useCloudProvider();
+    const Q = useMemo(() => mapCloudProviderQueries({
         totalEvents: `| tstats count WHERE ${W}`,
         dataVolume: `${R_VOL} ${HOST_ROLL}| stats sum(sum_bytes) AS total_bytes`,
         activeSourcetypes: `| tstats dc(sourcetype) AS sts WHERE ${W}`,
@@ -445,13 +450,26 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
             ` latest(instance_id) AS "Instance ID"` +
             ` by host` +
             ` | rename host AS Host`,
-    }), [HOST, W, HOST_ROLL]);
+    }, provider), [HOST, W, HOST_ROLL, provider]);
+
+    // RAW fallbacks for the 3 rollup-backed KPI scalars — sub-hour hybrid
+    // (session 085). Reuse `W` (macro + host filter) as the base so the host
+    // filter stays consistent with the cached reads; same cloud-provider
+    // mapping. Each matches its rollup metric's exact classification (byte-
+    // verified equal at wide windows). The tstats KPIs (totalEvents,
+    // activeSourcetypes), topSources, dataFreshness and hostInventory are
+    // already correct at any range; the sparklines stay cached (cosmetic).
+    const QRAW = useMemo(() => mapCloudProviderQueries({
+        dataVolume: `${W} | eval bytes=len(_raw) | stats sum(bytes) AS total_bytes`,
+        errorsCriticals: `${W} (severity=ERROR OR severity=CRITICAL OR "error" OR "critical") | stats count`,
+        authFailures: `${W} ("authentication failure" OR "Failed password" OR "FAILED LOGIN" OR EventCode=4625 OR status="UNSUCCESSFUL") | stats count`,
+    }, provider), [W, provider]);
 
     const total = useFirstRowField(Q.totalEvents, 'count');
-    const volume = useFirstRowField(Q.dataVolume, 'total_bytes');
+    const volume = useFirstRowFieldHybrid(Q.dataVolume, QRAW.dataVolume, 'total_bytes');
     const sts = useFirstRowField(Q.activeSourcetypes, 'sts');
-    const errors = useFirstRowField(Q.errorsCriticals, 'count');
-    const auth = useFirstRowField(Q.authFailures, 'count');
+    const errors = useFirstRowFieldHybrid(Q.errorsCriticals, QRAW.errorsCriticals, 'count');
+    const auth = useFirstRowFieldHybrid(Q.authFailures, QRAW.authFailures, 'count');
     const topSources = useSearch({ query: Q.topSources });
     const dataFreshness = useSearch({ query: Q.dataFreshness });
     // Host Inventory — always fetched (build 163 / session 028 task: user
@@ -495,8 +513,11 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
     // the validated DataPipelineOverview build-198 pattern.
     const eventsBySourceQuery = useMemo(
         () =>
-            `| tstats count WHERE ${W} BY sourcetype, _time span=${span} | timechart span=${span} sum(count) by sourcetype limit=0 useother=false`,
-        [W, span],
+            withCloudProvider(
+                `| tstats count WHERE ${W} BY sourcetype, _time span=${span} | timechart span=${span} sum(count) by sourcetype limit=0 useother=false`,
+                provider,
+            ),
+        [W, span, provider],
     );
 
     const formatBytes = (raw: unknown): string => {
@@ -717,18 +738,50 @@ const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTop
     // `stats … by <field>` already dropped null values).
     const HOST_TS = combinedHostFilterTstats(hosts, topHosts, resolvedTopHosts);
     const HF = HOST_TS ? ` | search ${HOST_TS}` : '';
+    const { provider } = useCloudProvider();
     const roleRead = (metric: string, field: string): string =>
-        `| inputlookup ${HR_ROLL} where metric="${metric}" ${ROLL_RANGE}${HF}`
-        + ` | stats sum(count) as count by value | eventstats sum(count) as _t`
-        + ` | eval percent=round(count/_t*100, 6) | fields - _t | sort - count | rename value as ${field}`;
+        withCloudProvider(
+            `| inputlookup ${HR_ROLL} where metric="${metric}" ${ROLL_RANGE}${HF}`
+            + ` | stats sum(count) as count by value | eventstats sum(count) as _t`
+            + ` | eval percent=round(count/_t*100, 6) | fields - _t | sort - count | rename value as ${field}`,
+            provider,
+        );
 
-    const hanaAudit = useSearch({ query: roleRead('hana_action', 'action_type') });
-    const abapWp = useSearch({ query: roleRead('abap_wp', 'wp_type') });
-    const webDisp = useSearch({ query: roleRead('webdisp_status', 'status') });
-    const sapRouter = useSearch({ query: roleRead('saprouter_peer', 'peer_ip') });
-    const winEvents = useSearch({ query: roleRead('win_eventcode', 'EventCode') });
-    const sudo = useSearch({ query: roleRead('sudo_user', 'sudo_user') });
-    const dns = useSearch({ query: roleRead('dns_query', 'query') });
+    // Sub-hour hybrid (session 087): the hostrole rollup is hourly bucket_ts-keyed,
+    // so a sub-hour window reads blank (within-hour) / over-inclusive (crossing).
+    // Route sub-hour ranges to the raw per-sourcetype scan each metric precomputes
+    // — reconstructed verbatim from [logserv_hostrole_aggregate]. Both arms
+    // reproduce `top limit=0 <field>` via stats + eventstats + eval percent, so the
+    // output columns (<field> / count / percent) are identical. The raw base filter
+    // + sourcetype + optional rex must stay in lockstep with the aggregate.
+    const ROLE_RAW: Record<string, { base: string; rex?: string }> = {
+        hana_action: { base: 'sourcetype=sap:hana:audit' },
+        abap_wp: { base: 'sourcetype=sap:abap:workprocess' },
+        webdisp_status: { base: 'sourcetype=sap:webdispatcher:access' },
+        saprouter_peer: { base: 'sourcetype=sap:saprouter' },
+        win_eventcode: { base: 'sourcetype=XmlWinEventLog*' },
+        sudo_user: { base: 'sourcetype=linux_messages_syslog "sudo"', rex: 'rex "sudo:\\s+(?<sudo_user>[^\\s:]+)"' },
+        dns_query: { base: 'sourcetype=isc:bind:query' },
+    };
+    const roleReadRaw = (metric: string, field: string): string => {
+        const cfg = ROLE_RAW[metric];
+        const hostClause = HOST_TS ? `${HOST_TS} ` : '';
+        const rex = cfg.rex ? ` | ${cfg.rex}` : '';
+        return withCloudProvider(
+            `\`sap_logserv_idx_macro\` ${hostClause}${cfg.base}${rex}`
+            + ` | stats count by ${field} | eventstats sum(count) as _t`
+            + ` | eval percent=round(count/_t*100, 6) | fields - _t | sort - count`,
+            provider,
+        );
+    };
+
+    const hanaAudit = useHybridSearch({ cached: roleRead('hana_action', 'action_type'), raw: roleReadRaw('hana_action', 'action_type') });
+    const abapWp = useHybridSearch({ cached: roleRead('abap_wp', 'wp_type'), raw: roleReadRaw('abap_wp', 'wp_type') });
+    const webDisp = useHybridSearch({ cached: roleRead('webdisp_status', 'status'), raw: roleReadRaw('webdisp_status', 'status') });
+    const sapRouter = useHybridSearch({ cached: roleRead('saprouter_peer', 'peer_ip'), raw: roleReadRaw('saprouter_peer', 'peer_ip') });
+    const winEvents = useHybridSearch({ cached: roleRead('win_eventcode', 'EventCode'), raw: roleReadRaw('win_eventcode', 'EventCode') });
+    const sudo = useHybridSearch({ cached: roleRead('sudo_user', 'sudo_user'), raw: roleReadRaw('sudo_user', 'sudo_user') });
+    const dns = useHybridSearch({ cached: roleRead('dns_query', 'query'), raw: roleReadRaw('dns_query', 'query') });
 
     const allEmpty =
         (!hanaAudit.results || hanaAudit.results.length === 0) &&
@@ -785,8 +838,11 @@ interface LinkGraphResult {
 }
 
 const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHosts: string[] }> = ({ hosts, topHosts, resolvedTopHosts }) => {
+    // Node-bar restyle is mode-resolved (build 281) — see LinkGraphContainer.
+    const { mode } = useThemeMode();
     const HOST_TS = combinedHostFilterTstats(hosts, topHosts, resolvedTopHosts);
     const HF = HOST_TS ? ` | search ${HOST_TS}` : '';
+    const { provider } = useCloudProvider();
 
     // count: 0 → "all rows". The link graph needs every unique
     // sourcetype/source/host combination, which can exceed the default 100-row
@@ -795,8 +851,19 @@ const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolv
     // live `| tstats … BY sourcetype, source, host` over date/UUID-stamped source
     // (13.8s/-7d, 49.7s/-30d, 4151 tuples). `| stats count by …` dedups to one row
     // per tuple; `| fields - count` drops the aggregate just like the legacy form.
-    const { results, loading, error } = useSearch<LinkGraphResult>({
-        query: `| inputlookup ${ST_ROLL} ${ROLL_RANGE}${HF} | stats count by sourcetype, source, host | fields - count`,
+    // Sub-hour hybrid (session 087): the stmap rollup is hourly bucket_ts-keyed,
+    // so a sub-hour window reads blank (within-hour) / over-inclusive (crossing).
+    // Route sub-hour ranges to the identically-normalized raw scan — byte-equal to
+    // the cached rollup read at wide ranges. buildStmapRawQuery takes the same
+    // tstats-WHERE host fragment (HOST_TS) the cached read appends via `| search`.
+    const cachedStmap = withCloudProvider(
+        `| inputlookup ${ST_ROLL} ${ROLL_RANGE}${HF} | stats count by sourcetype, source, host | fields - count`,
+        provider,
+    );
+    const rawStmap = withCloudProvider(buildStmapRawQuery(HOST_TS), provider);
+    const { results, loading, error } = useHybridSearch<LinkGraphResult>({
+        cached: cachedStmap,
+        raw: rawStmap,
         count: 0,
     });
 
@@ -865,7 +932,7 @@ const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolv
                 title="Source to sourcetype mapping"
                 subtitle={`sourcetype → source → host edges for ${hostLabel(hosts)}, deduped by host/source/sourcetype`}
             >
-                <LinkGraphContainer ref={containerRef} $height={LINK_GRAPH_HEIGHT}>
+                <LinkGraphContainer ref={containerRef} $height={LINK_GRAPH_HEIGHT} $mode={mode}>
                     <LinkGraph
                         dataSources={dataSources}
                         width="100%"

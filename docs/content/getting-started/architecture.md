@@ -2,15 +2,16 @@
 
 ## :material-circle-box:{ .taiconcolor } Two-Package Model
 
-The SAP LogServ solution for Splunk is delivered as **two core packages** — plus a first-party **Azure ingest add-on** for deployments where SAP ECS data lands in Azure Blob Storage:
+The SAP LogServ solution for Splunk is delivered as **two core packages** — plus first-party **Azure and GCP ingest add-ons** for deployments where SAP ECS data lands in Azure Blob Storage or Google Cloud Storage:
 
 | Package | App ID | Purpose |
 |---------|--------|---------|
 | **Data TA** | `splunk_ta_sap_logserv` | Data collection, index-time filtering, deployment server automation, configuration UI, ships the `indexes.conf` for `sap_logserv_logs` (SAP data) and `logserv_ai_assistant_audit` (AI Assistant audit log) |
 | **LogServ App** | `splunk_app_sap_logserv` | Dashboards, AI Assistant, Environment Topology view, search-time field extractions, macros |
 | **LogServ Azure add-on** *(Azure deployments only)* | `splunk_ta_sap_logserv_azure` | Queue-based Azure Blob ingest — the `sap_logserv_azure_queue` modular input consumes Azure Event Grid → Storage Queue notifications, fetches each blob over a SAS, and emits `sourcetype = sap_logserv_logs` into the same pipeline as the AWS path. Installed **per Heavy Forwarder** (its SAS lives in the add-on's own `local/`), **not** distributed by the Deployment Server. The Azure counterpart to the Splunk Add-on for AWS. See the [Azure Setup Guide](../install-setup/azure-setup.md). |
+| **LogServ GCP add-on** *(GCP deployments only)* | `splunk_ta_sap_logserv_gcp` | Notification-driven Google Cloud Storage ingest — the `sap_logserv_gcp_pubsub` modular input pulls a Pub/Sub subscription fed by the LogServ bucket's `OBJECT_FINALIZE` notifications, fetches each object with a service-account key, and emits `sourcetype = sap_logserv_logs` into the same pipeline. Installed **per Heavy Forwarder** (its key lives in the add-on's own `local/`), **not** distributed by the Deployment Server. The GCP counterpart to the Splunk Add-on for AWS. See the [GCP Setup Guide](../install-setup/gcp-setup.md). |
 
-The **Data TA** handles everything that happens at index time: routing events to the correct sourcetype, applying index-time filters, and defining the two indexes the solution writes to. The raw data reaches the Heavy Forwarders through the cloud-ingest add-on that matches where your SAP ECS data lands — the **Splunk Add-on for AWS** (S3) or the **LogServ Azure add-on** (Blob Storage) — and the Data TA routes and filters it identically regardless of channel. It includes Python scripts, REST handlers, a configuration UI built with Splunk's UCC framework, and `default/indexes.conf` so Splunk auto-creates `sap_logserv_logs` and `logserv_ai_assistant_audit` on first install. Both index names are **macro-configurable** via `sap_logserv_idx_macro` (SAP data) and `sap_logserv_audit_idx_macro` (audit log); customers who rename either index update the matching macro definition. The `logserv_ai_assistant_audit` index is required for the AI Assistant's audit log to function — without it, audit events have no destination index.
+The **Data TA** handles everything that happens at index time: routing events to the correct sourcetype, applying index-time filters, and defining the two indexes the solution writes to. The raw data reaches the Heavy Forwarders through the cloud-ingest add-on that matches where your SAP ECS data lands — the **Splunk Add-on for AWS** (S3), the **LogServ Azure add-on** (Blob Storage), or the **LogServ GCP add-on** (Google Cloud Storage) — and the Data TA routes and filters it identically regardless of channel. It includes Python scripts, REST handlers, a configuration UI built with Splunk's UCC framework, and `default/indexes.conf` so Splunk auto-creates `sap_logserv_logs` and `logserv_ai_assistant_audit` on first install. Both index names are **macro-configurable** via `sap_logserv_idx_macro` (SAP data) and `sap_logserv_audit_idx_macro` (audit log); customers who rename either index update the matching macro definition. The `logserv_ai_assistant_audit` index is required for the AI Assistant's audit log to function — without it, audit events have no destination index.
 
 The **LogServ App** handles everything that happens at search time: field extractions, field aliases, computed fields, and the dashboards you use to visualize and analyze the data. It contains no Python code and no data collection components.
 
@@ -33,8 +34,8 @@ Where you install each package depends on your Splunk topology:
     - On Splunk Cloud, the customer's Splunk Cloud admin handles the indexer tier separately. The Data TA installed on that indexer provides the bundled index definitions.
     - For single-instance deployments, both packages are installed on the same instance and Splunk merges their configurations at runtime.
 
-!!! note "Azure ingest add-on placement"
-    For **Azure Blob Storage** deployments, also install the **LogServ Azure add-on** (`splunk_ta_sap_logserv_azure`) on **each Heavy Forwarder** — or the single instance in a single-instance deployment — **directly, not** via the Deployment Server (its SAS credential lives in the add-on's own `local/`, which a DS push would overwrite). This mirrors how the Splunk Add-on for AWS is placed for S3 ingest. See the [Azure Setup Guide](../install-setup/azure-setup.md).
+!!! note "Cloud ingest add-on placement (Azure / GCP)"
+    For **Azure Blob Storage** deployments, also install the **LogServ Azure add-on** (`splunk_ta_sap_logserv_azure`) on **each Heavy Forwarder** — or the single instance in a single-instance deployment — **directly, not** via the Deployment Server (its SAS credential lives in the add-on's own `local/`, which a DS push would overwrite). For **Google Cloud Storage** deployments, the **LogServ GCP add-on** (`splunk_ta_sap_logserv_gcp`) is placed the same way (its service-account key lives in the add-on's own `local/`). Both mirror how the Splunk Add-on for AWS is placed for S3 ingest. See the [Azure Setup Guide](../install-setup/azure-setup.md) and the [GCP Setup Guide](../install-setup/gcp-setup.md).
 
 ## :material-circle-box:{ .taiconcolor } Data Flow
 
@@ -88,6 +89,20 @@ The diagram below shows how SAP LogServ data flows from the SAP ECS environment 
 ```
 
 See the [Azure Setup Guide](../install-setup/azure-setup.md) for the full Azure ingest setup.
+
+**Google Cloud Storage variant.** The GCP path has the same shape — a notification per new object drives the ingest:
+
+```
+  SAP LogServ GCS bucket (SAP-managed)
+        |
+        v  (OBJECT_FINALIZE notifications via Pub/Sub topic --> PULL subscription)
+  LogServ GCP add-on  (sap_logserv_gcp_pubsub input, on each Heavy Forwarder)
+        |   fetches each object with a service-account key; emits sourcetype = sap_logserv_logs
+        v
+  Splunk Heavy Forwarders --> (same Data TA routing + filtering) --> Indexer --> Search Head
+```
+
+See the [GCP Setup Guide](../install-setup/gcp-setup.md) for the full GCP ingest setup.
 
 ## :material-circle-box:{ .taiconcolor } Index-Time Filtering
 

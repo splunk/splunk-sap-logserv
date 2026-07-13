@@ -495,7 +495,7 @@ const SectionHeading = styled.h3`
     color: ${logservTheme.colors.cyanLight};
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     font-weight: ${logservTheme.fontWeight.semibold};
     &:first-child {
         margin-top: 0;
@@ -503,7 +503,7 @@ const SectionHeading = styled.h3`
 `;
 const FieldRow = styled.div`
     display: grid;
-    grid-template-columns: 220px 1fr auto;
+    grid-template-columns: clamp(320px, 30%, 520px) 1fr auto;
     gap: ${logservTheme.spacing.md};
     align-items: center;
     padding: ${logservTheme.spacing.sm} 0;
@@ -519,7 +519,7 @@ const FieldLabel = styled.label`
 `;
 const FieldHint = styled.div`
     color: ${logservTheme.colors.textMuted};
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     margin-top: 2px;
 `;
 const FieldStatus = styled.div<{ $tone: 'good' | 'absent' | 'error' | 'warn' }>`
@@ -531,7 +531,7 @@ const FieldStatus = styled.div<{ $tone: 'good' | 'absent' | 'error' | 'warn' }>`
             : p.$tone === 'warn'
             ? logservTheme.colors.orange
             : logservTheme.colors.textMuted};
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     font-style: italic;
     margin-top: 2px;
 `;
@@ -572,7 +572,7 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' }>`
             : 'transparent'};
     color: ${(p) =>
         p.$variant === 'primary' || p.$variant === 'danger'
-            ? '#ffffff'
+            ? logservTheme.colors.inverseText
             : logservTheme.colors.textActive};
     border: 1px solid
         ${(p) =>
@@ -605,7 +605,7 @@ const SmallButton = styled.button<{ $variant?: 'danger' }>`
     padding: 2px 8px;
     cursor: pointer;
     font-family: inherit;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     white-space: nowrap;
     &:hover:not(:disabled) {
         opacity: 0.8;
@@ -664,7 +664,7 @@ const TableHead = styled.div`
     color: ${logservTheme.colors.textMuted};
     text-transform: uppercase;
     letter-spacing: 0.6px;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     font-weight: ${logservTheme.fontWeight.semibold};
 `;
 const TableRow = styled.div`
@@ -674,7 +674,7 @@ const TableRow = styled.div`
     align-items: center;
     padding: 5px 0;
     border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
-    font-size: ${logservTheme.fontSize.small};
+    font-size: ${logservTheme.fontSize.body};
     &:last-child {
         border-bottom: 0;
     }

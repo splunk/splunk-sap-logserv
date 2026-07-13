@@ -13,6 +13,8 @@ export type {
     ForwarderDisabledAcceptanceEvent,
     AuditForwarderFailureEvent,
     AiAssistantEnableAcceptanceEvent,
+    ModelDiscoveryEvent,
+    ModelDiscoveryTrigger,
     AuditEvent,
 } from './auditTypes';
 

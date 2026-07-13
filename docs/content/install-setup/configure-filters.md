@@ -406,7 +406,7 @@ The Data TA stamps two indexed fields at index time on the bootstrap `sap_logser
 | Indexed field | Value | How it's set | Configurable |
 |---|---|---|---|
 | `splunk_solution` | `splunk_for_sap_logserv` | Always stamped on every event | No — ships active, no UI control |
-| `cloud_provider` | `aws` / `azure` / *(none)* | Stamped per the Cloud Provider dropdown | Yes — **Configuration → Cloud Provider** |
+| `cloud_provider` | `aws` / `azure` / `gcp` / *(none)* | Stamped per the Cloud Provider dropdown | Yes — **Configuration → Cloud Provider** |
 
 Both fields are written at index time on the Heavy Forwarder (or the indexer in single-instance mode), so they are available as indexed fields for `tstats`, accelerated searches, and raw-event filtering.
 
@@ -423,13 +423,14 @@ Every event indexed through the Data TA carries `splunk_solution = splunk_for_sa
 
 ### :material-circle-box:{ .taiconcolor } The cloud_provider Field (dropdown-driven)
 
-On the **Cloud Provider** tab, the **Cloud Provider** dropdown has three choices:
+On the **Cloud Provider** tab, the **Cloud Provider** dropdown has four choices:
 
 | Selection | Effect |
 |---|---|
 | **Not set** (default) | No `cloud_provider` value is stamped at index time. |
 | **AWS** | Every event this TA processes is stamped `cloud_provider = aws`. |
 | **Microsoft Azure** | Every event this TA processes is stamped `cloud_provider = azure`. |
+| **Google Cloud Platform** | Every event this TA processes is stamped `cloud_provider = gcp`. |
 
 Click **Save** to apply. On a single instance the change takes effect immediately. On a Deployment Server, click **Deploy to Forwarders** (see below) to push it to the Heavy Forwarders.
 
@@ -445,10 +446,10 @@ This macro defaults any event WITHOUT an indexed `cloud_provider` value to `aws`
 
 #### :material-crop-square:{ .taiconcolor } Relationship to the per-input `_meta`
 
-The LogServ Azure add-on's **`sap_logserv_azure_queue`** input carries `_meta = cloud_provider::azure` on its stanza automatically (the add-on injects it), so Azure events self-attribute regardless of the dropdown — see the [Azure Setup Guide](azure-setup.md). The Cloud Provider dropdown is the simpler, Data-TA-managed way to stamp the same value on every event a Heavy Forwarder's Data TA processes (useful for the AWS side, or as a single-cloud override). For a Heavy Forwarder that ingests from a single cloud, the dropdown is the recommended mechanism.
+The LogServ Azure add-on's **`sap_logserv_azure_queue`** input carries `_meta = cloud_provider::azure` on its stanza automatically (the add-on injects it), and the LogServ GCP add-on's **`sap_logserv_gcp_pubsub`** input likewise carries `_meta = cloud_provider::gcp` — so Azure and GCP events self-attribute regardless of the dropdown; see the [Azure Setup Guide](azure-setup.md) and the [GCP Setup Guide](gcp-setup.md). The Cloud Provider dropdown is the simpler, Data-TA-managed way to stamp the same value on every event a Heavy Forwarder's Data TA processes (useful for the AWS side, or as a single-cloud override). For a Heavy Forwarder that ingests from a single cloud, the dropdown is the recommended mechanism.
 
 !!! warning "Mixed-cloud single Heavy Forwarder"
-    The Cloud Provider dropdown is a TA-wide (per-HF) setting — it stamps the same value on every event that HF's Data TA processes. If a **single** Heavy Forwarder ingests from BOTH AWS S3 AND Azure Blob Storage, the dropdown cannot tell the two channels apart — and because the `sap_logserv_azure_queue` input stanza already carries `_meta = cloud_provider::azure`, setting the dropdown to `aws` would tag Azure events with BOTH values. In that case, leave the dropdown at **Not set** and attribute per input instead: set `_meta = cloud_provider::aws` on the `Splunk_TA_aws` SQS-based S3 input(s); the `sap_logserv_azure_queue` input already carries `_meta = cloud_provider::azure`. With the dropdown at **Not set** the TA adds no `cloud_provider` stamp of its own, so each input's `_meta` value is the only one written.
+    The Cloud Provider dropdown is a TA-wide (per-HF) setting — it stamps the same value on every event that HF's Data TA processes. If a **single** Heavy Forwarder ingests from MORE THAN ONE cloud channel (any mix of AWS S3, Azure Blob Storage, and Google Cloud Storage), the dropdown cannot tell the channels apart — and because the `sap_logserv_azure_queue` and `sap_logserv_gcp_pubsub` input stanzas already carry their own `_meta` values, setting the dropdown to a provider would tag those inputs' events with BOTH values. In that case, leave the dropdown at **Not set** and attribute per input instead: set `_meta = cloud_provider::aws` on the `Splunk_TA_aws` SQS-based S3 input(s); the Azure and GCP inputs already self-attribute. With the dropdown at **Not set** the TA adds no `cloud_provider` stamp of its own, so each input's `_meta` value is the only one written.
 
 <br>
 

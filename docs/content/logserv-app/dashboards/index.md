@@ -55,7 +55,7 @@ Use this page as an index — click any dashboard below to see its full purpose,
 | Dashboard | Purpose | Key Data Sources |
 |-----------|---------|-----------------|
 | [Data Pipeline Overview](platform/data-pipeline-overview.md) | Ingest pipeline view: 5 KPIs, Sourcetype Summary table, host activity, and source-to-sourcetype link graph. Two tabs (Overview + Linked Graph). Dashboard-wide host filter in title row scopes every panel + the linked graph. | All sourcetypes |
-| [Multi-Cloud Overview](platform/multi-cloud-overview.md) | Per-cloud-provider ingest split: AWS vs Azure event counts, sourcetype distribution per provider, recent activity. Built on the indexed `cloud_provider` field with the `sap_logserv_cloud_provider_default_macro` for legacy AWS defaulting. See [Azure Setup Guide](../../install-setup/azure-setup.md). | All sourcetypes (filtered by `cloud_provider`) |
+| [Multi-Cloud Overview](platform/multi-cloud-overview.md) | Per-cloud-provider ingest split: AWS / Azure / GCP event counts, sourcetype distribution per provider, recent activity. Built on the indexed `cloud_provider` field with the `sap_logserv_cloud_provider_default_macro` for legacy AWS defaulting. See the [Azure Setup Guide](../../install-setup/azure-setup.md) and [GCP Setup Guide](../../install-setup/gcp-setup.md). | All sourcetypes (filtered by `cloud_provider`) |
 | [DNS Analytics](platform/dns-analytics.md) | DNS query analysis, top resolvers, beaconing detection, and client activity | `isc:bind:query`, `isc:bind:network`, `isc:bind:transfer` |
 | [Linux System & Security](platform/linux.md) | Linux OS events, SAP application activity, and firewall monitoring (with Top Drop Source surface) | `linux_messages_syslog`, `linux:cron`, `linux:warn`, `linux:sudolog`, `linux:slapd`, `linux_secure` |
 | [Windows Events](platform/windows.md) | Windows operational health — event severity trends, top event codes, service state changes, PowerShell activity | `XmlWinEventLog` |
@@ -73,6 +73,12 @@ Use this page as an index — click any dashboard below to see its full purpose,
 
 !!! tip "Per-dashboard auto-refresh"
     Each dashboard's title row carries a **Refresh** picker (Never / 30s / 1m / 5m / 15m / 30m / 1hr) next to the time-range picker. The selection is per-user-per-dashboard — your choice on Environment Health doesn't carry over to HANA Audit. State persists across browser sessions via Splunk KV Store.
+
+!!! tip "Refresh the current view on demand"
+    The app's top **navigation bar** carries a **Refresh** button — a circular-arrow icon to the right of the time-range picker, alongside the theme toggle, Settings, and AI Assistant controls. Clicking it re-runs **every panel on the dashboard you're currently viewing** for the selected time range — a one-click "get me the latest." It is distinct from the per-dashboard auto-refresh picker above (which re-runs on a timer) and from each panel's own **Refresh** toolbar action (which re-runs a single panel). Because it lives in the global nav bar, it's available on every dashboard and on the Environment Topology view.
+
+!!! tip "Filter by cloud provider"
+    Every dashboard except Multi-Cloud Overview, Environment Topology, and Settings carries a **Cloud Provider** dropdown (`All / aws / azure / gcp`) in its title row, to the left of the Refresh picker. Choosing a provider filters **every panel** on the dashboard to that cloud; the choice is **global and remembered per user**, so it carries across dashboard navigation and page reloads. Leave it on **All** to see the whole estate. (Events with no cloud attribution are counted as `aws`, matching the Multi-Cloud Overview convention.)
 
 !!! tip "Performance & data freshness"
     The dashboards are tuned to stay fast at high event volume — most panels read from an hourly KV-Store rollup layer rather than scanning raw events on every open. After a fresh install on a large environment, an admin runs a one-time backfill. See [Dashboard Performance & Data Freshness](performance.md) for how each panel sources its data, what "hourly fresh" means, and the backfill step.

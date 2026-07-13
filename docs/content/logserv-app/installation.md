@@ -84,15 +84,15 @@ Install the LogServ App to your Splunk Cloud Search Head:
 
 Install the LogServ App to your Splunk Enterprise Search Head:
 
-5.<b style="color: #ff9100">a</b> From the Splunk Web home screen, click the gear icon next to Apps.
+5.<b class="taiconcolor">a</b> From the Splunk Web home screen, click the gear icon next to Apps.
 
-5.<b style="color: #ff9100">b</b> Click Install app from file.
+5.<b class="taiconcolor">b</b> Click Install app from file.
 
-5.<b style="color: #ff9100">c</b> Locate the downloaded `splunk_app_sap_logserv-0.0.6.0.tar.gz` file and click Upload.
+5.<b class="taiconcolor">c</b> Locate the downloaded `splunk_app_sap_logserv-0.0.6.0.tar.gz` file and click Upload.
 
-5.<b style="color: #ff9100">d</b> If Splunk Enterprise prompts you to restart, do so.
+5.<b class="taiconcolor">d</b> If Splunk Enterprise prompts you to restart, do so.
 
-5.<b style="color: #ff9100">e</b> Verify that the app appears in the list of apps. You can also find it on the server at `$SPLUNK_HOME/etc/apps/splunk_app_sap_logserv`.
+5.<b class="taiconcolor">e</b> Verify that the app appears in the list of apps. You can also find it on the server at `$SPLUNK_HOME/etc/apps/splunk_app_sap_logserv`.
 
 ### :material-circle-box:{ .taiconcolor } 6. Verify installation
 
@@ -108,23 +108,23 @@ After installation, navigate to the LogServ App in Splunk Web. You should see th
 
 If the dashboards show no data, verify that:
 
-6.<b style="color: #ff9100">a</b> The Data TA is installed and collecting data on your Heavy Forwarders (or single instance)
+6.<b class="taiconcolor">a</b> The Data TA is installed and collecting data on your Heavy Forwarders (or single instance)
 
-6.<b style="color: #ff9100">b</b> The `sap_logserv_idx_macro` resolves to the correct index name
+6.<b class="taiconcolor">b</b> The `sap_logserv_idx_macro` resolves to the correct index name
 
-6.<b style="color: #ff9100">c</b> Events exist in the index: run `` `sap_logserv_idx_macro` | stats count by sourcetype `` in the Search app
+6.<b class="taiconcolor">c</b> Events exist in the index: run `` `sap_logserv_idx_macro` | stats count by sourcetype `` in the Search app
 
-6.<b style="color: #ff9100">d</b> If the AI Assistant button shows a setup wizard instead of an empty chat panel, the [Splunk MCP Server](../ai-assistant/mcp-setup.md) prerequisite isn't healthy — re-check the install in Step 2.
+6.<b class="taiconcolor">d</b> If the AI Assistant button shows a setup wizard instead of an empty chat panel, the [Splunk MCP Server](../ai-assistant/mcp-setup.md) prerequisite isn't healthy — re-check the install in Step 2.
 
 ### :material-circle-box:{ .taiconcolor } 7. Update the index macro
 
 If you used a custom index name (not `sap_logserv_logs`), update the macro:
 
-7.<b style="color: #ff9100">a</b> In Splunk Web, go to **Settings > Advanced search > Search macros**
+7.<b class="taiconcolor">a</b> In Splunk Web, go to **Settings > Advanced search > Search macros**
 
-7.<b style="color: #ff9100">b</b> Set the app context to **Splunk App for SAP LogServ**
+7.<b class="taiconcolor">b</b> Set the app context to **Splunk App for SAP LogServ**
 
-7.<b style="color: #ff9100">c</b> Find `sap_logserv_idx_macro` and update its definition to `index=<your_index_name>`
+7.<b class="taiconcolor">c</b> Find `sap_logserv_idx_macro` and update its definition to `index=<your_index_name>`
 
 !!! tip "High-volume installs: seed dashboard history"
     The dashboards read from an hourly KV-Store rollup layer for performance. On a large environment, run the one-time backfill so dashboards show history immediately: open **Settings → Dashboard Data** and click **Run backfill**. Without it, rolled-up panels fill in one hour at a time from the next hourly aggregation. See [Dashboard Performance & Data Freshness](dashboards/performance.md).

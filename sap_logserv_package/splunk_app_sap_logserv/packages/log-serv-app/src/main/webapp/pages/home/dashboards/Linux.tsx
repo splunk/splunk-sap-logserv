@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -85,7 +87,7 @@ const OOM = `| inputlookup ${ROLL} where metric="oom" ${RANGE}`;
 const LOCKUP = `| inputlookup ${ROLL} where metric="lockup" ${RANGE}`;
 const TCPOOM = `| inputlookup ${ROLL} where metric="tcpoom" ${RANGE}`;
 
-const Q = {
+const Q_BASE = {
     // KPIs (count KPIs use the empty-safe idiom; kpiHosts is a dc, kpiTopDropSrc
     // reconstructs the "ip (N,NNN)" display string char-for-char).
     kpiTotal: `${TOTAL} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
@@ -100,8 +102,13 @@ const Q = {
 
     // Charts
     volumeByType: `${TOTAL} | eval _time=bucket_ts | timechart span=1d sum(count) by sourcetype | fillnull value=0`,
-    // sapAppActivity is a plain stats fed to a chart (no _time axis) — NO timechart / fillnull-0.
-    sapAppActivity: `${SAPAPP} | search sap_sid!="(none)" | stats sum(count) as count by sap_app, sap_sid | sort -count`,
+    // sapAppActivity — plain stats (no _time axis) rendered as a HORIZONTAL bar
+    // chart of the top-15 (sap_app / sap_sid) combinations by volume. The combo
+    // label sits on the roomy y-axis so long app names (ICINGA_PROXY,
+    // HANA_X_MDC_NODE, …) stay readable — a vertical column chart clipped all 26
+    // long x-axis labels to "…". `sort count` (ascending) after the top-15 cut
+    // puts the largest bar at the top of the chart.
+    sapAppActivity: `${SAPAPP} | search sap_sid!="(none)" | stats sum(count) as count by sap_app, sap_sid | eval combo=sap_app." / ".sap_sid | sort -count | head 15 | sort count | fields combo count`,
     // fwTimeline counts ALL linux_secure (no IN_DROP filter) — derived from `total`.
     fwTimeline: `${TOTAL} | search sourcetype="linux_secure" | eval _time=bucket_ts | timechart span=1d sum(count) AS "Firewall Events" | fillnull value=0`,
     kernelEvents: `${KERNEL} | stats sum(count) as count by kernel_event | sort -count`,
@@ -121,9 +128,46 @@ const Q = {
     tcpOomTimeline: `${TCPOOM} | search host!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by host | fillnull value=0`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw linux
+ * scan its rollup metric precomputes, reconciled to the cached read's exact
+ * output columns (byte-verified equal at wide windows — the lx_v_* staged
+ * pairs). fw_* / kernel_event are rex'd from _raw (same patterns). COUNT/dc
+ * split timecharts append `| fillnull value=0`; the "(none)" fillnull sentinels
+ * map to raw `field=*` / stats-by null-drop. Only sparklines stay cached.
+ * ------------------------------------------------------------------------- */
+const ST_ALL = '(sourcetype="linux_messages_syslog" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog" OR sourcetype="linux_secure")';
+const RAW_ALL = `\`sap_logserv_idx_macro\` ${ST_ALL}`;
+const RAW_LSEC = '`sap_logserv_idx_macro` sourcetype="linux_secure"';
+const RAW_LMSG = '`sap_logserv_idx_macro` sourcetype="linux_messages_syslog"';
+const RAW_OOM = '`sap_logserv_idx_macro` (sourcetype="linux:warn" OR sourcetype="syslog")';
+const QRAW_BASE = {
+    kpiTotal: `${RAW_ALL} | stats count`,
+    kpiFwDrops: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | stats count`,
+    kpiTopDropSrc: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | where isnotnull(fw_src) AND fw_src!="" | stats count as drops by fw_src | sort -drops | head 1 | eval display = fw_src . " (" . tostring(drops, "commas") . ")" | table display`,
+    kpiHosts: `${RAW_ALL} | stats dc(host) as hosts`,
+    volumeByType: `${RAW_ALL} | timechart span=1d count by sourcetype | fillnull value=0`,
+    sapAppActivity: `${RAW_LMSG} sap_app=* | stats count by sap_app, sap_sid | eval combo=sap_app." / ".sap_sid | sort -count | head 15 | sort count | fields combo count`,
+    fwTimeline: `${RAW_LSEC} | timechart span=1d count AS "Firewall Events" | fillnull value=0`,
+    kernelEvents: `${RAW_LSEC} | rex field=_raw "kernel:.*?\\]\\s+(?<kernel_event>[A-Z_]+)" | where isnotnull(kernel_event) | stats count by kernel_event | sort -count`,
+    sapInstances: `${RAW_LMSG} sap_sid=* | stats count as Events dc(host) as Hosts by sap_sid, sap_inst, sap_cid | sort -Events`,
+    fwTopSources: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops dc(fw_dst) as Targets values(fw_proto) as Protocol by fw_src | sort -Drops`,
+    fwTopPorts: `${RAW_LSEC} | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops`,
+    oomByHost: `${RAW_OOM} "Out of memory: Killed process" | stats count AS Kills, values(oom_proc) AS Victims, max(oom_rss_kb) AS MaxRssKb, max(oom_vm_kb) AS MaxVmKb by host | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | eval "Max VM (MB)" = round(MaxVmKb / 1024, 0) | fields - MaxRssKb, MaxVmKb | sort -Kills`,
+    oomByVictim: `${RAW_OOM} "Out of memory: Killed process" oom_proc=* | stats count AS Kills, dc(host) AS Hosts, max(oom_rss_kb) AS MaxRssKb by oom_proc | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | fields - MaxRssKb | sort -Kills`,
+    cpuLockups: `${RAW_OOM} "soft lockup" | stats count AS Lockups, dc(lockup_cpu) AS "CPUs", max(lockup_duration_s) AS "Max (sec)", avg(lockup_duration_s) AS avg_s by host | eval "Avg (sec)" = round(avg_s, 1) | fields - avg_s | sort -Lockups`,
+    tcpOomTimeline: `${RAW_OOM} "TCP: out of memory" host=* | timechart span=1d count by host | fillnull value=0`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -175,17 +219,28 @@ const CPU_LOCKUP_COLS: ColumnDef[] = [
 ];
 
 const Linux: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const fwDrops = useFirstRowField(Q.kpiFwDrops, 'count');
-    const topDropSrc = useFirstRowField(Q.kpiTopDropSrc, 'display');
-    const hosts = useFirstRowField(Q.kpiHosts, 'hosts');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const fwDrops = useFirstRowFieldHybrid(Q.kpiFwDrops, QRAW.kpiFwDrops, 'count');
+    const topDropSrc = useFirstRowFieldHybrid(Q.kpiTopDropSrc, QRAW.kpiTopDropSrc, 'display');
+    const hosts = useFirstRowFieldHybrid(Q.kpiHosts, QRAW.kpiHosts, 'hosts');
 
-    const sapInstances = useSearch({ query: Q.sapInstances });
-    const fwTopSources = useSearch({ query: Q.fwTopSources });
-    const fwTopPorts = useSearch({ query: Q.fwTopPorts });
-    const oomByHost = useSearch({ query: Q.oomByHost });
-    const oomByVictim = useSearch({ query: Q.oomByVictim });
-    const cpuLockups = useSearch({ query: Q.cpuLockups });
+    const sapInstances = useHybridSearch({ cached: Q.sapInstances, raw: QRAW.sapInstances });
+    const fwTopSources = useHybridSearch({ cached: Q.fwTopSources, raw: QRAW.fwTopSources });
+    const fwTopPorts = useHybridSearch({ cached: Q.fwTopPorts, raw: QRAW.fwTopPorts });
+    const oomByHost = useHybridSearch({ cached: Q.oomByHost, raw: QRAW.oomByHost });
+    const oomByVictim = useHybridSearch({ cached: Q.oomByVictim, raw: QRAW.oomByVictim });
+    const cpuLockups = useHybridSearch({ cached: Q.cpuLockups, raw: QRAW.cpuLockups });
+
+    // Charts / pie take a query string → route once each (sub-hour -> raw).
+    const qVolumeByType = useRoutedQuery(Q.volumeByType, QRAW.volumeByType);
+    const qSapAppActivity = useRoutedQuery(Q.sapAppActivity, QRAW.sapAppActivity);
+    const qFwTimeline = useRoutedQuery(Q.fwTimeline, QRAW.fwTimeline);
+    const qKernelEvents = useRoutedQuery(Q.kernelEvents, QRAW.kernelEvents);
+    const qTcpOomTimeline = useRoutedQuery(Q.tcpOomTimeline, QRAW.tcpOomTimeline);
 
     const fwDropsNum = Number(fwDrops.value ?? 0);
     const fwTone = fwDropsNum > 1000 ? 'critical' : fwDropsNum > 0 ? 'warning' : 'neutral';
@@ -279,10 +334,10 @@ const Linux: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Event Volume by Sourcetype" subtitle="Daily count: linux_messages_syslog, syslog, linux_secure">
-                    <TimeSeriesChart query={Q.volumeByType} height={300} palette="volume" />
+                    <TimeSeriesChart query={qVolumeByType} height={300} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="SAP Application Activity" subtitle="sap_app + sap_sid combinations ranked by event volume">
-                    <TimeSeriesChart query={Q.sapAppActivity} height={300} palette="volume" />
+                <FramedPanel title="SAP Application Activity" subtitle="Top 15 sap_app / sap_sid combinations by event volume">
+                    <TimeSeriesChart query={qSapAppActivity} height={300} palette="volume" chartType="bar" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -298,10 +353,10 @@ const Linux: React.FC = () => {
                     />
                 </FramedPanel>
                 <FramedPanel title="Firewall Drops Over Time" subtitle="Daily linux_secure event volume">
-                    <TimeSeriesChart query={Q.fwTimeline} height={280} palette="errors" />
+                    <TimeSeriesChart query={qFwTimeline} height={280} palette="errors" />
                 </FramedPanel>
                 <FramedPanel title="Kernel Event Types" subtitle="Kernel event categories ranked by count">
-                    <PieChart query={Q.kernelEvents} categoryField="kernel_event" valueField="count" height={280} donut palette="errors" />
+                    <PieChart query={qKernelEvents} categoryField="kernel_event" valueField="count" height={280} donut palette="errors" />
                 </FramedPanel>
             </PanelGrid3>
 
@@ -368,7 +423,7 @@ const Linux: React.FC = () => {
                     />
                 </FramedPanel>
                 <FramedPanel title="TCP Memory Pressure Over Time" subtitle="Daily count of TCP socket-buffer exhaustion warnings, by host — sustained activity suggests tcp_mem tuning needed">
-                    <TimeSeriesChart query={Q.tcpOomTimeline} height={280} palette="errors" chartType="line" />
+                    <TimeSeriesChart query={qTcpOomTimeline} height={280} palette="errors" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>
         </DashboardLayout>

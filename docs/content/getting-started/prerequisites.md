@@ -17,6 +17,12 @@ Before installing, confirm the SAP-side prerequisites for the cloud provider whe
 1. LogServ service must be enabled by the SAP LogServ team.
 2. Customer must have network connectivity to the SAP RISE Azure subscription from the instance where the Splunk TA is installed.
 
+#### :material-crop-square:{ .taiconcolor } SAP RISE on GCP
+
+1. LogServ service must be enabled by the SAP LogServ team.
+2. SAP LogServ team must provide the GCP project ID, the Pub/Sub subscription name, and a service-account JSON key (`roles/pubsub.subscriber` on the subscription + `roles/storage.objectViewer` on the LogServ bucket).
+3. Customer must have network connectivity (HTTPS/443) to the Google APIs (`oauth2.googleapis.com`, `pubsub.googleapis.com`, `storage.googleapis.com`) from the instance where the Splunk TA is installed.
+
 ### :material-circle-box:{ .taiconcolor } The Two Packages
 
 | Package | App ID | Role | Where it installs |
@@ -38,20 +44,20 @@ Splunk 9.4.3 is the minimum because the LogServ App's React stack (`@splunk/reac
 
 Each package has its own additional prerequisites — install Splunkbase add-ons appropriate to that tier.
 
-- **[Data TA Prerequisites](../install-setup/prerequisites.md)** — CIM-aligned add-ons for the sourcetypes the Data TA produces (Unix/Linux, Windows, Squid, ISC BIND), plus the cloud-storage ingest layer matching where your SAP ECS data lives: the [Splunk Add-on for AWS (Splunkbase 1876)](https://splunkbase.splunk.com/app/1876) for **AWS S3** ingest, or the first-party **Splunk TA for SAP LogServ on Azure** (`splunk_ta_sap_logserv_azure`) for **Azure Blob Storage** ingest — installed per Heavy Forwarder, it consumes Azure Event Grid → Storage Queue notifications (see the [Azure Setup Guide](../install-setup/azure-setup.md)). The Data TA also auto-creates the two indexes (`sap_logserv_logs` + `logserv_ai_assistant_audit`) from its bundled `default/indexes.conf` on first startup — no separate prereq.
+- **[Data TA Prerequisites](../install-setup/prerequisites.md)** — CIM-aligned add-ons for the sourcetypes the Data TA produces (Unix/Linux, Windows, Squid, ISC BIND), plus the cloud-storage ingest layer matching where your SAP ECS data lives: the [Splunk Add-on for AWS (Splunkbase 1876)](https://splunkbase.splunk.com/app/1876) for **AWS S3** ingest, the first-party **Splunk TA for SAP LogServ on Azure** (`splunk_ta_sap_logserv_azure`) for **Azure Blob Storage** ingest — installed per Heavy Forwarder, it consumes Azure Event Grid → Storage Queue notifications (see the [Azure Setup Guide](../install-setup/azure-setup.md)) — or the first-party **Splunk TA for SAP LogServ on GCP** (`splunk_ta_sap_logserv_gcp`) for **Google Cloud Storage** ingest — also per Heavy Forwarder, it consumes GCS → Pub/Sub `OBJECT_FINALIZE` notifications (see the [GCP Setup Guide](../install-setup/gcp-setup.md)). The Data TA also auto-creates the two indexes (`sap_logserv_logs` + `logserv_ai_assistant_audit`) from its bundled `default/indexes.conf` on first startup — no separate prereq.
 - **[LogServ App Prerequisites](../logserv-app/prerequisites.md)** — the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) for the AI Assistant's predefined-prompt dispatch path, plus the optional [Splunk AI Assistant (App 200)](https://splunkbase.splunk.com/app/200) recommended companion.
 
 !!! tip "Multi-cloud ingest"
-    AWS S3 and Azure Blob Storage are first-class ingest channels. **AWS S3** ingest uses the [Splunk Add-on for AWS](https://splunkbase.splunk.com/app/1876) on the Heavy Forwarder tier; **Azure Blob Storage** ingest uses the first-party **Splunk TA for SAP LogServ on Azure** add-on (`splunk_ta_sap_logserv_azure`), installed per Heavy Forwarder (Event Grid → Storage Queue). The same LogServ Data TA + LogServ App handle both: events from either channel land under `sap_logserv_logs` and route to the same downstream sourcetypes. See the [Azure Setup Guide](../install-setup/azure-setup.md) for Azure-specific configuration.
+    AWS S3, Azure Blob Storage, and Google Cloud Storage are first-class ingest channels. **AWS S3** ingest uses the [Splunk Add-on for AWS](https://splunkbase.splunk.com/app/1876) on the Heavy Forwarder tier; **Azure Blob Storage** ingest uses the first-party **Splunk TA for SAP LogServ on Azure** add-on (`splunk_ta_sap_logserv_azure`), installed per Heavy Forwarder (Event Grid → Storage Queue); **Google Cloud Storage** ingest uses the first-party **Splunk TA for SAP LogServ on GCP** add-on (`splunk_ta_sap_logserv_gcp`), also per Heavy Forwarder (GCS → Pub/Sub notifications). The same LogServ Data TA + LogServ App handle all three: events from any channel land under `sap_logserv_logs` and route to the same downstream sourcetypes. See the [Azure Setup Guide](../install-setup/azure-setup.md) and the [GCP Setup Guide](../install-setup/gcp-setup.md) for cloud-specific configuration.
 
 ### :material-circle-box:{ .taiconcolor } Decision Tree
 
 | Your situation | What you need |
 |---|---|
-| Single Splunk instance running the full LogServ solution | Both prerequisite sets — Data TA + App, plus the Splunk Add-on for AWS (1876) for AWS S3 ingest, or the LogServ Azure add-on (`splunk_ta_sap_logserv_azure`) for Azure Blob ingest |
-| Distributed Splunk with on-prem Search Head | Data TA prereqs on DS + each HF + the indexer; App prereqs on the SH; the AWS S3 add-on (AWS ingest) or the LogServ Azure add-on (Azure ingest) on each HF |
-| Distributed Splunk with Splunk Cloud Search Head | Data TA prereqs on DS + each HF; App prereqs on the Splunk Cloud SH; the AWS S3 add-on (AWS ingest) or the LogServ Azure add-on (Azure ingest) on each HF; Splunk Cloud admin handles the indexer tier (Data TA installed there provides the index defs) |
-| Splunk Cloud Search Head only (no on-prem ingest tier) | App prereqs only — your Splunk Cloud admin handles the data tier (including the AWS S3 add-on for AWS ingest or the LogServ Azure add-on for Azure ingest) and the indexer tier separately |
+| Single Splunk instance running the full LogServ solution | Both prerequisite sets — Data TA + App, plus the cloud-ingest add-on matching your provider: the Splunk Add-on for AWS (1876) for AWS S3, the LogServ Azure add-on (`splunk_ta_sap_logserv_azure`) for Azure Blob, or the LogServ GCP add-on (`splunk_ta_sap_logserv_gcp`) for Google Cloud Storage |
+| Distributed Splunk with on-prem Search Head | Data TA prereqs on DS + each HF + the indexer; App prereqs on the SH; the cloud-ingest add-on matching your provider (AWS 1876 / LogServ Azure / LogServ GCP) on each HF |
+| Distributed Splunk with Splunk Cloud Search Head | Data TA prereqs on DS + each HF; App prereqs on the Splunk Cloud SH; the cloud-ingest add-on matching your provider (AWS 1876 / LogServ Azure / LogServ GCP) on each HF; Splunk Cloud admin handles the indexer tier (Data TA installed there provides the index defs) |
+| Splunk Cloud Search Head only (no on-prem ingest tier) | App prereqs only — your Splunk Cloud admin handles the data tier (including the cloud-ingest add-on matching your provider) and the indexer tier separately |
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

@@ -95,7 +95,7 @@ const LEFT_MAX = 480;
 const RIGHT_MIN = 220;
 const RIGHT_MAX = 520;
 const BOTTOM_MIN = 120;
-const BOTTOM_MAX = 480;
+const BOTTOM_MAX = 640;
 const COLLAPSED_W = 26;
 const COLLAPSED_H = 28;
 
@@ -104,7 +104,12 @@ const PageColumn = styled.div`
     flex-direction: column;
     gap: ${logservTheme.spacing.md};
     /* Page header (DashboardLayout title + category eyebrow) consumes ~150 px;
-     * subtract that plus a small breathing margin from the viewport. */
+     * subtract that plus a small breathing margin from the viewport.
+     * (A session-081 attempt to replace this with a live-measured viewport
+     * budget + negative bottom margin regressed into page scrolling on the
+     * user's setup — build 280 restores the fixed budget. The Live
+     * Activity panel instead completes its outline at any height via
+     * FramedPanel fillHeight + internal table scroll.) */
     height: calc(100vh - 170px);
     min-height: 720px;
 `;
@@ -1028,16 +1033,73 @@ const IntegrationTopology: React.FC = () => {
         }
     }, [panels.leftWidth, panels.rightWidth, panels.leftCollapsed, panels.rightCollapsed, panels.bottomHeight, panels.bottomCollapsed]);
 
+    /* ---- Build 262 / session 077 Task 2 — viewport-aware layout world ----
+     * The Force layout designs for the center canvas AS IF the Live
+     * Activity panel is collapsed (the taller canvas is the design target,
+     * so fitView doesn't letterbox and vertical space is actually used).
+     * Read at layout-compute time via a stable callback + panels ref so
+     * panel drags/toggles never churn re-layouts. */
+    const panelsRef = useRef(panels);
+    panelsRef.current = panels;
+    const getLayoutWorld = useCallback((): { width: number; height: number } | null => {
+        /* querySelector fallback (build 266): styled-component ref
+         * forwarding is unreliable for these wrappers (session-036 sticky)
+         * — the page renders exactly one topology canvas, so the class
+         * selector is unambiguous. */
+        const el = centerWrapRef.current ?? document.querySelector('.react-flow');
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 200 || rect.height < 150) return null;
+        const p = panelsRef.current;
+        /* Collapsing the bottom panel frees its height above COLLAPSED_H
+         * plus the HDivider (6 px) + one flex gap (12 px) that unmount with
+         * it — verified against live measurements (450 -> 660 px on a
+         * 945 px-tall viewport with the then-default 220 px panel; the
+         * default is 300 px since build 280). */
+        const extraH = p.bottomCollapsed ? 0 : Math.max(0, p.bottomHeight - COLLAPSED_H) + 18;
+        return { width: rect.width, height: rect.height + extraH };
+    }, []);
+
     // ---- Collapse toggles ----
     const toggleLeft = useCallback(() => updatePanels({ leftCollapsed: !panels.leftCollapsed }), [panels.leftCollapsed, updatePanels]);
     const toggleRight = useCallback(() => updatePanels({ rightCollapsed: !panels.rightCollapsed }), [panels.rightCollapsed, updatePanels]);
-    const toggleBottom = useCallback(() => updatePanels({ bottomCollapsed: !panels.bottomCollapsed }), [panels.bottomCollapsed, updatePanels]);
+    const toggleBottom = useCallback(() => {
+        /* Session 081 (build 280) — expanding guarantees a useful height:
+         * layouts saved before this build carry the old cramped 220 px
+         * default, so the expand gesture floors the height at the current
+         * default (300 px). Collapsing never touches the height, and a
+         * user-dragged taller height is preserved. */
+        const expanding = panels.bottomCollapsed;
+        updatePanels({
+            bottomCollapsed: !panels.bottomCollapsed,
+            ...(expanding && panels.bottomHeight < DEFAULT_PANEL_LAYOUT.bottomHeight
+                ? { bottomHeight: DEFAULT_PANEL_LAYOUT.bottomHeight }
+                : {}),
+        });
+        /* Build 262..267 — refit after the panel's 180 ms height transition
+         * so the graph actually claims (or gracefully yields) the vertical
+         * space; without this, collapsing Live Activity just reveals empty
+         * canvas below the old viewport. STAGGERED PLAIN TIMERS, not a
+         * requestAnimationFrame loop: rAF freezes entirely in occluded /
+         * backgrounded windows (caught live in the build-266 verify — the
+         * rAF settle-loop never ticked, so no fit ever fired), while
+         * setTimeout still fires (throttled to ~1 s at worst). The fit is
+         * duration-0 + idempotent, so firing it three times costs nothing:
+         * 250 ms covers the focused-window case (transition done at 180 ms
+         * + ResizeObserver ingest), 700 ms covers slow frames, 1500 ms
+         * covers throttled/occluded windows. */
+        const fit = (): void => topologyGraphRef.current?.fitView();
+        window.setTimeout(fit, 250);
+        window.setTimeout(fit, 700);
+        window.setTimeout(fit, 1500);
+    }, [panels.bottomCollapsed, panels.bottomHeight, updatePanels]);
 
     return (
         <DashboardLayout
             category="Topology"
             title="Environment Topology"
             subtitle={statsLine}
+            noCloudFilter
         >
             <PageColumn>
                 <TopologyToolbar
@@ -1157,6 +1219,7 @@ const IntegrationTopology: React.FC = () => {
                                     selectedNodeId={selectedNodeId}
                                     selectedEdgeId={selectedEdgeId}
                                     layoutMode={layoutMode}
+                                    getLayoutWorld={getLayoutWorld}
                                     onNodeClick={handleNodeClick}
                                     onEdgeClick={handleEdgeClick}
                                     onPaneClick={handlePaneClick}

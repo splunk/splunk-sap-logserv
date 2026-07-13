@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
 import RefreshIntervalPicker from './RefreshIntervalPicker';
+import CloudProviderPicker from './CloudProviderPicker';
 import DocsHelpIcon from './DocsHelpIcon';
 import { RefreshProvider } from '../state/RefreshProvider';
 import { dashboardIdFromPath } from '../state/dashboardRefreshPersistence';
@@ -33,6 +34,11 @@ interface DashboardLayoutProps {
      *  RefreshIntervalPicker renders to the right of this slot, so callers
      *  don't need to opt in — every dashboard gets the picker for free. */
     titleRowActions?: ReactNode;
+    /** Opt OUT of the global cloud-provider filter picker (session 082).
+     *  Set on Multi-Cloud Overview (provider IS the dashboard), Environment
+     *  Topology (excluded from the arc), and the Settings page. Every other
+     *  dashboard gets the CloudProviderPicker automatically. */
+    noCloudFilter?: boolean;
     children: ReactNode;
 }
 
@@ -86,7 +92,15 @@ const TitleAndSubtitle = styled.div`
 const Title = styled.h1`
     margin: 0;
     color: ${logservTheme.colors.textActive};
-    font-size: ${logservTheme.fontSize.xxlarge};
+    /* Magnetic page-header pattern (§6, build 254): 24px Sharp Sans bold.
+       Sharp Sans ships weight 700 only — bold is mandatory here.
+       && doubles this class's specificity to (0,2,0) — AppShell's Page
+       guard 'h1..h6 font-family: inherit' is (0,1,1) and would otherwise
+       override the heading stack back to Inter (build 255). */
+    && {
+        font-family: ${logservTheme.font.heading};
+    }
+    font-size: 24px;
     font-weight: ${logservTheme.fontWeight.bold};
 `;
 
@@ -100,6 +114,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     title,
     subtitle,
     titleRowActions,
+    noCloudFilter = false,
     children,
 }) => {
     const location = useLocation();
@@ -123,6 +138,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     </TitleBlock>
                     <ActionsBlock>
                         {titleRowActions}
+                        {!noCloudFilter && <CloudProviderPicker />}
                         <RefreshIntervalPicker />
                         <DocsHelpIcon href={docsUrl} />
                     </ActionsBlock>

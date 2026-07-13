@@ -7,6 +7,8 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -69,7 +71,7 @@ const DUROP = `| inputlookup ${ROLL} where metric="durop" ${RANGE}`;
 // sourceHotspots reads.
 const COMP_GUARD = 'hana_trace_component!="(none)" AND len(hana_trace_component)>3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:"';
 
-const Q = {
+const Q_BASE = {
     // count KPIs use the anchored empty-window idiom (#19): reads 0, not blank.
     kpiTotal: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     // kpiErrors/sparkErrors: the case-insensitive match against stored "ERROR" relies on
@@ -102,9 +104,40 @@ const Q = {
     durationPercentiles: `${DUR} | eval _time=bucket_ts | timechart span=1d sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 2), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw
+ * sap:hana:tracelogs scan its rollup metric precomputes, reconciled to the
+ * cached read's exact output columns (byte-verified equal at wide windows — the
+ * ht_v_* / _v2_ht_* staged pairs). The "(none)" fillnull sentinels don't exist
+ * on raw (stats-by / field=* drop nulls; the len()/junk COMP guards match).
+ * slowestOps/durationPercentiles keep the cached's rounded Avg + sum/count form
+ * so empty-bin behavior matches. Only ROLLUP reads are hybridised; errorDetail
+ * is already raw and the sparklines stay cached (cosmetic).
+ * ------------------------------------------------------------------------- */
+const HRAW = '`sap_logserv_idx_macro` sourcetype="sap:hana:tracelogs"';
+const QRAW_BASE = {
+    kpiTotal: `${HRAW} | stats count`,
+    kpiErrors: `${HRAW} hana_trace_severity IN ("error", "fatal") | stats count`,
+    kpiComponents: `${HRAW} | stats dc(hana_trace_component) as components`,
+    traceVolume: `${HRAW} | timechart span=1d count as "Trace Events" | fillnull value=0`,
+    bySeverity: `${HRAW} hana_trace_severity=* | timechart span=1d count by hana_trace_severity | fillnull value=0`,
+    topComponents: `${HRAW} hana_trace_component=* | where len(hana_trace_component) > 3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:" | stats count as Events dc(hana_trace_source_file) as "Source Files" values(hana_trace_severity) as Severities by hana_trace_component | sort -Events | rename hana_trace_component as Component`,
+    componentSeverity: `${HRAW} hana_trace_component=* hana_trace_severity=* | where len(hana_trace_component) > 3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:" | stats count by hana_trace_component hana_trace_severity | sort -count | chart sum(count) over hana_trace_component by hana_trace_severity | sort -info | rename hana_trace_component as Component`,
+    sourceHotspots: `${HRAW} hana_trace_source_file=* | where len(hana_trace_component) > 3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:" | stats count as Events dc(hana_trace_source_line) as "Unique Lines" latest(hana_trace_severity) as "Latest Severity" by hana_trace_source_file hana_trace_component | sort -Events | rename hana_trace_source_file as "Source File" hana_trace_component as Component`,
+    sidInstance: `${HRAW} | stats count by sap_sid hana_instance | sort -count | rename sap_sid as SID hana_instance as Instance`,
+    slowestOps: `${HRAW} hana_op_duration_ms=* | rex field=_raw "^\\"(?<hana_op>[^\\"]+)\\"" | fillnull value="(none)" hana_op sap_sid | stats avg(hana_op_duration_ms) as avg_ms, max(hana_op_duration_ms) as max_ms, count as events by hana_op, sap_sid | search hana_op!="(none)" | eval "Avg (ms)"=round(avg_ms,2), "Max (ms)"=round(max_ms,2) | sort - "Max (ms)" | head 20 | rename sap_sid AS SID, hana_op AS Operation, events AS Events | table Operation, SID, Events, "Avg (ms)", "Max (ms)"`,
+    durationPercentiles: `${HRAW} hana_op_duration_ms=* | timechart span=1d sum(hana_op_duration_ms) as s, count(hana_op_duration_ms) as c, max(hana_op_duration_ms) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 2), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -142,14 +175,25 @@ const SLOWEST_OPS_COLS: ColumnDef[] = [
 ];
 
 const HanaTrace: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const errors = useFirstRowField(Q.kpiErrors, 'count');
-    const components = useFirstRowField(Q.kpiComponents, 'components');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
+    const components = useFirstRowFieldHybrid(Q.kpiComponents, QRAW.kpiComponents, 'components');
 
-    const topComponents = useSearch({ query: Q.topComponents });
-    const sourceHotspots = useSearch({ query: Q.sourceHotspots });
+    const topComponents = useHybridSearch({ cached: Q.topComponents, raw: QRAW.topComponents });
+    const sourceHotspots = useHybridSearch({ cached: Q.sourceHotspots, raw: QRAW.sourceHotspots });
     const errorDetail = useSearch({ query: Q.errorDetail });
-    const slowestOps = useSearch({ query: Q.slowestOps });
+    const slowestOps = useHybridSearch({ cached: Q.slowestOps, raw: QRAW.slowestOps });
+
+    // Charts take a query string → route once each (sub-hour -> raw).
+    const qTraceVolume = useRoutedQuery(Q.traceVolume, QRAW.traceVolume);
+    const qBySeverity = useRoutedQuery(Q.bySeverity, QRAW.bySeverity);
+    const qComponentSeverity = useRoutedQuery(Q.componentSeverity, QRAW.componentSeverity);
+    const qSidInstance = useRoutedQuery(Q.sidInstance, QRAW.sidInstance);
+    const qDurationPercentiles = useRoutedQuery(Q.durationPercentiles, QRAW.durationPercentiles);
 
     const errorTone = Number(errors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
@@ -194,10 +238,10 @@ const HanaTrace: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Trace Volume Over Time" subtitle="Daily count of HANA trace events">
-                    <TimeSeriesChart query={Q.traceVolume} height={280} palette="volume" />
+                    <TimeSeriesChart query={qTraceVolume} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="Trace Events by Severity" subtitle="Stacked daily volume by severity">
-                    <TimeSeriesChart query={Q.bySeverity} height={280} palette="status" />
+                    <TimeSeriesChart query={qBySeverity} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -206,7 +250,7 @@ const HanaTrace: React.FC = () => {
                     <DataTable columns={TOP_COMP_COLS} rows={topComponents.results} loading={topComponents.loading} error={topComponents.error} emptyMessage="No HANA trace events in this time range." onRowClick={goComponentRow} />
                 </FramedPanel>
                 <FramedPanel title="Component by Severity" subtitle="Severity mix per component">
-                    <TimeSeriesChart query={Q.componentSeverity} height={280} palette="status" />
+                    <TimeSeriesChart query={qComponentSeverity} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -215,7 +259,7 @@ const HanaTrace: React.FC = () => {
                     <DataTable columns={SOURCE_HOTSPOT_COLS} rows={sourceHotspots.results} loading={sourceHotspots.loading} error={sourceHotspots.error} emptyMessage="No HANA trace events in this time range." onRowClick={goSourceFileRow} />
                 </FramedPanel>
                 <FramedPanel title="Activity by SID / Instance" subtitle="Trace volume by HANA SID + instance">
-                    <TimeSeriesChart query={Q.sidInstance} height={280} palette="volume" />
+                    <TimeSeriesChart query={qSidInstance} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -224,7 +268,7 @@ const HanaTrace: React.FC = () => {
                     <DataTable columns={SLOWEST_OPS_COLS} rows={slowestOps.results} loading={slowestOps.loading} error={slowestOps.error} emptyMessage="No trace events with duration field in this time range." initialSortKey="Max (ms)" initialSortDir="desc" />
                 </FramedPanel>
                 <FramedPanel title="Operation Duration (Avg / Max)" subtitle="Daily average and peak HANA SQL operation duration (msec) — only events that carry the duration field">
-                    <TimeSeriesChart query={Q.durationPercentiles} height={280} palette="categorical" chartType="line" />
+                    <TimeSeriesChart query={qDurationPercentiles} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>
 

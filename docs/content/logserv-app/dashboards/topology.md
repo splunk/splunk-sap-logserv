@@ -24,12 +24,14 @@ The view is laid out in four regions:
 
 **Center canvas** — the interactive graph itself, rendered with [`@xyflow/react`](https://reactflow.dev/){:target="_blank" rel="noopener noreferrer"}. Nodes:
 
-- **Focused SIDs** — large red-ringed circles for the SAP systems your environment is centered around (the high-traffic hubs).
-- **Secondary SIDs** — medium cyan-ringed circles for other internal SAP systems.
+- **Focused SIDs** — large circles for the SAP systems your environment is centered around (the high-traffic hubs).
+- **Secondary SIDs** — medium circles for other internal SAP systems.
 - **DB-tagged partners** — circular discs with a cylinder icon when the partner is a database vendor (HANA, Oracle, MSSQL, Postgres, DB2). HANA systems specifically are tagged when their SID appears as a `sap_sid` clause on a `hana_tenant`-type edge — distinct from HANA tenants (which are logical databases inside a HANA system, named after the application SID they back).
 - **Other partners** — rounded squares for non-DB external endpoints (web partners, gateways, generic IPs).
 
 Each SID and DB partner carries a **3-segment health ring** painted around its perimeter, showing the proportion of normal (green) / warning (orange) / error (red) calls in the visible time window. Non-DB partners (the rounded squares) carry an equivalent rounded-square perimeter outline. Nodes with no calls or with all calls in a single bucket render as a **solid full ring** in the dominant color (a healthy node with all-normal calls shows a solid green ring; an idle node still shows green so you can tell the canvas painting succeeded). The classification: edges with errorRate < 10% route their errors to the warning bucket; edges with errorRate ≥ 10% route to the error bucket; everything else is normal. HANA-tagged nodes additionally route `WARNING`-severity events and slow tenant SQL queries (`hana_op_duration_ms > 1000`) into the warning bucket as a vendor-specific health signal — these counts are first-class fields on the edge bucket rows, computed at hourly aggregation time from `sap:hana:tracelogs`.
+
+**Edges** render as gently bowed curves drawn center-to-center between nodes and clipped at each node's visible boundary — arrowheads land on the health ring / outline outer edge rather than inside the node. When two systems call each other in both directions, the two edges bow apart so each direction stays separately visible and clickable. Edge labels sit at the curve's apex.
 
 **Right sidebar (selection-driven)** — what shows here depends on whether you've selected a node or an edge.
 
@@ -50,7 +52,7 @@ When an **edge** is selected, five tabs surface that edge's per-call context:
 
 Selection is **mutex** — clicking a node clears any selected edge and vice versa, so the right pane never shows mixed context. Clicking empty canvas (the pane) clears both. Each side preserves its own preferred tab independently when you swap between selections.
 
-**Bottom panel** — Live Activity table showing the top 8 RFC partners by call count for the current time range, each row clickable to drill into the source endpoint's detail.
+**Bottom panel** — Live Activity table showing the top 8 RFC partners by call count for the current time range. The panel fills its allotted height exactly — the partners table scrolls internally under a sticky header when it outgrows the panel, so the panel frame always closes cleanly. Drag the divider above the panel to resize it (120–640 px, persisted with saved layouts); expanding the collapsed panel restores at least the 300 px default height. Collapsing or expanding the panel automatically re-fits the graph so it claims (or yields) the freed vertical space.
 
 **MiniMap** (bottom-right of the canvas) — drag the cursor inside the minimap to pan the main canvas. Direction follows the cursor: dragging right → main canvas shows more right-side content; dragging down → shows more bottom content. Magnitude is proportional to your cursor delta scaled by the minimap's viewBox-to-pixel ratio. Single-click does nothing — drag-to-pan is the only minimap interaction.
 
@@ -93,7 +95,7 @@ The inventory itself is extensible per-customer without new ingest: appending an
 
 The LAYOUT dropdown switches between three layout algorithms:
 
-- **Force** — d3-force directed graph with charge varying by node kind. Best for small-to-medium graphs and exploratory views; the default for first-time viewers.
+- **Force** — a d3-force **star-system** arrangement: every high-traffic hub (focused SIDs, plus any secondary SID with enough leaf partners of its own) gets a proportional horizontal slot, its partners ring around it at a radius scaled to partner count, and smaller secondary systems anchor as satellites fanned around their nearest hub. The layout is deterministic — the same data renders the same picture on every load — and the graph world sizes itself to the canvas aspect ratio. Best for hub-and-spoke SAP landscapes; the default for first-time viewers.
 - **Layered** — ELK Sugiyama-layered top-to-bottom flow with orthogonal edges and near-zero edge crossings. Best for traffic-flow analysis where you want to see "what flows into what" structurally.
 - **Tree** — ELK mrtree classic top-down tree with hubs at top and spokes radiating downward. Best when the topology is approximately hub-and-spoke shaped.
 

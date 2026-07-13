@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import FramedPanel from '../FramedPanel';
 import { logservTheme } from '../../styles/logservTheme';
+import { useThemeMode } from '../../state/ThemeModeProvider';
 import { darken } from '../../utils/colorMath';
 import { formatCallCount } from '../../topology/edgeStyle';
 import type { ActivityRow } from '../../topology/types';
@@ -13,6 +14,12 @@ import type { ActivityRow } from '../../topology/types';
  * Right side: a compact "Calls/hour, last 24h" SVG bar chart so the bottom
  * panel mixes table + chart per the design (charts not just tables).
  *
+ * Build 280 — the panel fills the BottomZone's height (FramedPanel
+ * `fillHeight`) and the partners table scrolls vertically inside it with a
+ * sticky header, instead of silently clipping at the zone's
+ * overflow:hidden when the row count exceeds the panel height (user
+ * report, session 081).
+ *
  * Auto-refresh dropdown is a stub — v1 doesn't actually poll. Cadence will
  * be applied in session 026 when live mode lands.
  */
@@ -20,6 +27,10 @@ import type { ActivityRow } from '../../topology/types';
 const Wrap = styled.div`
     display: flex;
     flex-direction: column;
+    /* Fill the fillHeight FramedPanel Body (a min-height:0 flex column) so
+     * ContentRow gets a bounded height for the table's internal scroll. */
+    flex: 1 1 auto;
+    min-height: 0;
 `;
 
 const HeaderRow = styled.div`
@@ -28,6 +39,7 @@ const HeaderRow = styled.div`
     gap: ${logservTheme.spacing.lg};
     margin-bottom: ${logservTheme.spacing.sm};
     flex-wrap: wrap;
+    flex-shrink: 0;
 `;
 
 const TitleSubtitle = styled.div`
@@ -77,13 +89,30 @@ const ToggleButton = styled.button`
 const ContentRow = styled.div`
     display: grid;
     grid-template-columns: 1fr 280px;
+    /* Single row bounded by the panel body's height (minmax(0,1fr), NOT
+     * auto) — an auto row would grow to the table's content height and
+     * defeat TableScroll's overflow. */
+    grid-template-rows: minmax(0, 1fr);
     gap: ${logservTheme.spacing.lg};
     align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+`;
+
+/* Scroll container for the partners table — rows beyond the panel height
+ * scroll instead of clipping at the BottomZone's overflow:hidden. */
+const TableScroll = styled.div`
+    overflow-y: auto;
+    min-height: 0;
 `;
 
 const Table = styled.table`
     width: 100%;
-    border-collapse: collapse;
+    /* separate (not collapse): with border-collapse:collapse the sticky
+     * header's border-bottom stays behind with the table body while the
+     * <th> cells stick — separate keeps the border attached to the th. */
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: ${logservTheme.fontSize.small};
 
     thead th {
@@ -96,6 +125,10 @@ const Table = styled.table`
         text-transform: uppercase;
         letter-spacing: 0.5px;
         border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
+        /* Header stays visible while the row list scrolls beneath it. */
+        position: sticky;
+        top: 0;
+        z-index: 1;
     }
     tbody td {
         padding: 5px 8px;
@@ -118,7 +151,9 @@ const Table = styled.table`
 
 const SidPill = styled.span<{ $kind: 'focused' | 'secondary' }>`
     background: ${(p) => (p.$kind === 'focused' ? logservTheme.colors.red : logservTheme.colors.cyanAccent)};
-    color: ${logservTheme.colors.textActive};
+    /* Light text on the colored fill in BOTH modes (Phase-5 sweep) —
+       textActive resolves near-black in light mode, unreadable on the fill. */
+    color: ${logservTheme.colors.inverseText};
     padding: 1px 6px;
     border-radius: ${logservTheme.radius.small};
     font-weight: ${logservTheme.fontWeight.bold};
@@ -162,11 +197,15 @@ const directionGlyph = (d: ActivityRow['direction']): string =>
     d === 'client' ? 'client →' : 'server ←';
 
 const HourlyBars: React.FC<{ data: number[] }> = ({ data }) => {
+    /* Resolved hex tokens — stopColor is an SVG attribute + darken() needs
+     * literal hex; the baseline stroke moved to inline style (var-safe).
+     * Build 246 / Phase 0. */
+    const { tokens } = useThemeMode();
     const W = 280;
     const H = 84;
     const max = Math.max(...data, 1);
     const barW = W / data.length;
-    const teal = logservTheme.colors.teal;
+    const teal = tokens.teal;
     return (
         <svg width={W} height={H} role="img" aria-label="Calls per hour, last 24h">
             <defs>
@@ -190,7 +229,7 @@ const HourlyBars: React.FC<{ data: number[] }> = ({ data }) => {
                 );
             })}
             {/* Baseline */}
-            <line x1={0} y1={H - 1} x2={W} y2={H - 1} stroke={logservTheme.colors.panelBorderWeak} strokeWidth={1} />
+            <line x1={0} y1={H - 1} x2={W} y2={H - 1} style={{ stroke: logservTheme.colors.panelBorderWeak }} strokeWidth={1} />
         </svg>
     );
 };
@@ -222,6 +261,7 @@ const TopologyBottomPanel: React.FC<TopologyBottomPanelProps> = ({
         <FramedPanel
             title="Live Activity"
             actions={<ToggleButton type="button" onClick={onToggleOpen}>Hide ▴</ToggleButton>}
+            fillHeight
         >
             <Wrap>
                 <HeaderRow>
@@ -240,30 +280,32 @@ const TopologyBottomPanel: React.FC<TopologyBottomPanelProps> = ({
                     </Controls>
                 </HeaderRow>
                 <ContentRow>
-                    <Table>
-                        <thead>
-                            <tr>
-                                <th>Source</th>
-                                <th>Direction</th>
-                                <th>Remote partner</th>
-                                <th style={{ textAlign: 'right' }}>Calls</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((r) => (
-                                <tr key={r.id}>
-                                    <td>
-                                        <SidPill $kind={focusedSidIds.has(r.sourceSid) ? 'focused' : 'secondary'}>
-                                            {r.sourceSid}
-                                        </SidPill>
-                                    </td>
-                                    <td className="dir">{directionGlyph(r.direction)}</td>
-                                    <td>{r.partner}</td>
-                                    <td className="r">{r.callCount.toLocaleString()}</td>
+                    <TableScroll>
+                        <Table>
+                            <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th>Direction</th>
+                                    <th>Remote partner</th>
+                                    <th style={{ textAlign: 'right' }}>Calls</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </Table>
+                            </thead>
+                            <tbody>
+                                {rows.map((r) => (
+                                    <tr key={r.id}>
+                                        <td>
+                                            <SidPill $kind={focusedSidIds.has(r.sourceSid) ? 'focused' : 'secondary'}>
+                                                {r.sourceSid}
+                                            </SidPill>
+                                        </td>
+                                        <td className="dir">{directionGlyph(r.direction)}</td>
+                                        <td>{r.partner}</td>
+                                        <td className="r">{r.callCount.toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </TableScroll>
                     <ChartCol>
                         <ChartCaption>Calls / hour · last 24h</ChartCaption>
                         <HourlyBars data={callsPerHour} />

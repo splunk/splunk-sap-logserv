@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
+import { useThemeMode } from '../../../state/ThemeModeProvider';
+import { darken, lighten } from '../../../utils/colorMath';
 import { DisplayMessage } from '../../../state/AIAssistantProvider';
 import { SAVED_SEARCH_DASHBOARDS } from '../../../hooks/useAIAssistant';
 import { resolveDashboardLinks } from '../../../routes/dashboardLinks';
@@ -55,8 +57,15 @@ const Bubble = styled.div<{ $align: 'left' | 'right'; $tone?: 'default' | 'muted
         p.$align === 'right'
             ? logservTheme.colors.cyanAccent
             : logservTheme.colors.tableHeaderBackground};
+    /* Right-aligned = the USER bubble on the interact-blue fill: light
+       text in BOTH modes (inverseText) — textActive is near-black in light
+       mode and unreadable on the blue (user report, build 259). */
     color: ${(p) =>
-        p.$tone === 'muted' ? logservTheme.colors.textMuted : logservTheme.colors.textActive};
+        p.$align === 'right'
+            ? logservTheme.colors.inverseText
+            : p.$tone === 'muted'
+            ? logservTheme.colors.textMuted
+            : logservTheme.colors.textActive};
     font-size: ${logservTheme.fontSize.body};
     white-space: pre-wrap;
     word-break: break-word;
@@ -318,19 +327,18 @@ const DashboardChip = styled.a`
    as the donut-chart segments in the brief image. Color gradient mirrors
    the warm heat-map palette: yellow (low) → orange (medium) → red (high)
    → dark-red (critical). Build 148, gradient refresh build 149. */
-const SEVERITY_GRADIENTS: Record<string, string> = {
-    critical: 'radial-gradient(circle at 35% 30%, #ff5252 0%, #b50101 55%, #5a0000 100%)',
-    high:     'radial-gradient(circle at 35% 30%, #ff8a7e 0%, #dc4e41 55%, #8a2820 100%)',
-    medium:   'radial-gradient(circle at 35% 30%, #ffb785 0%, #f1813f 55%, #a04f1d 100%)',
-    low:      'radial-gradient(circle at 35% 30%, #fff099 0%, #ffcc00 55%, #b08800 100%)',
-};
-
-const SeverityDot = styled.span<{ $level: string }>`
+/** Mode-resolved glossy severity bead (Phase 4 / build 258): base colors
+ *  come from the sentiment tokens (critical=redSevere, high=red,
+ *  medium=redLight, low=yellow) and the 3-stop gloss is computed via
+ *  lighten/darken — SEVERITY dots follow the palette in both modes.
+ *  Rendered as a COMPONENT (not a bare styled.span) so the text-marker
+ *  parser below can keep creating elements without threading tokens. */
+const SeverityDotSpan = styled.span<{ $grad: string }>`
     display: inline-block;
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: ${(p) => SEVERITY_GRADIENTS[p.$level] || logservTheme.colors.textMuted};
+    background: ${(p) => p.$grad};
     margin: 0 6px 0 2px;
     /* Sit on the text baseline rather than top-aligning. */
     vertical-align: middle;
@@ -338,6 +346,25 @@ const SeverityDot = styled.span<{ $level: string }>`
        text's leading. */
     flex-shrink: 0;
 `;
+
+interface SeverityDotProps {
+    $level: string;
+    'aria-label'?: string;
+    title?: string;
+}
+
+const SeverityDot: React.FC<SeverityDotProps> = ({ $level, title, ...rest }) => {
+    const { tokens } = useThemeMode();
+    const base =
+        $level === 'critical' ? tokens.redSevere :
+        $level === 'high' ? tokens.red :
+        $level === 'medium' ? tokens.redLight :
+        $level === 'low' ? tokens.yellow : null;
+    const grad = base
+        ? `radial-gradient(circle at 35% 30%, ${lighten(base, 0.35)} 0%, ${base} 55%, ${darken(base, 0.45)} 100%)`
+        : logservTheme.colors.textMuted;
+    return <SeverityDotSpan $grad={grad} title={title} aria-label={rest['aria-label']} />;
+};
 
 /* Combined parser pattern — three alternatives in priority order, with
    numbered capture groups (TS target is < ES2018, no named groups):

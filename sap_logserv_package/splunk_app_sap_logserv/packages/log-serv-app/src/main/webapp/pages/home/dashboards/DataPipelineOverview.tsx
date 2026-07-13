@@ -11,9 +11,19 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import TabbedLayout from '../components/TabbedLayout';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
+import LinkGraphContainer from '../components/LinkGraphContainer';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch } from '../hooks/useHybridSearch';
+import {
+    useCloudProvider,
+    mapCloudProviderQueries,
+    withCloudProvider,
+} from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
+import { useThemeMode } from '../state/ThemeModeProvider';
 import { chooseTimechartSpan } from '../utils/timechartSpan';
+import { shouldUseRawSource } from '../utils/hybridRouting';
+import { buildStmapRawQuery } from '../utils/stmapRaw';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
 
@@ -110,21 +120,10 @@ const PanelControls = styled.div`
     gap: ${logservTheme.spacing.sm};
 `;
 
-// Wrapper around Splunk's LinkGraph that suppresses every horizontal
-// scrollbar inside the viz. Splunk renders an `overflow: auto` div around
-// its 3-column body (class hash currently `.cDbQQq`); even with our outer
-// container using `overflow-x: hidden`, that inner element still draws
-// its own scrollbar. Cascading `overflow-x: hidden !important` to every
-// descendant kills it while leaving vertical scrolling intact.
-const LinkGraphContainer = styled.div<{ $height: number }>`
-    width: 100%;
-    height: ${(p) => p.$height}px;
-    overflow-x: hidden;
-
-    & * {
-        overflow-x: hidden !important;
-    }
-`;
+// The LinkGraph wrapper (horizontal-scrollbar suppression + the build-281
+// node-bar restyle) lives in the shared components/LinkGraphContainer —
+// HostDetails' Sourcetype Mapping tab renders the same viz and must style
+// identically.
 
 /**
  * Build the dashboard-wide query set, parameterized by the host-filter
@@ -242,27 +241,37 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, 
         [selectedHosts, topN, resolvedTopHosts],
     );
     const HOST_RAW = useMemo(() => combinedHostFilter(selectedHosts, topN), [selectedHosts, topN]);
-    const Q = useMemo(() => buildQueries(HOST), [HOST]);
+    const { provider } = useCloudProvider();
+    const Q = useMemo(() => mapCloudProviderQueries(buildQueries(HOST), provider), [HOST, provider]);
 
     const total = useFirstRowField(Q.totalEvents, 'count');
     const hosts = useFirstRowField(Q.activeHosts, 'hosts');
     const sts = useFirstRowField(Q.activeSourcetypes, 'st');
-    // Events/Day Avg: no-filter case reads the vol rollup; the rollup's
-    // `timechart span=1d` 0-fills empty days just like the raw count timechart,
-    // so avg(daily) divides by the same denominator (§A.3.1). Host-filtered cases
-    // stay RAW (narrowed -> fast, and avoids the MV-host double-count).
+    // Global range drives both the Events/Day sub-hour routing and the dynamic
+    // per-host chart span.
+    const { timeRange } = useTimeRange();
+
+    // Events/Day Avg: no-filter case reads the vol rollup on wide ranges; the
+    // rollup's `timechart span=1d` 0-fills empty days just like the raw count
+    // timechart, so avg(daily) divides by the same denominator (§A.3.1). Sub-hour
+    // ranges route to RAW (session 087 hybrid): the hourly bucket_ts grain can't
+    // answer a sub-hour window (reads empty / ~4x-overcounts), and this KPI always
+    // uses span=1d so shouldUseRawSource — not the eventsByHost `!span.endsWith('m')`
+    // heuristic — is the precise guard. Host-filtered cases stay RAW at every range
+    // (narrowed -> fast, and avoids the MV-host double-count).
     const eventsPerDayQuery = useMemo(
-        () => HOST_RAW === ''
-            ? `${PIPE_VOL} | eval _time=bucket_ts | timechart span=1d sum(count) as daily | stats avg(daily) AS perday`
-            : `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=1d count as daily | stats avg(daily) AS perday`,
-        [HOST_RAW],
+        () => withCloudProvider(
+            (HOST_RAW === '' && !shouldUseRawSource(timeRange.earliest, timeRange.latest))
+                ? `${PIPE_VOL} | eval _time=bucket_ts | timechart span=1d sum(count) as daily | stats avg(daily) AS perday`
+                : `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=1d count as daily | stats avg(daily) AS perday`,
+            provider),
+        [HOST_RAW, provider, timeRange.earliest, timeRange.latest],
     );
     const perDay = useFirstRowField(eventsPerDayQuery, 'perday');
 
     // Dynamic timechart span keeps the per-host line chart readable across
     // any selected time range (a hard-coded `span=1h` produces 700+ pts on
     // a 30-day window).
-    const { timeRange } = useTimeRange();
     const span = useMemo(
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
@@ -279,11 +288,11 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, 
         // No-filter case at hourly-or-coarser spans reads the byhost rollup; the
         // narrowed (host-filter / topN) cases AND sub-hour spans (the hourly grain
         // would under-resolve) stay RAW — both already fast.
-        if (HOST_RAW === '' && !span.endsWith('m')) {
-            return `${PIPE_BYHOST} | eval _time=bucket_ts | timechart span=${span} sum(count) by host limit=0 useother=false`;
-        }
-        return `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=${span} count by host limit=${limitVal} useother=false`;
-    }, [span, topN, selectedHosts, HOST_RAW]);
+        const q = (HOST_RAW === '' && !span.endsWith('m'))
+            ? `${PIPE_BYHOST} | eval _time=bucket_ts | timechart span=${span} sum(count) by host limit=0 useother=false`
+            : `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=${span} count by host limit=${limitVal} useother=false`;
+        return withCloudProvider(q, provider);
+    }, [span, topN, selectedHosts, HOST_RAW, provider]);
 
     const chartSubtitle = useMemo<string>(() => {
         if (selectedHosts.length > 0) {
@@ -375,19 +384,32 @@ const LINK_GRAPH_WIDTH_SAFETY_MARGIN = 280;
 const LINK_GRAPH_NODE_WIDTH_FALLBACK = 540;
 
 const LinkedGraphTab: React.FC<TabProps> = ({ selectedHosts, topN, resolvedTopHosts }) => {
+    // Node-bar restyle is mode-resolved (build 281) — see LinkGraphContainer.
+    const { mode } = useThemeMode();
     // Same dashboard-wide host filter as the Overview tab, in tstats-WHERE
     // dialect (the link graph is now a tstats query — build 198).
     const HOST = useMemo(
         () => combinedHostFilterTstats(selectedHosts, topN, resolvedTopHosts),
         [selectedHosts, topN, resolvedTopHosts],
     );
-    const Q = useMemo(() => buildQueries(HOST), [HOST]);
+    const { provider } = useCloudProvider();
+    const Q = useMemo(() => mapCloudProviderQueries(buildQueries(HOST), provider), [HOST, provider]);
+    // Sub-hour hybrid (session 087): the stmap rollup is hourly bucket_ts-keyed,
+    // so a sub-hour window reads blank (within-hour) / over-inclusive (crossing).
+    // Route sub-hour ranges to the identically-normalized raw scan — byte-equal to
+    // the cached rollup read at wide ranges. buildStmapRawQuery takes the same
+    // tstats-WHERE host fragment the cached read appends via `| search`.
+    const linkGraphRaw = useMemo(
+        () => withCloudProvider(buildStmapRawQuery(HOST), provider),
+        [HOST, provider],
+    );
 
     // count: 0 = "all rows" — the link graph needs every unique
     // sourcetype/source/host combination, which can easily exceed the
     // default 100-row cap and silently drop hosts.
-    const { results, loading, error } = useSearch<LinkGraphResult>({
-        query: Q.linkGraph,
+    const { results, loading, error } = useHybridSearch<LinkGraphResult>({
+        cached: Q.linkGraph,
+        raw: linkGraphRaw,
         count: 0,
     });
 
@@ -454,7 +476,7 @@ const LinkedGraphTab: React.FC<TabProps> = ({ selectedHosts, topN, resolvedTopHo
     return (
         <FullWidthPanel>
             <FramedPanel title="Source to sourcetype mapping" subtitle="sourcetype → source → host edges, deduped by host/source/sourcetype">
-                <LinkGraphContainer ref={containerRef} $height={LINK_GRAPH_HEIGHT}>
+                <LinkGraphContainer ref={containerRef} $height={LINK_GRAPH_HEIGHT} $mode={mode}>
                     <LinkGraph
                         dataSources={dataSources}
                         width="100%"

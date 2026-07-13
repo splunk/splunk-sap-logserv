@@ -10,6 +10,9 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { shouldUseRawSource } from '../utils/hybridRouting';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { chooseTimechartSpan } from '../utils/timechartSpan';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
@@ -125,7 +128,7 @@ const RECORD_TYPE_RELABEL = `eval record_type = case(`
     + `1=1, record_type`
     + `)`;
 
-const Q = {
+const Q_BASE = {
     // --- KV-Store rollup: main (queries / clients / domains / resolvers) -----
     kpiQueries: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiClients: `${MAIN} | stats count as n, dc(eval(if(src="(none)",null(),src))) as clients | fillnull value=0 clients | fields clients`,
@@ -151,9 +154,37 @@ const Q = {
     hostsToBeaconing: `${BCN_QS} | stats sum(cnt) as count, dc(eval(if(src="(none)",null(),src))) AS NumHosts, sum(n_gap) as ng, sum(sum_gap) as sg, sum(sumsq_gap) as ssg by query | eval AverageBeaconTime=round(if(ng>0,sg/ng,0),3), VarianceBeaconTime=round(if(ng>1,(ssg - sg*sg/ng)/(ng-1),0),3) | sort -count | where VarianceBeaconTime < 60 AND AverageBeaconTime > 0 | table query count NumHosts AverageBeaconTime VarianceBeaconTime`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). DNS query events are the
+ * raw base (tag=dns message_type="Query"); the logserv_dns_rollup `main`/`rtype`
+ * measures map to raw as sum(count)->count, dc(eval(if(x="(none)",null,x)))->dc(x)
+ * (the "(none)" fillnull sentinel drops on raw — stats-by drops nulls). Only the
+ * `logserv_dns_rollup` reads are hybridised; the BEACONING KPI/tables (daily
+ * streamstats gap-variance — no meaningful sub-hour answer + heavy raw) + the
+ * sparklines stay cached. The two dynamic timechart memos (topClientsQuery /
+ * recordTypesQuery) route in-line via shouldUseRawSource, using `eval cnt=1 |
+ * timechart sum(cnt)` so empty (split,bin) cells stay NULL like the cached
+ * `sum(count)` (a plain `count` would 0-fill and diverge on sparse series).
+ * ------------------------------------------------------------------------- */
+const DNS_RAW = '`sap_logserv_idx_macro` tag=dns message_type="Query"';
+const QRAW_BASE = {
+    kpiQueries: `${DNS_RAW} | stats count`,
+    kpiClients: `${DNS_RAW} | stats dc(src) as clients`,
+    topDomains: `${DNS_RAW} | stats count as Queries, dc(src) as "Unique Clients" by query | sort -Queries | rename query as Domain`,
+    nxDomain: `${DNS_RAW} | stats count as Queries, dc(query) as "Unique Domains" by src | eval "Queries per Domain"=round(Queries/'Unique Domains', 1) | sort -"Unique Domains" | rename src as "Client IP"`,
+    topResolvers: `${DNS_RAW} | stats count as Queries, dc(query) as "Unique Domains", dc(src) as "Unique Clients" by host | sort -Queries | rename host as "Resolver"`,
+    queryTypes: `${DNS_RAW} record_type=* | ${RECORD_TYPE_RELABEL} | stats count as count by record_type | sort -count`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 085). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -190,17 +221,25 @@ const RESOLVER_COLS: ColumnDef[] = [
 ];
 
 const DnsAnalytics: React.FC = () => {
-    const queries = useFirstRowField(Q.kpiQueries, 'count');
-    const clients = useFirstRowField(Q.kpiClients, 'clients');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const queries = useFirstRowFieldHybrid(Q.kpiQueries, QRAW.kpiQueries, 'count');
+    const clients = useFirstRowFieldHybrid(Q.kpiClients, QRAW.kpiClients, 'clients');
     const beaconing = useFirstRowField(Q.kpiBeaconing, 'count');
 
     const beaconingActivity = useSearch({ query: Q.beaconingActivity });
     const hostsToBeaconing = useSearch({ query: Q.hostsToBeaconing });
-    const topDomains = useSearch({ query: Q.topDomains });
-    const nxDomain = useSearch({ query: Q.nxDomain });
-    const topResolvers = useSearch({ query: Q.topResolvers });
+    const topDomains = useHybridSearch({ cached: Q.topDomains, raw: QRAW.topDomains });
+    const nxDomain = useHybridSearch({ cached: Q.nxDomain, raw: QRAW.nxDomain });
+    const topResolvers = useHybridSearch({ cached: Q.topResolvers, raw: QRAW.topResolvers });
+    const qQueryTypes = useRoutedQuery(Q.queryTypes, QRAW.queryTypes);
 
     const { timeRange } = useTimeRange();
+    // Sub-hour routing decision for the dynamic timechart memos below (they
+    // build their SPL in a useMemo, so they can't call the useRoutedQuery hook).
+    const useRawSrc = shouldUseRawSource(timeRange.earliest, timeRange.latest);
 
     /* Drilldowns (build 159 / session 027 task 6).
      * - Beaconing rows / Hosts-to-Beaconing rows: splunk-search timechart
@@ -257,9 +296,13 @@ const DnsAnalytics: React.FC = () => {
     const [selectedClients, setSelectedClients] = useState<string[]>([]);
 
     // Client-IP options for the Multiselect — sorted by descending request
-    // volume so the dropdown's first items are the busiest clients.
-    const clientListSearch = useSearch<{ src?: string; count?: string | number }>({
-        query: `${MAIN} | search src!="(none)" | stats sum(count) as count by src | sort -count`,
+    // volume so the dropdown's first items are the busiest clients. Hybrid so a
+    // sub-hour range populates the dropdown from the raw index, not the empty
+    // hourly buckets. (Not cloud-filtered — matches the pre-hybrid behavior of
+    // this dropdown populator and the dynamic chart memos below.)
+    const clientListSearch = useHybridSearch<{ src?: string; count?: string | number }>({
+        cached: `${MAIN} | search src!="(none)" | stats sum(count) as count by src | sort -count`,
+        raw: `${DNS_RAW} | stats count by src | sort -count`,
     });
     const clientOptions = useMemo<string[]>(() => {
         const rows = clientListSearch.results ?? [];
@@ -277,11 +320,20 @@ const DnsAnalytics: React.FC = () => {
             ? ` | search (${selectedClients.map((c) => `src="${c.replace(/"/g, '\\"')}"`).join(' OR ')})`
             : '';
         const limitVal = hasClientPick ? '0' : (topN === 'all' ? '0' : topN);
+        if (useRawSrc) {
+            // Sub-hour: raw DNS events at the real (sub-hour) span. `eval cnt=1 |
+            // sum(cnt)` null-fills empty (src,bin) cells to match the cached
+            // `sum(count)` (a plain `count` would 0-fill and diverge on sparse series).
+            return (
+                `${DNS_RAW}${clientFilterClause} | eval cnt=1 ` +
+                `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(cnt) AS Requests by src`
+            );
+        }
         return (
             `${MAIN}${clientFilterClause} | search src!="(none)" | eval _time=bucket_ts ` +
             `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(count) AS Requests by src`
         );
-    }, [span, topN, selectedClients]);
+    }, [span, topN, selectedClients, useRawSrc]);
 
     const clientsChartSubtitle = useMemo<string>(() => {
         const total = clientOptions.length;
@@ -296,9 +348,12 @@ const DnsAnalytics: React.FC = () => {
 
     const recordTypesQuery = useMemo(
         () =>
-            `${RTYPE} | search record_type!="(none)" | ${RECORD_TYPE_RELABEL} | eval _time=bucket_ts `
-            + `| timechart span=${span} usenull=f useother=f sum(count) BY record_type`,
-        [span],
+            useRawSrc
+                ? `${DNS_RAW} record_type=* | ${RECORD_TYPE_RELABEL} | eval cnt=1 `
+                  + `| timechart span=${span} usenull=f useother=f sum(cnt) BY record_type`
+                : `${RTYPE} | search record_type!="(none)" | ${RECORD_TYPE_RELABEL} | eval _time=bucket_ts `
+                  + `| timechart span=${span} usenull=f useother=f sum(count) BY record_type`,
+        [span, useRawSrc],
     );
 
     const beaconingTone = Number(beaconing.value ?? 0) > 0 ? 'warning' : 'neutral';
@@ -384,7 +439,7 @@ const DnsAnalytics: React.FC = () => {
                     <DataTable columns={NX_DOM_COLS} rows={nxDomain.results} loading={nxDomain.loading} error={nxDomain.error} emptyMessage="No DNS queries in this time range." onRowClick={goClientDiversityRow} />
                 </FramedPanel>
                 <FramedPanel title="Query Type Distribution" subtitle="Share of total queries by record type">
-                    <PieChart query={Q.queryTypes} categoryField="record_type" valueField="count" height={300} donut />
+                    <PieChart query={qQueryTypes} categoryField="record_type" valueField="count" height={300} donut />
                 </FramedPanel>
             </PanelGrid3>
 

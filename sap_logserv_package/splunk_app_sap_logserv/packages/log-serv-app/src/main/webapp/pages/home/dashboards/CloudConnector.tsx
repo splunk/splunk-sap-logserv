@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -84,7 +86,7 @@ const formatPercent = (raw: unknown): string => {
     return `${n.toFixed(1)}%`;
 };
 
-const Q = {
+const Q_BASE = {
     // --- tstats-now (pure counts on default-indexed fields) ------------------
     kpiRequests: `| tstats count ${TS_WHERE_HTTP}`,
     kpiAudit: `| tstats count ${TS_WHERE_AUDIT}`,
@@ -111,9 +113,37 @@ const Q = {
     auditLog: `\`sap_logserv_idx_macro\` ${ST_AUDIT} | head 200 | table _time scc_audit_type scc_account_id | sort -_time | rename scc_audit_type as "Audit Type" scc_account_id as "Account ID"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw scc
+ * scan its rollup metric precomputes, reconciled to the cached read's output
+ * columns (byte-verified equal at wide windows). Rollup measures map to raw:
+ * bytes_sum -> sum(bytes); sum(count) -> count; err_count -> status>=400
+ * indicator; sum_rt/cnt_rt -> avg(response_time_ms); "(none)" sentinels drop.
+ * Only ROLLUP reads are hybridised; the tstats KPIs/volume + the auditLog
+ * (| head 200 listing) are already correct at any range; sparklines stay cached.
+ * ------------------------------------------------------------------------- */
+const CC_HTTP = '`sap_logserv_idx_macro` sourcetype="sap:scc:http_access"';
+const CC_AUDIT = '`sap_logserv_idx_macro` sourcetype="sap:scc:audit"';
+const QRAW_BASE = {
+    kpiAccessDenied: `${CC_AUDIT} scc_audit_type="ACCESS_DENIED" | stats count`,
+    kpiErrorRate: `${CC_HTTP} | stats count as total, sum(eval(if(tonumber(status)>=400,1,0))) as errs | eval pct=if(total>0, round(errs/total*100, 1), 0) | table pct`,
+    statusCodes: `${CC_HTTP} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "Success (2xx)", tonumber(status)>=300 AND tonumber(status)<400, "Redirect (3xx)", tonumber(status)>=400 AND tonumber(status)<500, "Client Error (4xx)", tonumber(status)>=500, "Server Error (5xx)", 1=1, "Other") | timechart span=1d count by status_cat | fillnull value=0`,
+    httpMethods: `${CC_HTTP} method=* | stats count by method | sort -count`,
+    topClients: `${CC_HTTP} clientip=* | stats count as Requests, sum(bytes) as "Total Bytes", dc(uri) as "Unique URIs" by clientip | sort -Requests | rename clientip as "Client IP"`,
+    topUris: `${CC_HTTP} uri=* | stats count as Requests, avg(response_time_ms) as "Avg Response (ms)", sum(bytes) as "Total Bytes" by uri | eval "Avg Response (ms)"=round('Avg Response (ms)',1) | sort -Requests | rename uri as URI | table URI, Requests, "Avg Response (ms)", "Total Bytes"`,
+    responseTime: `${CC_HTTP} | timechart span=1d avg(response_time_ms) as "Avg Response Time (ms)" | fields _time, "Avg Response Time (ms)"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 085) — sub-hour
+ *  ranges read the raw query, wide ranges the rollup. */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -137,14 +167,23 @@ const AUDIT_COLS: ColumnDef[] = [
 ];
 
 const CloudConnector: React.FC = () => {
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
     const requests = useFirstRowField(Q.kpiRequests, 'count');
-    const errorRate = useFirstRowField(Q.kpiErrorRate, 'pct');
+    const errorRate = useFirstRowFieldHybrid(Q.kpiErrorRate, QRAW.kpiErrorRate, 'pct');
     const audit = useFirstRowField(Q.kpiAudit, 'count');
-    const accessDenied = useFirstRowField(Q.kpiAccessDenied, 'count');
+    const accessDenied = useFirstRowFieldHybrid(Q.kpiAccessDenied, QRAW.kpiAccessDenied, 'count');
 
-    const topUris = useSearch({ query: Q.topUris });
-    const topClients = useSearch({ query: Q.topClients });
+    const topUris = useHybridSearch({ cached: Q.topUris, raw: QRAW.topUris });
+    const topClients = useHybridSearch({ cached: Q.topClients, raw: QRAW.topClients });
     const auditLog = useSearch({ query: Q.auditLog });
+
+    // Chart panels take a query STRING → route once here (sub-hour -> raw).
+    const qStatusCodes = useRoutedQuery(Q.statusCodes, QRAW.statusCodes);
+    const qHttpMethods = useRoutedQuery(Q.httpMethods, QRAW.httpMethods);
+    const qResponseTime = useRoutedQuery(Q.responseTime, QRAW.responseTime);
 
     const errorRateNum = Number(errorRate.value ?? 0);
     const errorTone = errorRateNum > 5 ? 'critical' : errorRateNum > 1 ? 'warning' : 'positive';
@@ -197,7 +236,7 @@ const CloudConnector: React.FC = () => {
                     <TimeSeriesChart query={Q.requestVolume} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="Status Code Distribution" subtitle="Daily volume bucketed 2xx/3xx/4xx/5xx">
-                    <TimeSeriesChart query={Q.statusCodes} height={280} palette="status" />
+                    <TimeSeriesChart query={qStatusCodes} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -214,13 +253,13 @@ const CloudConnector: React.FC = () => {
                     onClick={goMethodPie}
                     clickTitle="Open method-by-count breakdown in Splunk Search"
                 >
-                    <PieChart query={Q.httpMethods} categoryField="method" valueField="count" height={300} donut />
+                    <PieChart query={qHttpMethods} categoryField="method" valueField="count" height={300} donut />
                 </FramedPanel>
             </PanelGrid3>
 
             <PanelGrid2>
                 <FramedPanel title="Average Response Time" subtitle="Daily mean response time (ms)">
-                    <TimeSeriesChart query={Q.responseTime} height={280} palette="volume" />
+                    <TimeSeriesChart query={qResponseTime} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel search={auditLog} title="Cloud Connector Audit Log" subtitle="SCC audit events, most-recent first">
                     <DataTable columns={AUDIT_COLS} rows={auditLog.results} loading={auditLog.loading} error={auditLog.error} emptyMessage="No SCC audit events in this time range." onRowClick={goAuditRow} />

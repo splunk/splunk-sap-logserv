@@ -58,7 +58,7 @@ from splunk_ta_sap_logserv_filter_utils import (
 )
 
 # Valid cloud_provider dropdown values (must match globalConfig.json).
-VALID_CLOUD_PROVIDERS = ('aws', 'azure', 'not_set')
+VALID_CLOUD_PROVIDERS = ('aws', 'azure', 'gcp', 'not_set')
 
 logger = logging.getLogger(APP_NAME)
 
@@ -300,7 +300,7 @@ class FilterSettingsHandler(AdminExternalHandler):
         """
         app_path = get_app_path()
 
-        if cloud_provider in ('aws', 'azure'):
+        if cloud_provider in ('aws', 'azure', 'gcp'):
             content = (
                 '[logserv_set_cloud_provider]\n'
                 'REGEX = .\n'

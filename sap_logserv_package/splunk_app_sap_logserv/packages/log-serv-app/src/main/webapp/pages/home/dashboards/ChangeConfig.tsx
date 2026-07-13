@@ -8,6 +8,8 @@ import PieChart from '../components/PieChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -97,7 +99,7 @@ const USERCHG = `| inputlookup ${ROLL} where metric="userchg" ${RANGE}`;
 const PERMGRANT = `| inputlookup ${ROLL} where metric="permgrant" ${RANGE}`;
 const PASSWORD = `| inputlookup ${ROLL} where metric="password" ${RANGE}`;
 
-const Q = {
+const Q_BASE = {
     // KPIs read precomputed per-bucket counts. The `stats count as n, ...`
     // forces a result row even when the metric has ZERO rows (an empty
     // `| inputlookup | stats sum(count)` returns 0 rows, unlike a raw event
@@ -135,9 +137,43 @@ const Q = {
     ah: `\`sap_logserv_idx_macro\` ${CHANGE_FILTER} | ${ENRICH} | where is_after_hours=1 | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Target = case(sourcetype="sap:hana:audit", target_user, sourcetype="XmlWinEventLog", TargetUserName, 1=1, "-") | eval Action = case(sourcetype="sap:hana:audit", action_type, sourcetype="XmlWinEventLog", "EventCode " . EventCode, 1=1, substr(_raw, 1, 120)) | eval Day = strftime(_time, "%a %H:%M") | sort -_time | table Time, Day, change_source, category, operator, Target, Action | rename change_source as "Source", category as "Category", operator as "Operator"`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 087). Each is the raw
+ * change-event scan its rollup metric precomputes, reconstructed from the
+ * [logserv_compliance_aggregate] arms. The main-scope panels (Total/AfterHours/
+ * Operators KPIs, Activity chart, Category pie, Operators table) reuse
+ * CHANGE_FILTER + ENRICH; the per-metric KPIs replicate each aggregate arm's
+ * EXACT filter. The userchg/password arms apply their Linux match(_raw,...)
+ * regex in a post-base `| where` (the session-051 match()-in-base fix — match()
+ * in base-search position silently counts 0), NOT the base search; permgrant's
+ * base IS its exact filter (no where). The "(none)" operator sentinel maps to
+ * raw stats-by null-drop (operator never fillnull'd in the raw ENRICH). Only the
+ * sparklines stay cached (cosmetic span=1d) + the 5 event-listing tables
+ * (hana/windows/linux/priv/ah) stay raw. De-risked 9/9 byte-equal on the box.
+ * ------------------------------------------------------------------------- */
+const CCRAW = `\`sap_logserv_idx_macro\``;
+const LINUX_ST = `(sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog")`;
+const QRAW_BASE = {
+    kpiTotal: `${CCRAW} ${CHANGE_FILTER} | stats count`,
+    kpiUserChanges: `${CCRAW} ( (sourcetype="sap:hana:audit" action_category IN ("User Creation","User Deletion","User Management")) OR (sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4725,4726,4738,4781)) OR ${LINUX_ST} ) | where (sourcetype="sap:hana:audit" AND action_category IN ("User Creation","User Deletion","User Management")) OR (sourcetype="XmlWinEventLog" AND EventCode IN (4720,4722,4725,4726,4738,4781)) OR (${LINUX_ST} AND match(_raw, "(?i)(useradd|usermod|userdel)")) | stats count`,
+    kpiPermGrants: `${CCRAW} ( (sourcetype="sap:hana:audit" action_category="Permission Grant") OR (sourcetype="XmlWinEventLog" EventCode IN (4728,4732,4756)) ) | stats count`,
+    kpiPassword: `${CCRAW} ( (sourcetype="sap:hana:audit" action_category IN ("Password Management","Password Reset")) OR (sourcetype="XmlWinEventLog" EventCode=4724) OR ${LINUX_ST} ) | where (sourcetype="sap:hana:audit" AND action_category IN ("Password Management","Password Reset")) OR (sourcetype="XmlWinEventLog" AND EventCode=4724) OR (${LINUX_ST} AND match(_raw, "(?i)passwd\\b")) | stats count`,
+    kpiAfterHours: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | where is_after_hours=1 | stats count`,
+    kpiOperators: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | stats dc(operator) as operators`,
+    activity: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | timechart span=1d count by change_source | fillnull value=0`,
+    category: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | stats count by category | sort -count`,
+    operators: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | stats count by operator | sort -count | rename operator as "Operator", count as "Change Events"`,
+};
+
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 087). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -189,19 +225,27 @@ const AH_COLS: ColumnDef[] = [
 ];
 
 const ChangeConfig: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const userChanges = useFirstRowField(Q.kpiUserChanges, 'count');
-    const permGrants = useFirstRowField(Q.kpiPermGrants, 'count');
-    const password = useFirstRowField(Q.kpiPassword, 'count');
-    const afterHours = useFirstRowField(Q.kpiAfterHours, 'count');
-    const operatorsKpi = useFirstRowField(Q.kpiOperators, 'operators');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 087); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const userChanges = useFirstRowFieldHybrid(Q.kpiUserChanges, QRAW.kpiUserChanges, 'count');
+    const permGrants = useFirstRowFieldHybrid(Q.kpiPermGrants, QRAW.kpiPermGrants, 'count');
+    const password = useFirstRowFieldHybrid(Q.kpiPassword, QRAW.kpiPassword, 'count');
+    const afterHours = useFirstRowFieldHybrid(Q.kpiAfterHours, QRAW.kpiAfterHours, 'count');
+    const operatorsKpi = useFirstRowFieldHybrid(Q.kpiOperators, QRAW.kpiOperators, 'operators');
 
-    const operators = useSearch({ query: Q.operators });
+    const operators = useHybridSearch({ cached: Q.operators, raw: QRAW.operators });
     const hana = useSearch({ query: Q.hana });
     const windows = useSearch({ query: Q.windows });
     const linux = useSearch({ query: Q.linux });
     const priv = useSearch({ query: Q.priv });
     const ah = useSearch({ query: Q.ah });
+
+    // Charts / pie take a query string → route once each (sub-hour -> raw).
+    const qActivity = useRoutedQuery(Q.activity, QRAW.activity);
+    const qCategory = useRoutedQuery(Q.category, QRAW.category);
 
     const ahTone = Number(afterHours.value ?? 0) > 0 ? 'warning' : 'neutral';
 
@@ -261,10 +305,10 @@ const ChangeConfig: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Change Activity Over Time (by Source)" subtitle="Daily volume — HANA / Windows / Linux">
-                    <TimeSeriesChart query={Q.activity} height={300} palette="auth" />
+                    <TimeSeriesChart query={qActivity} height={300} palette="auth" />
                 </FramedPanel>
                 <FramedPanel title="Change Events by Category" subtitle="Permission Grant / User Mgmt / DDL / Password / etc.">
-                    <PieChart query={Q.category} categoryField="category" valueField="count" height={300} donut palette="auth" />
+                    <PieChart query={qCategory} categoryField="category" valueField="count" height={300} donut palette="auth" />
                 </FramedPanel>
             </PanelGrid2>
 

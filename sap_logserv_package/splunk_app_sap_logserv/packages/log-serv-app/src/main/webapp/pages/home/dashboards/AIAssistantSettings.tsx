@@ -4,6 +4,7 @@ import TabLayout from '@splunk/react-ui/TabLayout';
 import Multiselect from '@splunk/react-ui/Multiselect';
 import { listSplunkRoles } from '../utils/splunkRolesApi';
 import { parsePowerUserRoles } from '../state/AIAssistantConfig';
+import { TEMPLATES_ONLY } from '../buildFlags';
 import DashboardLayout from '../components/DashboardLayout';
 import FramedPanel from '../components/FramedPanel';
 import AuditLogViewer from '../components/AuditLogViewer';
@@ -24,7 +25,15 @@ import {
     readAIConfig,
     writeAIConfig,
 } from '../utils/aiConfigApi';
-import { createProviderByName } from '../components/ai/providers';
+import { createProviderByName, clearCredentialCache } from '../components/ai/providers';
+import { ModelDescriptor } from '../components/ai/providers/AIProvider';
+import { readMcpServerTimeoutSeconds } from '../components/ai/mcp/MCPClient';
+import {
+    ModelCacheRow,
+    mergeModels,
+    readModelCacheRow,
+    refreshProviderModels,
+} from '../components/ai/modelDiscovery';
 import {
     AiAssistantEnableAcceptanceEvent,
     AuditWriter,
@@ -80,10 +89,14 @@ const SectionGrid = styled.div`
 
 const FieldRow = styled.div`
     display: grid;
-    grid-template-columns: 200px 1fr auto;
-    gap: ${logservTheme.spacing.md};
+    /* Readability pass (session 080): the label/hint column was a cramped
+     * 200px against a control column with space to spare — long hints
+     * stacked 10+ lines tall. clamp() is deterministic (NOT content-based
+     * like minmax), so every row's columns stay aligned. */
+    grid-template-columns: clamp(320px, 30%, 520px) 1fr auto;
+    gap: ${logservTheme.spacing.lg};
     align-items: center;
-    padding: ${logservTheme.spacing.sm} 0;
+    padding: ${logservTheme.spacing.md} 0;
     border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
 
     &:last-child { border-bottom: 0; }
@@ -101,11 +114,12 @@ const FieldRow = styled.div`
 const SectionHeading = styled.h3`
     margin: ${logservTheme.spacing.lg} 0 0;
     padding: ${logservTheme.spacing.xs} 0 ${logservTheme.spacing.sm};
-    border-bottom: 1px solid ${logservTheme.colors.cyanAccent};
+    /* Magnetic primary-tab indicator: 2px navAccent teal (Phase 4). */
+    border-bottom: 2px solid ${logservTheme.colors.navAccent};
     color: ${logservTheme.colors.cyanLight};
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    font-size: ${logservTheme.fontSize.small};
+    font-size: 12px;
     font-weight: ${logservTheme.fontWeight.semibold};
 
     /* First heading sits flush with the panel top — the FramedPanel already
@@ -117,14 +131,20 @@ const SectionHeading = styled.h3`
 
 const FieldLabel = styled.label`
     color: ${logservTheme.colors.textActive};
-    font-size: ${logservTheme.fontSize.body};
+    /* Readability pass: 14px sits one step above the 13px hints so the
+     * label/hint hierarchy survives the hint bump below. */
+    font-size: 14px;
     font-weight: ${logservTheme.fontWeight.semibold};
 `;
 
 const FieldHint = styled.div`
     color: ${logservTheme.colors.textMuted};
-    font-size: ${logservTheme.fontSize.small};
-    margin-top: 2px;
+    /* Readability pass: hints matched to the page-subtitle size (13px
+     * body) — they were 11px, the page's smallest text carrying its
+     * longest prose. */
+    font-size: ${logservTheme.fontSize.body};
+    line-height: 1.5;
+    margin-top: 4px;
 `;
 
 const FieldStatus = styled.div<{ $tone: 'good' | 'absent' | 'error' }>`
@@ -215,7 +235,7 @@ const Button = styled.button<{ $variant?: 'primary' | 'danger' }>`
             : 'transparent'};
     color: ${(p) =>
         p.$variant === 'primary' || p.$variant === 'danger'
-            ? '#ffffff'
+            ? logservTheme.colors.inverseText
             : logservTheme.colors.textActive};
     border: 1px solid
         ${(p) =>
@@ -278,8 +298,22 @@ const StatusBanner = styled.div<{ $tone: 'success' | 'error' | 'info' }>`
 const TabIntro = styled.p`
     margin: 0 0 ${logservTheme.spacing.md};
     color: ${logservTheme.colors.textMuted};
+    font-size: 14px;
+    line-height: 1.55;
+    max-width: 90ch;
+`;
+
+/* Readability pass (session 080): Settings-scoped panel-subtitle bump.
+ * FramedPanel's own Subtitle is 11px app-wide (fine for dashboard panel
+ * chrome); the Settings panels carry long descriptive subtitles that
+ * deserve the 13px body size. subtitle accepts a ReactNode, so wrapping
+ * here scopes the change to this page without touching the global
+ * component. */
+const PanelSub = styled.span`
+    display: inline-block;
     font-size: ${logservTheme.fontSize.body};
-    max-width: 80ch;
+    line-height: 1.5;
+    max-width: 110ch;
 `;
 const SecondaryTabBar = styled.div`
     display: flex;
@@ -457,19 +491,64 @@ const PROVIDER_OPTIONS: ReadonlyArray<{ id: ProviderName; label: string }> = [
 ];
 
 /**
- * Resolve the model list for a provider by instantiating it. Provider
- * constructors are cheap (no I/O — credentials are read on stream(),
- * not on construction).
+ * Resolve a provider's static curated baseline models by instantiating
+ * it. Provider constructors are cheap (no I/O — credentials are read on
+ * stream(), not on construction). The GeneralPanel merges the
+ * vendor-DISCOVERED list (KV Store cache) on top of this — session 079.
  */
-const getModelOptions = (
+const getBaselineModels = (
     providerName: ProviderName,
-): ReadonlyArray<{ id: string; label: string }> => {
+): ReadonlyArray<ModelDescriptor> => {
     try {
-        const p = createProviderByName(providerName);
-        return p.models.map((m) => ({ id: m.id, label: m.label }));
+        return createProviderByName(providerName).models;
     } catch {
         return [];
     }
+};
+
+/**
+ * Fire-and-forget model-discovery refresh after a provider credential
+ * save (discovery trigger 2 of 3 — the admin just changed the key, so
+ * the vendor's list for THAT key is the most useful thing to fetch).
+ *
+ * Guards, in order:
+ *   - realm must map to a known provider name (the mcp / forwarder
+ *     realms are credential stores, not AI providers)
+ *   - the admin governance knob `model_discovery_enabled` must be on
+ *   - `createProviderByName` must resolve to the SAME provider (the
+ *     'ollama' name currently falls back to MockProvider — refreshing
+ *     the mock row under an ollama save would poison nothing, but it
+ *     would be misleading; skip)
+ *   - the provider must implement listModels
+ *
+ * `clearCredentialCache()` first — the in-process credential cache
+ * still holds the OLD key for this page session; without the clear the
+ * refresh (and the next chat stream) would use stale credentials.
+ */
+const triggerDiscoveryAfterCredentialSave = (realm: string, username: string): void => {
+    void (async () => {
+        try {
+            const providerName = realm.replace('logserv_ai_assistant_', '');
+            const known: ReadonlyArray<ProviderName> = [
+                'mock',
+                'anthropic',
+                'openai',
+                'azure_openai',
+                'bedrock',
+                'ollama',
+            ];
+            if (!(known as ReadonlyArray<string>).includes(providerName)) return;
+            const cfg = await readAIConfig();
+            if (!cfg.model_discovery_enabled) return;
+            clearCredentialCache();
+            const p = createProviderByName(providerName as ProviderName);
+            if (p.name !== providerName) return; // fallback-to-mock guard
+            if (typeof p.listModels !== 'function') return;
+            void refreshProviderModels(p, username, 'credential_save');
+        } catch (_e) {
+            // best-effort — a failed background refresh never surfaces here
+        }
+    })();
 };
 
 const TIER_DESCRIPTIONS: Record<PrivacyTier, string> = {
@@ -558,20 +637,134 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
         };
     }, []);
 
-    const modelOptions = useMemo(
-        () => getModelOptions(draft.provider),
-        [draft.provider],
-    );
+    /* Model discovery (session 079 / build 275): the Default Model
+     * dropdown shows baseline ∪ discovered. `discoveredRow` is the KV
+     * cache row for the DRAFT provider; `discoveredLoaded` gates the
+     * snap-back effect below so a saved default_model that lives only
+     * in the discovered set isn't reset to the baseline's first model
+     * before the async KV read resolves (session-042 hydration-gate
+     * sticky). `refreshBusy` drives the "Refresh model list" button. */
+    const [discoveredRow, setDiscoveredRow] = useState<ModelCacheRow | null>(null);
+    const [discoveredLoaded, setDiscoveredLoaded] = useState<boolean>(false);
+    const [refreshBusy, setRefreshBusy] = useState<boolean>(false);
+
+    /** Read-only display of the Splunk MCP Server's OWN timeout (App 7931's
+     *  mcp.conf [server] timeout). 'loading' until the cross-app read
+     *  resolves; a number on success; null when App 7931 isn't installed /
+     *  reachable. We only READ it — see readMcpServerTimeoutSeconds for why
+     *  we don't offer to write another app's cached, persistent-process
+     *  config. */
+    const [serverTimeout, setServerTimeout] =
+        useState<number | null | 'loading'>('loading');
+
+    useEffect(() => {
+        let cancelled = false;
+        setServerTimeout('loading');
+        (async () => {
+            const secs = await readMcpServerTimeoutSeconds();
+            if (!cancelled) setServerTimeout(secs);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        setDiscoveredLoaded(false);
+        setDiscoveredRow(null);
+        (async () => {
+            // Key the cache row by the EFFECTIVE provider instance name
+            // (ollama currently falls back to MockProvider — keep reads
+            // and writes consistent with what the chat actually runs).
+            const effectiveName = (() => {
+                try {
+                    return createProviderByName(draft.provider).name;
+                } catch {
+                    return draft.provider;
+                }
+            })();
+            const row = await readModelCacheRow(effectiveName);
+            if (cancelled) return;
+            setDiscoveredRow(row ?? null);
+            setDiscoveredLoaded(true);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [draft.provider]);
+
+    const modelOptions = useMemo(() => {
+        const baseline = getBaselineModels(draft.provider);
+        const discovered =
+            draft.model_discovery_enabled && discoveredRow ? discoveredRow.models : [];
+        return mergeModels(baseline, discovered).map((m) => ({ id: m.id, label: m.label }));
+    }, [draft.provider, draft.model_discovery_enabled, discoveredRow]);
 
     // If the saved default_model isn't in the new provider's list, snap
     // to that provider's first model so the dropdown doesn't show an
-    // out-of-list value.
+    // out-of-list value. Gated on the discovered-row read having
+    // resolved — the merged list isn't known before that.
     useEffect(() => {
+        if (!discoveredLoaded) return;
         if (modelOptions.length === 0) return;
         if (!modelOptions.some((m) => m.id === draft.default_model)) {
             setDraft((d) => ({ ...d, default_model: modelOptions[0].id }));
         }
-    }, [modelOptions, draft.default_model]);
+    }, [discoveredLoaded, modelOptions, draft.default_model]);
+
+    /** Manual "Refresh model list" — discovery trigger 1 of 3. Runs the
+     *  vendor fetch, then re-reads the KV row so the status line +
+     *  dropdown reflect the outcome (success or stored error). */
+    const handleRefreshModels = async (): Promise<void> => {
+        setRefreshBusy(true);
+        try {
+            const p = createProviderByName(draft.provider);
+            // Use the freshest credentials — the admin may have just
+            // saved a new key under Provider Credentials in this
+            // page session.
+            clearCredentialCache();
+            await refreshProviderModels(p, adminUsername || 'unknown', 'settings_refresh');
+            const row = await readModelCacheRow(p.name);
+            setDiscoveredRow(row ?? null);
+            setDiscoveredLoaded(true);
+        } catch (_e) {
+            // refreshProviderModels never throws in practice; belt+braces
+        } finally {
+            setRefreshBusy(false);
+        }
+    };
+
+    /** Status line for the discovery row ("N models · discovered Xh
+     *  ago" / error). */
+    const discoveryStatus = useMemo((): { text: string; tone: 'good' | 'absent' | 'error' } => {
+        if (!discoveredLoaded) return { text: 'Loading discovered-model cache…', tone: 'absent' };
+        if (!discoveredRow) {
+            return {
+                text: 'No discovered list cached yet — showing the built-in model list.',
+                tone: 'absent',
+            };
+        }
+        const parts: string[] = [];
+        if (discoveredRow.fetchedAt > 0) {
+            const ageSec = Math.max(0, Math.floor(Date.now() / 1000) - discoveredRow.fetchedAt);
+            const age =
+                ageSec < 3600
+                    ? `${Math.max(1, Math.floor(ageSec / 60))}m ago`
+                    : ageSec < 86400
+                    ? `${Math.floor(ageSec / 3600)}h ago`
+                    : `${Math.floor(ageSec / 86400)}d ago`;
+            parts.push(`${discoveredRow.models.length} discovered models · refreshed ${age}`);
+        }
+        if (discoveredRow.error) {
+            parts.push(`Last refresh failed: ${discoveredRow.error}`);
+            return { text: parts.join(' — '), tone: 'error' };
+        }
+        if (parts.length === 0) {
+            return { text: 'No successful discovery yet.', tone: 'absent' };
+        }
+        return { text: parts.join(' — '), tone: 'good' };
+    }, [discoveredLoaded, discoveredRow]);
 
     const dirty = useMemo(
         () =>
@@ -1028,6 +1221,73 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                 <span />
             </FieldRow>
 
+            {/* Model discovery is a full-LLM-line feature: templates-only
+              * builds (the v0.0.6 public line) collapse every provider to
+              * MockProvider and refreshProviderModels is compile-time
+              * gated inert, so the knob + status row would be dead chrome
+              * there. Hidden behind the same TEMPLATES_ONLY flag — in
+              * full-LLM builds (flag false) both rows always render. */}
+            {!TEMPLATES_ONLY && (
+                <FieldRow>
+                    <div>
+                        <FieldLabel>Model discovery</FieldLabel>
+                        <FieldHint>
+                            When on, the model list above (and the chat panel&apos;s
+                            per-user picker) refreshes itself from the vendor&apos;s
+                            own model-listing API so new models appear without an
+                            app upgrade. Metadata-only — no chat content or Splunk
+                            data is sent; same trust envelope as the credential
+                            validation probe. Refreshes run at most every 24 hours
+                            automatically, after a credential save, or on demand
+                            via the button below; each one is recorded as a{' '}
+                            <code>model_discovery</code> audit event. The built-in
+                            model list is always the floor — discovery failures
+                            can never empty the picker. Turn off to forbid all
+                            vendor model-list calls.
+                        </FieldHint>
+                    </div>
+                    <ToggleLabel>
+                        <input
+                            type="checkbox"
+                            checked={draft.model_discovery_enabled}
+                            onChange={(e) =>
+                                setDraft((d) => ({
+                                    ...d,
+                                    model_discovery_enabled: e.target.checked,
+                                }))
+                            }
+                            disabled={busy}
+                        />
+                        {draft.model_discovery_enabled ? 'Enabled' : 'Disabled'}
+                    </ToggleLabel>
+                    <span />
+                </FieldRow>
+            )}
+
+            {!TEMPLATES_ONLY && draft.model_discovery_enabled && (
+                <FieldRow>
+                    <div>
+                        <FieldLabel>Discovered models</FieldLabel>
+                        <FieldHint>
+                            Cached vendor model list for the selected provider
+                            (KV Store collection <code>logserv_ai_models</code>).
+                            Refresh uses the credential stored under Provider
+                            Credentials.
+                        </FieldHint>
+                    </div>
+                    <FieldStatus $tone={discoveryStatus.tone}>
+                        {discoveryStatus.text}
+                    </FieldStatus>
+                    <Button
+                        type="button"
+                        onClick={handleRefreshModels}
+                        disabled={busy || refreshBusy}
+                    >
+                        {refreshBusy ? 'Refreshing…' : 'Refresh model list'}
+                    </Button>
+                </FieldRow>
+            )}
+
             <FieldRow>
                 <div>
                     <FieldLabel>Privacy Tier</FieldLabel>
@@ -1103,6 +1363,77 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                     placeholder="(leave blank to use default)"
                     disabled={busy}
                 />
+                <span />
+            </FieldRow>
+
+            <FieldRow>
+                <div>
+                    <FieldLabel htmlFor="ai-mcp-timeout">
+                        MCP request timeout (seconds)
+                    </FieldLabel>
+                    <FieldHint>
+                        How long the AI Assistant waits for each MCP request
+                        (tool dispatch, saved-search run, health probe) before
+                        the browser aborts it. If a legitimately-slow prompt
+                        shows <code>signal is aborted without reason</code>,
+                        raise this. This is the browser-side abort; the MCP
+                        server has its own separate REST timeout, so the
+                        effective ceiling is the lower of the two. Range{' '}
+                        <code>5</code>–<code>600</code>. Default <code>60</code>.
+                    </FieldHint>
+                </div>
+                <FieldInput
+                    id="ai-mcp-timeout"
+                    type="number"
+                    min={5}
+                    max={600}
+                    step={1}
+                    value={String(draft.mcp_timeout_seconds)}
+                    onChange={(e) => {
+                        const n = Number(e.target.value);
+                        setDraft((d) => ({
+                            ...d,
+                            mcp_timeout_seconds:
+                                Number.isFinite(n) && n >= 5 && n <= 600
+                                    ? Math.floor(n)
+                                    : DEFAULT_AI_CONFIG.mcp_timeout_seconds,
+                        }));
+                    }}
+                    disabled={busy}
+                />
+                <span />
+            </FieldRow>
+
+            <FieldRow>
+                <div>
+                    <FieldLabel>MCP server timeout (read-only)</FieldLabel>
+                    <FieldHint>
+                        The Splunk MCP Server app's own request timeout
+                        (<code>mcp.conf [server] timeout</code> in App 7931) —
+                        shown here for reference. The effective ceiling for a
+                        request is the <em>lower</em> of this and the client
+                        timeout above. To change it, edit that app's{' '}
+                        <code>mcp.conf</code> and restart Splunk (it's a
+                        different app, and its server caches the value in a
+                        persistent process — so it can't be changed live from
+                        here).
+                    </FieldHint>
+                </div>
+                <FieldStatus
+                    $tone={
+                        serverTimeout === 'loading'
+                            ? 'absent'
+                            : serverTimeout === null
+                            ? 'absent'
+                            : 'good'
+                    }
+                >
+                    {serverTimeout === 'loading'
+                        ? 'Checking…'
+                        : serverTimeout === null
+                        ? 'Not detected — the Splunk MCP Server app may not be installed or reachable.'
+                        : `Currently ${serverTimeout}s`}
+                </FieldStatus>
                 <span />
             </FieldRow>
 
@@ -1702,6 +2033,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
             <DashboardLayout
                 title="Application Settings"
                 subtitle="Loading…"
+                noCloudFilter
             >
                 <div />
             </DashboardLayout>
@@ -1713,6 +2045,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
             <DashboardLayout
                 title="Application Settings"
                 subtitle="Could not determine the current user's role"
+                noCloudFilter
             >
                 <ForbiddenBlock>
                     <strong>Error:</strong> {error.message}
@@ -1726,6 +2059,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
             <DashboardLayout
                 title="Application Settings"
                 subtitle="Access restricted"
+                noCloudFilter
             >
                 <ForbiddenBlock>
                     <strong>403 — Admin access required.</strong>
@@ -1752,6 +2086,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
         <DashboardLayout
             title="Application Settings"
             subtitle="Admin configuration for the AI Assistant feature and the dashboard KV-Store data layer."
+            noCloudFilter
         >
             {globalNotice && <StatusBanner $tone="success">{globalNotice}</StatusBanner>}
 
@@ -1818,7 +2153,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                         <SectionGrid>
                             <FramedPanel
                                 title="General"
-                                subtitle="Org-wide AI Assistant defaults: enable/disable, active provider, default model, privacy tier, MCP gate, server URL, and per-user rate limit. These apply to every user of this app."
+                                subtitle={<PanelSub>Org-wide AI Assistant defaults: enable/disable, active provider, default model, privacy tier, MCP gate, server URL, and per-user rate limit. These apply to every user of this app.</PanelSub>}
                             >
                                 <GeneralPanel
                                     onSaved={() => setSavedTick((n) => n + 1)}
@@ -1835,13 +2170,24 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                                 <FramedPanel
                                     key={section.sectionTitle}
                                     title={section.sectionTitle}
-                                    subtitle={section.subtitle}
+                                    subtitle={<PanelSub>{section.subtitle}</PanelSub>}
                                 >
                                     {section.fields.map((f) => (
                                         <FieldEditor
                                             key={`${f.realm}::${f.name}`}
                                             field={f}
-                                            onSaved={() => setSavedTick((n) => n + 1)}
+                                            onSaved={() => {
+                                                setSavedTick((n) => n + 1);
+                                                // Discovery trigger 2 of 3: a fresh
+                                                // credential is the best moment to
+                                                // fetch that vendor's model list
+                                                // (fire-and-forget; governed by the
+                                                // model_discovery_enabled setting).
+                                                triggerDiscoveryAfterCredentialSave(
+                                                    f.realm,
+                                                    username ?? '',
+                                                );
+                                            }}
                                         />
                                     ))}
                                 </FramedPanel>
@@ -1853,7 +2199,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                         <SectionGrid>
                             <FramedPanel
                                 title="Splunk MCP Server"
-                                subtitle="Bearer token for the Splunk MCP Server. The server URL itself lives under General. Phase G replaces the manual token paste with auto-mint via OAuth/RSA on the Data TA."
+                                subtitle={<PanelSub>Bearer token for the Splunk MCP Server. The server URL itself lives under General. Phase G replaces the manual token paste with auto-mint via OAuth/RSA on the Data TA.</PanelSub>}
                             >
                                 {MCP_FIELDS.map((f) => (
                                     <FieldEditor
@@ -1865,7 +2211,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                             </FramedPanel>
                             <FramedPanel
                                 title="Audit Log Forwarder"
-                                subtitle="HEC token for tamper-evident audit forwarding to a separate Splunk / SIEM. Configure the destination URL and on/off toggle under General. Token is sent on every audit-event POST as `Authorization: Splunk <token>`."
+                                subtitle={<PanelSub>{"HEC token for tamper-evident audit forwarding to a separate Splunk / SIEM. Configure the destination URL and on/off toggle under General. Token is sent on every audit-event POST as `Authorization: Splunk <token>`."}</PanelSub>}
                             >
                                 {AUDIT_FORWARDER_FIELDS.map((f) => (
                                     <FieldEditor
@@ -1882,7 +2228,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                         <SectionGrid>
                             <FramedPanel
                                 title="AI Assistant Audit Log"
-                                subtitle="Read-only browser of every audit event recorded by the AI Assistant — local-only canned prompts, vendor calls, security blocks, and privacy-tier elevations. Filter by time range, category, and user. Click + to expand a row's full event JSON. The disclaimer below describes the tamper-resistance threat model."
+                                subtitle={<PanelSub>Read-only browser of every audit event recorded by the AI Assistant — local-only canned prompts, vendor calls, security blocks, and privacy-tier elevations. Filter by time range, category, and user. Click + to expand a row's full event JSON. The disclaimer below describes the tamper-resistance threat model.</PanelSub>}
                             >
                                 <AuditLogViewer />
                             </FramedPanel>
@@ -1894,7 +2240,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                     <SectionGrid>
                         <FramedPanel
                             title="Dashboard Data"
-                            subtitle="Aggregation, backfill, retention, and clear for the time-bucketed KV-Store rollups that power every dashboard (including the Environment Topology view). Hourly scheduled searches aggregate raw events into the logserv_*_rollup collections; the dashboards read from KV Store at render time. After first install, run the 30-day backfill here to populate history — it dispatches each rollup's component searches as top-level jobs so they complete correctly at customer scale (the bundled *_backfill saved searches truncate at high event volumes)."
+                            subtitle={<PanelSub>Aggregation, backfill, retention, and clear for the time-bucketed KV-Store rollups that power every dashboard (including the Environment Topology view). Hourly scheduled searches aggregate raw events into the logserv_*_rollup collections; the dashboards read from KV Store at render time. After first install, run the 30-day backfill here to populate history — it dispatches each rollup's component searches as top-level jobs so they complete correctly at customer scale (the bundled *_backfill saved searches truncate at high event volumes).</PanelSub>}
                         >
                             <RollupBackfillPanel />
                         </FramedPanel>

@@ -71,7 +71,7 @@ const Body = styled.div`
         background: ${logservTheme.colors.tableHeaderBackground};
         padding: 1px 6px;
         border-radius: 2px;
-        font-family: monospace;
+        font-family: ${logservTheme.font.mono};
         font-size: 0.92em;
     }
 `;

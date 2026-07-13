@@ -82,7 +82,10 @@ export interface MCPHttpClientOptions {
     endpointUrl?: string;
     /** Inject `fetch` for tests. */
     fetchImpl?: typeof fetch;
-    /** Request timeout in ms. Defaults to 30s. */
+    /** Request timeout in ms. When omitted, the timeout is read per-call
+     *  from the admin-managed `mcp_timeout_seconds` setting (default 60s,
+     *  clamped 5–600s) — exactly like `mcp_server_url`. Set this only in
+     *  tests / sidecar mode to pin a fixed timeout. */
     timeoutMs?: number;
 }
 
@@ -110,6 +113,44 @@ const MCP_PROVIDER = 'mcp';
 const MCP_FIELD_BEARER_TOKEN = 'bearer_token';
 
 /**
+ * Read the Splunk MCP Server's OWN request timeout (App 7931's
+ * `mcp.conf [server] timeout`, in seconds) via a cross-app REST read.
+ *
+ * READ-ONLY and best-effort: it powers the read-only display in the AI
+ * Assistant Settings page so an admin can see the server-side timeout
+ * alongside the client-side `mcp_timeout_seconds` field. We deliberately
+ * do NOT offer to write it — a cross-app conf write needs
+ * `admin_all_objects` (fails for sc_subadmin on locked-down Splunk Cloud
+ * Victoria, the population we moved our own settings to KV Store for),
+ * and because the MCP handlers are persistent processes (`scripttype =
+ * persist`) that cache settings in a module singleton, a write wouldn't
+ * take effect until a Splunkd restart anyway.
+ *
+ * Returns the timeout in seconds, or null when App 7931 isn't installed /
+ * reachable / the stanza is unreadable (the caller renders a
+ * "not detected" state).
+ */
+export const readMcpServerTimeoutSeconds = async (): Promise<number | null> => {
+    try {
+        const resp = await fetch(
+            '/en-US/splunkd/__raw/servicesNS/nobody/Splunk_MCP_Server' +
+                '/configs/conf-mcp/server?output_mode=json',
+            {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            },
+        );
+        if (!resp.ok) return null;
+        const data = await resp.json();
+        const raw = data?.entry?.[0]?.content?.timeout;
+        const n = Number(raw);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    } catch {
+        return null;
+    }
+};
+
+/**
  * MCPClient — Phase B implementation.
  *
  * Implements just enough of the MCP protocol to:
@@ -128,13 +169,36 @@ export class MCPClient {
      *  Used by tests and the future self-hosted-sidecar mode. */
     private readonly endpointUrlOverride: string | null;
     private readonly fetchImpl: typeof fetch;
-    private readonly timeoutMs: number;
+    /** Explicit constructor timeout override in ms; null = resolve from
+     *  the admin-managed `mcp_timeout_seconds` setting per-call. */
+    private readonly timeoutMsOverride: number | null;
     private requestIdCounter = 0;
 
     constructor(opts: MCPHttpClientOptions = {}) {
         this.endpointUrlOverride = opts.endpointUrl ?? null;
         this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
-        this.timeoutMs = opts.timeoutMs ?? 30000;
+        this.timeoutMsOverride = opts.timeoutMs ?? null;
+    }
+
+    /** Resolve the effective request timeout in ms: constructor override →
+     *  admin Settings (`mcp_timeout_seconds`, clamped 5–600s) → 60s
+     *  default. Mirrors `resolveEndpointUrl` — config is read per-call
+     *  (cached in-process by `readAIConfig`, so no extra round-trip on top
+     *  of the endpoint-URL read that already happens in the same request).
+     *  A read failure falls through to the 60s default. */
+    private async resolveTimeoutMs(): Promise<number> {
+        if (this.timeoutMsOverride !== null) return this.timeoutMsOverride;
+        try {
+            const cfg = await readAIConfig();
+            const secs = cfg.mcp_timeout_seconds;
+            if (Number.isFinite(secs) && secs >= 5 && secs <= 600) {
+                return Math.floor(secs) * 1000;
+            }
+        } catch {
+            // Read failure → fall through to the default. Avoids surfacing
+            // a transient REST hiccup as a fatal MCP error.
+        }
+        return 60000;
     }
 
     /** Resolve the effective endpoint URL: constructor override → admin
@@ -330,10 +394,11 @@ export class MCPClient {
             };
             if (token) headers.Authorization = `Bearer ${token}`;
 
+            const timeoutMs = await this.resolveTimeoutMs();
             const controller = new AbortController();
             const timeoutHandle = setTimeout(
                 () => controller.abort(),
-                this.timeoutMs,
+                timeoutMs,
             );
             try {
                 return await this.fetchImpl(url, {

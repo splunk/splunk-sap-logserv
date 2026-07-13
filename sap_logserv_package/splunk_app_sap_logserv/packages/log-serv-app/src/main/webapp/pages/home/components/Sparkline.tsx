@@ -193,11 +193,16 @@ export const Sparkline: React.FC<SparklineProps> = ({
                     onMouseMove={handleMouseMove}
                     onMouseLeave={handleMouseLeave}
                 >
-                    {fill && areaD && <path d={areaD} fill={color} fillOpacity={0.18} />}
+                    {/* Phase 0 Magnetic re-theme (build 246): color props moved
+                      * from SVG ATTRIBUTES to inline `style` — the incoming
+                      * `color` is typically a logservTheme var(--lsv-*)
+                      * reference now, which resolves in CSS positions (inline
+                      * style) but NOT in attribute positions. */}
+                    {fill && areaD && <path d={areaD} style={{ fill: color, fillOpacity: 0.18 }} />}
                     <path
                         d={d}
                         fill="none"
-                        stroke={color}
+                        style={{ stroke: color }}
                         strokeWidth={1.5}
                         strokeLinejoin="round"
                         vectorEffect="non-scaling-stroke"
@@ -209,7 +214,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
                                 y1={0}
                                 x2={hoverPoint.x}
                                 y2={height}
-                                stroke={color}
+                                style={{ stroke: color }}
                                 strokeWidth={1}
                                 strokeDasharray="2,2"
                                 opacity={0.6}
@@ -220,8 +225,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
                                 cx={hoverPoint.x}
                                 cy={hoverPoint.y}
                                 r={2.5}
-                                fill={color}
-                                stroke={logservTheme.colors.panelBackground}
+                                style={{ fill: color, stroke: logservTheme.colors.panelBackground }}
                                 strokeWidth={1}
                                 vectorEffect="non-scaling-stroke"
                                 pointerEvents="none"

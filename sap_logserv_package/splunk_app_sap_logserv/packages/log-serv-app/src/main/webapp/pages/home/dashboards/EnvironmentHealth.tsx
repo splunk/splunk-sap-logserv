@@ -7,6 +7,8 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import {
     buildDashboardUrl,
@@ -82,7 +84,7 @@ const BEACON = `| inputlookup logserv_beaconing_rollup | addinfo | where day_ts>
 const trendChart = (cat: string): string =>
     `${TREND} | search trend_cat="${cat}" | eval _time=bucket_ts | timechart span=1d sum(count) by trend_src | fillnull value=0`;
 
-const Q = {
+const Q_BASE = {
     // KPIs (rollup). HANA Failed Ops + Firewall Drops derive from the toterr
     // metric by sourcetype (their conditions ARE toterr's hana/linux subsets).
     totalErrors: `${TOTERR} | stats sum(count) as count`,
@@ -129,6 +131,93 @@ const Q = {
     topHosts: `${TOPHOST} | chart sum(count) over host by error_cat | fillnull value=0 | addtotals | sort -Total`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 085).
+ *
+ * The rollup reads above answer wide 7d/30d/90d ranges fast but are wrong on a
+ * sub-hour window (the hourly `bucket_ts` grain reads empty / ~4x-overcounts —
+ * see utils/hybridRouting.ts). `useHybridSearch` / `useRoutedQuery` route short
+ * ranges to these RAW equivalents instead. Each raw query is the pre-refactor
+ * scan (byte-verified equal to its rollup at wide windows) and MUST return the
+ * same output columns as its cached counterpart. Not hybridised (left cached):
+ * `beaconing` (daily gap-variance detection — no meaningful sub-hour answer, and
+ * its raw is a heavy 37.6M-event streamstats) and the `span=1d` sparklines
+ * (cosmetic — a daily sparkline is meaningless on a sub-hour window either way).
+ * `criticalEvents` + the pipeline tstats panels are already correct at any range.
+ * ------------------------------------------------------------------------- */
+
+// Shared raw error-classification base for the 6 error-trend charts — mirrors
+// the logserv_severity_aggregate `trend` arm. trendChartRaw() appends the
+// per-category filter + daily timechart (matching trendChart() above).
+const TREND_RAW_BASE =
+    '`sap_logserv_idx_macro` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR ' +
+    '(sourcetype="sap:abap:icm" icm_is_error="true") OR (sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="") OR ' +
+    '(sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:hana:tracelogs" (hana_trace_severity="error" OR hana_trace_severity="fatal")) OR ' +
+    '(sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="linux_secure" IN_DROP) OR ' +
+    '(sourcetype="sap:webdispatcher:access" status>=400) OR (sourcetype="sap:saprouter" is_error="true") OR ' +
+    '(sourcetype="squid:access" action="denied") OR (sourcetype="XmlWinEventLog" (severity="high" OR severity="medium")) OR ' +
+    '(sourcetype="sap:scc:http_access" status>=400)) ' +
+    '| eval trend_cat=case(sourcetype IN ("sap:abap:dispatcher","sap:abap:icm","sap:abap:gateway"), "ABAP", ' +
+    'sourcetype IN ("sap:hana:audit","sap:hana:tracelogs"), "HANA", sourcetype IN ("sap:sapstartsrv","linux_secure"), "Security", ' +
+    'sourcetype IN ("sap:webdispatcher:access","sap:saprouter","squid:access"), "Web-Network", sourcetype="XmlWinEventLog", "OS-Infra", ' +
+    'sourcetype="sap:scc:http_access", "Cloud-Connector") ' +
+    '| eval trend_src=case(sourcetype="sap:abap:dispatcher", "Dispatcher", sourcetype="sap:abap:icm", "ICM", ' +
+    'sourcetype="sap:abap:gateway", "Gateway", sourcetype="sap:hana:audit", "Audit Failures", sourcetype="sap:hana:tracelogs", "Trace Errors", ' +
+    'sourcetype="sap:sapstartsrv", "Auth Failures", sourcetype="linux_secure", "Firewall Drops", sourcetype="sap:webdispatcher:access", "WebDisp 4xx/5xx", ' +
+    'sourcetype="sap:saprouter", "Router Errors", sourcetype="squid:access", "Proxy Denied", sourcetype="XmlWinEventLog" AND severity="high", "Windows High", ' +
+    'sourcetype="XmlWinEventLog" AND severity="medium", "Windows Medium", sourcetype="sap:scc:http_access" AND status>=500, "5xx Server", ' +
+    'sourcetype="sap:scc:http_access" AND status>=400, "4xx Client")';
+const trendChartRaw = (cat: string): string =>
+    `${TREND_RAW_BASE} | search trend_cat="${cat}" | timechart span=1d count by trend_src | fillnull value=0`;
+
+const QRAW_BASE = {
+    totalErrors:
+        '`sap_logserv_idx_macro` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR ' +
+        '(sourcetype="sap:abap:icm" icm_is_error="true") OR (sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="") OR ' +
+        '(sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:hana:tracelogs" hana_trace_severity IN ("error", "fatal")) OR ' +
+        '(sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="sap:scc:audit" scc_audit_type="ACCESS_DENIED") OR ' +
+        '(sourcetype="linux_secure" IN_DROP) OR (sourcetype="XmlWinEventLog" severity IN ("critical","error","high")) OR ' +
+        '(sourcetype="sap:webdispatcher:access" status>=400) OR (sourcetype="squid:access" action="denied")) | stats count',
+    hanaFailures: '`sap_logserv_idx_macro` sourcetype="sap:hana:audit" status!="SUCCESSFUL" | stats count',
+    authFailures:
+        '`sap_logserv_idx_macro` ((sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR ' +
+        '(sourcetype="sap:hana:audit" audit_action="CONNECT" status!="SUCCESSFUL")) | stats count',
+    firewallDrops: '`sap_logserv_idx_macro` sourcetype="linux_secure" IN_DROP | stats count',
+    webErrorRate:
+        '`sap_logserv_idx_macro` sourcetype="sap:webdispatcher:access" | eval is_err=if(tonumber(status)>=400,1,0) ' +
+        '| stats sum(is_err) as errors, count as total | eval pct=if(total>0,round(errors/total*100,1),0) | table pct',
+
+    errAbap: trendChartRaw('ABAP'),
+    errHana: trendChartRaw('HANA'),
+    errSecurity: trendChartRaw('Security'),
+    errWebnet: trendChartRaw('Web-Network'),
+    errOsinfra: trendChartRaw('OS-Infra'),
+    errScc: trendChartRaw('Cloud-Connector'),
+
+    // rename the timechart output to the cached read's display column name.
+    webResponseTime:
+        '`sap_logserv_idx_macro` sourcetype="sap:webdispatcher:access" | eval response_time_ms=tonumber(total_us)/1000 ' +
+        '| timechart span=1d avg(response_time_ms) as "Avg Response Time (ms)"',
+    icmStatus:
+        '`sap_logserv_idx_macro` sourcetype="sap:abap:icm" icm_status_code=* ' +
+        '| eval status_cat=case(icm_status_code>=200 AND icm_status_code<300, "2xx", icm_status_code>=300 AND icm_status_code<400, "3xx", ' +
+        'icm_status_code>=400 AND icm_status_code<500, "4xx", icm_status_code>=500, "5xx", 1=1, "Other") ' +
+        '| timechart span=1d count by status_cat | fillnull value=0',
+    // reconstructed from the logserv_severity_aggregate `tophost` arm.
+    topHosts:
+        '`sap_logserv_idx_macro` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR ' +
+        '(sourcetype="sap:abap:icm" icm_is_error="true") OR (sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="") OR ' +
+        '(sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:hana:tracelogs" (hana_trace_severity="error" OR hana_trace_severity="fatal")) OR ' +
+        '(sourcetype="sap:scc:http_access" is_error="true") OR (sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR ' +
+        '(sourcetype="sap:saprouter" is_error="true") OR (sourcetype="squid:access" action="denied") OR (sourcetype="sap:webdispatcher:access") OR ' +
+        '(sourcetype="XmlWinEventLog") OR (sourcetype="linux_secure")) ' +
+        '| eval is_err=case(sourcetype="sap:webdispatcher:access", if(tonumber(status)>=400, 1, 0), sourcetype="XmlWinEventLog", if(severity IN ("high", "medium"), 1, 0), ' +
+        'sourcetype="linux_secure", if(match(_raw, "IN_DROP"), 1, 0), 1=1, 1) | where is_err=1 ' +
+        '| eval error_cat=case(sourcetype IN ("sap:abap:dispatcher","sap:abap:icm","sap:abap:gateway"), "ABAP", sourcetype IN ("sap:hana:audit","sap:hana:tracelogs"), "HANA", ' +
+        'sourcetype IN ("sap:sapstartsrv","sap:saprouter"), "Services", sourcetype IN ("linux_secure"), "Firewall", 1=1, "Other") ' +
+        '| chart count over host by error_cat | fillnull value=0 | addtotals | sort -Total',
+};
+
 /** SPL dispatched when the user clicks the "Total Errors" KPI. Cross-cutting
  *  view of errors across all 11 sourcetypes the KPI counts, broken down by
  *  Category + sourcetype with affected-host count + last-seen timestamp.
@@ -161,6 +250,13 @@ const useFirstRowField = (q: string, f: string): FirstRow => {
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
+/** useFirstRowField over a hybrid cached/raw pair (session 085) — routes
+ *  sub-hour ranges to the raw query, wide ranges to the rollup. */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
 
 const formatPercent = (raw: unknown): string => {
     if (raw === null || typeof raw === 'undefined') return '—';
@@ -188,16 +284,31 @@ const TOP_HOSTS_COLS: ColumnDef[] = [
 ];
 
 const EnvironmentHealth: React.FC = () => {
-    const totalErrors = useFirstRowField(Q.totalErrors, 'count');
-    const hanaFailures = useFirstRowField(Q.hanaFailures, 'count');
-    const authFailures = useFirstRowField(Q.authFailures, 'count');
-    const firewallDrops = useFirstRowField(Q.firewallDrops, 'count');
-    const webErrorRate = useFirstRowField(Q.webErrorRate, 'pct');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 085); same cloud-provider
+    // mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const totalErrors = useFirstRowFieldHybrid(Q.totalErrors, QRAW.totalErrors, 'count');
+    const hanaFailures = useFirstRowFieldHybrid(Q.hanaFailures, QRAW.hanaFailures, 'count');
+    const authFailures = useFirstRowFieldHybrid(Q.authFailures, QRAW.authFailures, 'count');
+    const firewallDrops = useFirstRowFieldHybrid(Q.firewallDrops, QRAW.firewallDrops, 'count');
+    const webErrorRate = useFirstRowFieldHybrid(Q.webErrorRate, QRAW.webErrorRate, 'pct');
     const beaconing = useFirstRowField(Q.beaconing, 'total');
     const pipelineEvents = useFirstRowField(Q.pipelineEventsPerDay, 'total');
 
+    // Chart panels take a query STRING, so route once here (sub-hour -> raw).
+    const qErrAbap = useRoutedQuery(Q.errAbap, QRAW.errAbap);
+    const qErrHana = useRoutedQuery(Q.errHana, QRAW.errHana);
+    const qErrSecurity = useRoutedQuery(Q.errSecurity, QRAW.errSecurity);
+    const qErrWebnet = useRoutedQuery(Q.errWebnet, QRAW.errWebnet);
+    const qErrOsinfra = useRoutedQuery(Q.errOsinfra, QRAW.errOsinfra);
+    const qErrScc = useRoutedQuery(Q.errScc, QRAW.errScc);
+    const qWebResponseTime = useRoutedQuery(Q.webResponseTime, QRAW.webResponseTime);
+    const qIcmStatus = useRoutedQuery(Q.icmStatus, QRAW.icmStatus);
+
     const criticalEvents = useSearch({ query: Q.criticalEvents });
-    const topHosts = useSearch({ query: Q.topHosts });
+    const topHosts = useHybridSearch({ cached: Q.topHosts, raw: QRAW.topHosts });
 
     const errorsTone = (Number(totalErrors.value ?? 0) > 100) ? 'critical' : (Number(totalErrors.value ?? 0) > 0) ? 'warning' : 'neutral';
     const fwTone = (Number(firewallDrops.value ?? 0) > 1000) ? 'critical' : (Number(firewallDrops.value ?? 0) > 0) ? 'warning' : 'neutral';
@@ -281,17 +392,17 @@ const EnvironmentHealth: React.FC = () => {
                 <FramedPanel title="ABAP Error Trend" subtitle="Dispatcher / ICM / Gateway errors"
                     onClick={goTo('abap-security')}
                     clickTitle="Open ABAP Security dashboard (new tab)">
-                    <TimeSeriesChart query={Q.errAbap} height={240} palette="errors" />
+                    <TimeSeriesChart query={qErrAbap} height={240} palette="errors" />
                 </FramedPanel>
                 <FramedPanel title="HANA Error Trend" subtitle="Audit failures + trace errors"
                     onClick={goTo('hana-audit')}
                     clickTitle="Open HANA Audit dashboard (new tab)">
-                    <TimeSeriesChart query={Q.errHana} height={240} palette="errors-2" />
+                    <TimeSeriesChart query={qErrHana} height={240} palette="errors-2" />
                 </FramedPanel>
                 <FramedPanel title="Security Error Trend" subtitle="Auth failures + firewall drops"
                     onClick={goTo('sap-services')}
                     clickTitle="Open SAP Services dashboard (new tab)">
-                    <TimeSeriesChart query={Q.errSecurity} height={240} palette="errors-3" />
+                    <TimeSeriesChart query={qErrSecurity} height={240} palette="errors-3" />
                 </FramedPanel>
             </PanelGrid3>
 
@@ -299,17 +410,17 @@ const EnvironmentHealth: React.FC = () => {
                 <FramedPanel title="Web/Network Error Trend" subtitle="Web Disp 4xx/5xx + Router errors + Proxy denied"
                     onClick={goTo('web-dispatcher')}
                     clickTitle="Open Web Dispatcher dashboard (new tab)">
-                    <TimeSeriesChart query={Q.errWebnet} height={240} palette="errors" />
+                    <TimeSeriesChart query={qErrWebnet} height={240} palette="errors" />
                 </FramedPanel>
                 <FramedPanel title="OS/Infra Error Trend" subtitle="Windows high/medium severity events"
                     onClick={goTo('windows')}
                     clickTitle="Open Windows dashboard (new tab)">
-                    <TimeSeriesChart query={Q.errOsinfra} height={240} palette="errors-2" />
+                    <TimeSeriesChart query={qErrOsinfra} height={240} palette="errors-2" />
                 </FramedPanel>
                 <FramedPanel title="Cloud Connector Error Trend" subtitle="SCC HTTP 4xx/5xx"
                     onClick={goTo('cloud-connector')}
                     clickTitle="Open Cloud Connector dashboard (new tab)">
-                    <TimeSeriesChart query={Q.errScc} height={240} palette="errors-3" />
+                    <TimeSeriesChart query={qErrScc} height={240} palette="errors-3" />
                 </FramedPanel>
             </PanelGrid3>
 
@@ -317,12 +428,12 @@ const EnvironmentHealth: React.FC = () => {
                 <FramedPanel title="Web Dispatcher Response Time" subtitle="Daily average response time (ms)"
                     onClick={goTo('web-dispatcher')}
                     clickTitle="Open Web Dispatcher dashboard (new tab)">
-                    <TimeSeriesChart query={Q.webResponseTime} height={240} palette="volume" />
+                    <TimeSeriesChart query={qWebResponseTime} height={240} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="ICM Status Codes" subtitle="ABAP ICM status-class breakdown over time"
                     onClick={goTo('abap-security')}
                     clickTitle="Open ABAP Security dashboard (new tab)">
-                    <TimeSeriesChart query={Q.icmStatus} height={240} palette="status" />
+                    <TimeSeriesChart query={qIcmStatus} height={240} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 

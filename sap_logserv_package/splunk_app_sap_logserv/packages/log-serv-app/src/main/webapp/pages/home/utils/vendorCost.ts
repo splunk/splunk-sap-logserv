@@ -6,7 +6,8 @@
  * actual billing is the vendor dashboard's truth.
  *
  * Numbers are USD-per-million-tokens, taken from public list pricing
- * pages at build-82 ship time (May 2026). Update as vendors revise.
+ * pages; refreshed session 079 / build 275 (July 2026). Update as
+ * vendors revise.
  *
  * Cache pricing (Anthropic only):
  *   - `cachedInput` (cache HIT) — typically ~10% of base input rate
@@ -17,6 +18,15 @@
  * The `unknown` model entry is the safe fallback: zero cost when the
  * model id isn't in the table. Better to under-report than over-report
  * a fake cost the customer might budget against.
+ *
+ * DYNAMIC MODEL DISCOVERY (session 079): the model picker can now show
+ * vendor-DISCOVERED ids beyond this table. That deliberately does NOT
+ * change this module — lookup stays exact-id keyed with NO prefix
+ * matching or price guessing. A discovered model with no entry here
+ * gets a $0 estimate in the token-usage audit event (honest "cost
+ * unknown"), never a prefix-guessed wrong number. Admins standardizing
+ * on a discovered model can add its entry here (or ask us to) in the
+ * next release.
  */
 
 export interface ModelPricing {
@@ -37,21 +47,33 @@ export interface ModelPricing {
  * rather than a stale price.
  */
 export const MODEL_PRICING: Readonly<Record<string, ModelPricing>> = Object.freeze({
-    // Anthropic — Claude 4.x family. List pricing as of May 2026.
-    'claude-opus-4-7': { input: 15.0, output: 75.0, cachedInput: 1.5, cacheCreation: 18.75 },
+    // Anthropic — Claude 4.x/5 families. List pricing refreshed session
+    // 079 (July 2026): Opus-tier is $5/$25 (the earlier $15/$75 entry
+    // for opus-4-7 was stale), Sonnet-tier $3/$15, Haiku 4.5 $1/$5.
+    // Both the dated and undated Haiku ids are listed since discovery
+    // can surface either form.
+    'claude-opus-4-8': { input: 5.0, output: 25.0, cachedInput: 0.5, cacheCreation: 6.25 },
+    'claude-opus-4-7': { input: 5.0, output: 25.0, cachedInput: 0.5, cacheCreation: 6.25 },
+    'claude-opus-4-6': { input: 5.0, output: 25.0, cachedInput: 0.5, cacheCreation: 6.25 },
+    'claude-sonnet-5': { input: 3.0, output: 15.0, cachedInput: 0.3, cacheCreation: 3.75 },
     'claude-sonnet-4-6': { input: 3.0, output: 15.0, cachedInput: 0.3, cacheCreation: 3.75 },
-    'claude-haiku-4-5-20251001': { input: 0.8, output: 4.0, cachedInput: 0.08, cacheCreation: 1.0 },
+    'claude-haiku-4-5': { input: 1.0, output: 5.0, cachedInput: 0.1, cacheCreation: 1.25 },
+    'claude-haiku-4-5-20251001': { input: 1.0, output: 5.0, cachedInput: 0.1, cacheCreation: 1.25 },
 
     // OpenAI — list pricing per https://openai.com/api/pricing/ as of
-    // build 86 (May 2026). Cache fields omitted; OpenAI's cached_input
-    // pricing arrives in a different field shape (prompt_tokens_details)
-    // not yet captured by OpenAIProvider. When that's added, populate
-    // cachedInput here at the published cached-input rate (typically
-    // ~50% of base for gpt-4o, lower for o-series).
+    // session 079 (July 2026). Cache fields omitted; OpenAI's
+    // cached_input pricing arrives in a different field shape
+    // (prompt_tokens_details) not yet captured by OpenAIProvider. When
+    // that's added, populate cachedInput here at the published
+    // cached-input rate (typically ~50% of base for gpt-4o, lower for
+    // o-series).
+    'gpt-5.1': { input: 1.25, output: 10.0 },
+    'gpt-5': { input: 1.25, output: 10.0 },
+    'gpt-4o': { input: 2.5, output: 10.0 },
     'gpt-4o-2024-11-20': { input: 2.5, output: 10.0 },
     'gpt-4o-mini': { input: 0.15, output: 0.60 },
     o1: { input: 15.0, output: 60.0 },
-    o3: { input: 15.0, output: 60.0 },
+    o3: { input: 2.0, output: 8.0 }, // June-2025 price cut (was 15/60)
 
     // AWS Bedrock — Anthropic Claude on Bedrock. Bedrock typically
     // matches Anthropic direct pricing for Claude. Cache fields omitted
@@ -60,9 +82,11 @@ export const MODEL_PRICING: Readonly<Record<string, ModelPricing>> = Object.free
     // those flow through to the audit event and could be priced — left
     // as future work since the bedrock-runtime pricing for cache tiers
     // varies by region and isn't published as a single SKU).
-    'anthropic.claude-opus-4-7-v1:0': { input: 15.0, output: 75.0 },
+    'anthropic.claude-opus-4-8-v1:0': { input: 5.0, output: 25.0 },
+    'anthropic.claude-opus-4-7-v1:0': { input: 5.0, output: 25.0 },
+    'anthropic.claude-sonnet-5-v1:0': { input: 3.0, output: 15.0 },
     'anthropic.claude-sonnet-4-6-v1:0': { input: 3.0, output: 15.0 },
-    'anthropic.claude-haiku-4-5-v1:0': { input: 0.80, output: 4.0 },
+    'anthropic.claude-haiku-4-5-v1:0': { input: 1.0, output: 5.0 },
 
     // Azure OpenAI — model id is the admin-defined deployment name (e.g.
     // "gpt-4o-prod"), so static pricing entries can't be predeclared.

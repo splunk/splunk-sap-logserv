@@ -36,12 +36,22 @@ iframe {
   }
 }
 
+/* Section-header / callout icons + the rotating circle-box motif.
+ * 2026-07-07 brand refresh: orange #ff9100 -> the LogServ blue-gradient
+ * family (app icon gradient #2276CE -> #0F55A3). Inline SVG icons take a
+ * single currentColor, so the LIGHT scheme uses the gradient midpoint
+ * (#1966b9) and the dark ("slate") scheme the brighter top stop
+ * (#2276ce) for legibility on the dark background. */
 .taiconcolor {
-  color: #ff9100;
+  color: #1966b9;
 }
 .cboxmove {
   animation: material-circle-box 12000ms infinite;
-  color: #ff9100;
+  color: #1966b9;
+}
+[data-md-color-scheme="slate"] .taiconcolor,
+[data-md-color-scheme="slate"] .cboxmove {
+  color: #2276ce;
 }
 
 /* Create an indented-note subclass that matches the default note styling */

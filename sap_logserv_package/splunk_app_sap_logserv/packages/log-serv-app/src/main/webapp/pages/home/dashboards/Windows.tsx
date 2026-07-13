@@ -7,6 +7,8 @@ import TimeSeriesChart from '../components/TimeSeriesChart';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -54,33 +56,67 @@ const ST = 'sourcetype="XmlWinEventLog"';
  * NOTE: raw first(signature) is INPUT-ORDER (non-deterministic across bucket merges);
  * the rollup's latest(non-null signature) is the deterministic true-newest (an
  * improvement, stable across refreshes). Counts/Hosts/Last-Seen are byte-exact.
- * kpiCritical `severity IN ("critical","error")` = 0 on demo data (severity vocab is
- * high/informational/medium); replicated EXACTLY — correct on real Windows data.
+ * severity is CIM vocab (Splunk_TA_windows maps the Windows XML <Level>: 1→critical,
+ * 2→high, 3→medium, 4→informational). The Critical KPI counts `severity IN
+ * ("critical","high")` — i.e. Windows Critical (Level 1) + Error (Level 2) events.
+ * PowerShell events arrive under source `XmlWinEventLog:Microsoft-Windows-PowerShell/
+ * Operational` (demo) or `WinEventLog:Powershell` (real S3), so the powershell read
+ * matches both via `(?i)powershell` rather than an exact source string.
  */
 const ROLL = 'logserv_windows_rollup';
 const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
 const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
 const SVC = `| inputlookup ${ROLL} where metric="svc" ${RANGE}`;
 
-const Q = {
+const Q_BASE = {
     kpiTotal: `${MAIN} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
-    kpiCritical: `${MAIN} | search severity IN ("critical", "error") | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiCritical: `${MAIN} | search severity IN ("critical", "high") | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiHosts: `${MAIN} | stats count as n, dc(eval(if(host="(none)",null(),host))) as hosts | fillnull value=0 hosts | fields hosts`,
 
     sparkTotal: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
-    sparkCritical: `${MAIN} | search severity IN ("critical", "error") | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkCritical: `${MAIN} | search severity IN ("critical", "high") | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkHosts: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(host="(none)",null(),host))) as hosts | fillnull value=0`,
 
     volumeByLog: `${MAIN} | search source!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by source | fillnull value=0`,
     severity: `${MAIN} | search severity!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by severity | fillnull value=0`,
     topEvents: `${MAIN} | eval _time=last_seen, log_name=replace(source,"WinEventLog:","") | stats sum(count) as Events, dc(eval(if(host="(none)",null(),host))) as Hosts, latest(eval(if(signature="(none)",null(),signature))) as Description, latest(eval(if(severity="(none)",null(),severity))) as Severity, latest(eval(if(log_name="(none)",null(),log_name))) as Source, max(last_seen) as last_seen_ts by EventCode | eval "Last Seen" = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | sort -Events | table EventCode, Description, Source, Severity, Events, Hosts, "Last Seen" | rename EventCode as "Event Code"`,
     serviceEvents: `${SVC} | eval _time=bucket_ts | stats sum(count) as Events, latest(svc_state) as "Last State" by svc_name | sort -Events | rename svc_name as "Service Name"`,
-    powershell: `${MAIN} | search source="WinEventLog:Powershell" | eval _time=bucket_ts | timechart span=1d sum(count) as "PowerShell Events" | fillnull value=0`,
+    powershell: `${MAIN} | where match(source, "(?i)powershell") | eval _time=bucket_ts | timechart span=1d sum(count) as "PowerShell Events" | fillnull value=0`,
+};
+
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw
+ * XmlWinEventLog scan its rollup metric precomputes, reconciled to the CURRENT
+ * cached read (the win_v_* staged pairs are build-224-era and stale on two
+ * points fixed here: kpiCritical uses the CIM vocab `severity IN
+ * ("critical","high")` (build 258), and powershell/serviceEvents use the
+ * demo+S3 source forms `(?i)powershell` / `source IN ("WinEventLog:System",
+ * "XmlWinEventLog:System")`). topEvents mirrors the cached latest(non-null)
+ * (deterministic-newest, not the staged first()). Description/Severity/Source
+ * (topEvents) + Last State (serviceEvents) are latest-value columns — byte-exact
+ * on real distinct-timestamp data, tie-ambiguous on the bulk-loaded demo.
+ * ------------------------------------------------------------------------- */
+const RAW_WIN = '`sap_logserv_idx_macro` sourcetype="XmlWinEventLog"';
+const QRAW_BASE = {
+    kpiTotal: `${RAW_WIN} | stats count`,
+    kpiCritical: `${RAW_WIN} severity IN ("critical","high") | stats count`,
+    kpiHosts: `${RAW_WIN} | stats dc(host) as hosts`,
+    volumeByLog: `${RAW_WIN} | timechart span=1d count by source | fillnull value=0`,
+    severity: `${RAW_WIN} | where isnotnull(severity) | timechart span=1d count by severity | fillnull value=0`,
+    topEvents: `${RAW_WIN} | eval log_name = replace(source, "WinEventLog:", "") | stats count as Events, dc(host) as Hosts, latest(signature) as Description, latest(severity) as Severity, latest(log_name) as Source, latest(_time) as last_seen_ts by EventCode | eval "Last Seen" = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | sort -Events | table EventCode, Description, Source, Severity, Events, Hosts, "Last Seen" | rename EventCode as "Event Code"`,
+    serviceEvents: `${RAW_WIN} source IN ("WinEventLog:System","XmlWinEventLog:System") EventCode IN (7036, 7034, 7031) | rex field=_raw "<Data Name='param1'>(?<svc_name>[^<]+)</Data>" | rex field=_raw "<Data Name='param2'>(?<svc_state>[^<]+)</Data>" | where isnotnull(svc_name) | stats count as Events latest(svc_state) as "Last State" by svc_name | sort -Events | rename svc_name as "Service Name"`,
+    powershell: `${RAW_WIN} | where match(source, "(?i)powershell") | timechart span=1d count as "PowerShell Events" | fillnull value=0`,
 };
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086). */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -101,12 +137,21 @@ const SERVICE_COLS: ColumnDef[] = [
 ];
 
 const Windows: React.FC = () => {
-    const total = useFirstRowField(Q.kpiTotal, 'count');
-    const critical = useFirstRowField(Q.kpiCritical, 'count');
-    const hosts = useFirstRowField(Q.kpiHosts, 'hosts');
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
+    const critical = useFirstRowFieldHybrid(Q.kpiCritical, QRAW.kpiCritical, 'count');
+    const hosts = useFirstRowFieldHybrid(Q.kpiHosts, QRAW.kpiHosts, 'hosts');
 
-    const topEvents = useSearch({ query: Q.topEvents });
-    const serviceEvents = useSearch({ query: Q.serviceEvents });
+    const topEvents = useHybridSearch({ cached: Q.topEvents, raw: QRAW.topEvents });
+    const serviceEvents = useHybridSearch({ cached: Q.serviceEvents, raw: QRAW.serviceEvents });
+
+    // Charts take a query string → route once each (sub-hour -> raw).
+    const qVolumeByLog = useRoutedQuery(Q.volumeByLog, QRAW.volumeByLog);
+    const qSeverity = useRoutedQuery(Q.severity, QRAW.severity);
+    const qPowershell = useRoutedQuery(Q.powershell, QRAW.powershell);
 
     const criticalTone = Number(critical.value ?? 0) > 0 ? 'critical' : 'neutral';
 
@@ -142,10 +187,10 @@ const Windows: React.FC = () => {
 
             <PanelGrid2>
                 <FramedPanel title="Event Volume by Log" subtitle="Daily counts split by WinEventLog source">
-                    <TimeSeriesChart query={Q.volumeByLog} height={280} palette="volume" />
+                    <TimeSeriesChart query={qVolumeByLog} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="Severity Distribution Over Time" subtitle="Stacked daily volume by severity">
-                    <TimeSeriesChart query={Q.severity} height={280} palette="status" />
+                    <TimeSeriesChart query={qSeverity} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
@@ -159,8 +204,8 @@ const Windows: React.FC = () => {
                 <FramedPanel search={serviceEvents} title="Service Events" subtitle="Service start/stop/crash (EventCode 7036/7034/7031) — click a row for that service's lifecycle history">
                     <DataTable columns={SERVICE_COLS} rows={serviceEvents.results} loading={serviceEvents.loading} error={serviceEvents.error} emptyMessage="No service events in this time range." onRowClick={goServiceRow} />
                 </FramedPanel>
-                <FramedPanel title="PowerShell Activity" subtitle="Daily volume of WinEventLog:Powershell events">
-                    <TimeSeriesChart query={Q.powershell} height={280} palette="volume" />
+                <FramedPanel title="PowerShell Activity" subtitle="Daily volume of PowerShell operational events">
+                    <TimeSeriesChart query={qPowershell} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
         </DashboardLayout>

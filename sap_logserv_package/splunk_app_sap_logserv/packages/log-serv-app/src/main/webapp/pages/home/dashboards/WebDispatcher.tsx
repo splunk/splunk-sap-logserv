@@ -10,10 +10,14 @@ import TraceWaterfall, { TraceRow } from '../components/TraceWaterfall';
 import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
+import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { shouldUseRawSource } from '../utils/hybridRouting';
+import { useCloudProvider, mapCloudProviderQueries, withCloudProvider } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { chooseTimechartSpan } from '../utils/timechartSpan';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { useThemeMode } from '../state/ThemeModeProvider';
 
 /**
  * Web Dispatcher Access — honest port of v0.0.4.2 logserv_web_dispatcher.xml
@@ -84,7 +88,7 @@ const WD_METHOD = `| inputlookup ${ROLL} where metric="wd_method" ${RANGE}`;
 const WD_URISTAT = `| inputlookup ${ROLL} where metric="wd_uristat" ${RANGE}`;
 const WD_CLIENT = `| inputlookup ${ROLL} where metric="wd_client" ${RANGE}`;
 
-const Q = {
+const Q_BASE = {
     // --- tstats-now (pure counts on default-indexed fields) ------------------
     kpiRequests: `| tstats count ${TS_WHERE}`,
     sparkRequests: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS count`,
@@ -110,6 +114,27 @@ const Q = {
     slowestTraces: `| inputlookup logserv_webdisp_slowtrace_rollup | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | sort 20 - total_us | eval _time=event_time | table _time, uri, status, method, dt1_us, dt2_us, dt3_us, dt4_us, total_us`,
 };
 
+/* ---------------------------------------------------------------------------
+ * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw
+ * sap:webdispatcher:access scan its rollup metric precomputes, reconciled to
+ * the cached read's exact output columns (byte-verified equal at wide windows —
+ * the _v2_wd_*_{r,x} staged pairs). Only ROLLUP reads are hybridised;
+ * kpiRequests/requestVolume (tstats) are correct at any range, recentErrors is
+ * already raw, and the sparklines stay cached (cosmetic). response_time_ms =
+ * tonumber(total_us)/1000 (the aggregate-time definition of sum_rt/cnt_rt). The
+ * two span-parametrised charts + topUris route inline (they build SPL in a
+ * useMemo / from filter state, so can't call the useRoutedQuery hook).
+ * ------------------------------------------------------------------------- */
+const WRAW = '`sap_logserv_idx_macro` sourcetype=sap:webdispatcher:access';
+const QRAW_BASE = {
+    kpiErrorRate: `${WRAW} | stats count as total, sum(eval(if(tonumber(status)>=400,1,0))) as errors | eval pct=if(total>0,round(errors/total*100,1),0) | table pct`,
+    kpiAvgResponse: `${WRAW} | eval response_time_ms=tonumber(total_us)/1000 | stats avg(response_time_ms) as avg_ms | eval avg_ms=round(avg_ms,1) | table avg_ms`,
+    trafficByMethod: `${WRAW} method=* | stats count by method | sort -count`,
+    slowestPages: `${WRAW} uri=* | eval response_time_ms=tonumber(total_us)/1000 | stats avg(response_time_ms) as avg_response, count as requests by uri | eval avg_response=round(avg_response,1) | sort -avg_response | table uri, avg_response, requests`,
+    topClients: `${WRAW} clientip=* | eval response_time_ms=tonumber(total_us)/1000 | stats count as requests, dc(uri) as unique_pages, avg(response_time_ms) as avg_response_ms by clientip | eval avg_response_ms=round(avg_response_ms,1) | sort -requests | table clientip, requests, unique_pages, avg_response_ms`,
+    slowestTraces: `${WRAW} | sort 20 - total_us | table _time, uri, status, method, dt1_us, dt2_us, dt3_us, dt4_us, total_us`,
+};
+
 // Per-panel filter for Top URIs (P3 demo)
 const URI_STATUS_FILTERS = {
     all: { label: 'All status codes', clause: '' },
@@ -124,10 +149,27 @@ const buildTopUrisQuery = (filter: UriStatusFilter): string => {
     const sg = filter === 'all' ? '' : `| search status_group="${filter}"`;
     return `${WD_URISTAT} ${sg} | search uri!="(none)" | stats sum(count) as Requests, sum(sum_rt) as s, sum(cnt_rt) as c by uri | eval "Avg Response (ms)"=round(if(c>0,s/c,0),1) | sort -Requests | table uri, Requests, "Avg Response (ms)"`;
 };
+/** RAW twin of buildTopUrisQuery for the sub-hour hybrid (session 086). The
+ *  status range clause reuses URI_STATUS_FILTERS[filter].clause (the same
+ *  status>=NNN status<MMM the rollup's status_group buckets were built from),
+ *  reconciled to the cached read's exact columns. Both builders return an
+ *  un-cloud-mapped query; the call site wraps them in withCloudProvider so the
+ *  global Cloud Provider filter applies (build 298 / task_1dae8924). */
+const buildTopUrisRawQuery = (filter: UriStatusFilter): string => {
+    const clause = filter === 'all' ? '' : ` ${URI_STATUS_FILTERS[filter].clause}`;
+    return `${WRAW}${clause} uri=* | eval response_time_ms=tonumber(total_us)/1000 | stats count as Requests, avg(response_time_ms) as "Avg Response (ms)" by uri | eval "Avg Response (ms)"=round('Avg Response (ms)',1) | sort -Requests | table uri, Requests, "Avg Response (ms)"`;
+};
 
 interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
 const useFirstRowField = (q: string, f: string): FirstRow => {
     const { results, loading, error } = useSearch({ query: q });
+    const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
+    return { value, loading, error };
+};
+/** useFirstRowField over a hybrid cached/raw pair (session 086) — sub-hour
+ *  ranges read the raw query, wide ranges the rollup. */
+const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
+    const { results, loading, error } = useHybridSearch({ cached, raw });
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
     return { value, loading, error };
 };
@@ -169,7 +211,15 @@ const RECENT_ERROR_COLS: ColumnDef[] = [
 ];
 
 const WebDispatcher: React.FC = () => {
+    const { provider } = useCloudProvider();
+    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
+    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
     const [uriStatusFilter, setUriStatusFilter] = useState<UriStatusFilter>('all');
+    /* Resolved hex tokens — seriesColorsByField flows into
+     * @splunk/visualizations (SVG fills), where logservTheme's var(--lsv-*)
+     * references don't resolve. Build 246 / Phase 0. */
+    const { tokens } = useThemeMode();
 
     // Dynamic timechart span — recomputed when the time range changes so
     // the per-bin granularity stays readable across "Last 6h" through
@@ -179,37 +229,61 @@ const WebDispatcher: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
+    // Sub-hour hybrid (session 086): the two span-parametrised charts build SPL
+    // in a useMemo, so route inline via the pure fn rather than the hook.
+    const useRawSrc = shouldUseRawSource(timeRange.earliest, timeRange.latest);
 
     // Traffic by Status Code — multi-line chart so 4xx/5xx trends remain
     // visible alongside the much larger 2xx series instead of getting
     // crushed under stacked bars.
     const trafficByStatusQuery = useMemo(
         () =>
-            `${WD_STATUS} | eval _time=bucket_ts ` +
-            `| timechart span=${span} sum(count) by status_group | fillnull value=0`,
-        [span],
+            withCloudProvider(
+                useRawSrc
+                    ? `${WRAW} | eval status_group=case(tonumber(status)<300,"Success (2xx)",tonumber(status)<400,"Redirect (3xx)",tonumber(status)<500,"Client Error (4xx)",tonumber(status)>=500,"Server Error (5xx)",1==1,"Other") ` +
+                      `| timechart span=${span} count by status_group | fillnull value=0`
+                    : `${WD_STATUS} | eval _time=bucket_ts ` +
+                      `| timechart span=${span} sum(count) by status_group | fillnull value=0`,
+                provider,
+            ),
+        [span, useRawSrc, provider],
     );
 
     // Response Time Trend — Avg + Max per bucket (build 232). Percentiles
     // (p50/p95/p99) were RAW and don't merge byte-exact across hourly buckets,
     // so they are replaced by Avg (=Σsum_rt/Σcnt_rt) + Max (=max-of-per-bucket-max).
+    // The raw twin uses sum/count/max (not avg) so empty-bin behavior (Avg=0,
+    // Max=null) matches the cached arm byte-for-byte.
     const responseTimeTrendQuery = useMemo(
         () =>
-            `${WD_CORE} | eval _time=bucket_ts ` +
-            `| timechart span=${span} sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" ` +
-            `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
-        [span],
+            withCloudProvider(
+                useRawSrc
+                    ? `${WRAW} | eval response_time_ms=tonumber(total_us)/1000 ` +
+                      `| timechart span=${span} sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" ` +
+                      `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`
+                    : `${WD_CORE} | eval _time=bucket_ts ` +
+                      `| timechart span=${span} sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" ` +
+                      `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+                provider,
+            ),
+        [span, useRawSrc, provider],
     );
 
     const requests = useFirstRowField(Q.kpiRequests, 'count');
-    const errorRate = useFirstRowField(Q.kpiErrorRate, 'pct');
-    const avgResponse = useFirstRowField(Q.kpiAvgResponse, 'avg_ms');
+    const errorRate = useFirstRowFieldHybrid(Q.kpiErrorRate, QRAW.kpiErrorRate, 'pct');
+    const avgResponse = useFirstRowFieldHybrid(Q.kpiAvgResponse, QRAW.kpiAvgResponse, 'avg_ms');
 
-    const slowestPages = useSearch({ query: Q.slowestPages });
-    const topClients = useSearch({ query: Q.topClients });
-    const topUris = useSearch({ query: buildTopUrisQuery(uriStatusFilter) });
+    const slowestPages = useHybridSearch({ cached: Q.slowestPages, raw: QRAW.slowestPages });
+    const topClients = useHybridSearch({ cached: Q.topClients, raw: QRAW.topClients });
+    const topUris = useHybridSearch({
+        cached: withCloudProvider(buildTopUrisQuery(uriStatusFilter), provider),
+        raw: withCloudProvider(buildTopUrisRawQuery(uriStatusFilter), provider),
+    });
     const recentErrors = useSearch({ query: Q.recentErrors });
-    const slowestTraces = useSearch<TraceRow>({ query: Q.slowestTraces });
+    const slowestTraces = useHybridSearch<TraceRow>({ cached: Q.slowestTraces, raw: QRAW.slowestTraces });
+
+    // trafficByMethod PieChart takes a query string → route once (sub-hour -> raw).
+    const qTrafficByMethod = useRoutedQuery(Q.trafficByMethod, QRAW.trafficByMethod);
 
     /* Drilldowns (build 159 / session 027 task 6).
      * Pattern: every drilldown opens Splunk Search in a new tab with a
@@ -304,8 +378,8 @@ const WebDispatcher: React.FC = () => {
                         height={280}
                         chartType="line"
                         seriesColorsByField={{
-                            'Avg (ms)': logservTheme.colors.cyanLight,
-                            'Max (ms)': logservTheme.colors.orange,
+                            'Avg (ms)': tokens.cyanLight,
+                            'Max (ms)': tokens.orange,
                         }}
                     />
                 </FramedPanel>
@@ -325,7 +399,7 @@ const WebDispatcher: React.FC = () => {
                     clickTitle="Open method-by-count breakdown in Splunk Search"
                 >
                     <PieChart
-                        query={Q.trafficByMethod}
+                        query={qTrafficByMethod}
                         categoryField="method"
                         valueField="count"
                         height={260}

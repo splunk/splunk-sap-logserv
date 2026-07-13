@@ -320,6 +320,33 @@ lines.push('');
 lines.push(`---`);
 lines.push('');
 
+// Bundled fonts section (Phase 1b of the Cisco Magnetic re-theme, build 254).
+// The npm walker above can't see font FILES — they're static assets under
+// appserver/static/fonts/, not node_modules packages — so this section is
+// hand-maintained here in the generator (NOT in the output file, which is
+// regenerated on every build). License texts ship under LICENSES/.
+lines.push(`## Bundled fonts`);
+lines.push('');
+lines.push(`The app bundles the following font files at \`appserver/static/fonts/\` (no CDN — Splunk apps must be self-contained):`);
+lines.push('');
+lines.push(`### Inter (v4.x) — weights 400 / 500 / 600 / 700`);
+lines.push(`- **Files:** \`Inter-Regular.ttf\`, \`Inter-Medium.ttf\`, \`Inter-SemiBold.ttf\`, \`Inter-Bold.ttf\``);
+lines.push(`- **Copyright:** © The Inter Project Authors (https://github.com/rsms/inter)`);
+lines.push(`- **License:** SIL Open Font License 1.1 (\`LICENSES/OFL-1.1-Inter.txt\`)`);
+lines.push('');
+lines.push(`### Roboto Mono — weight 400`);
+lines.push(`- **Files:** \`RobotoMono-Regular.ttf\``);
+lines.push(`- **Copyright:** © Google LLC / Christian Robertson`);
+lines.push(`- **License:** Apache License 2.0 (\`LICENSES/Apache-2.0-RobotoMono.txt\`)`);
+lines.push('');
+lines.push(`### Sharp Sans — weight 700 (Bold)`);
+lines.push(`- **Files:** \`SharpSans-Bold.woff2\``);
+lines.push(`- **Copyright:** © Sharp Type Co.`);
+lines.push(`- **License:** Commercial — licensed to Cisco Systems, Inc. for Cisco-branded product use. This build line (v0.1.x) is Cisco-internal; redistribution outside Cisco licensing terms is not permitted. If this app is ever published externally, this font must be removed (the "Inter" 700 fallback in the heading font stack takes over).`);
+lines.push('');
+lines.push(`---`);
+lines.push('');
+
 lines.push(`## Components`);
 lines.push('');
 

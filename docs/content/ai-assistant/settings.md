@@ -51,6 +51,9 @@ The General tab is divided into four semantic subsections: **Feature**, **Limits
 | **`tier`** | `1` | Privacy tier 0 / 1 / 2. See [Privacy Tiers](privacy-tiers.md). Elevating to Tier 2 records a `vendor_tier2_elevation` audit event. |
 | **`mcp_required`** | `true` | When false, runs MCP-less chat mode (streaming-only, no tool dispatch). |
 | **`mcp_server_url`** | blank | MCP server endpoint. Blank uses the scheme-relative `/en-US/splunkd/__raw/services/mcp`. See [Splunk MCP Setup](mcp-setup.md). |
+| **`mcp_timeout_seconds`** | `60` | Browser-side timeout (seconds) for each MCP request — tool dispatch, saved-search run, health probe. If a legitimately-slow prompt shows `signal is aborted without reason`, raise this. Separate from the MCP server's own REST timeout (`mcp.conf [server] timeout`, default 60s); the effective ceiling is the lower of the two, so to allow a search past 60s raise both. Range `5`–`600`. |
+
+Beneath the `mcp_timeout_seconds` field, a **read-only "MCP server timeout"** row displays the Splunk MCP Server app's own `mcp.conf [server] timeout` (read cross-app from App 7931), so both numbers sit side by side — the effective ceiling for a request is the lower of the two. It is display-only: changing the *server* timeout means editing App 7931's `mcp.conf` and restarting Splunk (the MCP server is a different app and caches the value in a persistent process, so it can't be changed live from here). When App 7931 isn't installed or reachable the row shows **Not detected**.
 | **`power_user_roles`** | empty CSV | Comma-separated Splunk roles allowed to see the `✦ Power` toggle. See [Power Mode](power-mode.md). |
 
 ### Limits & Quotas
