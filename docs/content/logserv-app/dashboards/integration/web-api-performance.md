@@ -1,5 +1,7 @@
 # Web and API Performance
 
+![Web and API Performance](../../../../images/dashboard-web-api-performance.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The Web Dispatcher dashboard answers "what's the traffic doing?" -- volume, status codes, top URIs. Web and API Performance answers the next question: "*why* does it feel slow or unreliable?" It exposes the per-request timing stages that the `sap:webdispatcher:access` sourcetype records (`dt1` receive / `dt2` handler / `dt3` response / `dt4` send), combines response-time averages and maxima across Web Dispatcher and Cloud Connector HTTP traffic, and correlates the HTTP error rate with the Cloud Connector auth failure rate so that you can see whether a spike in user-visible failures is actually a backend-auth problem. It also surfaces TLS posture (version and cipher suite distributions) -- data already extracted from Web Dispatcher but previously unused -- so that cipher-suite drift or legacy TLS traffic becomes visible.
@@ -29,4 +31,4 @@ The Web Dispatcher dashboard answers "what's the traffic doing?" -- volume, stat
 - **Slow clients vs slow URIs** -- The two "Slow" tables answer different questions. A single slow client with diverse URIs suggests network-path problem between that client and your infrastructure; a single slow URI across many clients points at a backend issue with that specific endpoint.
 - **Concentrated 500 errors** -- Recurring entries in the Recent 500-Level Errors table from a single host, URI, or client IP narrow the investigation scope immediately.
 
-![Web and API Performance](../../../../images/dashboard-web-api-performance.png)
+

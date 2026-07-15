@@ -1,5 +1,7 @@
 # Linux System & Security
 
+![Linux System & Security](../../../../images/dashboard-linux.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The Linux dashboard provides OS-level visibility for the hosts running SAP applications. Most SAP ABAP and HANA systems run on Linux, making OS-level monitoring essential for understanding the infrastructure beneath the application layer. This dashboard combines SAP-aware context (SID, instance, application identification from syslog) with kernel-level security monitoring (firewall drops and kernel events).
@@ -27,4 +29,4 @@ The Linux dashboard provides OS-level visibility for the hosts running SAP appli
 - **Kernel segfaults** -- Segmentation faults appearing in the Kernel Event Types panel indicate application crashes, which may affect SAP system stability.
 - **Port targeting patterns** -- The Top Blocked Destination Ports table reveals which services attackers are targeting. Ports associated with SAP services warrant immediate attention.
 
-![Linux System & Security](../../../../images/dashboard-linux.png)
+

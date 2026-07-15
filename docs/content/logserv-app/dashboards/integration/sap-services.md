@@ -1,5 +1,7 @@
 # SAP Services
 
+![SAP Services](../../../../images/dashboard-sap-services.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The SAP Services dashboard monitors two host-level services that are critical to SAP system availability: **sapstartsrv** (system startup and management) and the **SAP Host Agent** (host monitoring and management). These services operate at the infrastructure layer, below the application, and their failures can prevent SAP systems from starting or being managed remotely. The authentication story is front-and-center here -- sapstartsrv is a common brute-force target, so the dashboard features an SSL-authentication failure panel as the main investigation surface. (SAP Router activity lives on its own [SAP Router](sap-router.md) dashboard.)
@@ -21,4 +23,4 @@ The SAP Services dashboard monitors two host-level services that are critical to
 - **Error stack rising in the volume chart** -- If the error series (red) in the Event Volume chart grows relative to normal (blue/teal) series, something is actively going wrong. Correlate the spike timing with the host agent severity pie to determine which service is affected.
 - **Host Agent ERROR severity** -- If the Host Agent severity distribution shifts toward ERROR, the host monitoring infrastructure may be degrading, which impacts central management capabilities.
 
-![SAP Services](../../../../images/dashboard-sap-services.png)
+

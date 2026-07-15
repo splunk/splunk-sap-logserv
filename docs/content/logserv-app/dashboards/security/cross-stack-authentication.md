@@ -1,5 +1,7 @@
 # Cross-Stack Authentication
 
+![Cross-Stack Authentication](../../../../images/dashboard-cross-stack-authentication.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 Authentication failures are usually investigated one layer at a time -- someone looks at HANA audit logs, then switches to Windows Event Log, then opens the SAP services dashboard. An attacker who probes multiple layers at once is therefore hard to spot. Cross-Stack Authentication unifies the failure signal across the three layers that matter in an SAP landscape -- **SAP sapstartsrv**, **HANA audit**, and **Windows Security Event Log** -- so that a single pane shows the total, the per-layer split, and the source IPs and users in common across layers. Use it as the first stop when you suspect credential-based attacks or widespread misconfiguration after a password rotation.
@@ -25,4 +27,4 @@ Authentication failures are usually investigated one layer at a time -- someone 
 - **Asymmetry between layers** -- Many HANA failures but zero SAP / Windows failures usually indicates an application-layer issue (bad connection string, expired JDBC cert). Asymmetry the other way (many Windows failures, no HANA failures) often points to a domain-level issue.
 - **After a password rotation** -- Expect a short burst of failures across one or more layers immediately after a change. If the burst persists beyond the rotation window, some downstream system is still using the old credential.
 
-![Cross-Stack Authentication](../../../../images/dashboard-cross-stack-authentication.png)
+

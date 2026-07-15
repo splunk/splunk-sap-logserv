@@ -1,5 +1,7 @@
 # Windows Events
 
+![Windows Events](../../../../images/dashboard-windows.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The Windows Events dashboard monitors Windows hosts in the SAP landscape, which commonly run SAP application servers, database instances, and management consoles. Windows Event Logs capture service health, PowerShell execution, and system errors that indicate Windows-specific operational issues. This dashboard focuses on operational health and service state -- the authentication-failure story is owned by the [Cross-Stack Authentication](../security/cross-stack-authentication.md) dashboard so that all three layers (SAP / HANA / Windows) can be investigated together.
@@ -30,4 +32,4 @@ The Windows Events dashboard monitors Windows hosts in the SAP landscape, which 
 - **Critical/error severity trends** -- A rising trend in critical and error events over multiple days indicates accumulating system health issues that need proactive investigation.
 - **Event Code hosts expanding** -- The Hosts column on the Top Event Codes table makes it obvious when a normally-host-isolated error starts appearing on multiple hosts -- a sign the underlying cause is environmental (failed update, domain policy change) rather than local.
 
-![Windows Events](../../../../images/dashboard-windows.png)
+

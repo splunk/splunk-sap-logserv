@@ -1,5 +1,7 @@
 # Environment Topology
 
+![Environment Topology](../../../images/dashboard-environment-topology.png)
+
 ### :material-circle-box:{ .taiconcolor } Why This View Matters
 
 The Environment Topology view answers a question every SAP administrator has: *"what's actually talking to what?"* Traditional dashboards show events, errors, and aggregates per source — but the **shape** of how SAP systems integrate with each other (RFC partners, HANA tenant relationships, web traffic boundaries, cross-zone connections) is hidden in those tabular surfaces. This view materializes that shape as an interactive graph drawn from your existing log data — no new ingest, no CMDB integration, no tagging effort required.
@@ -160,4 +162,4 @@ There is **no client-side auto-polling**. The previous Live | Lookup mode toggle
 - Layouts are saved **per Splunk user** — every KV Store record is keyed by `<username>::<slug>`, so different users have completely separate records and can't overwrite each other's layouts. If the same user edits the topology in two browser tabs concurrently, the tabs race each other and last-tab-save wins (multi-tab edit-collision protection is planned for a future release).
 - The minimap supports drag-only panning. Single-click and scroll-zoom inside the minimap rectangle are intentionally inert — drag is the one interaction.
 
-![Environment Topology](../../../images/dashboard-environment-topology.png)
+

@@ -1,5 +1,7 @@
 # SAP Router
 
+![SAP Router](../../../../images/dashboard-sap-router.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 SAP Router is the network gateway that sits between SAP systems and external networks, forwarding RFC and HTTP traffic across trust boundaries. Because it is exposed to the network, its logs are a primary audit trail for cross-boundary SAP traffic: every connection attempt, protocol error, and invalid-data event gets recorded. This dashboard separates the SAP Router signal from other services so that spikes in router errors (connectivity breakage, misconfigured routetab, or attempted protocol abuse) are visible on their own.
@@ -25,4 +27,4 @@ SAP Router is the network gateway that sits between SAP systems and external net
 - **Rising error trend** -- An upward slope in Router Errors Over Time can precede an outage. Cross-reference with ABAP Operations (dispatcher errors) and Cloud Connector (for hybrid flows) to see whether the root cause is local to the router or broader.
 - **Concentrated errors by function** -- If one row of the Error Detail by Function table accumulates most errors, that function is the specific RFC/HTTP path where the problem lives -- a much narrower investigation scope than "the router is broken".
 
-![SAP Router](../../../../images/dashboard-sap-router.png)
+

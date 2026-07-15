@@ -1,5 +1,7 @@
 # HANA Trace
 
+![HANA Trace](../../../../images/dashboard-hana-trace.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The HANA Trace dashboard provides visibility into SAP HANA's internal diagnostic trace system. Unlike audit logs that capture user actions, trace logs capture what the database engine itself is doing: memory management, query compilation, I/O operations, and internal errors. This is the primary tool for diagnosing HANA performance issues, stability problems, and understanding the root cause of database outages.
@@ -27,4 +29,4 @@ The HANA Trace dashboard provides visibility into SAP HANA's internal diagnostic
 - **SID/instance imbalance** -- Uneven trace volumes across instances of the same HANA system may indicate hardware issues, unbalanced workload distribution, or replication problems.
 - **Persistent warning trends** -- Warnings that gradually increase over days often signal resource exhaustion (disk space, memory pools) that will eventually escalate to errors.
 
-![HANA Trace](../../../../images/dashboard-hana-trace.png)
+

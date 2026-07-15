@@ -9,7 +9,9 @@ The title row carries a **dashboard-wide host filter**: a Multiselect (with filt
 !!! tip "Multi-cloud ingest split"
     The Data Pipeline Overview aggregates across BOTH AWS S3 and Azure Blob Storage ingest channels without distinguishing them — events from either channel land under `sap_logserv_logs` and route to the same downstream sourcetypes. For a per-cloud-provider breakdown (AWS vs Azure event counts, sourcetype distribution per provider, recent activity), see the [Multi-Cloud Overview](multi-cloud-overview.md) dashboard in the same Platform group. See [Azure Setup Guide](../../../install-setup/azure-setup.md) for Azure-side configuration.
 
-## Tab 1 -- Overview
+## :material-circle-box:{ .taiconcolor } Overview Tab
+
+![Data Pipeline Overview -- Overview Tab](../../../../images/dashboard-overview.png)
 
 - **Total Events** -- Aggregate event count across all LogServ sourcetypes
 - **Total Sourcetypes** -- Count of distinct sourcetypes seen in the time range
@@ -20,7 +22,9 @@ The title row carries a **dashboard-wide host filter**: a Multiselect (with filt
 - **Sourcetype Summary** -- Rich table with 14 columns: Sourcetype, Status (Fresh/Stale/Very Stale), Trend (sparkline), Events, % of Total, Avg/Day, Volume, App Errors, Hosts, Sources, Events (1h), First Seen, Last Seen, Lag. Click a row to open the search app pre-filtered by sourcetype.
 - **Host Latest Activity** -- Table showing each host's last event time, event count, and sourcetypes (click a row to drill down to Host Details)
 
-## Tab 2 -- Linked Graph
+## :material-circle-box:{ .taiconcolor } Sourcetype Mapping Tab
+
+![Data Pipeline Overview -- Sourcetype Mapping Tab](../../../../images/dashboard-overview-2.png)
 
 - **Source to Sourcetype Mapping** -- Full-width link graph visualizing the flow of data from source paths to sourcetypes, with column widening tuned so 3 columns fit inside the frame without horizontal scroll
 
@@ -32,5 +36,3 @@ The title row carries a **dashboard-wide host filter**: a Multiselect (with filt
 - **Ingest errors climbing** -- The Ingest Errors KPI is a curated count (after filtering harmless noise); a non-zero count sustained over days usually points to a misconfigured S3 input, SQS permissions issue, or malformed records in a specific prefix.
 - **Missing sourcetype mappings** -- If a host shows data but is missing an expected sourcetype in the link graph (second tab), the routing transforms may need attention.
 
-![Data Pipeline Overview -- Overview tab](../../../../images/dashboard-overview.png)
-![Data Pipeline Overview -- Linked Graph tab](../../../../images/dashboard-overview-2.png)

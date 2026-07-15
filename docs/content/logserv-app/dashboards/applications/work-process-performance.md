@@ -1,5 +1,7 @@
 # Work Process Performance
 
+![Work Process Performance](../../../../images/dashboard-work-process-performance.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 Work Process Performance focuses specifically on the ABAP work process layer: the finite pool of processes that execute every dialog request, background job, and RFC call. When work processes are exhausted, users see "no free work process" errors; when a specific category is saturated, symptoms manifest differently (e.g., database interface saturation causes SQL timeouts; memory category issues cause roll-area swaps). This dashboard breaks activity down by the 13 SAP-standard dev_w* trace component categories so you can target remediation to the right subsystem.
@@ -25,4 +27,4 @@ Work Process Performance focuses specifically on the ABAP work process layer: th
 - **Instance imbalance** -- If one instance's WP activity is an order of magnitude higher than its peers in the Activity by SID/Instance table, investigate whether that instance is handling disproportionate load or experiencing a local issue.
 - **Function-code hotspots** -- The Top Work Process Functions bar surfaces which ABAP functions are running most often; an unexpected code at the top can indicate a runaway background job or custom transaction generating excessive traces.
 
-![Work Process Performance](../../../../images/dashboard-work-process-performance.png)
+

@@ -1,5 +1,7 @@
 # Web Dispatcher
 
+![Web Dispatcher](../../../../images/dashboard-web-dispatcher.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The Web Dispatcher dashboard analyzes HTTP traffic flowing through the SAP Web Dispatcher, which acts as the reverse proxy and load balancer for SAP web applications including Fiori, WebGUI, and custom web services. As the front door for all web-based SAP access, the Web Dispatcher's traffic patterns reveal both performance issues and potential security threats. For deeper per-request timing analysis (four-stage breakdown, Avg/Max response-time trends, TLS posture), see [Web and API Performance](web-api-performance.md).
@@ -26,4 +28,4 @@ The Web Dispatcher dashboard analyzes HTTP traffic flowing through the SAP Web D
 - **Concentrated client IP traffic** -- A single IP generating disproportionate traffic in the bubble chart may be a bot, scraper, or denial-of-service source.
 - **TLS version distribution** -- If your data includes TLS fields, watch for clients using deprecated TLS versions (1.0, 1.1) that may need to be blocked for compliance.
 
-![Web Dispatcher](../../../../images/dashboard-web-dispatcher.png)
+

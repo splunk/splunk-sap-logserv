@@ -1,5 +1,7 @@
 # Cloud Connector
 
+![Cloud Connector](../../../../images/dashboard-cloud-connector.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The Cloud Connector dashboard monitors SAP Cloud Connector (SCC), which provides secure tunneled connectivity between on-premise SAP systems and SAP BTP (Business Technology Platform) cloud services. As the bridge between on-premise and cloud, the Cloud Connector's health directly impacts hybrid integration scenarios, Fiori apps, and cloud-based analytics that depend on on-premise data access.
@@ -27,4 +29,4 @@ The Cloud Connector dashboard monitors SAP Cloud Connector (SCC), which provides
 - **Audit events indicating config changes** -- Cloud Connector audit entries for configuration modifications should correlate with approved change windows. Unexpected changes may indicate unauthorized access.
 - **New client IPs** -- The Cloud Connector should only receive traffic from expected BTP subaccounts. New client IPs may indicate unauthorized access attempts or misconfigured routing.
 
-![Cloud Connector](../../../../images/dashboard-cloud-connector.png)
+

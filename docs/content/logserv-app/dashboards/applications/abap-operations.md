@@ -1,5 +1,7 @@
 # ABAP Operations
 
+![ABAP Operations](../../../../images/dashboard-abap-operations.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The ABAP Operations dashboard provides runtime health monitoring for the SAP ABAP application layer. It covers the dispatcher (request routing), work processes (transaction execution), enqueue server (lock management), and system uptime. These components are the engine of every SAP ABAP system, and their health directly impacts user experience and business process execution.
@@ -25,4 +27,4 @@ The ABAP Operations dashboard provides runtime health monitoring for the SAP ABA
 - **Enqueue lock spikes** -- A sharp increase in lock operations can indicate application deadlocks, long-running transactions holding locks, or database performance issues causing lock wait times to increase.
 - **SID/instance imbalance** -- If one system or instance is generating significantly more events than its peers, investigate whether it's handling disproportionate load or experiencing issues.
 
-![ABAP Operations](../../../../images/dashboard-abap-operations.png)
+

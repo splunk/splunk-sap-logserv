@@ -1,5 +1,7 @@
 # HANA Audit
 
+![HANA Audit](../../../../images/dashboard-hana-audit.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The HANA Audit dashboard is essential for database security compliance and threat detection. SAP HANA stores the most sensitive business data in the SAP landscape, and its audit trail captures every authentication attempt, privilege change, and administrative action. This dashboard transforms raw audit events into actionable security intelligence, supporting both real-time threat detection and compliance reporting.
@@ -32,4 +34,4 @@ The HANA Audit dashboard is essential for database security compliance and threa
 - **Declining security health score** -- A downward trend in the daily success rate or an increase in failures signals growing security issues that need investigation.
 - **Password management anomalies** -- Bulk password resets or resets for service accounts should be correlated with change management records.
 
-![HANA Audit](../../../../images/dashboard-hana-audit.png)
+

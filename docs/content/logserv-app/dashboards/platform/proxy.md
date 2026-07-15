@@ -1,5 +1,7 @@
 # Proxy Analytics
 
+![Proxy Analytics](../../../../images/dashboard-proxy.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The Proxy Analytics dashboard monitors outbound internet access through the Squid proxy server. In SAP environments, proxy logs reveal which systems and users are accessing external resources, enabling detection of data exfiltration attempts, policy violations (unauthorized internet access), and compromised systems communicating with malicious infrastructure. Proxy logs complement DNS analytics by showing the actual HTTP connections that follow DNS resolution.
@@ -28,4 +30,4 @@ The Proxy Analytics dashboard monitors outbound internet access through the Squi
 - **Cache miss dominance** -- If Cache Action Distribution is dominated by TCP_MISS, the proxy cache may not be earning its keep (or a new workload is defeating it). For security-relevant investigations, CONNECT dominance signals mostly-HTTPS traffic that the proxy can't inspect.
 - **New high-volume clients** -- A system that suddenly appears as a top proxy client may be compromised and performing outbound scanning, beaconing, or data exfiltration.
 
-![Proxy Analytics](../../../../images/dashboard-proxy.png)
+

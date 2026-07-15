@@ -1,5 +1,7 @@
 # Change & Configuration Activity
 
+![Change & Configuration Activity](../../../../images/dashboard-change-config.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 Compliance conversations (SOX, PCI, internal change management) all require evidence that configuration changes are (1) authorized, (2) attributable to a specific operator, and (3) happening in approved maintenance windows. That evidence lives scattered across three audit trails: HANA audit logs (user/role/privilege/password operations and DDL), Windows Security Event Log (account and group modifications), and Linux syslog (sudo commands plus `useradd`/`usermod`/`userdel`/`passwd` events). This dashboard unifies the three into a single audit trail with a consistent operator column and category taxonomy, plus two compliance-focused "recent" tables: one filtered to privileged actions, one filtered to after-hours activity.
@@ -33,4 +35,4 @@ Compliance conversations (SOX, PCI, internal change management) all require evid
 !!! note "Compliance-focused exception: no row drill-downs on the After-Hours and Privileged Changes tables"
     Two compliance-focused tables on this dashboard intentionally have **no row drill-downs** — the **After-Hours Changes** and **Recent Privileged Changes** tables. Clicking through to raw events from a compliance audit-trail report would pollute the trail with the reviewer's own search activity in subsequent compliance reports. Per-source operational tables on the same dashboard (HANA Audit, Windows Account & Group Modifications, Linux Sudo & Command Activity) DO get drill-downs.
 
-![Change & Configuration Activity](../../../../images/dashboard-change-config.png)
+

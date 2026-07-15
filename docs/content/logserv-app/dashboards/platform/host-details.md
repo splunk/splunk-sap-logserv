@@ -18,6 +18,8 @@ The dashboard is organized into three tabs:
 
 ## :material-circle-box:{ .taiconcolor } Overview Tab
 
+![Host Details — Overview Tab](../../../../images/dashboard-host-details-overview.png)
+
 - **KPI row (5 values)** -- Total Events, Data Volume (auto-scaled MB/GB), Active Sourcetypes, Error/Critical event count (red), and Auth Failure count (red)
 - **Host Event Count by Sourcetype** -- Stacked column of daily event volume per sourcetype for the selected host
 - **Severity Timeline** -- Stacked area chart normalizing Critical / Error / Warning / Info severities across all the host's sourcetypes
@@ -28,9 +30,9 @@ The dashboard is organized into three tabs:
 - **Activity by Hour of Day** -- Column chart surfacing off-hours activity patterns
 - **Data Freshness** -- Per-sourcetype last-seen table with Fresh/Stale/Very Stale status to spot collection gaps
 
-![Host Details — Overview tab](../../../../images/dashboard-host-details-overview.png)
-
 ## :material-circle-box:{ .taiconcolor } Role Activity Tab
+
+![Host Details — Role Activity Tab](../../../../images/dashboard-host-details-role-activity.png)
 
 Role-specific panels. Each panel only appears when the host has data for that role; irrelevant panels auto-hide.
 
@@ -42,7 +44,6 @@ Role-specific panels. Each panel only appears when the host has data for that ro
 - **Sudo Commands** -- Table of invoking user, target user, command, and count from `linux_messages_syslog` sudo events
 - **DNS Top Queries** -- Top query strings from `isc:bind:query`
 
-![Host Details — Role Activity tab](../../../../images/dashboard-host-details-role-activity.png)
 
 !!! note "Why some panels may show for certain hosts but not others"
     Panels on the **Role Activity** tab — and a few on the **Overview** tab (Host Inventory, Recent Authentication Events, Recent Errors & Criticals) — use the `hideWhenNoData` attribute. Splunk automatically hides these panels when the selected host's data source returns no rows in the current time range.
@@ -60,9 +61,9 @@ Role-specific panels. Each panel only appears when the host has data for that ro
 
 ## :material-circle-box:{ .taiconcolor } Sourcetype Mapping Tab
 
-Full-width link graph showing how the host's events flow from source files to sourcetypes. Useful for spotting a noisy source file that's producing an outsized share of the host's volume, or for validating that a host's expected sources are all represented.
+![Host Details — Sourcetype Mapping Tab](../../../../images/dashboard-host-details-sourcetypes.png)
 
-![Host Details — Sourcetype Mapping tab](../../../../images/dashboard-host-details-sourcetypes.png)
+Full-width link graph showing how the host's events flow from source files to sourcetypes. Useful for spotting a noisy source file that's producing an outsized share of the host's volume, or for validating that a host's expected sources are all represented.
 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 

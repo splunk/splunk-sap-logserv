@@ -1,5 +1,7 @@
 # ABAP Network & Security
 
+![ABAP Network & Security](../../../../images/dashboard-abap-security.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The ABAP Network & Security dashboard monitors the network-facing components of SAP ABAP systems. The Internet Communication Manager (ICM) handles all HTTP/HTTPS traffic into and out of ABAP, while the Gateway controls RFC connections between SAP systems. Together, these are the primary attack surface for ABAP-based landscapes and the first place where performance degradation manifests during connectivity issues.
@@ -24,4 +26,4 @@ The ABAP Network & Security dashboard monitors the network-facing components of 
 - **Gateway connections from unknown hosts** -- The Gateway Remote Hosts table should show expected RFC partners. Unknown remote hosts or unusual service names may indicate unauthorized access attempts.
 - **Error rate trends** -- A gradually increasing error rate across days can signal infrastructure degradation (disk space, memory pressure, certificate expiry) before it becomes an outage.
 
-![ABAP Network & Security](../../../../images/dashboard-abap-security.png)
+

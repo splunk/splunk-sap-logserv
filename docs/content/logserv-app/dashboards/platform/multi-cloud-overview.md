@@ -1,5 +1,7 @@
 # Multi-Cloud Overview
 
+![Multi-Cloud Overview](../../../../images/dashboard-multi-cloud-overview.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The Multi-Cloud Overview dashboard answers the question: **"Where is our LogServ data coming from, and is it balanced between cloud providers?"** It splits ingest by the indexed `cloud_provider` field so admins running any mix of **AWS S3**, **Azure Blob Storage**, and **Google Cloud Storage** ingest can confirm each pipeline is healthy and see relative volume at a glance.
@@ -47,4 +49,4 @@ This dashboard works out of the box on any LogServ App install (it gracefully sh
 
 See the [Azure Setup Guide](../../../install-setup/azure-setup.md) and the [GCP Setup Guide](../../../install-setup/gcp-setup.md) for the canonical setup procedures (including the `cloud_provider` attribution pattern that applies symmetrically to every cloud).
 
-![Multi-Cloud Overview](../../../../images/dashboard-multi-cloud-overview.png)
+

@@ -1,5 +1,7 @@
 # Environment Health
 
+![Environment Health](../../../images/dashboard-environment-health.png)
+
 ### :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The Environment Health dashboard is a single-pane-of-glass operations view that aggregates the most critical signals from across the entire SAP landscape. Instead of switching between individual dashboards to piece together overall health, administrators can use this dashboard to immediately identify active errors, security failures, and performance degradation. Every panel links to the relevant detailed dashboard for investigation, making this the recommended starting point for daily operations monitoring and incident triage.
@@ -45,4 +47,4 @@ The dashboard's title-row toolbar carries a **Refresh** picker so you can have t
 - **Response time degradation** -- An increasing trend in Web Dispatcher response time often precedes user-facing performance complaints. Investigate ICM status codes for correlated 5xx errors.
 - **Host concentration** -- If the Top Affected Hosts table shows errors concentrated on one or two hosts, those systems may have a localized issue (disk full, service crash, misconfiguration) rather than an environment-wide problem.
 
-![Environment Health](../../../images/dashboard-environment-health.png)
+

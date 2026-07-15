@@ -1,5 +1,7 @@
 # DNS Analytics
 
+![DNS Analytics](../../../../images/dashboard-dns-analytics.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
 The DNS Analytics dashboard transforms DNS query data into a security detection tool. DNS is used by virtually all network communications and is often exploited by attackers for command-and-control (C2) beaconing, data exfiltration via DNS tunneling, and reconnaissance. Because DNS traffic is rarely inspected by traditional security tools, this dashboard fills a critical visibility gap in SAP infrastructure security.
@@ -27,4 +29,4 @@ The DNS Analytics dashboard transforms DNS query data into a security detection 
 - **High domain diversity** -- Clients querying many unique domains with a low queries-per-domain ratio in the Top Clients by Domain Diversity table may indicate Domain Generation Algorithm (DGA) activity or automated reconnaissance.
 - **Resolver imbalance** -- The Top DNS Resolvers table should show an expected workload split across your BIND servers. One resolver handling disproportionate load may indicate a misconfigured forwarder or a cluster failover that wasn't noticed.
 
-![DNS Analytics](../../../../images/dashboard-dns-analytics.png)
+
