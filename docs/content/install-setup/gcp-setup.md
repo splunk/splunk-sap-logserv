@@ -76,10 +76,25 @@ The input pulls/acks subscription messages **and** fetches objects with the sing
 | `roles/pubsub.subscriber` | the LogServ subscription | pull + acknowledge notification messages |
 | `roles/storage.objectViewer` | the LogServ bucket | fetch the referenced objects |
 
-These are the same two roles SAP documents for its own `sap-ecs-gcp-log-forwarder` consumer, so a key issued for that forwarder works for this input unchanged. (Unlike the general-purpose Splunk Add-on for GCP, this input needs **no** extra `roles/pubsub.viewer` grant.)
+These two roles are the **complete** runtime set — the input makes exactly four Google API calls (OAuth token mint, `subscriptions:pull`, `subscriptions:acknowledge`, and the object download), all covered by the grants above. They are the same two roles SAP documents for its own `sap-ecs-gcp-log-forwarder` consumer, so a key issued for that forwarder works for this input unchanged. Unlike the general-purpose Splunk Add-on for GCP, this input needs **no** extra `roles/pubsub.viewer` grant (that add-on calls `GetSubscription`; this input never does) — don't over-grant.
 
 !!! warning "If the account is subscription-only"
     If the service account lacks `roles/storage.objectViewer` on the bucket, object fetches fail with HTTP 403 and the input logs it explicitly: *"object read forbidden … the service account likely lacks storage.objectViewer on the bucket; leaving message for retry."* The decisive question for your SAP support contact is **"can the LogServ service account read the bucket's objects, or only the subscription?"** If it is subscription-only, you will need the bucket-read grant added (or a second credential is not supported — the input uses one account for both).
+
+### Where the service account lives — and who mints the key
+
+A GCP service account is always *homed* in some project, and deployments come in two shapes — both fully supported:
+
+- **SAP-homed** — the account lives in the SAP-managed LogServ project and SAP issues the JSON key through your support channel.
+- **Customer-homed** — your own cloud team creates the account in one of **your** GCP projects, and SAP grants it cross-project access to the LogServ subscription and bucket. In this shape *your* GCP admin exports the key (**IAM & Admin → Service Accounts → Keys → Add key → JSON**).
+
+Either way the connection is **direct to the SAP-managed LogServ resources** — the account's home project is only the administrative home for the identity; no infrastructure is deployed there and no additional GCP environment is required. A quick way to tell which shape you have: the project ID inside the account's email address (`<name>@<project-id>.iam.gserviceaccount.com`). If your cloud team can see that project in your GCP console, the key comes from your side; if not, request it from SAP.
+
+!!! warning "Organization policy can block key creation entirely"
+    Many enterprises enforce the `iam.disableServiceAccountKeyCreation` organization policy as a security guardrail. If it applies to the account's home project, minting a JSON key fails **regardless of IAM roles** — the admin needs `roles/iam.serviceAccountKeyAdmin` on the account *and* a policy exemption for it (or the key must come from SAP instead). Check this **before** install day; it is the most common last-minute blocker.
+
+!!! note "Cross-project accounts: enable the APIs in the home project"
+    When the service account is homed in a *different* project than the LogServ resources (the customer-homed shape), Google attributes API quota to the credential's **home** project. If the first connection fails with a `403 SERVICE_DISABLED` error naming the home project ("…API has not been used in project … before or it is disabled"), enable the **Cloud Pub/Sub API** and **Cloud Storage API** in that project and retry.
 
 ## :material-circle-box:{ .taiconcolor } Install the GCP add-on
 
@@ -214,6 +229,7 @@ index=sap_logserv_logs cloud_provider=gcp _index_earliest=-1h | stats count by s
 | `service-account key unusable (...)` | The pasted key is not a valid service-account JSON key (truncated paste, wrong file) | Re-paste the **entire** JSON key file, including the `private_key` field. |
 | `token minting failed (...)` | The key is revoked/expired, the HF can't reach `oauth2.googleapis.com`, or the system clock is skewed (JWTs are time-signed) | Verify egress to `oauth2.googleapis.com:443`, NTP sync, and ask SAP whether the key is still active. |
 | `subscription pull failed (... 403 ...)` | The service account lacks `roles/pubsub.subscriber` on the subscription, or `project_id`/`subscription_name` are wrong | Confirm the values with your SAP support contact and that the account holds the subscriber role on **this** subscription. |
+| `403 SERVICE_DISABLED` naming the service account's **home** project ("…API has not been used in project…") | The account is homed in a different project than the LogServ resources, and the Pub/Sub or Cloud Storage API isn't enabled there (Google attributes API quota to the credential's home project) | Enable the **Cloud Pub/Sub API** and **Cloud Storage API** in the account's home project and retry (see [Where the service account lives](#where-the-service-account-lives-and-who-mints-the-key)). |
 | `object read forbidden (HTTP 403)` | The service account lacks `roles/storage.objectViewer` on the bucket | Ask SAP to add the bucket-read grant; the message is left for retry and reprocesses once fixed. |
 | `done: messages=0` every firing, but objects exist | The bucket notification (SAP-managed) isn't publishing, or the subscription name is wrong | Confirm with your SAP support contact that the `OBJECT_FINALIZE` notification and subscription are active; verify egress to `pubsub.googleapis.com`. |
 | Input kind `sap_logserv_gcp_pubsub` not listed / Inputs page missing | The GCP add-on isn't installed (or Splunkd wasn't restarted) on this HF | Install `splunk_ta_sap_logserv_gcp` on the HF and restart (see [Install the GCP add-on](#install-the-gcp-add-on)). |
