@@ -1,8 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
 import { useThemeMode } from '../state/ThemeModeProvider';
 import { verticalGradient } from '../utils/colorMath';
+import EmptyStateHint from './EmptyStateHint';
+import { usePanelDiagnostic } from './PanelMeta';
+import { computeColumnCoverage, recordColumnCoverage } from '../utils/columnCoverage';
 
 /** Match TimeSeriesChart's DEFAULT_GRADIENT_DARKEN so HTML waterfall bars
  *  share the exact visual fade as the SVG charts on the same dashboard. */
@@ -199,6 +202,25 @@ const TraceWaterfall: React.FC<Props> = ({ rows, loading = false, error = null, 
         return { limited, max };
     }, [rows, maxRows]);
 
+    /* §18.8a-2 — publish the coverage of the five probeable keys this widget
+     *  actually reads (the synthetic Timeline column has no row key and is
+     *  never probed). Reduced over the rows it RENDERS. */
+    const diagCtx = usePanelDiagnostic();
+    const diagSpl = diagCtx?.spl;
+    useEffect(() => {
+        if (!diagSpl || !computed) return;
+        recordColumnCoverage(
+            diagSpl,
+            computeColumnCoverage(
+                computed.limited,
+                ['_time', 'uri', 'status', 'method', 'total_us'].map((key) => ({
+                    key,
+                    hasRender: false,
+                })),
+            ),
+        );
+    }, [diagSpl, computed]);
+
     if (error) {
         return <ErrorLine>{error.message || 'Search failed'}</ErrorLine>;
     }
@@ -206,7 +228,15 @@ const TraceWaterfall: React.FC<Props> = ({ rows, loading = false, error = null, 
         return <StatusLine>Loading…</StatusLine>;
     }
     if (!computed || computed.limited.length === 0) {
-        return <StatusLine>No request traces available in this time range.</StatusLine>;
+        // §18.1(3) — the DataTable-style empty state: the hint reads the
+        // enclosing FramedPanel's diagnostic context (WebDispatcher passes
+        // `search={slowestTraces}`).
+        return (
+            <StatusLine>
+                No request traces available in this time range.
+                <EmptyStateHint />
+            </StatusLine>
+        );
     }
 
     const { limited, max } = computed;

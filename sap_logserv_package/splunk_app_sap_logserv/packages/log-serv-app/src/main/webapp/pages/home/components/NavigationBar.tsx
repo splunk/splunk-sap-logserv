@@ -11,6 +11,7 @@ import { useGlobalRefresh } from '../state/GlobalRefreshProvider';
 import { logservTheme } from '../styles/logservTheme';
 import NavCategoryDropdown from './NavCategoryDropdown';
 import ActionsDropdown from './ActionsDropdown';
+import AboutModal from './AboutModal';
 
 const Bar = styled.div`
     display: flex;
@@ -42,6 +43,34 @@ const HomeLink = styled(NavLink)`
     &.active {
         background: ${logservTheme.colors.hoverBackground};
         border-bottom-color: ${logservTheme.colors.cyanAccent};
+    }
+
+    &:focus {
+        outline: 2px solid ${logservTheme.colors.cyanAccent};
+        outline-offset: -2px;
+    }
+`;
+
+/* "About" sits with the primary nav (to the right of Platform) but opens a
+ * dialog instead of navigating, so it is a <button> styled to match
+ * HomeLink rather than a NavLink. It has no active state — there is no
+ * route to be "on". Build 302 / session 092. */
+const AboutButton = styled.button`
+    background: transparent;
+    color: ${logservTheme.colors.textActive};
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: ${logservTheme.spacing.sm} ${logservTheme.spacing.md};
+    cursor: pointer;
+    font-size: ${logservTheme.fontSize.body};
+    font-weight: ${logservTheme.fontWeight.semibold};
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    transition: background-color 80ms ease-out;
+
+    &:hover {
+        background: ${logservTheme.colors.hoverBackground};
     }
 
     &:focus {
@@ -245,6 +274,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({ onToggleAIAssistant, aiAs
     const { mode, setMode } = useThemeMode();
     const { triggerGlobalRefresh } = useGlobalRefresh();
     const [refreshSpinning, setRefreshSpinning] = React.useState<boolean>(false);
+    const [aboutOpen, setAboutOpen] = React.useState<boolean>(false);
+    const closeAbout = React.useCallback((): void => setAboutOpen(false), []);
     const handleRefresh = React.useCallback((): void => {
         triggerGlobalRefresh();
         // Brief spin as click feedback; the icon resets after the animation.
@@ -253,6 +284,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({ onToggleAIAssistant, aiAs
     }, [triggerGlobalRefresh]);
 
     return (
+        <>
         <Bar>
             <HomeLink to="/" end>
                 Environment Health
@@ -285,6 +317,16 @@ const NavigationBar: React.FC<NavigationBarProps> = ({ onToggleAIAssistant, aiAs
                 items={dashboardsByCategory.platform}
                 matchPathPrefix="/platform/"
             />
+
+            <AboutButton
+                type="button"
+                onClick={() => setAboutOpen(true)}
+                aria-haspopup="dialog"
+                aria-expanded={aboutOpen}
+                title="Version and build information"
+            >
+                About
+            </AboutButton>
 
             <Spacer />
 
@@ -353,6 +395,9 @@ const NavigationBar: React.FC<NavigationBarProps> = ({ onToggleAIAssistant, aiAs
                 <RefreshIcon spinning={refreshSpinning} />
             </RefreshButton>
         </Bar>
+
+        <AboutModal open={aboutOpen} onClose={closeAbout} />
+        </>
     );
 };
 

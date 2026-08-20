@@ -22,10 +22,10 @@ Splunk's REST framework enforces some capability requirements server-side, indep
 
 | REST endpoint | Gate | LogServ usage |
 |---|---|---|
-| `/storage/passwords` | `edit_storage_passwords` (typically granted to `sc_subadmin`) | LLM provider credentials, HEC audit-forwarder tokens, MCP bearer tokens |
-| `/storage/collections/data/<collection>` | None — collection-level metadata ACL only | AI Assistant settings + acks (since session 042), topology layouts, dashboard refresh preferences |
-| `/configs/conf-<name>/...` | **`admin_all_objects`** (hardcoded in the REST framework) | Historical AI Assistant settings storage — migrated to KV Store in session 042 to dodge this gate |
-| `/data/inputs/<service>` | `admin_all_objects` | UCC modular input writes — bypassed in the Demo Gen TA via `passSystemAuth = true` on its admin_external handler |
+| `/storage/passwords` | `edit_storage_passwords` (typically granted to `sc_subadmin`) | HEC audit-forwarder tokens, MCP bearer tokens (and LLM provider credentials in builds where the LLM path is enabled — not the published templates-only build) |
+| `/storage/collections/data/<collection>` | None — collection-level metadata ACL only | AI Assistant settings + acks, topology layouts, dashboard refresh preferences |
+| `/configs/conf-<name>/...` | **`admin_all_objects`** (hardcoded in the REST framework) | Historical AI Assistant settings storage — migrated to KV Store to dodge this gate |
+| `/data/inputs/<service>` | `admin_all_objects` | UCC modular-input writes — the LogServ **Azure** and **GCP** add-ons ship `passSystemAuth = true` on every `[admin_external:*]` stanza so the input-CRUD handler runs in system context (applied at build time by each add-on's `additional_packaging.py`) |
 
 The takeaway: **even with full metadata.meta write permission on an object, certain REST endpoints will return 403 to your `sc_subadmin` account if `admin_all_objects` isn't granted.** The LogServ packages have been built to either avoid these endpoints (KV Store, where possible) or work around them via system-context bypasses (`passSystemAuth`, where the admin_external pattern applies).
 
@@ -47,12 +47,16 @@ The Data TA's `/splunk_ta_sap_logserv/deployment_push` REST handler is gated by 
 
 The AI Assistant's admin-controlled settings (`enabled`, `provider`, `default_model`, `tier`, `mcp_required`, audit forwarder config, etc.) and the legal-acknowledgement state for the two T&C modals (Enable AI Assistant; Disable Audit Forwarder) are stored in two KV Store collections:
 
-- `logserv_ai_assistant_settings` — single row keyed `defaults`, holds all 17 admin-controlled settings fields
-- `logserv_ai_assistant_acks` — one row per legal-stanza name, holds the per-user opt-in version + choice + timestamp
+- `logserv_ai_assistant_settings` — single row keyed `defaults`, holding every admin-controlled AI Assistant settings field
+- `logserv_ai_assistant_acks` — one row per legal-stanza name, holding the acknowledged opt-in version, the choice, and its timestamp (the acknowledgement is recorded once per stanza for the deployment, not per user; the audit event records who acknowledged it)
 
-KV Store endpoints are governed only by the collection-level metadata ACL — no `admin_all_objects` capability requirement. Both collections ship with `write : [ * ]` so any authenticated admin-tier user can write. Without this migration (which happened in session 042), sc_subadmin users on locked-down Splunk Cloud Victoria deployments would hit 403 on every Save Defaults click and every T&C modal Submit.
+KV Store endpoints are governed only by the collection-level metadata ACL — no `admin_all_objects` capability requirement. Both collections ship with `write : [ * ]` — write access is granted to every authenticated user at the ACL layer, because the KV Store endpoint has no capability gate to fall back on; admin-tier gating is enforced in the UI (`useIsAdmin`), not by the collection ACL. Without this design, sc_subadmin users on locked-down Splunk Cloud Victoria deployments would hit 403 on every Save Defaults click and every T&C modal Submit.
 
 A one-shot migration helper in `App.tsx`'s mount effect copies pre-migration values from `local/ai_assistant_settings.conf` and `local/ai_assistant_acks.conf` into the new KV Store rows on first page load. Customers upgrading from a build that wrote settings to local conf-files don't lose their settings.
+
+### :material-circle-box:{ .taiconcolor } Data TA Configuration saves fall back to the filesystem
+
+The Data TA's **Configuration → Filters** and **Cloud Provider** tabs write their settings through splunktaucclib's REST persist. If that write returns 403 ("This operation is forbidden" — the `admin_all_objects` gate on `/configs/conf-*`), the handler falls back to writing `local/splunk_ta_sap_logserv_settings.conf` directly on the filesystem, so **Save succeeds for `sc_subadmin` accounts** (and hardened on-prem `admin` roles without `admin_all_objects`). The metadata write ACL still gates who may attempt the save. Note `passSystemAuth` is **not** honoured for UCC `[admin_external:*]` settings handlers — the filesystem fallback is what actually carries these saves.
 
 ### :material-circle-box:{ .taiconcolor } `useIsAdmin` recognizes `sc_admin` + `sc_subadmin`
 

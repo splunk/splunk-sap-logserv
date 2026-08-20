@@ -5,7 +5,7 @@
         "id": {
             "group": null,
             "name": "splunk_app_sap_logserv",
-            "version": "0.0.6"
+            "version": "0.1.1"
         },
         "author": [
             {
@@ -15,7 +15,7 @@
             }
         ],
         "releaseDate": null,
-        "description": "Dashboards, analytics, AI Assistant, Environment Topology, and Splunk Enterprise Security integration for SAP LogServ data ingested by the companion Splunk TA for SAP LogServ. Build 184 absorbs the parsing from the (archived) Splunk Add-on for ISC BIND v2.0.0 and Splunk Add-on for Squid Proxy v2.1.0 so customers no longer need those add-ons installed separately. Provides CIM-aligned tagging across the Authentication, Change, Network_Sessions, and Web data models for SAP-specific sourcetypes (sap:hana:audit, sap:webdispatcher:access, sap:abap:icm, sap:scc:audit, sap:scc:http_access, sap:abap:gateway, sap:saprouter, sap:sapstartsrv, linux:sudolog). The AI Assistant is shipped in TEMPLATES-ONLY mode in v0.0.5.0: the four cloud LLM provider implementations (Anthropic, OpenAI, Azure OpenAI, AWS Bedrock) are physically removed from source so that no LLM dispatch can occur regardless of build flags or runtime configuration; only the canned Browse Predefined Prompts library + Splunk MCP saved-search dispatch is available. Full LLM capabilities are gated behind a runtime admin toggle in v0.1.x releases.",
+        "description": "Dashboards, analytics, AI Assistant, Environment Topology, and Splunk Enterprise Security integration for SAP LogServ data ingested by the companion Splunk TA for SAP LogServ. Provides CIM-aligned tagging across the Authentication, Change, Network_Sessions, and Web data models for SAP-specific sourcetypes (sap:hana:audit, sap:webdispatcher:access, sap:abap:icm, sap:scc:audit, sap:scc:http_access, sap:abap:gateway, sap:saprouter, sap:sapstartsrv, linux:sudolog). Also absorbs the parsing from the (archived) Splunk Add-on for ISC BIND v2.0.0 and Splunk Add-on for Squid Proxy v2.1.0 so customers no longer need those add-ons installed separately.",
         "classification": {
             "intendedAudience": "IT Professionals",
             "categories": [

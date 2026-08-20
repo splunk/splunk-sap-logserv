@@ -1,5 +1,8 @@
 # AWS Remote S3 Connect to Filter Migration Guide
 
+!!! note "Legacy reference — not part of the documentation navigation"
+    This page is retained as an internal / legacy migration reference and is intentionally **not linked from the site navigation**. The migration it describes (adding Lambda-based S3 event filtering to an existing Connect deployment) has been superseded for most deployments by the Data TA's built-in [index-time filtering](configure-filters.md). If you were pointed here by a support engagement, the steps below remain valid.
+
 ### :material-circle-box:{ .taiconcolor } Introduction
 
 This guide walks you through migrating from an existing **splunk-logserv-remote-s3-connect** deployment to the **splunk-logserv-remote-s3-filter** deployment without deleting or recreating your existing IAM User and IAM Role resources.
@@ -7,7 +10,7 @@ This guide walks you through migrating from an existing **splunk-logserv-remote-
 The migration adds Lambda-based S3 event filtering capabilities to your existing deployment, allowing you to filter S3 event notifications based on time and path patterns before they are processed by Splunk.
 
 ??? tip "Also available: Native TA Index-Time Filtering"
-    Starting with version 0.0.3, the TA also includes **built-in index-time filtering** that works inside Splunk itself. This can be used alongside or instead of Lambda-based filtering. After completing this migration (or with any deployment scenario), see [Configuring Filters](configure-filters.md) or the section at the bottom of this page.
+    The TA also includes **built-in index-time filtering** that works inside Splunk itself. This can be used alongside or instead of Lambda-based filtering. After completing this migration (or with any deployment scenario), see [Configuring Filters](configure-filters.md) or the section at the bottom of this page.
 
 :material-lightning-bolt:{ .taiconcolor } This migration guide assumes you have already completed the [AWS Remote S3 Connect Setup](aws-remote-s3-connect-guide.md) and have a working deployment in your **_Secondary account_**.
 
@@ -64,7 +67,7 @@ Before starting the migration, ensure you have the following:
 
 **Local Environment:**
 
-- Python 3.9 or higher installed
+- Python 3.8 or higher installed
 - boto3 library installed
 - AWS CLI configured with appropriate credentials/profile
 
@@ -88,7 +91,7 @@ Below are the high level steps for the migration process listed in the order the
 
 ### :material-circle-box:{ .taiconcolor } 1. Install Python and boto3
 
-The migration scripts require Python 3.9 or higher and the boto3 library.
+The migration scripts require Python 3.8 or higher and the boto3 library.
 
 #### :material-crop-square:{ .taiconcolor } Check Python Version
 
@@ -98,7 +101,7 @@ Open a command prompt or terminal and run the following command to check your Py
 python --version
 ```
 
-If Python is not installed or the version is below 3.9, download and install Python from the <a href="https://www.python.org/downloads/" target="_blank">official Python website</a>.
+If Python is not installed or the version is below 3.8, download and install Python from the <a href="https://www.python.org/downloads/" target="_blank">official Python website</a>.
 
 :material-lightning-bolt:{ .taiconcolor } On Windows, ensure you check the **_Add Python to PATH_** option during installation.
 
@@ -378,7 +381,7 @@ After completing the migration and updating the Splunk configuration:
 
 7.<b class="taiconcolor">c</b> **Check Splunk** - Run a search for recent LogServ logs to confirm data is being ingested:
     ```
-    index=your_index sourcetype=sap_logserv_logs earliest=-1h
+    index=your_index earliest=-1h | stats count by sourcetype
     ```
 
 <br>
@@ -507,7 +510,7 @@ After rollback, update your Splunk AWS Add-on SQS-Based S3 Input to use the orig
 
 ### :material-circle-box:{ .taiconcolor } Introduction
 
-Starting with version 0.0.3, the Splunk TA for SAP LogServ includes **built-in index-time filtering** that works inside Splunk itself, independently of the Lambda-based S3 event filtering configured above. You can use both approaches together for defense-in-depth filtering, or use the native TA filtering on its own.
+The Splunk TA for SAP LogServ includes **built-in index-time filtering** that works inside Splunk itself, independently of the Lambda-based S3 event filtering configured above. You can use both approaches together for defense-in-depth filtering, or use the native TA filtering on its own.
 
 ??? tip "Native TA Filtering vs. Lambda-based Filtering"
     - **Lambda-based filtering** (configured above) filters S3 event notifications *before* they reach Splunk, reducing the number of SQS messages processed by the Splunk AWS Add-on.

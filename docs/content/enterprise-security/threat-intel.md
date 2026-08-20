@@ -24,9 +24,9 @@ The lookups ship **empty** (header row only). Customers populate them from their
 
 | Search name | Joins against | Severity | Schedule |
 |---|---|---|---|
-| `splunk_sap_logserv_es_ti_dns_to_malicious_domain` | `isc:bind:query` ↔ `logserv_ti_malicious_domains` | high | every 10 min |
-| `splunk_sap_logserv_es_ti_proxy_to_malicious_ip` | `squid:access` ↔ `logserv_ti_malicious_ips` | high | every 10 min |
-| `splunk_sap_logserv_es_ti_compromised_credential_use` | HANA / ABAP / sapstartsrv auth events ↔ `logserv_ti_compromised_credentials` | critical | every 5 min |
+| `splunk_sap_logserv_es_ti_dns_to_malicious_domain` | `isc:bind:query` ↔ `logserv_ti_malicious_domains` | high | hourly |
+| `splunk_sap_logserv_es_ti_proxy_to_malicious_ip` | `squid:access` ↔ `logserv_ti_malicious_ips` | high | hourly |
+| `splunk_sap_logserv_es_ti_compromised_credential_use` | HANA / ABAP / sapstartsrv auth events ↔ `logserv_ti_compromised_credentials` | critical | hourly |
 
 All three emit `action.notable=1` for ES Notable Review and `action.risk=1` for the RBA framework. Risk scores: 80 (DNS hit), 70 (proxy hit), 90 (compromised credential — highest because the action — locking the credential — is unambiguous).
 
@@ -84,7 +84,7 @@ Each of the 3 TI correlation searches has a corresponding entry in the AI Assist
 - `security.ti_proxy_to_malicious_ip`
 - `security.ti_compromised_credential_use`
 
-SOC analysts can ask the AI Assistant to dispatch them on demand: "Show me TI hits across DNS in the last hour" routes to the prompt browser → Security pack → TI: DNS to malicious domain.
+SOC analysts can dispatch them on demand from the AI Assistant's predefined-prompt browser → Security pack → **TI: DNS to malicious domain** (and siblings). Natural-language routing ("Show me TI hits across DNS in the last hour") requires the full-LLM build variant — the published templates-only package dispatches via the prompt browser only.
 
 ## :material-circle-box:{ .taiconcolor } Verifying the lookups loaded correctly
 
@@ -100,6 +100,6 @@ Each should return 0 rows (the lookups ship empty). The fact that the queries DI
 
 ## :material-circle-box:{ .taiconcolor } See also
 
-- [Correlation Searches & RBA](correlation-searches.md) — Full list of the 19 correlation searches across the App
+- [Correlation Searches & RBA](correlation-searches.md) — Full list of the correlation searches across the App
 - [Behavioral & Anomaly Detections](behavioral-detections.md) — Statistically-baselined detections that complement TI matching
 - [Asset & Identity Feed](asset-identity-feed.md) — Customer-managed asset and identity context (similar customer-side population workflow)

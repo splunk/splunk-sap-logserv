@@ -24,6 +24,8 @@
  *     hec53v013858) are excluded by the `mvcount(sids)=1` filter.
  */
 
+import { edgeIdClause, sanitizeEdgeIds } from './edgeIds';
+
 const IDX = '`sap_logserv_idx_macro`';
 
 /**
@@ -292,15 +294,31 @@ ${DETAIL_RANGE}
 };
 
 /**
+ * How many host rows the Hosts tab read returns. Raised from 20 in build 322:
+ * the tab now badges each row with an inventory ownership verdict, and 20 bit
+ * on the very node used as that feature's evidence (XCP had 21 hosts), turning
+ * a soft undercount into a false inventory claim. 100 is above any realistic
+ * per-system host count on this data — and when it IS reached the panel says
+ * so, from `host_total` below (§8a-4, the MAX_EDGE_IDS precedent: a cap that
+ * is reached is a cap that is reported).
+ */
+export const NODE_HOSTS_LIMIT = 100;
+
+/**
  * Per-node host inventory for the right-sidebar Hosts tab.
  *
  * Lists every Splunk-default `host` value that has logged events touching
  * this node. Includes event count, distinct sourcetype count (the node_host
  * metric carries sourcetype as a grain dim so dc() reconstructs exactly —
- * session-050 #3), and first/last-seen timestamps.
+ * session-050 #3), SAP instance numbers (build 325 — `values()` over the
+ * multivalue `instances` measure the node_host arms now store; empty on rows
+ * aggregated before that change), and first/last-seen timestamps.
  *
- * Returns rows shaped { host, count, sourcetypes, first_seen, last_seen }.
- * Top 20 by event count.
+ * `host_total` is the PRE-cap distinct-host count, carried on every row so the
+ * caption can state "N of M" instead of presenting the cap as the truth.
+ *
+ * Returns rows shaped { host, count, sourcetypes, instances, first_seen,
+ * last_seen, host_total }, capped at NODE_HOSTS_LIMIT by event count.
  */
 export const SEARCH_NODE_HOSTS = (nodeId: string): string | null => {
     const safe = sanitizeNodeId(nodeId);
@@ -308,10 +326,70 @@ export const SEARCH_NODE_HOSTS = (nodeId: string): string | null => {
     return `
 | inputlookup ${DETAIL_ROLL} where metric="node_host" scope="${safe}"
 ${DETAIL_RANGE}
-| stats sum(count) as count, dc(sourcetype) as sourcetypes, min(min_time) as first_seen, max(max_time) as last_seen by host
+| stats sum(count) as count, dc(sourcetype) as sourcetypes, values(instances) as instances, min(min_time) as first_seen, max(max_time) as last_seen by host
+| eventstats dc(host) as host_total
 | sort - count
-| head 20
-| fields host, count, sourcetypes, first_seen, last_seen
+| head ${NODE_HOSTS_LIMIT}
+| fields host, count, sourcetypes, instances, first_seen, last_seen, host_total
+`.trim();
+};
+
+/**
+ * Safety margin (seconds) added around the coarse mongod-pushdown bounds in
+ * SEARCH_NODE_HOST_COUNTS. The PRECISE window is still cut by `| addinfo`
+ * (DETAIL_RANGE) so the count agrees with the Hosts tab; the pushdown only
+ * has to be a superset of whatever addinfo resolves, and Splunk's calendar
+ * arithmetic (search-head-local snapping) can diverge from the JS resolver's
+ * UTC arithmetic by up to ~a day around @d / @mon snaps (the session-060
+ * build-321 lesson). Two days over-covers every such divergence.
+ */
+export const HOST_COUNT_PUSHDOWN_MARGIN_SECONDS = 2 * 86400;
+
+/**
+ * Bulk per-scope distinct-host counts for the whole topology view (build 325
+ * / session 110, plan item D1). ONE windowed read at topology load feeds a
+ * `label -> hostCount` map: the NodeTooltip "Hosts" row (SID nodes) and the
+ * right-pane "Hosts (in range)" facts row (SID + tenant nodes).
+ *
+ * Reads the SAME `node_host` metric the Hosts tab reads, so the two counts
+ * agree for the same node + window — `dc(host)` here equals that tab's
+ * `host_total` eventstats. (Dispatch timing can briefly differ: this read
+ * resolves its window at page load, the tab at node-select time, so across
+ * an hourly-aggregate boundary the two can disagree by the newest hour
+ * until the next interaction.) Sub-hour windows inherit the rollup's hourly
+ * grain, exactly like the Hosts tab (accepted in the plan).
+ *
+ * Two-layer windowing (review fold, session 110): the caller passes the
+ * JS-resolved epoch window and a COARSE `bucket_ts` bound (± the margin
+ * above) is pushed into the inputlookup `where`, so mongod streams only the
+ * window's rows instead of the whole 365-day retention of the largest
+ * detail-rollup metric — the same history-decoupling every other rollup
+ * read has (session-035 sticky #1). The PRECISE trim stays `| addinfo`, so
+ * agreement with the Hosts tab is unaffected. Non-finite bounds (an
+ * unparseable time spec) fall back to the unbounded-but-correct form.
+ *
+ * No scope filter: the map is only APPLIED to SID + tenant nodes at the
+ * consumer — host/IP scopes' counts are computed but unused (a host's dc
+ * over itself is trivially 1 anyway).
+ */
+export const SEARCH_NODE_HOST_COUNTS = (
+    earliestTs?: number,
+    latestTs?: number,
+): string => {
+    const lo = typeof earliestTs === 'number' && Number.isFinite(earliestTs)
+        ? Math.floor(earliestTs - HOST_COUNT_PUSHDOWN_MARGIN_SECONDS)
+        : null;
+    const hi = typeof latestTs === 'number' && Number.isFinite(latestTs)
+        ? Math.ceil(latestTs + HOST_COUNT_PUSHDOWN_MARGIN_SECONDS)
+        : null;
+    const bounds = lo != null && hi != null && hi >= lo
+        ? ` AND bucket_ts>=${lo} AND bucket_ts<=${hi}`
+        : '';
+    return `
+| inputlookup ${DETAIL_ROLL} where metric="node_host"${bounds}
+${DETAIL_RANGE}
+| stats dc(host) as hosts by scope
+| fields scope, hosts
 `.trim();
 };
 
@@ -325,8 +403,8 @@ ${DETAIL_RANGE}
  * aggregate_edges id derivation and precompute the same per-type aggregates
  * the live searches used to compute on the fly, so the read is a plain rollup.
  *
- *   - Activity   → reuses logserv_topology_edges (already per-(edge,bucket)
- *                  with call_count + error_count).
+ *   - Activity   → NOT dispatched since build 321: computed in-memory by
+ *                  useTopologyData from the same bucket rows as the headline.
  *   - Operations → edge_op metric (top entity: uri / icm_program / action_type
  *                  / hana_trace_component).
  *   - Performance→ edge_perf metric (status-class / icm_tasks / action_status
@@ -335,42 +413,24 @@ ${DETAIL_RANGE}
  *                  Headline p50/p95/max still come from the edge row).
  *   - Errors     → edge_err metric (error_kind / error_detail pairs).
  *
- * Signature is `(splType, edgeId)` — splType only selects the Performance read
- * variant; the id is the rollup scope. Returns null when either is missing.
+ * Signature is `(splType, edgeIds)` — splType only selects the Performance
+ * read variant; the ids are the rollup scopes. Returns null when splType is
+ * missing, when the id set is empty, or when ANY id is not a stored edge id
+ * (fail closed — see topology/edgeIds.ts).
  * ============================================================================ */
 
-/** Whitelist for the edge id (sha1[:16] hex). Defense-in-depth before splicing
- *  into the inputlookup `where scope="..."` clause. */
-const sanitizeEdgeId = (id: string | null | undefined): string => {
-    if (!id || typeof id !== 'string') return '';
-    if (!/^[A-Za-z0-9]+$/.test(id)) return '';
-    if (id.length > 64) return '';
-    return id;
-};
-
-/**
- * Per-edge Activity Trend timechart over the global TimeRange. Returns
- * `_time` + `count` + `error_count` per bucket so the chart can stack the two
- * series. Reads the already-cached logserv_topology_edges rows (call_count +
- * per-type error_count, computed by aggregate_edges). count 0-fills empty bins
- * (matching the old `timechart count`); error_count null-fills (matching the
- * old `timechart sum(eval(...))`).
- */
-export const SEARCH_EDGE_ACTIVITY = (
-    _splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
-    edgeId: string,
-): string | null => {
-    const eid = sanitizeEdgeId(edgeId);
-    if (!eid) return null;
-    return `
-| inputlookup logserv_topology_edges where id="${eid}"
-${DETAIL_RANGE}
-| eval _time=bucket_ts
-| timechart span=1h sum(call_count) as count, sum(error_count) as error_count
-| fillnull value=0 count
-| fields _time, count, error_count
-`.trim();
-};
+/* The edge-id contract (validation, the OR-clause renderer and the display-id
+ * producer) lives in topology/edgeIds.ts so the build gate can exercise it
+ * directly. Build 321: these three builders take the SET of stored ids
+ * composing the rendered edge — retargeting can collapse several — and fail
+ * closed if any of them is not a stored id.
+ *
+ * There is deliberately NO SEARCH_EDGE_ACTIVITY: the Activity series is
+ * computed in-memory in useTopologyData from the same bucket rows that produce
+ * the edge's headline totals, so the Overview legend decomposes "Calls in
+ * window" exactly. Dispatching it would resolve a different window (Splunk's
+ * `| addinfo` calendar arithmetic in the search head's local TZ with an
+ * exclusive upper bound, versus the hook's UTC-snapped inclusive one). */
 
 /**
  * Per-edge Operations: top entities traversing the edge for the current time
@@ -382,12 +442,12 @@ ${DETAIL_RANGE}
  */
 export const SEARCH_EDGE_OPERATIONS = (
     _splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
-    edgeId: string,
+    edgeIds: readonly string[] | null | undefined,
 ): string | null => {
-    const eid = sanitizeEdgeId(edgeId);
-    if (!eid) return null;
+    const sel = sanitizeEdgeIds(edgeIds);
+    if (!sel) return null;
     return `
-| inputlookup ${DETAIL_ROLL} where metric="edge_op" scope="${eid}"
+| inputlookup ${DETAIL_ROLL} where metric="edge_op" AND ${edgeIdClause('scope', sel.ids)}
 ${DETAIL_RANGE}
 | stats sum(count) as count by entity
 | sort - count
@@ -408,13 +468,13 @@ ${DETAIL_RANGE}
  */
 export const SEARCH_EDGE_PERFORMANCE = (
     splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
-    edgeId: string,
+    edgeIds: readonly string[] | null | undefined,
 ): string | null => {
-    const eid = sanitizeEdgeId(edgeId);
-    if (!eid) return null;
+    const sel = sanitizeEdgeIds(edgeIds);
+    if (!sel) return null;
     if (splType === 'hana_tenant') {
         return `
-| inputlookup ${DETAIL_ROLL} where metric="edge_perf" scope="${eid}"
+| inputlookup ${DETAIL_ROLL} where metric="edge_perf" AND ${edgeIdClause('scope', sel.ids)}
 ${DETAIL_RANGE}
 | stats sum(sum_dur) as s, sum(n_dur) as n, max(max_dur) as mx
 | eval "Avg ms"=round(s/n, 1), "Max ms"=mx
@@ -425,7 +485,7 @@ ${DETAIL_RANGE}
 `.trim();
     }
     return `
-| inputlookup ${DETAIL_ROLL} where metric="edge_perf" scope="${eid}"
+| inputlookup ${DETAIL_ROLL} where metric="edge_perf" AND ${edgeIdClause('scope', sel.ids)}
 ${DETAIL_RANGE}
 | stats sum(count) as count by bucket_label
 | sort - count
@@ -442,12 +502,12 @@ ${DETAIL_RANGE}
  */
 export const SEARCH_EDGE_ERRORS = (
     _splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
-    edgeId: string,
+    edgeIds: readonly string[] | null | undefined,
 ): string | null => {
-    const eid = sanitizeEdgeId(edgeId);
-    if (!eid) return null;
+    const sel = sanitizeEdgeIds(edgeIds);
+    if (!sel) return null;
     return `
-| inputlookup ${DETAIL_ROLL} where metric="edge_err" scope="${eid}"
+| inputlookup ${DETAIL_ROLL} where metric="edge_err" AND ${edgeIdClause('scope', sel.ids)}
 ${DETAIL_RANGE}
 | stats sum(count) as count, max(max_time) as last_seen by error_kind, error_detail
 | sort - count

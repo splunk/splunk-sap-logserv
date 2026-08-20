@@ -10,7 +10,7 @@ import type { ActivityRow } from '../../topology/types';
 /**
  * Bottom panel — collapsible "Live Activity" drawer.
  *
- * Left side: top RFC partners table (4-6 rows from the fixture).
+ * Left side: busiest-edges table (top 8 edges of any integration type).
  * Right side: a compact "Calls/hour, last 24h" SVG bar chart so the bottom
  * panel mixes table + chart per the design (charts not just tables).
  *
@@ -266,7 +266,7 @@ const TopologyBottomPanel: React.FC<TopologyBottomPanelProps> = ({
             <Wrap>
                 <HeaderRow>
                     <TitleSubtitle>
-                        {`Top ${rows.length} RFC partners · ${formatCallCount(totalCalls)} calls · ${rangeLabel}`}
+                        {`Top ${rows.length} busiest edges · ${formatCallCount(totalCalls)} calls · ${rangeLabel}`}
                     </TitleSubtitle>
                     <Controls>
                         <span style={{ color: logservTheme.colors.textMuted, fontSize: 11 }}>auto-refresh</span>

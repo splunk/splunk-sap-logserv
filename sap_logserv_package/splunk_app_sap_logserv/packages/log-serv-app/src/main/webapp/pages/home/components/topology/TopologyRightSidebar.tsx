@@ -7,9 +7,27 @@ import type { ColorTokens } from '../../styles/magneticTokens';
 import { darken } from '../../utils/colorMath';
 import { formatCallCount } from '../../topology/edgeStyle';
 import type { TopologyNode, TopologyEdge } from '../../topology/types';
-import { isDatabaseTag } from '../../topology/types';
+import { isDatabaseTag, displayTag } from '../../topology/types';
 import type { NodeError, NodeHost } from '../../hooks/useNodeData';
 import type { UseEdgeDataResult } from '../../hooks/useEdgeData';
+import {
+    classifyHostOwnership,
+    donutSegments,
+    hasInflatedWedges,
+    partnerColorAt,
+    splitPartners,
+    trafficTotal,
+    visibleWedgeCount,
+} from '../../topology/panelFacts';
+import type {
+    EdgeAppServerRow,
+    EndpointAttribution,
+    Ownership,
+    PartnerEntry,
+    TrafficRow,
+} from '../../topology/panelFacts';
+import { enrichmentSourceLabel, groupUsersBySource } from '../../topology/enrichment';
+import type { IpEnrichmentEntry } from '../../topology/enrichment';
 
 /**
  * Right sidebar — selected-node details.
@@ -128,6 +146,21 @@ const ChartCaption = styled.div`
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 4px;
+    /* Build 324 / session 109 — horizontal section dividers in every
+     * right-panel tab: a hairline above each section caption separates
+     * it from the preceding section (tab-leading captions get a rule
+     * under the tab bar, which reads as consistent chrome). */
+    border-top: 1px solid ${logservTheme.colors.panelBorderWeak};
+    padding-top: 10px;
+    margin-top: 10px;
+`;
+
+/* Build 324 — explicit divider for section seams that have no
+ * ChartCaption heading (e.g. the Overview disclosure block). */
+const SectionDivider = styled.div`
+    border-top: 1px solid ${logservTheme.colors.panelBorderWeak};
+    margin-top: 10px;
+    padding-top: 2px;
 `;
 
 const StubNote = styled.div`
@@ -236,24 +269,50 @@ const formatRelative = (epochSec: number): string => {
 
 /** Strip the redundant `sap:` prefix from a sourcetype label so it fits in
  *  the narrow column without ellipsis. `sap:webdispatcher:access` -> `webdispatcher:access`. */
+/** Shown instead of "no events" when the three edge reads were deliberately
+ *  not dispatched, so the pane never asserts an absence it did not measure. */
+const NOT_DISPATCHED_MSG =
+    'This edge carries no stored rollup key, so nothing was queried.';
+
+/** Stable empty array for the optional traffic prop — a `?? []` at the use site
+ *  would hand a fresh identity to every render. */
+const EMPTY_TRAFFIC: TrafficRow[] = [];
+
+/** Rendered when a rendered edge spans more stored edges than one read may
+ *  splice: the tab totals then cover only part of the edge, and must say so. */
+const TruncationNote = ({ used, total }: { used: number; total: number }) => (
+    <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
+        {`Showing the first ${used.toLocaleString()} of ${total.toLocaleString()} underlying edges — totals below are partial.`}
+    </EmptyMsg>
+);
+
 const shortSourcetype = (st: string): string => {
     if (!st) return '';
     return st.startsWith('sap:') ? st.slice(4) : st;
 };
 
-/** Color palette for top-partner donut wedges — rotated through
- *  deterministically. Built from the RESOLVED mode tokens (not logservTheme
- *  var() refs) because the wedge colors land on SVG `fill` attributes in
- *  DonutChart, where CSS variables don't resolve. Build 246 / Phase 0. */
+/** Color palette for donut wedges — cycled deterministically by
+ *  `partnerColorAt`, which steps the shade once per completed cycle so an
+ *  unbounded partner list never runs out of colors. Built from the RESOLVED
+ *  mode tokens (not logservTheme var() refs) because the wedge colors land on
+ *  SVG `fill` attributes in DonutChart, where CSS variables don't resolve.
+ *  Build 246 / Phase 0.
+ *
+ *  Build 322: `textMuted` dropped — it is the SAME hex in both modes, so
+ *  shading it buries it in the dark panel background and washes it out on
+ *  white. Ordered so the two near-duplicate pairs the palette contains
+ *  (orange/orangeLight, cyanAccent/cyanLight) are far apart in the cycle and
+ *  never land on adjacent legend rows. The gate asserts that the first
+ *  MAX_LEGEND_ROWS+1 generated colors stay at least as discriminable as this
+ *  base set (§8a-12). */
 const partnerPalette = (c: ColorTokens): string[] => [
     c.teal,
-    c.cyanAccent,
     c.orange,
     c.purple,
-    c.cyanLight,
-    c.orangeLight,
+    c.cyanAccent,
     c.redLight,
-    c.textMuted,
+    c.orangeLight,
+    c.cyanLight,
 ];
 
 /**
@@ -302,17 +361,63 @@ const HourlyChart: React.FC<{ data: number[]; color: string }> = ({ data, color 
 };
 
 /**
- * Hand-rolled SVG donut chart — top tcodes for the selected SID.
- * Slices proportional to count. Center hole shows total. ~120 px square.
+ * One donut wedge. `id` is the React key and the attribution lookup key; `code`
+ * is display text only. Keying on the label was safe only while the list was
+ * sliced to four — distinct node ids can share a label (ids hash `kind:value`,
+ * labels are the bare value), and a duplicate key silently drops a wedge from a
+ * chart whose centre total still includes it (§8a-11).
  */
-const DonutChart: React.FC<{ data: { code: string; count: number; color: string }[] }> = ({ data }) => {
+interface DonutDatum {
+    id: string;
+    code: string;
+    calls: number;
+    color: string;
+    /* Build 331 / session 112 — the per-row ownership badge was REMOVED at
+     * user direction ("just show the IP and # calls"): retargeting folds
+     * every inventoried address into its owner's node, so "owner not
+     * established" was the only verdict a legend row could reach, and a
+     * uniform column of it read as noise. Ownership still renders where it
+     * can actually vary: the Hosts tab rows and the Edge Details
+     * "By app server" table. */
+}
+
+/**
+ * The hover text for one wedge (and its legend row): the endpoint, its exact
+ * call count, and its share of this chart's total. The share is stated because
+ * the angle cannot be trusted to convey it — a slice too small to survive its
+ * own 1 px stroke is widened to stay visible.
+ */
+const wedgeTooltip = (d: DonutDatum, total: number): string => {
+    const pct = total > 0 ? (d.calls / total) * 100 : 0;
+    const shown = pct > 0 && pct < 0.1 ? '<0.1' : pct.toFixed(1);
+    return `${d.code} — ${d.calls.toLocaleString()} calls (${shown}% of ${total.toLocaleString()})`;
+};
+
+/**
+ * Hand-rolled SVG donut chart. Center hole shows the exact total.
+ * ~120 px square.
+ *
+ * Build 322 — three rendering defects the old top-4 cap was hiding:
+ *   - wedges are stroked 1 px against a ~314 px circumference, so anything
+ *     under ~0.6% was consumed by its own stroke while its legend row claimed
+ *     a color. `donutSegments` reserves a minimum sliver per wedge.
+ *   - `arcPath(0, 1)` is a degenerate arc-to-itself and draws NOTHING, which
+ *     single-wedge donuts hit every time once one donut became two. The
+ *     build-227/228 full-circle fix is ported here.
+ *   - an empty data array divided by zero and emitted an invalid path under a
+ *     centre reading "0 calls". Callers render an empty state instead, and the
+ *     guard below is defence in depth.
+ */
+const DonutChart: React.FC<{ data: DonutDatum[]; label: string }> = ({ data, label }) => {
     const W = 120;
     const cx = W / 2;
     const cy = W / 2;
     const r = 50;
     const innerR = 32;
-    const total = data.reduce((s, d) => s + d.count, 0);
-    let cum = 0;
+    const total = data.reduce((s, d) => s + d.calls, 0);
+    const values = data.map((d) => d.calls);
+    const wedges = visibleWedgeCount(values);
+    const segments = donutSegments(values);
 
     const arcPath = (start: number, end: number): string => {
         const a0 = (start * 2 * Math.PI) - Math.PI / 2;
@@ -334,12 +439,45 @@ const DonutChart: React.FC<{ data: { code: string; count: number; color: string 
          * logservTheme values are var(--lsv-*) refs, which resolve in CSS
          * positions (inline style) but not attribute positions. Wedge
          * colors (d.color) are already resolved hex from partnerPalette. */
-        <svg width={W} height={W} role="img" aria-label="Top tcodes by call volume">
-            {data.map((d) => {
-                const start = cum / total;
-                const end = (cum + d.count) / total;
-                cum += d.count;
-                return <path key={d.code} d={arcPath(start, end)} fill={d.color} style={{ stroke: logservTheme.colors.panelBackground }} strokeWidth={1} />;
+        <svg width={W} height={W} role="img" aria-label={label}>
+            {wedges === 1 && (() => {
+                /* A single wedge is the whole ring: draw it as a stroked
+                 * circle, because a 0..360 arc path renders as nothing. */
+                const only = data[values.findIndex((v) => v > 0)];
+                return (
+                    <circle
+                        cx={cx}
+                        cy={cy}
+                        r={(r + innerR) / 2}
+                        fill="none"
+                        stroke={only?.color}
+                        strokeWidth={r - innerR}
+                    >
+                        {only && <title>{wedgeTooltip(only, total)}</title>}
+                    </circle>
+                );
+            })()}
+            {wedges > 1 && data.map((d, i) => {
+                const seg = segments[i];
+                if (!seg || seg.t1 <= seg.t0) return null;
+                return (
+                    /* An SVG <title> child is the browser's own tooltip — no
+                     * positioning code, no portal, and it survives the panel's
+                     * overflow clipping. Same idiom the chart legends use
+                     * (components/LegendTitleTooltips.tsx, session 016). It
+                     * carries the EXACT count and share, which matters because
+                     * the wedge ANGLE is only approximate once a small slice
+                     * has been widened to stay visible. */
+                    <path
+                        key={d.id}
+                        d={arcPath(seg.t0, seg.t1)}
+                        fill={d.color}
+                        style={{ stroke: logservTheme.colors.panelBackground }}
+                        strokeWidth={1}
+                    >
+                        <title>{wedgeTooltip(d, total)}</title>
+                    </path>
+                );
             })}
             <text x={cx} y={cy - 2} textAnchor="middle" fontSize="11" fontWeight="600" style={{ fill: logservTheme.colors.textActive }}>{formatCallCount(total)}</text>
             <text x={cx} y={cy + 12} textAnchor="middle" fontSize="9" style={{ fill: logservTheme.colors.textMuted }}>calls</text>
@@ -366,14 +504,26 @@ const DonutLegend = styled.ul`
         border-radius: 2px;
     }
     .code {
+        /* Nothing here truncates: the label WRAPS. min-width: 0 is still
+         * load-bearing (build 322) because a flex item's automatic minimum is
+         * its min-content width — without it a long hostname refuses to shrink
+         * and pushes the count out of the row with no scrollbar, and the exact
+         * count is precisely what justifies the donut's approximate angles.
+         * The overflow-wrap rule lets an unbroken IP or FQDN wrap inside the
+         * column rather than overflow it. */
         flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
         font-family: monospace;
         font-size: 10px;
     }
     .count {
         color: ${logservTheme.colors.textMuted};
         font-variant-numeric: tabular-nums;
+        flex-shrink: 0;
     }
+    /* Build 331 — the build-322 per-row ownership chip (.owner) was removed
+     * with the badge column (user direction; see the DonutDatum comment). */
 `;
 
 const ChartRow = styled.div`
@@ -387,6 +537,64 @@ const ChartBlock = styled.div`
     flex: 1;
     min-width: 0;
 `;
+
+/** The ownership verdict as the panel says it. "shared" is deliberately NOT a
+ *  word used here: absence from the inventory has at least four causes and we
+ *  have measured none of them (§8a-6). */
+const ownershipText = (o: Ownership | undefined | null): string | null => {
+    if (!o || o.state === 'none') return null;
+    if (o.state === 'owner') return `owner: ${o.sid}`;
+    return 'owner not established';
+};
+
+/**
+ * One direction's partner donut with its legend directly beneath it.
+ *
+ * The legend lists EVERY partner — no row cap and no remainder row. It was
+ * briefly capped at eight rows with the remainder disclosed, to keep the two
+ * stacked blocks short; the user asked for the full list instead. The right
+ * zone already scrolls, so a wide fan-out makes this block tall rather than
+ * incomplete, and nothing about the node's traffic is left unnamed.
+ */
+const PartnerDonutBlock: React.FC<{
+    title: string;
+    data: DonutDatum[];
+    calls: number;
+    emptyMsg: string;
+}> = ({ title, data, calls, emptyMsg }) => {
+    const total = data.reduce((s, d) => s + d.calls, 0);
+    return (
+        <ChartBlock>
+            <ChartCaption>
+                {data.length > 0
+                    ? `${title} · ${data.length} · ${calls.toLocaleString()} calls`
+                    : title}
+            </ChartCaption>
+            {data.length === 0 ? (
+                <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>{emptyMsg}</EmptyMsg>
+            ) : (
+                <>
+                    <DonutChart data={data} label={title} />
+                    {/* Build 331 — legend rows are swatch + endpoint + count only;
+                      * the ownership badge column was removed at user direction
+                      * (see the DonutDatum comment). */}
+                    <DonutLegend>
+                        {data.map((d) => {
+                            const tip = wedgeTooltip(d, total);
+                            return (
+                                <li key={d.id} title={tip}>
+                                    <span className="swatch" style={{ background: d.color }} />
+                                    <span className="code">{d.code}</span>
+                                    <span className="count">{formatCallCount(d.calls)}</span>
+                                </li>
+                            );
+                        })}
+                    </DonutLegend>
+                </>
+            )}
+        </ChartBlock>
+    );
+};
 
 /* Build 202 / session 036 — Edge Details panel-specific styled components. */
 
@@ -563,6 +771,32 @@ interface TopologyRightSidebarProps {
     /** Per-node host inventory (Splunk default `host` field), follows global TimeRange. */
     nodeHosts: NodeHost[] | null;
     nodeHostsLoading: boolean;
+    /** Build 322 — distinct hosts BEFORE the read's cap, so the caption states
+     *  "20 of 47" rather than presenting the cap as the count. */
+    nodeHostTotal?: number | null;
+    /** Build 325 (plan item D1) — the selected node's window host count from
+     *  the bulk node_host read, for the Overview "Hosts (in range)" facts
+     *  row. The parent gates it to SID + tenant nodes; undefined renders no
+     *  row. Same metric + window as the Hosts tab, so it agrees with that
+     *  tab's caption (dispatch timing across an hourly-aggregate boundary
+     *  can briefly differ). */
+    nodeHostCount?: number | null;
+    /** Build 329 / session 112 — the IP enrichment index (hostname + user
+     *  names per IP, from logserv_topology_ip_enrichment, label-keyed).
+     *  Drives the Overview "Hostname" / "Users" rows under the Tag row for
+     *  IP-labeled partner squares. Latest-known semantics — NOT bound to
+     *  the time picker; the "Names as of" line carries the honesty. */
+    ipEnrichment?: ReadonlyMap<string, IpEnrichmentEntry>;
+    /** Build 322 — the selected node's traffic rows, accounting for 100% of
+     *  its calls. Pass a stable array (a `?? []` in JSX would hand this a new
+     *  identity every render and invalidate the memo below). */
+    nodeTraffic?: TrafficRow[];
+    /** Build 322 — node id -> canonical + inventory owner, built in the hook.
+     *  An id absent from this record renders NO badge (§8a-7). */
+    endpointAttribution?: Record<string, EndpointAttribution>;
+    /** Build 322 — canonical_value -> owning SID, for the Hosts tab's rows
+     *  (raw host names, the one legitimately value-keyed lookup). */
+    hostOwnerByValue?: Record<string, string>;
     /** Build 202 / session 036 — per-edge selection.
      *  When non-null, the sidebar swaps from the 4-tab Node Details panel to
      *  the 5-tab Edge Details panel. Mutex with selectedNode is enforced at
@@ -722,6 +956,12 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
     nodeErrorsLoading,
     nodeHosts,
     nodeHostsLoading,
+    nodeHostTotal,
+    nodeHostCount,
+    ipEnrichment,
+    nodeTraffic,
+    endpointAttribution,
+    hostOwnerByValue,
     selectedEdge,
     edgeNodes,
     edgeData,
@@ -735,7 +975,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
      * (SVG fill attributes + darken() — var() refs don't work there).
      * Named PARTNER_PALETTE to match the pre-build-246 module constant so
      * the existing usage sites below stay textually identical. */
-    const { tokens } = useThemeMode();
+    const { tokens, mode } = useThemeMode();
     const PARTNER_PALETTE = React.useMemo(() => partnerPalette(tokens), [tokens]);
     const [internalTab, setInternalTab] = useState<RightTab>('overview');
     const tab = controlledTab ?? internalTab;
@@ -756,53 +996,91 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
         [onEdgeTabChange],
     );
 
-    /** Resolve edge endpoint id back to a human-readable label by looking
-     *  up the corresponding node in the edgeNodes list. Falls back to the
-     *  raw id (SHA1[:16]) if no match. */
-    const labelForEndpoint = useCallback(
-        (id: string): string => {
-            if (!edgeNodes) return id;
-            const node = edgeNodes.find((n) => n.id === id);
-            return node?.label ?? id;
-        },
+    /* Build 329 / session 112 — the selected node's IP enrichment entry
+     * (label-keyed; non-IP labels miss the map by construction). Plain
+     * lookup, no memo — Map.get is O(1). */
+    const selectedIpEnrichment: IpEnrichmentEntry | null = (selectedNode && ipEnrichment
+        ? ipEnrichment.get(selectedNode.label) ?? null
+        : null);
+
+    /** Resolve edge endpoint id back to a human-readable label. Backed by a
+     *  memoised map since build 322: the partner list is no longer capped at
+     *  four, so a linear scan per partner per donut per render put an
+     *  O(partners x nodes) cost in the panel-drag path. Falls back to the raw
+     *  id (SHA1[:16]) if no match. */
+    const labelById = React.useMemo(
+        () => new Map((edgeNodes ?? []).map((n) => [n.id, n.label])),
         [edgeNodes],
     );
+    const labelForEndpoint = useCallback(
+        (id: string): string => labelById.get(id) ?? id,
+        [labelById],
+    );
 
-    /** Top partners derived from in+out edges. Group by the OTHER endpoint
-     *  (not the selected node), sum call counts, take top 4 + "OTHER".
-     *  Build 205 / session 036 — resolve SHA1[:16] node ids back to human-
-     *  readable labels via labelForEndpoint (looks up edgeNodes). Without
-     *  this, the donut legend showed opaque hex strings like
-     *  `d268d4a8e9919dd4` instead of the actual SID / IP / hostname. */
-    const topPartners = React.useMemo(() => {
-        if (!selectedNode) return [];
-        const counts = new Map<string, number>();
-        selectedNodeIncomingEdges.forEach((e) => {
-            counts.set(e.source, (counts.get(e.source) ?? 0) + e.callCount);
-        });
-        selectedNodeOutgoingEdges.forEach((e) => {
-            counts.set(e.target, (counts.get(e.target) ?? 0) + e.callCount);
-        });
-        const sorted = Array.from(counts.entries())
-            .map(([id, count]) => ({ id, count }))
-            .sort((a, b) => b.count - a.count);
-        const top = sorted.slice(0, 4);
-        const rest = sorted.slice(4);
-        const restTotal = rest.reduce((s, r) => s + r.count, 0);
-        const list = top.map((p, i) => ({
-            code: labelForEndpoint(p.id),
-            count: p.count,
-            color: PARTNER_PALETTE[i],
-        }));
-        if (restTotal > 0) {
-            list.push({
-                code: `OTHER (${rest.length})`,
-                count: restTotal,
-                color: PARTNER_PALETTE[Math.min(top.length, PARTNER_PALETTE.length - 1)],
+    /**
+     * Partners split by GRAPH ROLE (build 322, replacing the build-205
+     * top-4 + OTHER donut).
+     *
+     * Two things the old single donut deliberately did NOT claim, and which
+     * the split has to get right:
+     *   - It summed both directions, so it made no direction claim. Splitting
+     *     forces every partner into one bucket, so edges stored
+     *     `direction="bidi"` — whose source/target ordering is an artefact of
+     *     how the SPL arm assembles the pair — are excluded from both and
+     *     surfaced on their own line (§8a-8).
+     *   - It sliced to four, so its legend could not over-claim. Every partner
+     *     is now listed and counted; only the LEGEND is bounded, by a named
+     *     remainder (§8a-10).
+     */
+    const partnerSplit = React.useMemo(
+        () => splitPartners(selectedNodeIncomingEdges, selectedNodeOutgoingEdges),
+        [selectedNodeIncomingEdges, selectedNodeOutgoingEdges],
+    );
+
+    /**
+     * Turn one direction's partners into donut data. Labels are resolved for
+     * display only; the id is the key AND the attribution lookup, so a
+     * label-collision cannot leak across rows. Where two partners in the
+     * SAME donut resolve to the same label (a `tenant_db` and a `sid` share
+     * theirs by design), the canonical kind disambiguates the visible text —
+     * two identical rows with different counts is unreadable regardless of
+     * the React key. (Build 331: the per-row ownership badge is gone; the
+     * attribution now feeds ONLY this disambiguation.)
+     */
+    const buildDonutData = useCallback(
+        (entries: PartnerEntry[]): DonutDatum[] => {
+            const labels = entries.map((p) => labelForEndpoint(p.id));
+            const seen = new Map<string, number>();
+            labels.forEach((l) => seen.set(l, (seen.get(l) ?? 0) + 1));
+            return entries.map((p, i) => {
+                /* The id-keyed attribution lookup stays: it disambiguates
+                 * label collisions (a tenant_db and a sid share a label by
+                 * design). Build 331 removed only the ownership badge. */
+                const att = endpointAttribution ? endpointAttribution[p.id] : undefined;
+                const dup = (seen.get(labels[i]) ?? 0) > 1;
+                return {
+                    id: p.id,
+                    code: dup && att?.kind ? `${labels[i]} (${att.kind})` : labels[i],
+                    calls: p.calls,
+                    color: partnerColorAt(PARTNER_PALETTE, i, mode),
+                };
             });
-        }
-        return list;
-    }, [selectedNode, selectedNodeIncomingEdges, selectedNodeOutgoingEdges, labelForEndpoint, PARTNER_PALETTE]);
+        },
+        [labelForEndpoint, endpointAttribution, PARTNER_PALETTE, mode],
+    );
+
+    /* Declared above the edge-branch early return so the hooks stay
+     * unconditional. Memoised rather than computed in the render body: the
+     * partner list is unbounded since build 322, and the dashboard re-renders
+     * on every mousemove while a panel divider is being dragged. */
+    const inboundDonut = React.useMemo(
+        () => buildDonutData(partnerSplit.inbound),
+        [buildDonutData, partnerSplit.inbound],
+    );
+    const outboundDonut = React.useMemo(
+        () => buildDonutData(partnerSplit.outbound),
+        [buildDonutData, partnerSplit.outbound],
+    );
 
     const collapseAction = onCollapse ? (
         <CollapseChevron type="button" onClick={onCollapse} title="Collapse panel" aria-label="Collapse details panel">
@@ -875,7 +1153,10 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                     <tr><td className="k">Edge type</td><td className="v">{typeLabel}</td></tr>
                                     <tr><td className="k">Direction</td><td className="v">{selectedEdge.direction}</td></tr>
                                     <tr><td className="k">Calls in window</td><td className="v">{selectedEdge.callCount.toLocaleString()}</td></tr>
-                                    <tr><td className="k">Errors in window</td><td className="v">{(selectedEdge.errorCount ?? 0).toLocaleString()}</td></tr>
+                                    <tr>
+                                        <td className="k">{splType === 'hana_audit' ? 'Auth failures (CONNECT)' : 'Errors in window'}</td>
+                                        <td className="v">{(selectedEdge.errorCount ?? 0).toLocaleString()}</td>
+                                    </tr>
                                     {selectedEdge.callCount > 0 && (
                                         <tr><td className="k">Error rate</td><td className="v">{errorRate.toFixed(2)}%</td></tr>
                                     )}
@@ -884,6 +1165,71 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                     )}
                                 </tbody>
                             </FactsTable>
+                            {/* Build 325 (plan item E3) — RFC edges only: the per-app-
+                              * server split of this edge's calls, grouped by the stored
+                              * SID-side gateway listening address (local_ip). The rows
+                              * partition the member rows, so Calls sums to the facts
+                              * table's "Calls in window" by construction. Shown for any
+                              * RFC edge, even one row — it names the app server. The
+                              * caption counts only NAMED addresses: a "(not recorded)"
+                              * bucket is explicitly not an app server. */}
+                            {splType === 'rfc' && selectedEdge.appServers && selectedEdge.appServers.length > 0 && (() => {
+                                /* Captured once: the outer && guard's narrowing does
+                                 * not reach into this closure. */
+                                const appServers = selectedEdge.appServers as EdgeAppServerRow[];
+                                const namedCount = appServers.filter((a) => a.localIp !== null).length;
+                                return (
+                                <>
+                                    <ChartCaption>
+                                        {namedCount > 0
+                                            ? `By app server · ${namedCount} · current time range`
+                                            : 'By app server · current time range'}
+                                    </ChartCaption>
+                                    <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
+                                        {`Each row is a SID-side gateway listening address this edge's calls were recorded against — the app servers of ${sourceLabel} as the gateway log names them, not a full instance inventory. Ownership comes from the system inventory and is not limited to the selected time range; an address without an owner is one the inventory has not attributed to exactly one system.`}
+                                    </EmptyMsg>
+                                    {appServers.some((a) => a.localIp === null) && (
+                                        <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
+                                            Calls recorded before the per-app-server upgrade carry no
+                                            address and are grouped as “(not recorded)”. Running Clear +
+                                            Backfill on the Environment Topology (graph) rollup from
+                                            Settings → Dashboard Data resolves them — note the clear
+                                            discards graph history older than the backfill window, so on
+                                            long-established installs check the release notes for the
+                                            RFC-only alternative that keeps it.
+                                        </EmptyMsg>
+                                    )}
+                                    <TableScroll>
+                                        <DataTable>
+                                            <thead>
+                                                <tr>
+                                                    <th>App server</th>
+                                                    <th className="num">Calls</th>
+                                                    <th className="num">Errors</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {appServers.map((a) => {
+                                                    const owner = a.localIp
+                                                        ? ownershipText(classifyHostOwnership(a.localIp, hostOwnerByValue ?? {}))
+                                                        : null;
+                                                    return (
+                                                        <tr key={a.localIp ?? '(not recorded)'}>
+                                                            <td className="primary">
+                                                                <div>{a.localIp ?? '(not recorded)'}</div>
+                                                                {owner && <div className="secondary">{owner}</div>}
+                                                            </td>
+                                                            <td className="num">{a.calls.toLocaleString()}</td>
+                                                            <td className="num">{a.errors.toLocaleString()}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </DataTable>
+                                    </TableScroll>
+                                </>
+                                );
+                            })()}
                             {edgeData?.activity && edgeData.activity.length > 0 && (
                                 <ActivityChartWrap>
                                     <ChartCaption>Activity over current time range</ChartCaption>
@@ -955,8 +1301,13 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                             )}
                             {!edgeData?.operationsLoading && (!edgeData?.operations || edgeData.operations.length === 0) && (
                                 <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
-                                    No grouping data for this edge in the current time range.
+                                    {edgeData?.dispatched
+                                        ? 'No grouping data for this edge in the current time range.'
+                                        : NOT_DISPATCHED_MSG}
                                 </EmptyMsg>
+                            )}
+                            {edgeData?.truncated && (
+                                <TruncationNote used={edgeData.idsUsed} total={edgeData.idsTotal} />
                             )}
                             {!edgeData?.operationsLoading && edgeData?.operations && edgeData.operations.length > 0 && (
                                 <ChartBlock>
@@ -970,16 +1321,18 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                         } · current time range`}
                                     </ChartCaption>
                                     <DonutChart
+                                        label="Top entities on this edge"
                                         data={edgeData.operations.map((op, i) => ({
+                                            id: op.entity,
                                             code: op.entity,
-                                            count: op.count,
-                                            color: PARTNER_PALETTE[i % PARTNER_PALETTE.length],
+                                            calls: op.count,
+                                            color: partnerColorAt(PARTNER_PALETTE, i, mode),
                                         }))}
                                     />
                                     <DonutLegend>
                                         {edgeData.operations.map((op, i) => (
                                             <li key={op.entity}>
-                                                <span className="swatch" style={{ background: PARTNER_PALETTE[i % PARTNER_PALETTE.length] }} />
+                                                <span className="swatch" style={{ background: partnerColorAt(PARTNER_PALETTE, i, mode) }} />
                                                 <span className="code" title={op.entity}>{op.entity}</span>
                                                 <span className="count">{formatCallCount(op.count)}</span>
                                             </li>
@@ -1015,22 +1368,12 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                         </PerfMetric>
                                     </>
                                 )}
-                                {splType === 'rfc' && (
-                                    <>
-                                        <PerfMetric>
-                                            <div className="perfLabel">icm_tasks max</div>
-                                            <div className="perfValue">{selectedEdge.icmTasksMax?.toLocaleString() ?? '—'}</div>
-                                        </PerfMetric>
-                                        <PerfMetric>
-                                            <div className="perfLabel">icm_tasks avg</div>
-                                            <div className="perfValue">{
-                                                selectedEdge.icmTasksAvg != null
-                                                    ? selectedEdge.icmTasksAvg.toFixed(1)
-                                                    : '—'
-                                            }</div>
-                                        </PerfMetric>
-                                    </>
-                                )}
+                                {/* No rfc headline cells: the only candidates were
+                                    icm_tasks max/avg, which no saved search computes
+                                    (the fields appear solely in the aggregate's `| fields`
+                                    projection), so they could only ever render an em dash.
+                                    Dropped in build 321 rather than shipped beside a
+                                    newly-live histogram looking like pending data. */}
                                 {splType === 'hana_tenant' && (
                                     <>
                                         <PerfMetric>
@@ -1062,15 +1405,24 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                     Querying Splunk for distribution detail…
                                 </EmptyMsg>
                             )}
+                            {edgeData?.truncated && (
+                                <TruncationNote used={edgeData.idsUsed} total={edgeData.idsTotal} />
+                            )}
                             {!edgeData?.performanceLoading && edgeData?.performance && edgeData.performance.length > 0 && (
                                 <>
                                     <ChartCaption style={{ marginTop: 12 }}>
                                         {splType === 'http' ? 'Status class distribution'
                                             : splType === 'rfc' ? 'icm_tasks distribution'
                                             : splType === 'hana_audit' ? 'Action status mix'
-                                            : splType === 'hana_tenant' ? 'SQL duration percentiles'
+                                            : splType === 'hana_tenant' ? 'SQL duration (avg + max)'
                                             : 'Distribution'}
                                     </ChartCaption>
+                                    {splType === 'hana_tenant' && (
+                                        <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
+                                            Percentiles are not available here: they cannot be merged
+                                            across hourly buckets, so this reads mean and maximum.
+                                        </EmptyMsg>
+                                    )}
                                     {(() => {
                                         const maxCount = Math.max(...edgeData.performance.map((p) => p.count), 1);
                                         return edgeData.performance.map((p) => {
@@ -1100,13 +1452,22 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                             )}
                             {!edgeData?.errorsLoading && (!edgeData?.errors || edgeData.errors.length === 0) && (
                                 <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
-                                    No errors for this edge in the current time range.
+                                    {edgeData?.dispatched
+                                        ? 'No errors for this edge in the current time range.'
+                                        : NOT_DISPATCHED_MSG}
                                 </EmptyMsg>
+                            )}
+                            {edgeData?.truncated && (
+                                <TruncationNote used={edgeData.idsUsed} total={edgeData.idsTotal} />
                             )}
                             {!edgeData?.errorsLoading && edgeData?.errors && edgeData.errors.length > 0 && (
                                 <>
                                     <ChartCaption>
-                                        {`${edgeData.errors.length} error mode${edgeData.errors.length === 1 ? '' : 's'} · current time range`}
+                                        {`Top ${edgeData.errors.length} error mode${edgeData.errors.length === 1 ? '' : 's'} · ${
+                                            splType === 'hana_audit'
+                                                ? 'all unsuccessful operations'
+                                                : 'current time range'
+                                        }`}
                                     </ChartCaption>
                                     <TableScroll>
                                         <DataTable>
@@ -1159,13 +1520,36 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
         ? tokens.red
         : tokens.cyanLight;
 
+    /* Build 322 — the CANONICAL kind decides every ownership claim below. Not
+     * the visual kind, and never the label: a tenant database node shares its
+     * label with the application SID it backs, and `useNodeData` dispatches the
+     * same label-scoped read for both, so canonical kind is the only thing that
+     * separates them. On an IP-kind node the Hosts rows are the SAP-side hosts
+     * on the OTHER end of the connection, where an ownership badge would read
+     * as the exact opposite of the truth (§8a-5). */
+    const selectedAttribution = endpointAttribution
+        ? endpointAttribution[selectedNode.id]
+        : undefined;
+    const isSidNode = selectedAttribution?.kind === 'sid';
+    const bidiTypeText = partnerSplit.bidiTypes.length > 0
+        ? partnerSplit.bidiTypes.map(edgeTypeLabel).join(' / ')
+        : 'Some';
+
+    const trafficRows = nodeTraffic ?? EMPTY_TRAFFIC;
+    const trafficSum = trafficTotal(trafficRows);
+    const hostsShown = nodeHosts ? nodeHosts.length : 0;
+    const hostsTotal = typeof nodeHostTotal === 'number' && nodeHostTotal > 0
+        ? nodeHostTotal
+        : hostsShown;
+    const hostsTruncated = hostsTotal > hostsShown;
+
     return (
         <Stack>
             <FramedPanel title="Details" actions={collapseAction}>
                 <NodeIdRow>
                     <SidBadge $kind={selectedNode.kind}>{selectedNode.label}</SidBadge>
                     <KindChip $kind={selectedNode.kind}>
-                        {selectedNode.kind === 'sid_focused' ? 'SID (FOCUS)' : selectedNode.kind === 'sid_secondary' ? 'SID' : 'PARTNER'}
+                        {selectedNode.kind === 'sid_focused' ? 'SID (HIGH TRAFFIC)' : selectedNode.kind === 'sid_secondary' ? 'SID' : 'PARTNER'}
                     </KindChip>
                 </NodeIdRow>
                 <TabBar role="tablist" aria-label="Node detail tabs">
@@ -1187,17 +1571,84 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                     <>
                         <FactsTable>
                             <tbody>
-                                <tr><td className="k">Kind</td><td className="v">{selectedNode.kind === 'sid_focused' ? 'Focused SAP SID' : selectedNode.kind === 'sid_secondary' ? 'Secondary SAP SID' : 'Remote partner'}</td></tr>
-                                <tr><td className="k">Tag</td><td className="v">{selectedNode.tag}</td></tr>
+                                <tr><td className="k">Kind</td><td className="v">{selectedNode.kind === 'sid_focused' ? 'High Traffic SID' : selectedNode.kind === 'sid_secondary' ? 'Regular Traffic SID' : 'Remote partner'}</td></tr>
+                                <tr><td className="k">Tag</td><td className="v">{displayTag(selectedNode.tag as never)}</td></tr>
+                                {/* Build 329 / session 112 — IP enrichment rows, placed
+                                  * directly under the Tag row (user-ratified). Hostname
+                                  * renders only when unambiguous (the guards live in
+                                  * topology/enrichment.ts — suppress over guess);
+                                  * users are source-labeled and ALL listed (decision
+                                  * 1/2); "Names as of" carries the latest-known
+                                  * honesty (decision 4 — this data is deliberately
+                                  * NOT bound to the time picker). */}
+                                {selectedIpEnrichment?.hostname && (
+                                    <tr>
+                                        <td className="k">Hostname</td>
+                                        <td className="v">{`${selectedIpEnrichment.hostname} (${selectedIpEnrichment.hostnameSources.map(enrichmentSourceLabel).join(', ')})`}</td>
+                                    </tr>
+                                )}
+                                {selectedIpEnrichment && selectedIpEnrichment.userCount > 0 && (
+                                    <tr>
+                                        <td className="k">{selectedIpEnrichment.userCount === 1 ? 'User' : `Users (${selectedIpEnrichment.userCount})`}</td>
+                                        <td className="v">
+                                            {groupUsersBySource(selectedIpEnrichment)
+                                                .map((g) => `${g.label}: ${g.names.join(', ')}`)
+                                                .join(' · ')}
+                                        </td>
+                                    </tr>
+                                )}
+                                {selectedIpEnrichment && (
+                                    <tr>
+                                        <td className="k">Names as of</td>
+                                        <td className="v">{formatRelative(selectedIpEnrichment.lastSeen)}</td>
+                                    </tr>
+                                )}
                                 <tr><td className="k">Events</td><td className="v">{selectedNode.eventCount.toLocaleString()}</td></tr>
-                                <tr><td className="k">Total calls (in+out)</td><td className="v">{totalCalls.toLocaleString()}</td></tr>
-                                <tr><td className="k">Inbound edges</td><td className="v">{selectedNodeIncomingEdges.length}</td></tr>
-                                <tr><td className="k">Outbound edges</td><td className="v">{selectedNodeOutgoingEdges.length}</td></tr>
+                                {/* Build 325 (plan item D1) — from the bulk node_host
+                                  * rollup read: the same metric + window as the Hosts
+                                  * tab, so it agrees with that tab's caption (dispatch
+                                  * timing across an hourly-aggregate boundary can
+                                  * briefly differ). Parent-gated to SID + tenant nodes;
+                                  * absent = no row (an absent row is not a claim). The
+                                  * tenant label-collision hedge renders below the
+                                  * table, where a sentence fits. */}
+                                {nodeHostCount != null && nodeHostCount > 0 && (
+                                    <tr><td className="k">Hosts (in range)</td><td className="v">{nodeHostCount.toLocaleString()}</td></tr>
+                                )}
+                                {/* Build 322 — the exact per-direction totals live here, not
+                                  * in the donut centres, which abbreviate via formatCallCount
+                                  * ("11.6K"). Without them the reconciliation the split makes
+                                  * possible would be thrown away at the last step (§8a-8).
+                                  * The partition matches the donuts: bidirectional edges are
+                                  * counted separately, never filed under in or out. */}
+                                <tr><td className="k">Total calls</td><td className="v">{totalCalls.toLocaleString()}</td></tr>
+                                <tr><td className="k">Inbound calls</td><td className="v">{partnerSplit.inboundCalls.toLocaleString()}</td></tr>
+                                <tr><td className="k">Outbound calls</td><td className="v">{partnerSplit.outboundCalls.toLocaleString()}</td></tr>
+                                {partnerSplit.bidiEdges > 0 && (
+                                    <tr><td className="k">Bidirectional calls</td><td className="v">{partnerSplit.bidiCalls.toLocaleString()}</td></tr>
+                                )}
+                                <tr><td className="k">Inbound edges</td><td className="v">{selectedNodeIncomingEdges.filter((e) => e.direction !== 'bidi').length}</td></tr>
+                                <tr><td className="k">Outbound edges</td><td className="v">{selectedNodeOutgoingEdges.filter((e) => e.direction !== 'bidi').length}</td></tr>
+                                {partnerSplit.bidiEdges > 0 && (
+                                    <tr><td className="k">Bidirectional edges</td><td className="v">{partnerSplit.bidiEdges}</td></tr>
+                                )}
                                 {selectedNode.healthPct != null && (
                                     <tr><td className="k">Health</td><td className="v">{selectedNode.healthPct}%</td></tr>
                                 )}
                             </tbody>
                         </FactsTable>
+                        {/* Build 325 — the §8a-5 hedge for the tenant host count:
+                          * the count is scoped by the node's NAME, which a tenant
+                          * database shares with the application system it backs, so
+                          * without this sentence the row would present that
+                          * system's hosts as the tenant's. SID nodes need no hedge
+                          * (their count means exactly what the row says). */}
+                        {nodeHostCount != null && nodeHostCount > 0
+                            && selectedAttribution?.kind === 'tenant_db' && (
+                            <EmptyMsg style={{ fontSize: 10, padding: '2px 0 0' }}>
+                                {`The host count is scoped by the name ${selectedNode.label}, which this tenant database shares with an application system — so it counts that system's hosts. The Hosts tab lists them.`}
+                            </EmptyMsg>
+                        )}
 
                         {/* Build 203 / session 036 — DB-specific roll-up.
                           * HANA database SIDs (XHQ / XHX / XHD / XCJ in the
@@ -1310,29 +1761,64 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                 )}
                             </ChartBlock>
                         </ChartRow>
+                        {/* Build 322 — two donuts, stacked, each with its own legend.
+                          * Captioned by GRAPH ROLE rather than IN/OUT: the panel can
+                          * say which side of an edge a partner sits on, and does not
+                          * claim a traffic direction for edges the data records as
+                          * bidirectional. */}
+                        {/* The empty state must not deny traffic the same screen
+                          * reports. hana_tenant is both the only arm emitting a
+                          * tenant database AND the only one stored bidirectional,
+                          * so a tenant node's edges are 100% bidi and BOTH donuts
+                          * are empty — directly under a Facts table showing its
+                          * call total. Say why they are empty, not that nothing
+                          * happened. */}
                         <ChartRow>
-                            <ChartBlock>
-                                <ChartCaption>Top partners (in + out)</ChartCaption>
-                                {topPartners.length > 0 ? (
-                                    <>
-                                        <DonutChart data={topPartners} />
-                                        <DonutLegend>
-                                            {topPartners.map((d) => (
-                                                <li key={d.code}>
-                                                    <span className="swatch" style={{ background: d.color }} />
-                                                    <span className="code" title={d.code}>{d.code}</span>
-                                                    <span className="count">{formatCallCount(d.count)}</span>
-                                                </li>
-                                            ))}
-                                        </DonutLegend>
-                                    </>
-                                ) : (
-                                    <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
-                                        This node has no edges in the current time range.
-                                    </EmptyMsg>
-                                )}
-                            </ChartBlock>
+                            <PartnerDonutBlock
+                                title={isSidNode ? 'Partners calling this system' : 'Endpoints calling this node'}
+                                data={inboundDonut}
+                                calls={partnerSplit.inboundCalls}
+                                emptyMsg={partnerSplit.bidiEdges > 0
+                                    ? 'No inbound-recorded traffic — this node’s bidirectional calls are counted separately (see below).'
+                                    : 'Nothing calls this node in the current time range.'}
+                            />
                         </ChartRow>
+                        <ChartRow>
+                            <PartnerDonutBlock
+                                title={isSidNode ? 'Partners this system calls' : 'Endpoints this node calls'}
+                                data={outboundDonut}
+                                calls={partnerSplit.outboundCalls}
+                                emptyMsg={partnerSplit.bidiEdges > 0
+                                    ? 'No outbound-recorded traffic — this node’s bidirectional calls are counted separately (see above).'
+                                    : 'This node calls nothing in the current time range.'}
+                            />
+                        </ChartRow>
+                        {partnerSplit.bidiEdges > 0 && (
+                            <EmptyMsg style={{ fontSize: 10, padding: '4px 0 0' }}>
+                                {`${bidiTypeText} traffic is recorded as bidirectional (${partnerSplit.bidiCalls.toLocaleString()} calls on ${partnerSplit.bidiEdges} edge${partnerSplit.bidiEdges === 1 ? '' : 's'}) and is not split between the two charts.`}
+                            </EmptyMsg>
+                        )}
+                        {totalCalls > 0 && (
+                            <>
+                                <SectionDivider />
+                                {/* Build 331 — the two ownership-provenance paragraphs
+                                  * that stood here left with the legend badge column
+                                  * (user direction: rows show the endpoint and its
+                                  * call count only). */}
+                                <EmptyMsg style={{ fontSize: 10, padding: '4px 0 0' }}>
+                                    This breakdown covers every integration type, including any
+                                    unchecked in the toolbar filter.
+                                    {/* Fires exactly when the geometry stops encoding
+                                      * proportion — a slice too small to survive its own
+                                      * stroke is widened to stay visible — rather than at a
+                                      * proxy like a partner count. */}
+                                    {hasInflatedWedges(inboundDonut.map((d) => d.calls))
+                                        || hasInflatedWedges(outboundDonut.map((d) => d.calls))
+                                        ? ' Slices too small to be visible are drawn at a minimum size, so those angles are approximate — hover any slice for its exact count and share.'
+                                        : ''}
+                                </EmptyMsg>
+                            </>
+                        )}
                     </>
                 )}
 
@@ -1354,17 +1840,22 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                         {!nodeProgramsLoading && nodePrograms && nodePrograms.length > 0 && (
                             <ChartBlock>
                                 <ChartCaption>Top ABAP ICM programs (current time range)</ChartCaption>
+                                {/* Build 322 — `partnerColorAt` instead of a bare modulo:
+                                  * the palette is 7 long and this list runs to 8, so the
+                                  * last program used to repeat the first one's colour. */}
                                 <DonutChart
+                                    label="Top ABAP ICM programs"
                                     data={nodePrograms.map((p, i) => ({
+                                        id: p.program,
                                         code: p.program,
-                                        count: p.count,
-                                        color: PARTNER_PALETTE[i % PARTNER_PALETTE.length],
+                                        calls: p.count,
+                                        color: partnerColorAt(PARTNER_PALETTE, i, mode),
                                     }))}
                                 />
                                 <DonutLegend>
                                     {nodePrograms.map((p, i) => (
                                         <li key={p.program}>
-                                            <span className="swatch" style={{ background: PARTNER_PALETTE[i % PARTNER_PALETTE.length] }} />
+                                            <span className="swatch" style={{ background: partnerColorAt(PARTNER_PALETTE, i, mode) }} />
                                             <span className="code" title={p.program}>{p.program}</span>
                                             <span className="count">{formatCallCount(p.count)}</span>
                                         </li>
@@ -1435,8 +1926,36 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                         {!nodeHostsLoading && nodeHosts && nodeHosts.length > 0 && (
                             <>
                                 <ChartCaption>
-                                    {`${nodeHosts.length} host${nodeHosts.length === 1 ? '' : 's'} · current time range`}
+                                    {hostsTruncated
+                                        ? `${hostsShown} of ${hostsTotal} hosts · current time range`
+                                        : `${hostsShown} host${hostsShown === 1 ? '' : 's'} · current time range`}
                                 </ChartCaption>
+                                {/* A cap that is reached is a cap that is reported — the
+                                  * MAX_EDGE_IDS precedent. Without this the caption would
+                                  * present the cap as the host count, and the ownership
+                                  * column would make that undercount load-bearing (§8a-4). */}
+                                {hostsTruncated && (
+                                    <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
+                                        {`Showing the ${hostsShown.toLocaleString()} busiest of ${hostsTotal.toLocaleString()} hosts.${
+                                            isSidNode ? ' The ownership shown below covers only these.' : ''
+                                        }`}
+                                    </EmptyMsg>
+                                )}
+                                {/* Branch on the CANONICAL kind, not on "not a SID". The read is
+                                  * scoped by the node's LABEL, and a tenant database shares its
+                                  * label with the application system it backs — so its rows are
+                                  * that system's hosts, reached through a name collision. They
+                                  * are not "the far end of the connection", which is only true
+                                  * for an ip-kind node. */}
+                                <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
+                                    {isSidNode
+                                        ? 'Hosts that logged events for this system. Ownership comes from the system inventory, which records a host only once it has been seen carrying exactly one SAP system identifier — "owner not established" means that has not happened yet, and the inventory is not limited to the selected time range.'
+                                        : selectedAttribution?.kind === 'tenant_db'
+                                            ? `These rows are scoped by the name ${selectedNode.label}, which this tenant database shares with an application system, so they may include that system's hosts.`
+                                            : selectedAttribution?.kind === 'ip'
+                                                ? 'Hosts that logged events referencing this address. They sit on the SAP side of the connection, so no ownership is claimed for them here.'
+                                                : 'Hosts that logged events matching this node’s name. No ownership is claimed for them here.'}
+                                </EmptyMsg>
                                 <TableScroll>
                                     <DataTable>
                                         <thead>
@@ -1447,18 +1966,92 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {nodeHosts.map((h) => (
-                                                <tr key={h.host}>
+                                            {nodeHosts.map((h) => {
+                                                const owner = isSidNode
+                                                    ? ownershipText(classifyHostOwnership(h.host, hostOwnerByValue ?? {}))
+                                                    : null;
+                                                return (
+                                                    <tr key={h.host}>
+                                                        <td className="primary">
+                                                            <div>{h.host}</div>
+                                                            {/* Build 325 (plan item D2) — the SAP instance numbers
+                                                              * recorded on this host's events, from the rollup's new
+                                                              * `instances` measure. Absent (no clause) when the rows
+                                                              * carry none — including rows aggregated pre-325. */}
+                                                            <div className="secondary">
+                                                                {`${h.sourcetypeCount} sourcetype${h.sourcetypeCount === 1 ? '' : 's'}${
+                                                                    h.instances && h.instances.length > 0
+                                                                        ? ` · inst ${h.instances.join(', ')}`
+                                                                        : ''
+                                                                } · first seen ${formatRelative(h.firstSeen)}`}
+                                                            </div>
+                                                            {owner && <div className="secondary">{owner}</div>}
+                                                        </td>
+                                                        <td className="num">{h.count.toLocaleString()}</td>
+                                                        <td className="relTime">{formatRelative(h.lastSeen)}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </DataTable>
+                                </TableScroll>
+                            </>
+                        )}
+                        {/* Build 322 — calls by host. Rows are classified per EDGE, so
+                          * every incident edge lands in exactly one of them and the
+                          * column sums to `Total calls` on the Overview tab. Rendered
+                          * independently of the hosts table above: the two come from
+                          * different collections and either can be empty alone. */}
+                        {trafficRows.length > 0 && (
+                            <>
+                                <ChartCaption style={{ marginTop: 12 }}>
+                                    Calls by host and edge type · current time range
+                                </ChartCaption>
+                                {/* A structural statement, not an enumeration of types: on a
+                                  * partner node there are no host rows at all, and an inbound
+                                  * RFC row is neither "a call this node makes" nor "recorded
+                                  * against a system as a whole". The Events clause renders only
+                                  * when the table it refers to is actually on screen. */}
+                                <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
+                                    {`A row names a host only when this node's own side of the edge is a hostname, which is always the receiving side; otherwise the calls are grouped by edge type.${
+                                        trafficSum === totalCalls
+                                            ? ` Together the rows account for all ${totalCalls.toLocaleString()} calls on this node's edges.`
+                                            : ''
+                                    }${
+                                        nodeHosts && nodeHosts.length > 0
+                                            ? ' "Calls" counts edge calls; the Events column above counts log events, from a different rollup.'
+                                            : ''
+                                    }`}
+                                </EmptyMsg>
+                                <TableScroll>
+                                    <DataTable>
+                                        <thead>
+                                            <tr>
+                                                <th>Host / edge type</th>
+                                                <th className="num">Calls</th>
+                                                <th className="num">Errors</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {trafficRows.map((t) => (
+                                                <tr key={`${t.scope}-${t.key}-${t.flow}`}>
                                                     <td className="primary">
-                                                        <div>{h.host}</div>
+                                                        <div>{t.scope === 'host' ? t.key : edgeTypeLabel(t.key)}</div>
                                                         <div className="secondary">
-                                                            {`${h.sourcetypeCount} sourcetype${h.sourcetypeCount === 1 ? '' : 's'} · first seen ${formatRelative(h.firstSeen)}`}
+                                                            {t.scope === 'host'
+                                                                ? t.flow
+                                                                : `${t.flow} · this node’s side is not a host`}
                                                         </div>
                                                     </td>
-                                                    <td className="num">{h.count.toLocaleString()}</td>
-                                                    <td className="relTime">{formatRelative(h.lastSeen)}</td>
+                                                    <td className="num">{t.calls.toLocaleString()}</td>
+                                                    <td className="num">{t.errors.toLocaleString()}</td>
                                                 </tr>
                                             ))}
+                                            <tr>
+                                                <td className="primary">Total</td>
+                                                <td className="num">{trafficSum.toLocaleString()}</td>
+                                                <td className="num" />
+                                            </tr>
                                         </tbody>
                                     </DataTable>
                                 </TableScroll>

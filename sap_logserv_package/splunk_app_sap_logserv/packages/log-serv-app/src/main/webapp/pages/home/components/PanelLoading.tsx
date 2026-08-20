@@ -4,7 +4,7 @@ import { logservTheme } from '../styles/logservTheme';
 import Spinner from './Spinner';
 
 /**
- * Shared "panel is loading" indicator (build 234). Renders the orange-dot
+ * Shared "panel is loading" indicator (build 234). Renders the interact-blue
  * Spinner above a muted "Loading data…" label, centered in the panel body.
  * Used by every data viz (TimeSeriesChart / PieChart / DataTable) in place of
  * the old literal "Loading…" text so every panel shows the same in-flight

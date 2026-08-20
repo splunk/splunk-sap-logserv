@@ -129,17 +129,26 @@ const QRAW_BASE = {
     durationPercentiles: `${HRAW} hana_op_duration_ms=* | timechart span=1d sum(hana_op_duration_ms) as s, count(hana_op_duration_ms) as c, max(hana_op_duration_ms) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 2), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const TOP_COMP_COLS: ColumnDef[] = [
@@ -228,11 +237,11 @@ const HanaTrace: React.FC = () => {
             subtitle="SAP HANA trace log analysis — error and fatal events, top components, and source file hotspots"
         >
             <KpiRow>
-                <KpiCard label="Total Trace Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Trace Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Errors / Fatal" value={errors.value} loading={errors.loading} error={errors.error} formatValue={formatInteger} tone={errorTone}
+                <KpiCard label="Errors / Fatal" value={errors.value} loading={errors.loading} error={errors.error} search={errors.search} formatValue={formatInteger} tone={errorTone}
                     sparkline={<SparklineFromQuery query={Q.sparkErrors} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Unique Components" value={components.value} loading={components.loading} error={components.error} formatValue={formatInteger}
+                <KpiCard label="Unique Components" value={components.value} loading={components.loading} error={components.error} search={components.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkComponents} valueField="components" fill />} />
             </KpiRow>
 

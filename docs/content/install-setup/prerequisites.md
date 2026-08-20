@@ -8,13 +8,16 @@ This page covers the prerequisites for the **LogServ Data TA** (`splunk_ta_sap_l
 
 ### :material-circle-box:{ .taiconcolor } Required Splunk Add-ons
 
-The LogServ App depends on two CIM Splunk Technical Add-ons for Linux + Windows sourcetype definitions and CIM mapping. Install on the **Search Head only** (they carry only search-time content for our pipeline — see [Quick Install Reference](../getting-started/quick-install-reference.md) for the per-tier matrix):
+Three add-ons cover the search tier's parsing and CIM needs. Install all three on the **Search Head only** (they carry only search-time content for our pipeline — see [Quick Install Reference](../getting-started/quick-install-reference.md) for the per-tier matrix):
 
+- <a href="https://splunkbase.splunk.com/app/1621" target="_blank">Splunk Common Information Model (Splunk_SA_CIM)</a> **version 5.0.0 or later** — a **declared hard dependency** of the LogServ App (`app.manifest`); the App's CIM tagging and the Enterprise Security content build on it. Free on Splunkbase, and bundled with Enterprise Security.
 - <a href="https://splunkbase.splunk.com/app/833" target="_blank">Splunk Add-on for Unix and Linux</a>
 - <a href="https://splunkbase.splunk.com/app/742" target="_blank">Splunk Add-on for Microsoft Windows</a>
 
+The Unix/Linux and Windows add-ons provide the OS-level sourcetype parsing + CIM mapping the LogServ App's dashboards consume.
+
 !!! note "No standalone Squid Proxy or ISC BIND add-ons needed"
-    Previous versions of this app listed the `Splunk Add-on for Squid Proxy` (Splunkbase 2965, now archived) and `Splunk Add-on for ISC BIND` (Splunkbase 2876, now archived) as additional prerequisites. Both add-ons' parsing has been **absorbed natively** into the LogServ App as of v0.0.5.0 build 184. Do not install the standalone add-ons. If either is detected at runtime, the LogServ App's home view shows a one-time dismissible banner recommending uninstall via `Settings → Manage Apps` to avoid duplicate field extraction.
+    Previous versions of this app listed the archived `Splunk Add-on for Squid Proxy` and `Splunk Add-on for ISC BIND` as additional prerequisites. Both add-ons' parsing is **absorbed natively** into the LogServ App. Do not install the standalone add-ons. If either is detected at runtime, the LogServ App's home view shows a one-time dismissible banner recommending uninstall via `Settings → Manage Apps` to avoid duplicate field extraction.
 
 ### :material-circle-box:{ .taiconcolor } SAP ECS running in Amazon Web Services (AWS)
 
@@ -30,6 +33,12 @@ Additional configuration instructions for the Splunk Add-on for Amazon Web Servi
 If your SAP ECS data lands in Microsoft Azure Blob Storage, install the first-party **Splunk TA for SAP LogServ on Azure** add-on (`splunk_ta_sap_logserv_azure`) on each Heavy Forwarder — the Azure counterpart to the Splunk Add-on for AWS, and shipped alongside the LogServ App + Data TA in this release. Its **`sap_logserv_azure_queue`** modular input consumes Azure Event Grid → Storage Queue notifications, fetches each blob over a SAS, and emits its NDJSON into the same index-time pipeline as the AWS path. In a RISE / SAP ECS deployment, SAP provisions and manages the storage account, Storage Queue, Event Grid subscription, and SAS in the SAP ECS Azure account — you create nothing in Azure; you only install the add-on and configure one input with the values SAP gives you.
 
 Installation + configuration instructions — installing the add-on per Heavy Forwarder (directly, not via the Deployment Server), the parameter values to obtain from your SAP support contact, and the input fields — are in the [Azure Setup Guide](azure-setup.md). The downstream pipeline (sourcetype routing, dashboards, ES integration) is identical between AWS and Azure deployments.
+
+### :material-circle-box:{ .taiconcolor } SAP ECS running in Google Cloud Platform (GCP)
+
+If your SAP ECS data lands in Google Cloud Storage, install the first-party **Splunk TA for SAP LogServ on GCP** add-on (`splunk_ta_sap_logserv_gcp`) on each Heavy Forwarder — the GCP counterpart to the Splunk Add-on for AWS, shipped alongside the LogServ App + Data TA in this release. Its **`sap_logserv_gcp_pubsub`** modular input pulls a Pub/Sub subscription fed by the LogServ bucket's `OBJECT_FINALIZE` notifications, fetches each object with a service-account key, and emits its NDJSON into the same index-time pipeline as the AWS and Azure paths.
+
+SAP provisions and manages the GCS bucket, bucket notification, Pub/Sub topic, and subscription in the SAP-managed GCP project. The one GCP resource **you** create is the **service account**: in a GCP account of your own (a secondary account, separate from the RISE project), create a service account and hand its **email address** to your SAP support contact; SAP grants it read access to the LogServ subscription + bucket, and you mint its JSON key for the input. The full onboarding sequence — including the key-creation org-policy caveat — is in the [GCP Setup Guide](gcp-setup.md). The downstream pipeline is identical across all three clouds.
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

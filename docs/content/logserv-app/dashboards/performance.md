@@ -17,7 +17,7 @@ Every panel reads from the cheapest *correct* data source for what it shows. The
 
 ### The KV-Store rollup layer
 
-Behind the rolled-up panels are **24 KV-Store rollup collections** (`logserv_*_rollup`). For each, a scheduled saved search (`logserv_*_aggregate`, cron `5 * * * *` — five minutes past every hour) aggregates the previous hour's raw events into hour-bucketed rows. The dashboard reads the collection back, filtered to the global time-range picker's window via a `bucket_ts` range. Because the heavy aggregation happens once per hour in the background, opening a dashboard re-reads precomputed rows in roughly **0.1–0.6 seconds** instead of dispatching a full raw scan.
+Behind the rolled-up panels is a set of **KV-Store rollup collections** (`logserv_*_rollup`, plus the Environment Topology graph collections). For each, a scheduled saved search (one per rollup) aggregates the previous hour's raw events into hour-bucketed rows; the aggregates are staggered one per minute across `:03`–`:28` of every hour. (Three rollups aggregate **daily** rather than hourly and are day-bucketed: the two beaconing detections and the topology IP-enrichment names.) The dashboard reads the collection back, filtered to the global time-range picker's window via a `bucket_ts` range. Because the heavy aggregation happens once per hour in the background, opening a dashboard re-reads precomputed rows in roughly **0.1–0.6 seconds** instead of dispatching a full raw scan.
 
 A daily retention search trims each collection to a rolling **365-day** window.
 
@@ -27,11 +27,11 @@ The app's scheduled searches are organized into three non-overlapping bands so t
 
 | Band | When | What runs |
 |---|---|---|
-| **Hourly aggregates** | `:03`–`:28` every hour, one per minute | The 26 always-on rollup-aggregate searches (`logserv_*_aggregate`) |
-| **Daily retention + beaconing** | `:30`–`:58` (hours `00` and `01`), two minutes apart | The 26 retention trims + the 2 daily beaconing aggregates |
-| **Enterprise Security** | `:00`–`:02`, `:29`, odd `:31`–`:59` | The 22 `splunk_sap_logserv_es_*` searches (enabled by default) — see note below |
+| **Hourly aggregates** | `:03`–`:28` every hour, one per minute | The always-on rollup-aggregate searches (`logserv_*_aggregate` / `logserv_topology_aggregate_*`), plus the Data Doctor's platform snapshot at `:02` |
+| **Daily retention + daily aggregates** | `:30`–`:58` (hours `00`–`02`), two minutes apart | Every rollup's retention trim, the two daily beaconing aggregates, the topology IP-enrichment aggregate, and the Data Doctor report/snapshot trims |
+| **Enterprise Security** | `:00`–`:01`, `:29`, odd `:31`–`:59`, plus `:30` in hours `02`–`05` (the daily anomaly scans) | The `splunk_sap_logserv_es_*` searches (enabled by default) — see note below |
 
-The per-search tables below give each search's **run time** as *typical / busy* — the average and worst single-run duration observed on the validation fleet (~10.7M events/day). Aggregate run times scale with the **per-hour event volume**; retention run times scale with the **collection size**. Every search completes well within its one-minute slot.
+The per-search tables below give each search's **run time** as *typical / busy* — the average and worst single-run duration observed on the validation fleet (~10.7M events/day). Aggregate run times scale with the **per-hour event volume**; retention run times scale with the **collection size**. Run times are indicative, measured on a ~10.7M events/day validation instance. Every hourly aggregate completes well within its one-minute slot; the heaviest daily retention trims take about a minute and sit in the two-minutes-apart daily band.
 
 ### Hourly aggregate band (`:03`–`:28`)
 
@@ -68,13 +68,13 @@ Each rollup aggregate dispatches the just-completed hour (`-1h@h`..`@h`), so the
 
 ### Daily band (`:30`–`:58`)
 
-Retention trims and the two daily beaconing aggregates run in the off-peak `:30`–`:58` window — 15 searches at `00:30`–`00:58`, the remaining 13 at `01:30`–`01:54`, all two minutes apart. Keeping them at minute `:30`+ guarantees they never collide with the hourly aggregate band (which fires at `:03`–`:28` of *every* hour). Each retention search trims its collection to the rolling 365-day window; the two beaconing aggregates (`00:30`, `00:32`) precompute the per-day DNS/perimeter beaconing statistics. (Retention run times scale with collection size, so the larger rollups — Environment Topology detail, Host Role Activity, DNS, Web & API, Network Perimeter — take longest; all are off-peak and collision-free.)
+Retention trims and the daily aggregates run in the off-peak `:30`–`:58` window — 15 searches at `00:30`–`00:58`, 15 more at `01:30`–`01:58`, and 2 at `02:32`/`02:34`, all two minutes apart. Keeping them at minute `:30`+ guarantees they never collide with the hourly aggregate band (which fires at `:03`–`:28` of *every* hour); the two Data Doctor daily trims use the odd-even-free `:56`/`:58` slots of hour `01`. Each retention search trims its collection to the rolling 365-day window; the two beaconing aggregates (`00:30`, `00:32`) precompute the per-day DNS/perimeter beaconing statistics. (Retention run times scale with collection size, so the larger rollups — Environment Topology detail, Host Role Activity, DNS, Web & API, Network Perimeter — take longest; all are off-peak and collision-free.)
 
 | Fires | Daily search | Action (dashboard) | Run time (typ. / busy) |
 |---|---|---|---|
 | `00:30` | `logserv_beaconing_aggregate` | Aggregate daily beaconing counts → Environment Health · DNS Analytics | 2 / 4 s |
 | `00:32` | `logserv_beaconing_detail_aggregate` | Aggregate daily beaconing gap-stats → DNS Analytics · Network Perimeter | 1 / 2 s |
-| `00:34` | `logserv_topology_retention` | Trim Environment Topology (graph) | 7 / 10 s |
+| `00:34` | `logserv_topology_retention` | Trim Environment Topology (graph — nodes/edges/inventory) | 7 / 10 s |
 | `00:36` | `logserv_wp_perf_retention` | Trim Work Process Performance | 10 / 14 s |
 | `00:38` | `logserv_severity_retention` | Trim Environment Health | 7 / 8 s |
 | `00:40` | `logserv_hana_retention` | Trim HANA Audit | 5 / 7 s |
@@ -100,14 +100,20 @@ Retention trims and the two daily beaconing aggregates run in the off-peak `:30`
 | `01:50` | `logserv_topology_detail_retention` | Trim Environment Topology (detail tabs) | 63 / 69 s |
 | `01:52` | `logserv_stmap_retention` | Trim Sourcetype Mapping | 24 / 24 s |
 | `01:54` | `logserv_hostrole_retention` | Trim Host Role Activity | 38 / 38 s |
+| `01:56` | `logserv_diag_reports_retention` | Trim the Data Doctor's saved diagnostic reports (365 d + row cap) | < 1 s |
+| `01:58` | `logserv_diag_platform_retention` | Trim the Data Doctor's platform snapshot (30 d) | < 1 s |
+| `02:32` | `logserv_topology_enrichment_aggregate` | Recompute the topology IP-node hostname/user names (daily, last 30 d) | 5 / 8 s |
+| `02:34` | `logserv_topology_enrichment_retention` | Trim the topology IP-enrichment names (365 d on last-seen) | < 1 s |
 
 ### Enterprise Security band (enabled by default)
 
-The 22 `splunk_sap_logserv_es_*` searches ship **enabled** (see [Enterprise Security → The ES schedule](../../enterprise-security/overview.md#the-es-schedule-collision-free)) on crons that sit entirely in the minutes the always-on bands leave free — `:00`–`:02`, `:29`, and the odd minutes `:31`–`:59` — so they are collision-free with both the aggregate band (`:03`–`:28`) and the daily retention band (`:30`–`:58`, hours 00–01). 16 correlation searches run hourly, the 2 Asset/Identity feeds every 4 hours, and the 4 behavioral-anomaly searches once daily at `:02` (hours 02–05). The three heavy 30-day anomaly scans therefore run **once a day** rather than every hour.
+The 22 `splunk_sap_logserv_es_*` searches ship **enabled** (see [Enterprise Security → The ES schedule](../../enterprise-security/overview.md#the-es-schedule-collision-free)) on crons that sit entirely in the minutes the always-on bands leave free — `:00`–`:01`, `:29`, and the odd minutes `:31`–`:59` — so they are collision-free with both the aggregate band (`:02`–`:28`, including the Data Doctor’s `:02` platform snapshot) and the daily band (`:30`–`:58`, hours 00–02). 16 correlation searches run hourly, the 2 Asset/Identity feeds every 4 hours, and the 4 behavioral-anomaly searches once daily at `:30` (hours 02–05; moved from `:02` in build 315 to free the minute for the Data Doctor's hourly platform snapshot). The three heavy 30-day anomaly scans therefore run **once a day** rather than every hour.
 
 ### Measured behavior
 
 On the validation fleet (335M events), the hourly aggregates each complete in seconds and the slowest daily retention trim is ~1 minute (see the per-search tables above); the scheduler logs **0 skipped / 0 deferred**. The two heaviest ES searches — the 30-day anomaly scans (~150–340 s and ~50–120 s) — now run **once a day** rather than every hour, so they no longer add per-hour load.
+
+The Data Doctor adds two scheduled searches: `logserv_diag_platform_aggregate` (hourly at `:02`, a seconds-fast scan of the last hour of `index=_internal`) and `logserv_diag_platform_retention` (daily at 01:58, trims the platform snapshot to 30 days). The shipped schedule is verified by a permanent build gate: **every enabled scheduled search has a unique (hour, minute) — zero cron collisions**.
 
 ### :material-circle-box:{ .taiconcolor } Behavior with multiple search heads
 
@@ -130,7 +136,7 @@ How these scheduled searches behave depends on the search-head topology:
 ## :material-circle-box:{ .taiconcolor } What "data freshness" means per panel
 
 - **`tstats` and raw panels are real-time** — they reflect events the instant they are indexed.
-- **Rolled-up panels are accurate to the most-recently-completed hour, for time ranges of 90 minutes or wider.** The hourly aggregation runs at five minutes past each hour, so within the current partial hour a rolled-up panel shows data through the last completed hour, not the live partial hour.
+- **Rolled-up panels are accurate to the most-recently-completed hour, for time ranges of 90 minutes or wider.** The hourly aggregation runs in the first half of each hour (`:03`–`:28`, one rollup per minute), so within the current partial hour a rolled-up panel shows data through the last completed hour, not the live partial hour.
 - **Sub-hour time ranges are real-time** — every rolled-up panel switches to raw events automatically (see below).
 
 ### Sub-hour time ranges (automatic)
@@ -140,11 +146,17 @@ The rollups are keyed on whole-hour buckets, so a **sub-hour** time range — an
 The switch is based purely on the selected range's span (a 90-minute threshold), is transparent to the user, and applies across every rolled-up dashboard — including the two Sourcetype Mapping link graphs and the Host Details Role Activity tab. Because the sub-hour path runs the panel's actual raw query, it is **exact** — not an approximation of the cache. (The trade-off is only speed, not correctness: a sub-hour raw query is inexpensive because it scans a small window, while a multi-day raw scan is what the hourly cache exists to avoid.)
 
 !!! lightning "Investigating live activity"
-    Sub-hour ranges are already real-time (above), so you can simply narrow the time-range picker to see live activity on any rolled-up dashboard. For deeper ad-hoc investigation at any range, a panel's **Open in Search** toolbar action jumps into Splunk's Search app with the panel's SPL and your selected time range pre-applied, against raw events.
+    Sub-hour ranges are already real-time (above), so you can simply narrow the time-range picker to see live activity on any rolled-up dashboard. For deeper ad-hoc investigation at any range, a panel's **Open in Search** toolbar action jumps into Splunk's Search app with the panel's actual query and your selected time range pre-applied — the rollup read for a cached panel at a wide range, the raw query at sub-hour ranges.
 
 ## :material-circle-box:{ .taiconcolor } The Dashboard Data settings tab
 
 The **Dashboard Data** tab on the **Application Settings** page (Settings → Dashboard Data, admin-only) is the single control surface for this entire KV-Store rollup layer — for every dashboard **and** the Environment Topology view. It exposes the hourly-aggregation master switch, the retention window, the one-time backfill, a per-rollup status + action table, and a global clear.
+
+!!! tip "Non-admins can SEE this health without Settings access"
+    The **[Data Doctor's Diagnostics page](platform/diagnostics.md)** (*Platform → Diagnostics*)
+    shows every rollup collection's freshness and its 30-day-history completeness — the same
+    completeness convention this tab uses — read-only, to every user. It names this tab as the
+    remedy when a backfill is needed, but the controls themselves stay here.
 
 ![Settings — Dashboard Data tab (merged rollup management)](../../../images/settings-dashboard-data.png)
 
@@ -161,7 +173,7 @@ The **Dashboard Data** tab on the **Application Settings** page (Settings → Da
 A freshly installed rollup collection is empty until its hourly aggregation has run. On a high-volume instance you do not want to wait — so the app ships a one-click backfill.
 
 1. Open **Settings → Dashboard Data** (admin-only).
-2. Review the per-rollup status. Rollups with no history show an "incomplete history" banner and a warning row.
+2. Review the per-rollup status. Rollups with no history show a "Dashboard history backfill needed" banner and a warning row.
 3. Click **Run backfill** (the button targets only the incomplete rollups; once all are complete it becomes **Re-run backfill (all)**).
 
 The backfill seeds **30 days** of history into every rollup collection. It dispatches each rollup's component aggregation searches as **top-level Splunk jobs** — this matters at scale: the bundled `*_backfill` saved searches use a single `\| union` that Splunk auto-finalizes at a subsearch wall-clock limit, which silently truncates results at high event volume. The Dashboard Data button avoids that by running each component as its own unrestricted job. It shows a progress bar, is **idempotent** (re-running upserts the same rows), and is **resumable** (it detects collections that are already complete and skips them).
@@ -193,18 +205,19 @@ Every chart and table panel header carries a small action toolbar plus a "&lt;1m
 
 | Action | What it does |
 |---|---|
-| **Open in Search** | Opens Splunk's Search app in a new tab with the panel's SPL and the current time range pre-applied — your real-time, raw drill-down path. |
+| **Diagnose** | Runs the Data Doctor's checks on this panel and opens the diagnosis drawer — explains why the panel is empty or partially blank ([Data Doctor](platform/diagnostics.md)). |
+| **Open in Search** | Opens Splunk's Search app in a new tab with the panel's dispatched query and the current time range pre-applied (the rollup read for a cached panel; the raw query at sub-hour ranges). |
 | **Download (CSV)** | Exports the panel's current result set as CSV. |
 | **Inspect** | Opens Splunk's Job Inspector for the panel's last search — useful for diagnosing performance or verifying what ran. |
 | **Refresh** | Re-runs the panel's search immediately. |
 
-KPI single-value cards show the loading spinner but no toolbar (they have no tabular result to export or inspect). While any panel's search is in flight it renders an orange-dot loading spinner with "Loading data…".
+KPI single-value cards show the loading spinner and a corner **Diagnose** button (revealed on hover or keyboard focus) but no full toolbar — they have no tabular result to export or inspect. While any panel's search is in flight it renders a dot-ring loading spinner with "Loading data…".
 
 ## :material-lightning-bolt:{ .taiconcolor } What to know at a glance
 
 - **Most panels are hourly-fresh; counts and per-event listings are real-time.** If a rolled-up trend looks an hour behind at a multi-day range, that's expected.
 - **Sub-hour time ranges (under 90 minutes) are real-time automatically** — a rolled-up panel routes a *Last 15 minutes*-style window to its raw query, so short ranges stay minute-accurate with no manual step.
-- **Scheduled searches are staggered into collision-free bands** — hourly aggregates at `:03`–`:28`, daily retention at `:30`–`:58`, and the ES content (enabled by default) in the disjoint minutes (`:00`–`:02`, `:29`, odd `:31`–`:59`) — so no two enabled scheduled searches collide.
+- **Scheduled searches are staggered into collision-free bands** — hourly aggregates at `:03`–`:28` (plus the platform snapshot at `:02`), daily retention + maintenance at `:30`–`:58` (hours 00–02), and the ES content (enabled by default) in the minutes those bands leave free — `:00`/`:01` for the feeds, `:29` and odd `:31`–`:59` for the hourly correlations, and `:30` at hours 02–05 for the daily anomaly searches — so no two enabled scheduled searches collide.
 - **On a new high-volume install, run Settings → Dashboard Data → Run backfill once** to populate 30 days of history immediately.
 - **No CIM acceleration is needed** for dashboard performance.
 - **Use a panel's Open in Search action** for ad-hoc raw-event investigation at any range (sub-hour ranges are already real-time on the dashboard itself).

@@ -4,7 +4,7 @@ The Splunk for SAP LogServ App tags every supported SAP-side sourcetype into the
 
 ## :material-circle-box:{ .taiconcolor } CIM models in scope
 
-The App participates in these CIM data models, declared in `app.manifest` under `info.commonInformationModels`:
+The App declares participation in four CIM data models in `app.manifest` under `info.commonInformationModels` (**Authentication**, **Change**, **Network Sessions**, **Web**). It additionally tags events into the Network Resolution (DNS) and Proxy models via the absorbed ISC BIND / Squid parsers (`tags.conf`) without declaring those in the manifest:
 
 | Model | Use case | SAP-side sourcetypes |
 |---|---|---|
@@ -22,7 +22,7 @@ Two configuration files drive CIM tagging:
 
 ### :material-circle-box:{ .taiconcolor } `default/eventtypes.conf`
 
-Defines 18 eventtypes — 13 SAP-specific plus 5 from the absorbed ISC BIND + Squid parsers (`isc_bind_query`, `isc_bind_queryerror`, `isc_bind_lameserver`, `isc_bind_transfer`, `squid_access`) — each filtering events that should participate in a particular CIM model. For example:
+Defines 18 eventtypes. Fourteen are CIM-tagged in `default/tags.conf` — 11 SAP-specific plus `isc_bind_query`, `isc_bind_queryerror`, and `squid_access`; the remaining four (`sap_hana_audit_high_risk`, `sap_abap_audit_event`, `isc_bind_lameserver`, `isc_bind_transfer`) exist for dashboard/search convenience and are deliberately not tagged into a model. For example:
 
 ```ini
 [sap_hana_authentication]
@@ -83,7 +83,7 @@ Run the following on a Splunk instance with the App installed (and the underlyin
 | stats count by sourcetype Authentication.action
 ```
 
-You should see results like:
+You should see results like these (illustrative counts from a reference environment — your values will differ):
 
 ```
 sourcetype                  Authentication.action  count
@@ -135,4 +135,4 @@ ABAP application-tier internal logs (`sap:abap:dispatcher`, `sap:abap:enqueueser
 
 ### :material-circle-box:{ .taiconcolor } sap:abap:audit currently has minimal extraction
 
-The ABAP security audit log (`sap:abap:audit`) is binary/hex format. The App extracts SID + instance + the audit marker; richer field extraction would require a more accessible source format (e.g., SM20/SM19 export) is available. As a result, this sourcetype is currently NOT tagged into Authentication or Change — events are in the index but not in CIM dashboards. Expected to land in a future release.
+The ABAP security audit log (`sap:abap:audit`) is binary/hex format. The App extracts SID + instance + the audit marker; richer field extraction would require a more accessible source format (e.g. an SM20/SM19 export). As a result, this sourcetype is currently NOT tagged into Authentication or Change — events are in the index but not in CIM dashboards. Expected to land in a future release.

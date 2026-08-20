@@ -56,6 +56,16 @@ export = system
 access = read : [ * ], write : [ * ]
 export = system
 
+# IP-node enrichment (session 112 / build 329). Read by the topology view's
+# authenticated session at render time (hostname/user lines on IP partner
+# squares + Overview facts rows); written by the
+# logserv_topology_enrichment_aggregate / _backfill / _retention saved
+# searches. Same collection-level ACL convention as the other topology
+# collections.
+[collections/logserv_topology_ip_enrichment]
+access = read : [ * ], write : [ * ]
+export = system
+
 # Environment Topology detail-tab rollup (session 060 / build 240). Read by the
 # topology view's right-pane detail tabs (via | inputlookup) on node/edge
 # selection; written by the logserv_topology_detail_aggregate / _backfill saved
@@ -213,5 +223,37 @@ export = system
 
 # Host Role Activity rollup (build 243).
 [collections/logserv_hostrole_rollup]
+access = read : [ * ], write : [ * ]
+export = system
+
+# LogServ Data Doctor reports (build 311 / session 096). Same deliberately
+# permissive ACL as every other logserv_* collection: any authenticated user
+# must be able to persist + list diagnostic reports (the #/diagnostics page is
+# NOT admin-gated). Consequence: rows are untrusted — the app validates on
+# read (diagPersistence) and the page carries NO destructive controls. Stored
+# reports are shared, unauthenticated-integrity artifacts; the authoritative
+# copy is the one downloaded at generation time.
+[collections/logserv_diag_reports]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Operator-supplied ingest evidence (build 314 / session 099, design SS15).
+# World read/write like every other logserv_* collection: the design requires
+# a NON-admin to be able to paste the filter configuration an administrator
+# ran for them (decision 8). Consequence: the row is untrusted — the app
+# validates every field on read (diagIngestFacts.looksLikeIngestFacts), only
+# ever reads the fixed key "latest", and every verdict built on it carries a
+# "Supplied by operator — <user>, <when>" provenance line so a wrong or stale
+# paste is traceable and re-suppliable.
+[collections/logserv_diag_ingest_facts]
+access = read : [ * ], write : [ * ]
+export = system
+
+# Data Doctor platform snapshot (build 315, design SS16). World-READABLE is
+# the point of Tier B (one nobody-owned scheduled search makes _internal
+# evidence readable by every role); world-writable is the standing logserv_*
+# hazard, so the app sanitizes every row on read AND snapshot rows can never
+# raise a verdict's confidence grade (SS16.8a-1).
+[collections/logserv_diag_platform_snapshot]
 access = read : [ * ], write : [ * ]
 export = system

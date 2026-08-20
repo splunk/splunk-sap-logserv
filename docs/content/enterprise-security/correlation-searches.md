@@ -15,10 +15,10 @@ All correlation searches are scheduled saved searches in `default/savedsearches.
 | # | Search name | What it detects | Severity | Schedule |
 |---|---|---|---|---|
 | 1 | `splunk_sap_logserv_es_hana_privilege_escalation` | HANA `GRANT WITH ADMIN OPTION` or any `ALTER USER` on the SYSTEM user | high | hourly |
-| 2 | `splunk_sap_logserv_es_cross_stack_auth_failure` | Same user fails authentication on 2+ different SAP stacks (HANA, sapstartsrv, SCC, sudo) within the same window | high | every 15 min |
+| 2 | `splunk_sap_logserv_es_cross_stack_auth_failure` | Same user fails authentication on 2+ different SAP stacks (HANA, sapstartsrv, SCC, sudo) within the same window | high | hourly |
 | 3 | `splunk_sap_logserv_es_abap_gateway_anomalous_peer` | New ABAP gateway peer IP not seen (or seen <5 times) in the prior 30 days | medium | hourly |
 | 4 | `splunk_sap_logserv_es_scc_access_denied_burst` | 3+ SCC ACCESS_DENIED events on a single host within 1h | medium | hourly |
-| 5 | `splunk_sap_logserv_es_hana_failed_connect_spike` | 5+ failed HANA CONNECT attempts by a single user on a single host within 1h | medium | every 15 min |
+| 5 | `splunk_sap_logserv_es_hana_failed_connect_spike` | 5+ failed HANA CONNECT attempts by a single user on a single host within 1h | medium | hourly |
 | 6 | `splunk_sap_logserv_es_oom_kill_burst` | Fires on a burst of Linux OOM-killer (out-of-memory) events on a host | medium | hourly |
 
 ### :material-circle-box:{ .taiconcolor } Why "6 starter, well-vetted" instead of 15-20
@@ -38,12 +38,16 @@ Customers + community can layer additional ES correlation searches on top — se
 
 ```spl
 `sap_logserv_idx_macro` sourcetype="sap:hana:audit" tag=change
-  ((action_type=GRANT AND match(sql_statement, "(?i)WITH ADMIN OPTION"))
-   OR (action_type="ALTER USER" AND target_user="SYSTEM"))
+  (action_type=GRANT OR (action_type="ALTER USER" AND target_user="SYSTEM"))
+| where (action_type="GRANT" AND match(sql_statement, "(?i)WITH ADMIN OPTION"))
+    OR (action_type="ALTER USER" AND target_user="SYSTEM")
 | stats count, latest(_time) AS last_seen, values(sql_statement) AS sql_statements
         by executing_user, target_user, host, action_type
 | sort -count
 ```
+
+!!! warning "`match()` must not appear in a base-search clause"
+    `match()` is an eval-only function — in a base-search position it silently matches nothing, so the GRANT disjunct would never fire. That is why the shipped search pre-filters broadly in the base clause and applies the `match()` predicate in `| where`. Keep that structure if you copy this search as a template.
 
 **Threat model:** A SAP HANA admin or compromised account uses `GRANT ... WITH ADMIN OPTION` (creating a privilege-pivot path) or runs `ALTER USER SYSTEM ...` (modifying the SYSTEM superuser). Both warrant change-ticket review.
 
@@ -61,7 +65,7 @@ Customers + community can layer additional ES correlation searches on top — se
 | sort -distinct_sourcetypes -count
 ```
 
-**Threat model:** Credential stuffing or coordinated brute force. The same compromised credential is tried against multiple SAP stacks. A user appearing in failure events across 2+ sourcetypes within a 15-minute window is the **highest-signal indicator** of this attack pattern.
+**Threat model:** Credential stuffing or coordinated brute force. The same compromised credential is tried against multiple SAP stacks. A user appearing in failure events across 2+ sourcetypes within the same 60-minute dispatch window is the **highest-signal indicator** of this attack pattern.
 
 **FP profile:** Very low. Only fires on actual cross-stack pattern; healthy environments produce 0 rows.
 
@@ -127,16 +131,16 @@ Six additional correlation searches detect cross-source threat chains that custo
 
 | # | Search name | What it detects | Severity | Schedule |
 |---|---|---|---|---|
-| 6 | `splunk_sap_logserv_es_lateral_movement` | Same user authenticates successfully into 3+ HANA SIDs within 60s | high | every 15 min |
-| 7 | `splunk_sap_logserv_es_privilege_chain` | Same account: auth failure → success → privilege change in 1h | high | hourly |
-| 8 | `splunk_sap_logserv_es_after_hours_admin_data_access` | Same user active in HANA audit + webdispatcher access on the same host outside business hours | high | hourly |
-| 9 | `splunk_sap_logserv_es_service_account_interactive` | Service account (flagged via `is_service_account`) generated interactive HANA CONNECT | medium | every 15 min |
-| 10 | `splunk_sap_logserv_es_hana_user_creation_off_hours` | `CREATE USER` on HANA outside business hours or on weekends | medium | hourly |
-| 11 | `splunk_sap_logserv_es_hana_mass_drop` | 5+ DROP statements by a single user on a single host within 10 min | high | every 10 min |
+| E1 | `splunk_sap_logserv_es_lateral_movement` | Same user authenticates successfully into 3+ HANA SIDs within 60s | high | hourly |
+| E2 | `splunk_sap_logserv_es_privilege_chain` | Same account: auth failure → success → privilege change in 1h | high | hourly |
+| E3 | `splunk_sap_logserv_es_after_hours_admin_data_access` | Same user active in HANA audit + webdispatcher access on the same host outside business hours | high | hourly |
+| E4 | `splunk_sap_logserv_es_service_account_interactive` | Service account (identified by username pattern) generated interactive HANA CONNECT | medium | hourly |
+| E5 | `splunk_sap_logserv_es_hana_user_creation_off_hours` | `CREATE USER` on HANA outside business hours or on weekends | medium | hourly |
+| E6 | `splunk_sap_logserv_es_hana_mass_drop` | 5+ DROP statements by a single user on a single host within 10 min | high | hourly |
 
 ### :material-circle-box:{ .taiconcolor } Per-search detail (extended pack)
 
-#### :material-crop-square:{ .taiconcolor } 6. Lateral Movement
+#### :material-crop-square:{ .taiconcolor } E1. Lateral Movement
 
 Same user authenticates successfully into 3+ SAP HANA SIDs within a 60-second window. The cross-SID hop pattern is the canonical lateral-movement signal across the SAP estate.
 
@@ -144,7 +148,7 @@ Same user authenticates successfully into 3+ SAP HANA SIDs within a 60-second wi
 
 **FP profile:** Low — most environments have monitoring service accounts that legitimately span SIDs; tag those in the Identity feed (`category=service`) so the existing classification can be used to filter the alert downstream.
 
-#### :material-crop-square:{ .taiconcolor } 7. Privilege Chain (Credential Stuffing → Escalation)
+#### :material-crop-square:{ .taiconcolor } E2. Privilege Chain (Credential Stuffing → Escalation)
 
 Same account on a single HANA host has BOTH authentication failures AND a successful authentication AND a privilege-change event (GRANT, ALTER USER, CREATE USER/ROLE) within a 1-hour window. Highest-priority investigation pattern in the SAP-side ES content.
 
@@ -152,7 +156,7 @@ Same account on a single HANA host has BOTH authentication failures AND a succes
 
 **FP profile:** Very low. Healthy admin operations look like (success + change), not (failure + success + change).
 
-#### :material-crop-square:{ .taiconcolor } 8. After-Hours Admin Data Access
+#### :material-crop-square:{ .taiconcolor } E3. After-Hours Admin Data Access
 
 Same user is active across BOTH HANA audit AND webdispatcher access logs outside business hours, on the same host. Cross-source signal indicating a potential off-hours data-extraction pattern.
 
@@ -160,15 +164,15 @@ Same user is active across BOTH HANA audit AND webdispatcher access logs outside
 
 **FP profile:** Low for human admin accounts; moderate for service accounts that legitimately do this. Tag service accounts in the Identity feed to filter.
 
-#### :material-crop-square:{ .taiconcolor } 9. Service-Account Interactive HANA Login
+#### :material-crop-square:{ .taiconcolor } E4. Service-Account Interactive HANA Login
 
-Service accounts (flagged via `is_service_account="true"` in the EVAL output of the props extraction layer) generated interactive HANA CONNECT events. Service accounts should run programmatic workloads, never interactive sessions.
+Service accounts generated interactive HANA CONNECT events. Service accounts are identified inside the search itself by username pattern against `executing_user` (`adm$`, `^sapservice`, `_svc$`, `^svc_`, `_batch$`, `_daemon$`, `^sap_`). Service accounts should run programmatic workloads, never interactive sessions.
 
 **Threat model:** Either misuse (admin using a service-account credential because it has higher privileges than their own) or compromise (attacker who obtained a service-account credential and is using it interactively from a workstation).
 
-**FP profile:** Very low if the Identity feed accurately classifies service accounts. The `is_service_account` field comes from the props-time EVAL pipeline, so coverage matches whatever username pattern matching is configured there.
+**FP profile:** Very low if the username patterns match your naming convention. To change coverage, override the `eval is_svc=...` clause in `local/savedsearches.conf`.
 
-#### :material-crop-square:{ .taiconcolor } 10. HANA User Creation Outside Business Hours
+#### :material-crop-square:{ .taiconcolor } E5. HANA User Creation Outside Business Hours
 
 `CREATE USER` on HANA outside business hours or on weekends. Should map to a known change ticket; off-window creation often indicates ad-hoc / unauthorized provisioning.
 
@@ -176,7 +180,7 @@ Service accounts (flagged via `is_service_account="true"` in the EVAL output of 
 
 **FP profile:** Low for typical environments. Higher during planned cutover weekends — operators expecting weekend CREATE USER activity should pre-disable this search for the maintenance window.
 
-#### :material-crop-square:{ .taiconcolor } 11. HANA Mass DROP/DELETE
+#### :material-crop-square:{ .taiconcolor } E6. HANA Mass DROP/DELETE
 
 5+ DROP statements (TABLE, SCHEMA, VIEW, PROCEDURE, USER, ROLE, INDEX) by a single user on a single host within 10 minutes. Indicates either large-scale schema cleanup (which should map to a change ticket) or destructive insider activity.
 
@@ -186,7 +190,7 @@ Service accounts (flagged via `is_service_account="true"` in the EVAL output of 
 
 ## :material-circle-box:{ .taiconcolor } RBA — Risk-Based Alerting
 
-Each of the 6 base correlation searches carries `action.risk = 1` annotations so events also feed ES's Risk Framework.
+Each of the 19 detection searches carries `action.risk = 1` annotations so events also feed ES's Risk Framework.
 
 ### :material-circle-box:{ .taiconcolor } Per-search risk table
 
@@ -197,10 +201,10 @@ Each of the 6 base correlation searches carries `action.risk = 1` annotations so
 | ABAP gateway anomalous peer | `peer_ip`, `host` | other, system | 40, 20 |
 | SCC ACCESS_DENIED burst | `host` | system | 50 |
 | HANA failed CONNECT spike | `executing_user`, `host` | user, system | 50, 30 |
-| Linux OOM-killer burst | `host` | system | 40 |
+| Linux OOM-killer burst | `host` | system | 50 |
 | Lateral movement | `auth_user` | user | 70 |
 | Privilege chain | `auth_user`, `host` | user, system | 80, 40 |
-| After-hours admin data access | `auth_user`, `host` | user, system | 70, 30 |
+| After-hours admin data access | `executing_user`, `host` | user, system | 70, 30 |
 | Service account interactive | `executing_user` | user | 60 |
 | HANA user creation off-hours | `executing_user` | user | 50 |
 | HANA mass DROP | `executing_user`, `host` | user, system | 70, 50 |
@@ -228,17 +232,16 @@ ES Risk Framework correctly aggregates across the three when consumed by tier-2 
 
 ## :material-circle-box:{ .taiconcolor } Tier-2 Risk Notable
 
-The App also ships `splunk_sap_logserv_es_risk_notable_threshold` — a higher-tier correlation search that aggregates risk events from the 6 base searches and creates a critical-severity Notable when a single risk_object accumulates ≥ 100 risk_score in 24h.
+The App also ships `splunk_sap_logserv_es_risk_notable_threshold` — a higher-tier correlation search that aggregates risk events from all 19 detection searches and creates a critical-severity Notable when a single risk_object accumulates ≥ 100 risk_score in 24h.
 
 ```spl
 | from datamodel:Risk.All_Risk
 | search source IN (
     "splunk_sap_logserv_es_hana_privilege_escalation",
     "splunk_sap_logserv_es_cross_stack_auth_failure",
-    "splunk_sap_logserv_es_abap_gateway_anomalous_peer",
-    "splunk_sap_logserv_es_scc_access_denied_burst",
-    "splunk_sap_logserv_es_hana_failed_connect_spike",
-    "splunk_sap_logserv_es_oom_kill_burst")
+    ...                     <- the shipped stanza enumerates all 19 detection
+    ...                        searches: base, extended, threat-intel, anomaly
+    "splunk_sap_logserv_es_anomaly_after_hours_admin")
 | stats sum(All_Risk.risk_score) AS total_risk
         values(All_Risk.risk_object_type) AS risk_object_type
         values(source) AS source_searches
@@ -262,7 +265,7 @@ When a base correlation search fires:
 1. **Notable created** with the search's `rule_title` template substituted with row field values
    - Example: "HANA Privilege Escalation: ALTER USER by xcnadm on SYSTEM"
 2. **Severity badge** matches `action.notable.param.severity` (high / medium)
-3. **Security domain** badge: `identity` / `access` / `network` / `threat`
+3. **Security domain** badge: `identity` / `access` / `network` / `endpoint` / `threat`
 4. **Grouping** by `nes_fields` — ES groups similar notables (same operator + target + host) into one row in Incident Review
 
 When the tier-2 Risk Notable fires:

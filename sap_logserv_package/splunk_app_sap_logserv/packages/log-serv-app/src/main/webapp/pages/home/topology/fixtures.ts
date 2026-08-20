@@ -38,48 +38,48 @@ export const FIXTURE_NODES: TopologyNode[] = [
 
 export const FIXTURE_EDGES: TopologyEdge[] = [
     // XCP outbound (client) — RFC heavy hitters
-    { id: 'e-xcp-host00-out', source: 'XCP', target: 'partner-host-w16xcp00', type: 'rfc',  direction: 'client', callCount: 6_515_542, process: 'o2c_invoice' },
-    { id: 'e-xcp-oracle',     source: 'XCP', target: 'partner-oracle',         type: 'rfc',  direction: 'client', callCount: 1_840_400, process: 'mixed' },
-    { id: 'e-xcp-mssql',      source: 'XCP', target: 'partner-mssql',          type: 'odata', direction: 'client', callCount: 612_103, process: 'untagged' },
-    { id: 'e-xcp-cpi',        source: 'XCP', target: 'partner-cpi',            type: 'btp_iflow', direction: 'client', callCount: 360_447, process: 'o2c_order' },
-    { id: 'e-xcp-aad',        source: 'XCP', target: 'partner-aad',            type: 'web_service', direction: 'client', callCount: 188_762, process: 'untagged' },
+    { id: 'e-xcp-host00-out', source: 'XCP', target: 'partner-host-w16xcp00', type: 'rfc',  direction: 'client', callCount: 6_515_542, process: 'o2c_invoice', bucketIds: [], activity: [] },
+    { id: 'e-xcp-oracle',     source: 'XCP', target: 'partner-oracle',         type: 'rfc',  direction: 'client', callCount: 1_840_400, process: 'mixed', bucketIds: [], activity: [] },
+    { id: 'e-xcp-mssql',      source: 'XCP', target: 'partner-mssql',          type: 'odata', direction: 'client', callCount: 612_103, process: 'untagged', bucketIds: [], activity: [] },
+    { id: 'e-xcp-cpi',        source: 'XCP', target: 'partner-cpi',            type: 'btp_iflow', direction: 'client', callCount: 360_447, process: 'o2c_order', bucketIds: [], activity: [] },
+    { id: 'e-xcp-aad',        source: 'XCP', target: 'partner-aad',            type: 'web_service', direction: 'client', callCount: 188_762, process: 'untagged', bucketIds: [], activity: [] },
 
     // XCP inbound (server) — RFC server side
-    { id: 'e-xcp-host00-in',  source: 'partner-host-w16xcp00', target: 'XCP', type: 'rfc', direction: 'server', callCount: 2_277_288, process: 'o2c_delivery' },
-    { id: 'e-xcp-fiori-in',   source: 'partner-fiori-ext',     target: 'XCP', type: 'odata', direction: 'server', callCount: 92_340, process: 'o2c_order' },
+    { id: 'e-xcp-host00-in',  source: 'partner-host-w16xcp00', target: 'XCP', type: 'rfc', direction: 'server', callCount: 2_277_288, process: 'o2c_delivery', bucketIds: [], activity: [] },
+    { id: 'e-xcp-fiori-in',   source: 'partner-fiori-ext',     target: 'XCP', type: 'odata', direction: 'server', callCount: 92_340, process: 'o2c_order', bucketIds: [], activity: [] },
 
     // XCP ↔ secondary SID
-    { id: 'e-xcp-xcd',        source: 'XCP', target: 'XCD', type: 'rfc',  direction: 'bidi', callCount: 940_212, process: 'mixed' },
-    { id: 'e-xcp-xcr',        source: 'XCP', target: 'XCR', type: 'qrfc', direction: 'client', callCount: 612_804, process: 'o2c_invoice' },
-    { id: 'e-xcp-xcs',        source: 'XCP', target: 'XCS', type: 'idoc', direction: 'client', callCount: 481_220, process: 'o2c_payment' },
+    { id: 'e-xcp-xcd',        source: 'XCP', target: 'XCD', type: 'rfc',  direction: 'bidi', callCount: 940_212, process: 'mixed', bucketIds: [], activity: [] },
+    { id: 'e-xcp-xcr',        source: 'XCP', target: 'XCR', type: 'qrfc', direction: 'client', callCount: 612_804, process: 'o2c_invoice', bucketIds: [], activity: [] },
+    { id: 'e-xcp-xcs',        source: 'XCP', target: 'XCS', type: 'idoc', direction: 'client', callCount: 481_220, process: 'o2c_payment', bucketIds: [], activity: [] },
 
     // XHQ outbound
-    { id: 'e-xhq-host00',     source: 'XHQ', target: 'partner-host-w16xhq00', type: 'rfc',  direction: 'client', callCount: 2_277_288, process: 'o2c_invoice' },
-    { id: 'e-xhq-btp',        source: 'XHQ', target: 'partner-btp',           type: 'btp_iflow', direction: 'client', callCount: 408_911, process: 'o2c_order' },
-    { id: 'e-xhq-salesforce', source: 'XHQ', target: 'partner-salesforce',    type: 'web_service', direction: 'client', callCount: 297_140, process: 'mixed' },
-    { id: 'e-xhq-success',    source: 'XHQ', target: 'partner-success',       type: 'odata', direction: 'client', callCount: 116_088, process: 'untagged' },
-    { id: 'e-xhq-ariba',      source: 'XHQ', target: 'partner-ariba',         type: 'web_service', direction: 'client', callCount: 154_009, process: 'o2c_order' },
+    { id: 'e-xhq-host00',     source: 'XHQ', target: 'partner-host-w16xhq00', type: 'rfc',  direction: 'client', callCount: 2_277_288, process: 'o2c_invoice', bucketIds: [], activity: [] },
+    { id: 'e-xhq-btp',        source: 'XHQ', target: 'partner-btp',           type: 'btp_iflow', direction: 'client', callCount: 408_911, process: 'o2c_order', bucketIds: [], activity: [] },
+    { id: 'e-xhq-salesforce', source: 'XHQ', target: 'partner-salesforce',    type: 'web_service', direction: 'client', callCount: 297_140, process: 'mixed', bucketIds: [], activity: [] },
+    { id: 'e-xhq-success',    source: 'XHQ', target: 'partner-success',       type: 'odata', direction: 'client', callCount: 116_088, process: 'untagged', bucketIds: [], activity: [] },
+    { id: 'e-xhq-ariba',      source: 'XHQ', target: 'partner-ariba',         type: 'web_service', direction: 'client', callCount: 154_009, process: 'o2c_order', bucketIds: [], activity: [] },
 
     // XHQ ↔ secondary
-    { id: 'e-xhq-xhd',        source: 'XHQ', target: 'XHD', type: 'trfc', direction: 'bidi', callCount: 642_117, process: 'mixed' },
-    { id: 'e-xhq-xcd',        source: 'XHQ', target: 'XCD', type: 'idoc', direction: 'client', callCount: 294_528, process: 'o2c_invoice' },
+    { id: 'e-xhq-xhd',        source: 'XHQ', target: 'XHD', type: 'trfc', direction: 'bidi', callCount: 642_117, process: 'mixed', bucketIds: [], activity: [] },
+    { id: 'e-xhq-xcd',        source: 'XHQ', target: 'XCD', type: 'idoc', direction: 'client', callCount: 294_528, process: 'o2c_invoice', bucketIds: [], activity: [] },
 
     // XCD outbound (cross-stack)
-    { id: 'e-xcd-mq',         source: 'XCD', target: 'partner-mqseries',      type: 'web_service', direction: 'client', callCount: 38_122, process: 'untagged' },
+    { id: 'e-xcd-mq',         source: 'XCD', target: 'partner-mqseries',      type: 'web_service', direction: 'client', callCount: 38_122, process: 'untagged', bucketIds: [], activity: [] },
 
     // XCS BTP iFlow chain
-    { id: 'e-xcs-cpi',        source: 'XCS', target: 'partner-cpi',           type: 'btp_iflow', direction: 'bidi', callCount: 167_433, process: 'o2c_order' },
-    { id: 'e-xcs-btp',        source: 'XCS', target: 'partner-btp',           type: 'btp_iflow', direction: 'client', callCount: 89_044, process: 'o2c_order' },
+    { id: 'e-xcs-cpi',        source: 'XCS', target: 'partner-cpi',           type: 'btp_iflow', direction: 'bidi', callCount: 167_433, process: 'o2c_order', bucketIds: [], activity: [] },
+    { id: 'e-xcs-btp',        source: 'XCS', target: 'partner-btp',           type: 'btp_iflow', direction: 'client', callCount: 89_044, process: 'o2c_order', bucketIds: [], activity: [] },
 
     // XCR background
-    { id: 'e-xcr-oracle',     source: 'XCR', target: 'partner-oracle',        type: 'bgrfc', direction: 'client', callCount: 211_905, process: 'mixed' },
+    { id: 'e-xcr-oracle',     source: 'XCR', target: 'partner-oracle',        type: 'bgrfc', direction: 'client', callCount: 211_905, process: 'mixed', bucketIds: [], activity: [] },
 
     // XHD reporting
-    { id: 'e-xhd-mssql',      source: 'XHD', target: 'partner-mssql',         type: 'odata', direction: 'client', callCount: 188_440, process: 'untagged' },
+    { id: 'e-xhd-mssql',      source: 'XHD', target: 'partner-mssql',         type: 'odata', direction: 'client', callCount: 188_440, process: 'untagged', bucketIds: [], activity: [] },
 
     // Cross-secondary
-    { id: 'e-xcd-xhd',        source: 'XCD', target: 'XHD', type: 'rfc', direction: 'bidi', callCount: 95_212, process: 'mixed' },
-    { id: 'e-xcr-xcs',        source: 'XCR', target: 'XCS', type: 'qrfc', direction: 'client', callCount: 41_788, process: 'o2c_payment' },
+    { id: 'e-xcd-xhd',        source: 'XCD', target: 'XHD', type: 'rfc', direction: 'bidi', callCount: 95_212, process: 'mixed', bucketIds: [], activity: [] },
+    { id: 'e-xcr-xcs',        source: 'XCR', target: 'XCS', type: 'qrfc', direction: 'client', callCount: 41_788, process: 'o2c_payment', bucketIds: [], activity: [] },
 ];
 
 export const FIXTURE_ACTIVITY: ActivityRow[] = [

@@ -8,6 +8,7 @@ import { useThemeMode } from '../state/ThemeModeProvider';
 import GradientWrap from './GradientWrap';
 import LegendTitleTooltips from './LegendTitleTooltips';
 import PanelLoading from './PanelLoading';
+import EmptyStateHint from './EmptyStateHint';
 import { usePanelMetaReporter } from './PanelMeta';
 
 /**
@@ -70,7 +71,19 @@ const PieChart: React.FC<PieChartProps> = ({
     seriesColors: seriesColorsProp,
     seriesColorsByField: seriesColorsByFieldProp,
 }) => {
-    const { results, loading, error, sid, spl, dispatchedAt, refresh } = useSearch({ query });
+    const {
+        results,
+        loading,
+        error,
+        sid,
+        spl,
+        dispatchedAt,
+        refresh,
+        effectiveEarliest,
+        effectiveLatest,
+        rowCount,
+        dispatched,
+    } = useSearch({ query });
     // build 234 — report search meta to the enclosing FramedPanel (toolbar).
     usePanelMetaReporter({ spl, sid, dispatchedAt, refresh });
     // Phase 1b (build 254) — slice colors are literal hex (Surface 2), so
@@ -109,7 +122,22 @@ const PieChart: React.FC<PieChartProps> = ({
         return <Container $height={height}><PanelLoading height={height} /></Container>;
     }
     if (!dataSources) {
-        return <Container $height={height}><StatusLine>No data in this time range.</StatusLine></Container>;
+        // Session 093 — the chart owns its search, so it feeds EmptyStateHint
+        // directly rather than via the FramedPanel context (no one-render lag).
+        return (
+            <Container $height={height}>
+                <StatusLine>
+                    No data in this time range.
+                    <EmptyStateHint
+                        spl={spl}
+                        earliest={effectiveEarliest}
+                        latest={effectiveLatest}
+                        dispatched={dispatched}
+                        rowCount={rowCount}
+                    />
+                </StatusLine>
+            </Container>
+        );
     }
 
     const paletteSeriesColors = paletteColors(palette, mode);

@@ -74,9 +74,17 @@ const anchorFor = (node: InternalNode): AnchorShape => {
         return { cx, cy: y + 50, r: 69 };
     }
     if (node.type === 'sid_secondary') {
-        return { cx, cy: y + 45, r: 63 };
+        /* Build 324 — Regular Traffic SIDs adopt the former focused
+         * geometry (100 px wrap / 92 px disc / 4 px halo), so the clip
+         * circle matches sid_focused exactly. */
+        return { cx, cy: y + 50, r: 69 };
     }
     const tag = (node.data as { tag?: string } | undefined)?.tag;
+    if (tag === 'TENANT') {
+        /* Build 324 — HANA tenant partners render as SID-format 100 px
+         * circles (PartnerNode .tenantDisc), same clip as SIDs. */
+        return { cx, cy: y + 50, r: 69 };
+    }
     if (tag && DB_TAGS.has(tag)) {
         return { cx, cy: y + 34, r: 52 };
     }

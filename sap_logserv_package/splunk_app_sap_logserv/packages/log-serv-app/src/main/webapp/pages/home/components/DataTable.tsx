@@ -3,6 +3,9 @@ import styled from 'styled-components';
 import Table from '@splunk/react-ui/Table';
 import { logservTheme } from '../styles/logservTheme';
 import PanelLoading from './PanelLoading';
+import EmptyStateHint from './EmptyStateHint';
+import { usePanelDiagnostic } from './PanelMeta';
+import { computeColumnCoverage, recordColumnCoverage } from '../utils/columnCoverage';
 
 /**
  * DataTable — wraps @splunk/react-ui/Table with our zebra + cyan-accent
@@ -259,6 +262,25 @@ function DataTable<TRow extends Record<string, unknown>>({
     const [sortKey, setSortKey] = useState<string | null>(initialSortKey ?? null);
     const [sortDir, setSortDir] = useState<SortDir>(initialSortKey ? initialSortDir : 'none');
     const [page, setPage] = useState<number>(0);
+
+    /* §18.8a-2 — publish the values-free column-coverage summary. This is the
+     * ONLY place that has both the rendered rows and the authoritative
+     * displayed set (ColumnDef.key), and the rows it reduces are exactly the
+     * rows it renders (derived-array call sites included). The panel's SPL
+     * comes from the enclosing FramedPanel's diagnostic context; row VALUES
+     * never cross the channel. */
+    const diagCtx = usePanelDiagnostic();
+    const diagSpl = diagCtx?.spl;
+    useEffect(() => {
+        if (!diagSpl || !rows) return;
+        recordColumnCoverage(
+            diagSpl,
+            computeColumnCoverage(
+                rows,
+                columns.map((c) => ({ key: c.key, hasRender: !!c.render })),
+            ),
+        );
+    }, [diagSpl, rows, columns]);
 
     // Auto-fit page size: computed from parent FramedPanel's available height.
     // Only used when `pageSize` prop is omitted — explicit prop wins.
@@ -538,7 +560,17 @@ function DataTable<TRow extends Record<string, unknown>>({
         return <PanelLoading />;
     }
     if (!visibleRows || visibleRows.length === 0) {
-        return <StatusLine>{emptyMessage}</StatusLine>;
+        // Session 093 — append the "why is this empty" statement. DataTable is
+        // handed only rows/loading/error, so EmptyStateHint reads the enclosing
+        // FramedPanel's PanelDiagnosticContext (every table call site already
+        // passes `search={…}` for the toolbar). Renders nothing when there is
+        // nothing honest to say, which is the common case.
+        return (
+            <StatusLine>
+                {emptyMessage}
+                <EmptyStateHint />
+            </StatusLine>
+        );
     }
 
     const showPagination = !paginationDisabled && totalRows > pageSize;

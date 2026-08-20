@@ -150,17 +150,26 @@ const QRAW_BASE = {
     sidInstance: `${RAW_ABAP3} | stats count by sap_sid sap_instance | sort -count`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const ICM_PEER_COLS: ColumnDef[] = [
@@ -225,11 +234,11 @@ const AbapSecurity: React.FC = () => {
             subtitle="Network-facing ABAP components — ICM connections, gateway remote hosts, and security audit events"
         >
             <KpiRow>
-                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="ICM Errors" value={icmErrors.value} loading={icmErrors.loading} error={icmErrors.error} formatValue={formatInteger} tone={icmTone}
+                <KpiCard label="ICM Errors" value={icmErrors.value} loading={icmErrors.loading} error={icmErrors.error} search={icmErrors.search} formatValue={formatInteger} tone={icmTone}
                     sparkline={<SparklineFromQuery query={Q.sparkIcmErrors} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Gateway Errors" value={gwErrors.value} loading={gwErrors.loading} error={gwErrors.error} formatValue={formatInteger} tone={gwTone}
+                <KpiCard label="Gateway Errors" value={gwErrors.value} loading={gwErrors.loading} error={gwErrors.error} search={gwErrors.search} formatValue={formatInteger} tone={gwTone}
                     sparkline={<SparklineFromQuery query={Q.sparkGwErrors} valueField="count" color={logservTheme.colors.red} fill />} />
             </KpiRow>
 

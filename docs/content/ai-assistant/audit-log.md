@@ -2,6 +2,9 @@
 
 Every action the AI Assistant takes — predefined-prompt dispatches, free-form vendor calls, security blocks, privacy-tier elevations, legal acknowledgements — produces an audit event in a dedicated `logserv_ai_assistant_audit` index. The audit trail is the evidence layer for compliance reviews, SOC investigations, and tamper-resistance posture.
 
+!!! note "Which categories fire in the published (templates-only) package"
+    The released v0.1.1 App is the [templates-only build](templates-only-build.md) — no LLM dispatch, no vendor call, no model discovery. In it, only **`local_only`** (every canned-prompt dispatch), **`audit_forwarder_failure`**, **`forwarder_disabled_acceptance`**, and **`ai_assistant_enable_acceptance`** are ever emitted; the other nine categories are defined but structurally dormant (nothing can trigger them). In the full-LLM variant all thirteen are live.
+
 ## :material-circle-box:{ .taiconcolor } The Thirteen Audit Categories
 
 | Category | When | Key fields |
@@ -9,16 +12,16 @@ Every action the AI Assistant takes — predefined-prompt dispatches, free-form 
 | `local_only` | Predefined-prompt dispatch (no LLM call). | `promptId`, `spl`, `rowCount`, `executionMs`, `ok` |
 | `vendor_tier1` | Free-form prompt at Tier 1 (count + timing only summary sent to vendor). | `provider`, `model`, `inputTokens`, `outputTokens`, `vendorCostEstimateUsd`, `outboundBytes`, `promptLength`, `turnCount`, `powerMode` |
 | `vendor_tier2` | Free-form prompt at Tier 2 (aggregated metadata sent). | Same as `vendor_tier1` plus `tier2RedactionsApplied` (count of PII redactions on this turn) |
-| `vendor_tier2_elevation` | Admin saves Settings with `tier` changing from 1 → 2. | Admin user, `previousTier`, `newTier` |
+| `vendor_tier2_elevation` | Admin saves Settings elevating `tier` to 2 (from Tier 0 or Tier 1). | Admin user, `previousTier`, `newTier` |
 | `security_blocked_spl` | SPL static-analysis guard rejected an AI-authored `splunk_run_query`. | `spl` (truncated to 1000 chars), `operator` (the offending command name) |
-| `rate_limited_prompt` | Per-user rate limit denied a free-form prompt. | `cap`, `attemptedCount`, `windowSeconds` |
+| `rate_limited_prompt` | Per-user rate limit denied a free-form prompt. | `threshold`, `countInWindow`, `promptLength`, `secondsUntilNextSlot` |
 | `user_prompt_jailbreak_flag` | Jailbreak-pattern analyzer flagged a user prompt (flag-and-proceed; the prompt still ran). | `promptHash`, `promptLength`, `matchedGroups`, `charClassFingerprint` |
 | `session_tool_cap_hit` | Per-session tool-dispatch cap reached; dispatch refused. | `cap`, `attemptedCount`, `toolName` |
-| `daily_spend_cap_hit` | Daily USD spend cap reached; vendor call refused. | `cap`, `currentSpend`, `attemptedSpend` |
+| `daily_spend_cap_hit` | Daily USD spend cap reached; vendor call refused. | `capUsd`, `spentTodayUsd`, `promptLength`, `secondsUntilMidnight` |
 | `audit_forwarder_failure` | HEC forwarder POST failed (DNS, network, 4xx/5xx response). | `destinationUrl` (sanitized), `reason`, `batchSize` |
 | `forwarder_disabled_acceptance` | Admin acknowledged the forwarder-disabled legal modal. | Admin user, `host` (Splunk-stamped IP), `tcVersion`, `optInChoice`, `disclaimerHash` |
 | `ai_assistant_enable_acceptance` | Admin acknowledged the AI-Assistant-enable legal modal. | Same as forwarder acceptance, plus the seven-clause enable-disclaimer hash |
-| `model_discovery` | A dynamic model-discovery refresh ran. **Never fires in this templates-only build** — model discovery is a full-LLM-line (v0.1.1) feature and is compile-time inert here; the category chip exists in the viewer for cross-line consistency. | `provider`, `trigger`, `ok`, `modelCount`, `durationMs`, `error` |
+| `model_discovery` | A [dynamic model-discovery](settings.md#how-model-discovery-works) refresh ran (any trigger, success or failure). | `provider`, `trigger` (`credential_save` / `settings_refresh` / `ttl`), `ok`, `modelCount`, `durationMs`, `error` |
 
 Every event also carries a small set of common fields:
 
@@ -35,10 +38,10 @@ The Audit Log tab in [Settings → AI Assistant](settings.md#audit-log-tab) prov
 
 | Filter | Default | Notes |
 |---|---|---|
-| **Time range** | Last 7 days | Reads from the global TimeRange picker; not a separate field. Re-runs on picker change. |
-| **Category** | (all 13) | Multi-select with colored chips. Each category has its own gradient (cyan-light SAP-Basis-style for `local_only`, gold-orange for vendor calls, red for security blocks, etc.). |
+| **Time range** | Last 30 days (the global picker's default) | Reads from the global TimeRange picker; not a separate field. Re-runs on picker change. |
+| **Category** | (all 13) | Multi-select with colour-coded chips — each category gets a distinct flat accent colour from the app palette; `user_prompt_jailbreak_flag` is highlighted in red. |
 | **User contains** | (empty) | Substring filter on the `user` field. Useful for "what did admin X do?" reviews. |
-| **Limit** | 100 | One of 25 / 100 / 500 / 1000. Larger values slow page rendering. |
+| **Limit** | 100 | One of 50 / 100 / 250 / 500. Larger values slow page rendering. |
 
 The table renders 25 rows per page (`PAGE_SIZE = 25`); footer shows "Page X of Y" + Previous / Next buttons (only when total exceeds 25). Clicking a row's **+** button expands to show the full event JSON.
 
@@ -67,9 +70,9 @@ Optional admin-configurable forwarding of audit events to a separate Splunk / SI
 
 1. Open Settings → AI Assistant → **General**.
 2. Find the **Audit & Telemetry** subsection.
-3. Set `audit_forwarder_url` to the HEC endpoint (e.g., `https://siem.example.com:8088/services/collector`).
+3. Set `audit_forwarder_url` to the HEC base URL (e.g., `https://siem.example.com:8088` — the App appends `/services/collector/event`).
 4. Optionally set `audit_forwarder_index` (recommended: a dedicated index like `splunk_audit` on the destination).
-5. Optionally set `audit_forwarder_source` (defaults to `logserv:ai_assistant:audit`).
+5. Optionally set `audit_forwarder_source` (defaults to `logserv_ai_assistant_remote` — deliberately distinct from the local sourcetype `logserv:ai_assistant:audit` so forwarded copies are distinguishable).
 6. Set `audit_forwarder_enabled = true`.
 7. Open Settings → AI Assistant → **Splunk MCP** → **Audit Log Forwarder** panel.
 8. Click **Set** next to the HEC token field.
@@ -87,13 +90,13 @@ The `logserv_ai_assistant_audit` index is defined in the Data TA's `default/inde
 
 The index name is **macro-configurable** — see [Renaming an index](../install-setup/install-ta.md#renaming-an-index) for the procedure (update the `sap_logserv_audit_idx_macro` macro definition for reads, plus the `audit_index_name` field in Settings → AI Assistant → General → Audit & Telemetry for writes).
 
-**Retention** uses the system default unless the customer overrides it on their indexer's `indexes.conf` — for compliance reviews going back > 90 days, override `frozenTimePeriodInSecs` accordingly. Recommended retention for compliance use cases: **2 years** to cover annual audit cycles plus a buffer. For SOX / PCI / HIPAA contexts where regulator records-retention requirements apply, follow the regulator's spec.
+**Retention** is set by the Data TA to **90 days** (`frozenTimePeriodInSecs = 7776000` on `[logserv_ai_assistant_audit]`) — for compliance reviews going back further, override that stanza in `local/indexes.conf` on the indexer. Recommended retention for compliance use cases: **2 years** to cover annual audit cycles plus a buffer. For SOX / PCI / HIPAA contexts where regulator records-retention requirements apply, follow the regulator's spec.
 
 ## :material-circle-box:{ .taiconcolor } Querying the Audit Index Directly
 
 You can query the audit index from any search bar — the in-app viewer is just a curated UX over the same SPL. The starter searches below use the `\`sap_logserv_audit_idx_macro\`` macro so they continue to work after a rename:
 
-**All Tier 2 calls in the last 7 days, with USD cost summed by user:**
+**All Tier 2 calls in the last 7 days, with USD cost summed by user** *(full-LLM variant only — this category is never emitted by the published templates-only package)*:
 
 ```spl
 `sap_logserv_audit_idx_macro` earliest=-7d
@@ -141,4 +144,4 @@ The privacy banner at the top of the AI Assistant chat panel includes an **Audit
 
 ![AI Assistant — Audit Modal](../../images/ai-assistant-audit-modal.png)
 
-The modal shows a chronological list of every audit event for the **current session** (matched on `sessionId`). Useful for users who want to confirm what their last few prompts triggered without leaving the AI Assistant panel. The modal is the in-pane equivalent of the Settings → Audit Log tab, scoped to the current session.
+The modal shows a chronological list of the audit events recorded by the AI Assistant **since this page was loaded** (the provider's in-memory buffer for the current session — it does not query the index, so a page reload starts the list over). Useful for users who want to confirm what their last few prompts triggered without leaving the AI Assistant panel. The modal is the in-pane equivalent of the Settings → Audit Log tab, scoped to the current session.

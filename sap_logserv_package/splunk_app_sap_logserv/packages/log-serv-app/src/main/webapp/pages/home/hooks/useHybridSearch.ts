@@ -1,6 +1,7 @@
 import { useSearch, UseSearchOptions, UseSearchResult } from './useSearch';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { shouldUseRawSource } from '../utils/hybridRouting';
+import { recordRawTwin } from '../utils/rawTwin';
 
 /**
  * Hybrid rollup/raw read routing (session 085).
@@ -35,6 +36,11 @@ export const useRoutedQuery = (
     const { timeRange } = useTimeRange();
     const effEarliest = earliest ?? timeRange.earliest;
     const effLatest = latest ?? timeRange.latest;
+    // §17.1 — the raw-twin channel for the diagnostic's check 21. Recording on
+    // every evaluation is deliberate: the map re-inserts (refreshing eviction
+    // order) and both arms here already carry the cloud splice, so the key is
+    // the exact string a chart will dispatch.
+    recordRawTwin(cached, raw);
     return shouldUseRawSource(effEarliest, effLatest) ? raw : cached;
 };
 

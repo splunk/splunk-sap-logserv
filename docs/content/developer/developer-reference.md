@@ -13,7 +13,7 @@ The filtering system provides index-time event filtering via TRANSFORMS-based qu
 ```
 +-------------------------------------------------------+
 |  Splunk Web (UCC Configuration UI)                    |
-|  Configuration -> Filters tab                         |
+|  Configuration -> Filters + Cloud Provider tabs       |
 |  + filter_settings_hook.js (Deploy button, banners)   |
 +---------------------------+---------------------------+
                             | Save
@@ -54,13 +54,15 @@ All source files live under the UCC package directory:
 
 ```
 sap_logserv_package/splunk_ta_sap_logserv/
-├── globalConfig.json                          # UCC UI definition (Filters tab)
-├── additional_packaging.py                    # UCC build hook (web.conf expose)
+├── globalConfig.json                          # UCC UI definition (Filters + Cloud Provider tabs)
+├── additional_packaging.py                    # UCC post-build patcher (see note below)
+├── run_appinspect.sh                          # Dev tool — MUST stay outside package/ (an
+│                                              #   executable in package/ trips check_for_bin_files)
 └── package/
     ├── app.manifest                                # TA version and metadata
     ├── bin/
     │   ├── splunk_ta_sap_logserv_filter_utils.py        # Core library
-    │   ├── splunk_ta_sap_logserv_rh_filter_settings.py  # REST handler: Filters tab
+    │   ├── splunk_ta_sap_logserv_rh_filter_settings.py  # REST handler: Filters + Cloud Provider tabs
     │   ├── splunk_ta_sap_logserv_rh_deployment_push.py  # REST handler: Deploy button
     │   ├── logserv_filter_time_refresh.py               # Daily epoch cutoff refresh
     │   └── logserv_filter_upgrade_check.py              # Upgrade coverage check
@@ -68,12 +70,20 @@ sap_logserv_package/splunk_ta_sap_logserv/
     │   ├── transforms.conf    # Sourcetype routing + @logserv_filter annotations
     │   ├── props.conf         # Sourcetype configs, TRANSFORMS chains
     │   ├── inputs.conf        # Scripted input schedules
-    │   └── macros.conf        # Index name redirect macro
+    │   ├── macros.conf        # Index name redirect macro
+    │   ├── indexes.conf       # Index definitions (folded in from the retired Index App)
+    │   └── data/ui/nav/default.xml   # Nav (Configuration + search only)
     ├── metadata/
     │   └── default.meta       # Default permissions and export settings
+    ├── static/                # App icons (appIcon*.png)
+    ├── LICENSES/              # Absorbed-add-on license texts
     └── appserver/static/js/build/custom/
-        └── filter_settings_hook.js   # UCC hook (DS detection, Deploy button)
+        ├── filter_settings_hook.js   # UCC hook (DS detection, Deploy button)
+        └── cloud_provider_hook.js    # UCC hook (Cloud Provider tab)
 ```
+
+!!! note "additional_packaging.py is load-bearing for AppInspect posture"
+    The post-build patcher performs several jobs after `ucc-gen` runs: patching every `[admin_external:*]` restmap stanza (`handlertype`, `python.version`, `python.required = 3.13`, `passSystemAuth = true`), appending the `deployment_push` restmap + `web.conf` expose stanzas, patching `inputs.conf` `[script://...]` stanzas with `python.required = 3.13`, restoring `sc_subadmin` to the write ACL in the UCC-generated `metadata/default.meta`, and swapping the generated settings handler import to `FilterSettingsHandler`. Several of these are AppInspect Cloud gating fixes — deleting or truncating the file silently regresses AppInspect posture and locks out `sc_subadmin` admins.
 
 <br>
 
@@ -102,7 +112,9 @@ This is the central module. All other components import from it.
 | `generate_epoch_less_than_regex(cutoff_epoch)` | Generates a digit-by-digit regex matching epoch values less than the cutoff |
 | `generate_transforms_stanzas(include, exclude, days)` | Generates filter transform stanzas with regex |
 | `generate_props_filter_lines(include, exclude, days, enabled)` | Generates the `TRANSFORMS-00-filter` line |
-| `write_local_conf(app_path, conf_type, content)` | Writes between marker comments in local conf files |
+| `write_local_conf(app_path, conf_name, content)` | Writes between marker comments in local conf files |
+| `write_local_conf_section(app_path, conf_name, content, marker_start, marker_end)` | Generalised marker-block writer — lets two independent marker blocks (filter + cloud provider) coexist in one local conf |
+| `update_local_stanza(app_path, conf_name, stanza, kv)` | Direct filesystem stanza write — the `RestError[403]` fallback used when the caller lacks `admin_all_objects` |
 | `get_ta_version(app_path)` | Reads version from `default/app.conf` (falls back to `app.manifest` if not present) |
 | `get_server_roles(session_key)` | Queries /services/server/info for roles |
 | `is_deployment_server(session_key)` | Two-step DS detection (roles + client probe) |
@@ -122,18 +134,19 @@ This is the central module. All other components import from it.
 | `SYSTEM_MESSAGE_NAME` | `logserv_filter_upgrade_warning` | System message banner name for upgrade warnings |
 | `ANNOTATION_PATTERN` | Compiled regex | Matches `@logserv_filter:` annotation comment lines |
 | `VALID_SEGMENT_PATTERN` | Compiled regex | Validates characters in dir/subdir pattern segments |
-| `FILTER_MARKER_START` / `FILTER_MARKER_END` | Marker comments | Delimit generated content in local conf files |
+| `FILTER_MARKER_START` / `FILTER_MARKER_END` | Marker comments | Delimit generated filter content in local conf files |
+| `CLOUD_PROVIDER_MARKER_START` / `CLOUD_PROVIDER_MARKER_END` | Marker comments | Delimit the generated `[logserv_set_cloud_provider]` block — separate from the filter block so the daily time-refresh preserves it |
 
 <br>
 
-### :material-circle-box:{ .taiconcolor } Filters Tab REST Handler
+### :material-circle-box:{ .taiconcolor } Configuration REST Handler (Filters + Cloud Provider tabs)
 
 **splunk_ta_sap_logserv_rh_filter_settings.py**{style="font-size: 1.2em;"}
 
-UCC REST handler (extends `AdminExternalHandler`) registered in `globalConfig.json`. Handles the Save action:
+UCC REST handler (extends `AdminExternalHandler`) registered in `globalConfig.json`. UCC generates ONE `MultipleModel` settings endpoint shared by all Configuration tabs, so this single handler class serves both the **Filters** and the **Cloud Provider** tab — it dispatches on the payload (`if 'cloud_provider' in self.callerArgs.data`), validating against `VALID_CLOUD_PROVIDERS` and writing/clearing the `[logserv_set_cloud_provider]` override inside its own `### BEGIN/END LOGSERV CLOUD_PROVIDER CONFIG ###` marker block. For a Filters save it handles the Save action:
 
 1. **Validates** patterns server-side (blocks save on failure via `admin.ArgValidationException`)
-2. **Saves** settings to `splunk_ta_sap_logserv_settings.conf` (default UCC behavior)
+2. **Saves** settings to `splunk_ta_sap_logserv_settings.conf` (default UCC behavior — the happy path). **Falls back to a direct filesystem write** when the UCC REST write raises `RestError[403]` ("This operation is forbidden"): splunkd gates `/configs/conf-*` writes on `admin_all_objects` independently of the object metadata ACL, so Splunk Cloud `sc_subadmin` and hardened on-prem `admin` roles fail the REST path. `update_local_stanza()` writes the stanza to `local/<settings>.conf` directly, bypassing that gate (`passSystemAuth` is NOT honoured for UCC `[admin_external:*]` handlers)
 3. **Generates** `local/transforms.conf` and `local/props.conf` with filter stanzas
 4. **Syncs and mirrors** to deployment-apps if on a DS (full app copy/upgrade + filter configs)
 5. **Creates** server class if on a DS (first time only)
@@ -225,7 +238,7 @@ This "deny-all, then allow" approach ensures only explicitly included events pas
 User-facing fnmatch patterns (e.g., `linux/*`) are converted to Splunk-compatible regex that matches against the raw NDJSON event data. The include_allow regex uses lookahead assertions to match `clz_dir` and `clz_subdir` fields:
 
 ```
-^(?=.*"clz_dir"\s*:\s*"linux")(?=.*"clz_subdir"\s*:\s*".+")
+^(?=.*"clz_dir"\s*:\s*"linux")(?=.*"clz_subdir"\s*:\s*".*")
 ```
 
 Multiple include patterns are OR'd together with `|`.
@@ -341,10 +354,10 @@ Add your new transform to the appropriate `TRANSFORMS-*` line in the `[sap_logse
 ```ini
 [sap_logserv_logs]
 ...
-TRANSFORMS-07-srctype_for_newdir = set_srctype_for_new_logtype
+TRANSFORMS-10-srctype_for_newdir = set_srctype_for_new_logtype
 ```
 
-Use a number between `01` and `98` for the TRANSFORMS prefix. `00` is reserved for filters and `99` is reserved for `set_raw_only`.
+Pick the next free number in `10`–`49` for the TRANSFORMS prefix. Current allocation: `00` = filters, `01`–`09` = sourcetype routing (all in use), `50`–`51` = indexed-field stamps (`splunk_solution`, `cloud_provider`), `99` = `set_raw_only`.
 
 <br>
 
@@ -356,7 +369,7 @@ If the new sourcetype needs field extractions, calculated fields, or CIM field a
 
 ### :material-circle-box:{ .taiconcolor } Step 4: Bump the Version
 
-Update the version in `package/app.manifest` (and `globalConfig.json` if applicable). This triggers the upgrade check to compare the new annotations against existing user include patterns.
+Bump `meta.version` in `globalConfig.json` — `ucc-gen` stamps it into the built `default/app.conf`, which is what `get_ta_version()` reads (it falls back to `app.manifest` only when `app.conf` is absent, i.e. before the UCC build). Keep `package/app.manifest` in sync so source and artifact agree. The version change triggers the upgrade check to compare the new annotations against existing user include patterns.
 
 ??? tip "What Happens on Upgrade"
     1. The `logserv_filter_upgrade_check.py` scripted input detects the version change within 10 minutes
@@ -407,7 +420,7 @@ Update the version in `package/app.manifest` (and `globalConfig.json` if applica
 
 ??? tip "What to test"
     - Same as Environment 2, but additionally verify:
-    - The TA is installed on the Splunk Cloud instance for dashboards and search-time knowledge objects, but filtering is NOT configured there
+    - The **LogServ App** is installed on the Splunk Cloud search head for dashboards and search-time knowledge objects. The **Data TA** is installed on the on-prem DS and HFs; the Splunk Cloud admin separately installs it on the indexer tier so the bundled `indexes.conf` provisions storage. Filtering is NOT configured on the Cloud side
     - Filter configuration and TA distribution to HFs are managed entirely from the on-premises DS
     - Filtering works at the HF level before data reaches Splunk Cloud
     - No INGEST_EVAL dependency (TRANSFORMS-only filtering)
@@ -488,7 +501,7 @@ Generated filter content in `local/transforms.conf` and `local/props.conf` is wr
 ### END LOGSERV FILTER CONFIG ###
 ```
 
-The `write_local_conf()` function replaces content between these markers (or appends them if not present). Manual customizations outside the markers are preserved.
+The `write_local_conf()` function replaces content between these markers (or appends them if not present). Manual customizations outside the markers are preserved. The Cloud Provider tab writes its own independent block between `### BEGIN LOGSERV CLOUD_PROVIDER CONFIG ###` / `### END LOGSERV CLOUD_PROVIDER CONFIG ###` markers (via `write_local_conf_section()`), so the daily filter time-refresh regenerating the filter block leaves the cloud-provider block untouched.
 
 <br>
 

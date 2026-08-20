@@ -23,7 +23,7 @@ Below are the high level steps for this setup process listed in the order they s
 :material-lightning-bolt:{ .taiconcolor } Please ensure the user you log in with in your AWS **_Secondary account_** has the appropriate permissions to perform all the steps outlined below.  
 
 1. Obtain the ARNs for the SQS Queue and the S3 Bucket in your **_SAP ECS account_**
-2. Create a new S3 Bucket in the correct AWS Region in your **_Secondary account_** and upload the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-filter-lambda.zip" target="_blank">splunk-logserv-filter-lambda.zip</a> file to the root of the bucket 
+2. Create a new S3 Bucket in the correct AWS Region in your **_Secondary account_** and upload the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-filter-lambda.zip" target="_blank">splunk-logserv-filter-lambda.zip</a> file to the root of the bucket (do not rename the file — the CloudFormation template looks for the object key `splunk-logserv-filter-lambda.zip` at the bucket root) 
 3. Deploy the AWS <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-filter.yaml" target="_blank">CloudFormation Template</a> provided for this remote S3 filter deployment approach in your **_Secondary account_**
 4. Contact SAP LogServ support and request an update to the access policies for the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-sqs-access-policy.json" target="_blank">SQS Queue</a> and <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-s3-access-policy.json" target="_blank">S3 Bucket</a> residing in your **_SAP ECS account_**
 5. Create an <a href="https://docs.aws.amazon.com/keyspaces/latest/devguide/create.keypair.html" target="_blank">Access Key</a> for the new IAM User that was created with the CloudFormation template in your **_Secondary account_**
@@ -111,7 +111,7 @@ You will also need to note the **AWS Region** where these resources are located,
     ![image](../../images/cloud-formation-s3-filter-04.png "Stack Name")
 
 3.<b class="taiconcolor">e</b> Enter just the name (not the ARN) of the S3 Bucket in your **_SAP ECS account_** in the **_CrossAccountS3Bucket_** parameter
-   - If your ARN looks like this *arn:aws:s3:::sap-hec-clz-ap-south-1-hec53-xsd* then just use the name like this *ap-hec-clz-ap-south-1-hec53-xsd*
+   - If your ARN looks like this *arn:aws:s3:::sap-hec-clz-ap-south-1-hec53-xsd* then just use the name like this *sap-hec-clz-ap-south-1-hec53-xsd*
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-filter-05.png "CrossAccountS3Bucket Parameter")
 
@@ -127,7 +127,7 @@ You will also need to note the **AWS Region** where these resources are located,
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-filter-08.png "ExcludeFilters Parameter")
 
-3.<b class="taiconcolor">i</b> Enter comma-separated patterns for paths to include (e.g., 'hana/hanaaudit,linux/*,webdispatcher/accesslogs'). Format: <clz_dir\>/<clz_subdir\>. Use '\*/\*' to include all paths.
+3.<b class="taiconcolor">i</b> Enter comma-separated patterns for paths to include (e.g., 'hana/hanaaudit,linux/*,webdispatcher/accesslog'). Format: <clz_dir\>/<clz_subdir\>. Use '\*/\*' to include all paths.
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-filter-09.png "IncludeFilters Parameter")
 
@@ -259,7 +259,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 8.<b class="taiconcolor">d</b> Fill out the next three fields in the SQS-Based S3 Input (**_SQS Queue Name_**, **_SQS Batch Size_**, **_S3 File Decoder_**)
 
-    - Select the **_SQS Queue Name_** you used in step **12** when previously deploying the CloudFormation template
+    - Select the **_SQS Queue Name_** you entered in step **3.l** (**_LocalSQSQueueName_**) when previously deploying the CloudFormation template
     - Leave the **_SQS Batch Size_** set to 10
     - Leave the **_S3 File Decoder_** set to Custom Logs
 
@@ -286,7 +286,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
     ![image](../../images/lambda-sqs-queue-trigger-review-01.png "Navigate Lambda")
 
 
-9.<b class="taiconcolor">b</b> If you **__do not__** see an existing SQS Trigger in the Function overiew diagram as seen in the example image below, then follow the steps in the **_Create SQS Queue Trigger_** section below, otherwise follow the steps in the **_Configure SQS Queue Trigger_** section below.
+9.<b class="taiconcolor">b</b> If you **__do not__** see an existing SQS Trigger in the Function overview diagram as seen in the example image below, then follow the steps in the **_Create SQS Queue Trigger_** section below, otherwise follow the steps in the **_Configure SQS Queue Trigger_** section below.
 
 ??? indented-note "Example"
     ![image](../../images/lambda-sqs-queue-trigger-review-02.png "Review SQS Trigger")
@@ -318,7 +318,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
     - Set the **_Batch Size_** to 10
     - Set the **_Batch window_** to 5
-    - Set the **_Maximum concurrency_** to 8
+    - Set the **_Maximum concurrency_** to 10 (matching the value the automated connect-to-filter migration provisions)
 
 ??? indented-note "Example"
     ![image](../../images/lambda-sqs-queue-trigger-create-04.png "Trigger Fields")
@@ -360,7 +360,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
     - Ensure the **_Batch Size_** is set to 10
     - Ensure the **_Batch window_** is set to 5
-    - Ensure the **_Maximum concurrency_** is set to 8
+    - Ensure the **_Maximum concurrency_** is set to 10
 
 ??? indented-note "Example"
     ![image](../../images/lambda-sqs-queue-trigger-config-04.png "Trigger Fields")

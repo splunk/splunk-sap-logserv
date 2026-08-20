@@ -1398,7 +1398,7 @@
       "nextSteps": [
         {
           "text": "Pull the full off-hours activity for the admin to see exactly what happened.",
-          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" is_business_hours=\"false\" (executing_user=\"<user>\" OR user=\"<user>\") earliest=-2d@d latest=now | sort 0 _time | table _time host action_category action_type target_user _raw"
+          "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" (executing_user=\"<user>\" OR user=\"<user>\") earliest=-2d@d latest=now | eval oh_hour = tonumber(strftime(_time, \"%H\")) | where oh_hour < 8 OR oh_hour >= 18 | sort 0 _time | table _time host action_category action_type target_user _raw"
         },
         "Confirm the activity maps to a change ticket; off-hours admin activity without a ticket is the canonical \"after-hours admin compromise\" indicator.",
         {

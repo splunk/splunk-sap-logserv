@@ -32,6 +32,9 @@ import type { TopologyNode, TopologyEdge } from './types';
 interface SimNode extends SimulationNodeDatum {
     id: string;
     kind: TopologyNode['kind'];
+    /* Build 324 — TENANT-tagged partners render as SID-sized 100 px
+     * circles, so collide treats them like SIDs. */
+    tenant?: boolean;
 }
 
 interface SimLink {
@@ -102,8 +105,15 @@ const DEFAULT_CHARGE_PARTNER = -1000;
  * radius scales to keep the same padding ratio (~1.87x visual radius)
  * as focused (130/69) and partner (100/53.5). */
 const DEFAULT_COLLIDE_FOCUSED = 130;
-const DEFAULT_COLLIDE_SECONDARY = 120;
-const DEFAULT_COLLIDE_PARTNER = 100;
+/* Build 324 — Regular Traffic SIDs render at the focused size, so the
+ * collide radius matches (preserves the ~1.87x collide-to-visual ratio). */
+const DEFAULT_COLLIDE_SECONDARY = 130;
+/* Build 329 — 100 -> 110: IP squares can carry two enrichment lines
+ * (hostname + user, ~26 px) under the label, growing the below-node label
+ * block. Collide is center-circular so a modest bump covers the vertical
+ * growth for adjacent rows; lockstep with the ELK partner boxes
+ * (95x145 -> 95x175 in layoutLayered/layoutMrtree). */
+const DEFAULT_COLLIDE_PARTNER = 110;
 const DEFAULT_FORCE_X_STRENGTH = 0.05;
 const DEFAULT_FORCE_Y_STRENGTH = 0.13;
 const DEFAULT_LINK_DISTANCE_MIN = 380;
@@ -303,6 +313,7 @@ const chargeFor = (n: SimNode, knobs: LayoutKnobs): number => {
 const collideFor = (n: SimNode, knobs: LayoutKnobs): number => {
     if (n.kind === 'sid_focused') return knobs.collideFocused;
     if (n.kind === 'sid_secondary') return knobs.collideSecondary;
+    if (n.tenant) return knobs.collideFocused; // Build 324 — SID-sized tenant circles
     return knobs.collidePartner;
 };
 
@@ -371,7 +382,7 @@ export const computeForceLayout = (
     const width = explicit.has('width') ? knobs.width : widthArg;
     const height = explicit.has('height') ? knobs.height : heightArg;
 
-    const simNodes: SimNode[] = nodes.map((n) => ({ id: n.id, kind: n.kind }));
+    const simNodes: SimNode[] = nodes.map((n) => ({ id: n.id, kind: n.kind, tenant: n.tag === 'TENANT' }));
     const simLinks: SimLink[] = edges.map((e) => ({ source: e.source, target: e.target }));
 
     /* ================= Build 260/262 — density-scaled star systems ========

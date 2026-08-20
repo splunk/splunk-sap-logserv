@@ -38,7 +38,29 @@
  * Build 240 / session 042. Prior to build 240 this module wrote to
  * `configs/conf-ai_assistant_settings` — see git history for the conf-
  * file implementation.
+ *
+ * Build 300 / session 092 — TEMPLATES_ONLY interaction:
+ *   In a templates-only build (`yarn build:templates-only`) the compile-
+ *   time flag FORCES `templates_only_mode` true no matter what either
+ *   storage source says. This module is the single chokepoint for that:
+ *   `parseRawContent` normalizes BOTH the KV Store row and the conf-file
+ *   stanza, and `DEFAULT_AI_CONFIG` is the last-resort fallback when both
+ *   reads fail — so forcing in those two places covers every read path
+ *   (current and future) with no per-consumer guard.
+ *
+ *   Why the shipped conf default alone is NOT sufficient: KV Store WINS
+ *   over the conf (see `readAIConfig`), so a customer upgrading from a
+ *   full-LLM build — whose KV row already holds `templates_only_mode = 0`
+ *   — would keep the LLM path enabled in a templates-only build. And if
+ *   both REST reads transiently fail, the un-forced `DEFAULT_AI_CONFIG`
+ *   would do the same.
+ *
+ *   In a regular build the flag is the literal `false`, so `false || x`
+ *   collapses to `x` under webpack dead-code elimination: zero behavior
+ *   change and zero runtime cost on the full-LLM line.
  */
+
+import { TEMPLATES_ONLY } from '../buildFlags';
 
 const APP_NAMESPACE = 'splunk_app_sap_logserv';
 
@@ -152,7 +174,11 @@ export interface AIConfigSettings {
  *  the `default/ai_assistant_settings.conf` shipped values. */
 export const DEFAULT_AI_CONFIG: AIConfigSettings = {
     enabled: false,
-    templates_only_mode: false,
+    // Build 300 — in a templates-only build this fallback must also be
+    // true, otherwise a transient failure of BOTH reads (KV Store and
+    // conf) would hand back a config with the LLM path enabled. In a
+    // regular build the flag is the literal `false`, i.e. unchanged.
+    templates_only_mode: TEMPLATES_ONLY,
     provider: 'mock',
     default_model: 'mock-fast',
     tier: 1,
@@ -207,13 +233,21 @@ const parseRawContent = (
             r.enabled === 'true' ||
             r.enabled === true ||
             r.enabled === 1,
+        // Build 300 — a templates-only build forces this true regardless
+        // of what the stored value says. This is the single chokepoint
+        // for both sources: KV Store rows AND conf-file stanzas are
+        // normalized here, so an admin cannot re-enable the LLM path by
+        // any storage route (stale KV row carried over from a full-LLM
+        // build, hand-edited local/ai_assistant_settings.conf, direct
+        // REST write to the collection). `false || x` in a regular build.
         templates_only_mode:
-            r.templates_only_mode === undefined
+            TEMPLATES_ONLY ||
+            (r.templates_only_mode === undefined
                 ? DEFAULT_AI_CONFIG.templates_only_mode
                 : r.templates_only_mode === '1' ||
                   r.templates_only_mode === 'true' ||
                   r.templates_only_mode === true ||
-                  r.templates_only_mode === 1,
+                  r.templates_only_mode === 1),
         provider: isProvider(r.provider) ? r.provider : DEFAULT_AI_CONFIG.provider,
         default_model:
             typeof r.default_model === 'string' && r.default_model.length > 0

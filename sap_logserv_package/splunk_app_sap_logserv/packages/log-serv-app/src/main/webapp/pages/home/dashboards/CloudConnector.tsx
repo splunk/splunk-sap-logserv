@@ -134,18 +134,27 @@ const QRAW_BASE = {
     responseTime: `${CC_HTTP} | timechart span=1d avg(response_time_ms) as "Avg Response Time (ms)" | fields _time, "Avg Response Time (ms)"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 085) — sub-hour
  *  ranges read the raw query, wide ranges the rollup. */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const TOP_URI_COLS: ColumnDef[] = [
@@ -221,13 +230,13 @@ const CloudConnector: React.FC = () => {
             subtitle="SAP Cloud Connector tunnel activity — HTTP traffic, status codes, response times, and audit log"
         >
             <KpiRow>
-                <KpiCard label="Total Requests" value={requests.value} loading={requests.loading} error={requests.error} formatValue={formatInteger}
+                <KpiCard label="Total Requests" value={requests.value} loading={requests.loading} error={requests.error} search={requests.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkRequests} valueField="count" fill />} />
-                <KpiCard label="HTTP Error Rate" value={errorRate.value} loading={errorRate.loading} error={errorRate.error} formatValue={formatPercent} tone={errorTone}
+                <KpiCard label="HTTP Error Rate" value={errorRate.value} loading={errorRate.loading} error={errorRate.error} search={errorRate.search} formatValue={formatPercent} tone={errorTone}
                     sparkline={<SparklineFromQuery query={Q.sparkErrorRate} valueField="daily" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Audit Events" value={audit.value} loading={audit.loading} error={audit.error} formatValue={formatInteger}
+                <KpiCard label="Audit Events" value={audit.value} loading={audit.loading} error={audit.error} search={audit.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkAudit} valueField="count" fill />} />
-                <KpiCard label="Access Denied Events" value={accessDenied.value} loading={accessDenied.loading} error={accessDenied.error} formatValue={formatInteger} tone={deniedTone}
+                <KpiCard label="Access Denied Events" value={accessDenied.value} loading={accessDenied.loading} error={accessDenied.error} search={accessDenied.search} formatValue={formatInteger} tone={deniedTone}
                     sparkline={<SparklineFromQuery query={Q.sparkAccessDenied} valueField="count" color={logservTheme.colors.red} fill />} />
             </KpiRow>
 

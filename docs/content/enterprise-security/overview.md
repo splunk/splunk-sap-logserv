@@ -2,7 +2,7 @@
 
 The Splunk for SAP LogServ App ships out-of-the-box integration with **Splunk Enterprise Security (ES)** so SOC analysts can investigate SAP-side threats through ES's standard Incident Review queue, Risk-Based Alerting (RBA) framework, and CIM-aligned correlation searches.
 
-!!! info "The ES content ships ENABLED by default (as of v0.0.6 build 249) on a collision-free schedule"
+!!! info "The ES content ships ENABLED by default on a collision-free schedule"
     All 22 `splunk_sap_logserv_es_*` saved searches ship with `disabled = 0`, re-staggered so no two scheduled searches share an `(hour, minute)`. The ES content is **dual-mode**: when Splunk Enterprise Security isn't installed, the `action.notable` / `action.risk` directives silently no-op — the searches still run, their results stay searchable, and they power the AI Assistant Security-pack prompts. **No dashboard depends on any ES output.** If you don't run ES and would rather not incur the scheduled load, see [Disabling or tuning the ES content](#disabling-or-tuning-the-es-content) below.
 
 Integration is **dual-mode** — the same App tarball works whether or not ES is installed:
@@ -19,11 +19,11 @@ Integration is **dual-mode** — the same App tarball works whether or not ES is
 | **Extended cross-stack correlation searches** | 6 (lateral movement, privilege chain, after-hours data access, service-account interactive, HANA user creation off-hours, HANA mass DROP) | [Correlation Searches → Extended cross-stack pack](correlation-searches.md#extended-cross-stack-pack-v2) |
 | **Threat-intel correlation searches** | 3 (DNS to malicious domain, proxy to malicious IP, compromised credential use) — joins against 3 customer-managed CSV lookups (ship empty) | [Threat Intelligence Integration](threat-intel.md) |
 | **Behavioral / anomaly detections** | 4 stats-based Z-score (per-user auth volume, per-host webdispatcher response time, per-edge topology call volume, per-admin off-hours activity); no MLTK dependency | [Behavioral & Anomaly Detections](behavioral-detections.md) |
-| **Tier-2 Risk Notable** | Critical-severity notable when accumulated risk on a single object ≥ 100 in 24h (aggregates risk from all 19 base + extended searches) | [Correlation Searches](correlation-searches.md#tier-2-risk-notable) |
+| **Tier-2 Risk Notable** | Critical-severity notable when accumulated risk on a single object ≥ 100 in 24h (aggregates risk from all 19 detection searches — base, extended, threat-intel, and anomaly) | [Correlation Searches](correlation-searches.md#tier-2-risk-notable) |
 | **Asset Inventory feed** | `splunk_for_sap_logserv_assets.csv` | [Asset & Identity Feed](asset-identity-feed.md) |
 | **Identity Inventory feed** | `splunk_for_sap_logserv_identities.csv` | [Asset & Identity Feed](asset-identity-feed.md) |
 
-**Total: 19 detection correlation searches + 1 Risk Notable + 2 Asset/Identity feeds.** All 19 detection searches are also AI-Assistant-dispatchable on demand via the predefined-prompt browser (Security pack).
+**Total: 19 detection correlation searches + 1 Risk Notable + 2 Asset/Identity feeds.** The extended cross-stack, threat-intel, and behavioral searches are also dispatchable on demand from the AI Assistant's predefined-prompt browser (Security pack); the base correlation searches run on their schedule.
 
 ## :material-circle-box:{ .taiconcolor } Splunk dependency
 
@@ -33,11 +33,11 @@ The App does **NOT** declare a hard dep on `SplunkEnterpriseSecuritySuite` — t
 
 ## :material-circle-box:{ .taiconcolor } The ES schedule (collision-free)
 
-The 22 ES searches ship **enabled** on a staggered schedule that is collision-free with the dashboard rollup-aggregate band (`:03`–`:28` every hour) and the daily retention band (`:30`–`:58`, hours 00–01) — no two enabled scheduled searches share an `(hour, minute)`:
+All `splunk_sap_logserv_es_*` scheduled searches ship **enabled** on a staggered schedule that is collision-free with the dashboard rollup-aggregate band (`:03`–`:28` every hour) and the daily retention + maintenance band (`:30`–`:58`, hours 00–02) — no two enabled scheduled searches share an `(hour, minute)`:
 
-- **16 correlation searches** run **hourly** at `:29` and the odd minutes `:31`–`:59`.
+- The **hourly correlation searches** run at `:29` and the odd minutes `:31`–`:59`.
 - **2 Asset/Identity feeds** run every 4 hours at `:00` / `:01`.
-- **4 behavioral-anomaly searches** run **daily** at `:02` (hours 02–05), so the two heavy 30-day scans no longer run every hour.
+- **4 behavioral-anomaly searches** run **daily** at `:30` (hours 02–05; moved from `:02` in v0.1.1 build 315; that minute now goes to the Data Doctor's hourly platform snapshot — the move is behaviourally neutral because each search snaps its own analysis window in SPL), so the two heavy 30-day scans no longer run every hour.
 
 !!! note "Cadence vs. the original design"
     To fit the collision-free schedule, the eight correlation searches that previously ran every 5–15 minutes now run **hourly** (with matched 65-minute dispatch windows), and the four behavioral-anomaly searches run **daily** instead of hourly. A daily anomaly run still evaluates every hourly bucket of the previous day, so no detections are missed — only the reporting cadence changes. If you have the search capacity and want lower detection latency, raise any search's cadence in `local/savedsearches.conf`.
@@ -66,10 +66,10 @@ disabled = 1
 There are 22 ES searches (19 detections + the Risk Notable + the 2 Asset/Identity feeds). Disable all of them, or just the heaviest few (the three 30-day anomaly scans above are the most expensive).
 
 !!! info "CIM acceleration for the heavy anomaly searches"
-    Three behavioral-anomaly searches scan a **30-day** window (`splunk_sap_logserv_es_anomaly_webdisp_response`, `_anomaly_user_auth_volume`, `_anomaly_topology_edge_volume`). On a large environment these should run against **CIM-accelerated** data models (the standard ES design). If you leave the CIM models un-accelerated, those searches become 30-day full scans — acceptable at small/medium volume, but accelerate the Web / Authentication models for high volume. See [CIM Compliance](cim-compliance.md). As of v0.0.6 these run once daily rather than hourly, which already cuts their load substantially.
+    Three behavioral-anomaly searches scan a **30-day** window (`splunk_sap_logserv_es_anomaly_webdisp_response`, `_anomaly_user_auth_volume`, `_anomaly_topology_edge_volume`). On a large environment these should run against **CIM-accelerated** data models (the standard ES design). If you leave the CIM models un-accelerated, those searches become 30-day full scans — acceptable at small/medium volume, but accelerate the Web / Authentication models for high volume. See [CIM Compliance](cim-compliance.md). These run once daily rather than hourly, which already cuts their load substantially.
 
 !!! note "The schedule is collision-free"
-    The always-on rollup-aggregate searches occupy minutes `:03`–`:28` of each hour and retention runs `:30`–`:58` (hours 00–01); the ES content is scheduled entirely in the disjoint minutes (`:00`–`:02`, `:29`, and the odd minutes `:31`–`:59`), so no two enabled scheduled searches collide. See [Dashboard Performance & Data Freshness → Scheduled-search schedule](../logserv-app/dashboards/performance.md#scheduled-search-schedule).
+    The always-on rollup-aggregate searches occupy minutes `:03`–`:28` of each hour and retention + maintenance runs `:30`–`:58` (hours 00–02); the ES content is scheduled in minutes the always-on bands leave free — `:00`/`:01` (the feeds), `:29` and the odd minutes `:31`–`:59` (the hourly correlations), and `:30` at hours 02–05 (the daily anomaly searches, where the retention band does not run), so no two enabled scheduled searches collide. See [Dashboard Performance & Data Freshness → Scheduled-search schedule](../logserv-app/dashboards/performance.md#scheduled-search-schedule).
 
 ## :material-circle-box:{ .taiconcolor } Install matrix
 
@@ -102,8 +102,8 @@ Same pattern for `Change`, `Web`, `Network_Sessions` — see [CIM Compliance](ci
 | Knob | Default | Where |
 |---|---|---|
 | Correlation-search schedules | hourly (correlations) / daily (anomalies) / every 4h (feeds) | Settings → Searches, reports, and alerts |
-| Notable severity per search | high / medium | `default/savedsearches.conf` (override in `local/`) |
-| Risk scores per event | 80 / 60 / 50 / 40 (varies per search) | `default/savedsearches.conf` `action.risk.param._risk` JSON |
+| Notable severity per search | critical / high / medium | `default/savedsearches.conf` (override in `local/`) |
+| Risk scores per event | 20–90 (varies per search and per risk object) | `default/savedsearches.conf` `action.risk.param._risk` JSON |
 | Risk Notable threshold | `total_risk >= 100` in 24h | The `splunk_sap_logserv_es_risk_notable_threshold` saved search's `\| where ...` clause |
 | Asset/Identity feed cadence | every 4h | Cron on the `_asset_feed` / `_identity_feed` saved searches |
 

@@ -1,9 +1,9 @@
 # Time-Window Reasoning
 
-!!! warning "Current release: these primer rules are not exercised — LLM dispatch is disabled"
-    The time-window reasoning rules are baked into the system primer and ship with every current build, but they only take effect when the LLM-driven path runs — which is **disabled at compile time** in the current release pending internal review. Predefined-prompt dispatches in the current release still respect the saved-search SPL's own time window (which is what the rules are about), but there is no AI synthesis layer applying these rules in the current release. This page is preserved as the design reference for the future release that re-enables the LLM path.
+!!! warning "Full-LLM build variant only"
+    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): no LLM ever writes a narrative there, so no primer applies. This page applies to the separately-built **full-LLM variant** used in approved deployments.
 
-Time-window reasoning is a set of primer rules baked into the AI Assistant's system primer (Tier 1 + Tier 2 variants) that teach the LLM to **identify the dispatch window, normalize cumulative count to per-hour or per-day rate, and run a verify-query before declaring high-severity findings**. The rules ship as a dedicated `=== TIME-WINDOW REASONING — APPLY BEFORE EVERY SEVERITY CLAIM ===` block in the primer, inserted right after the data-boundary block and before the saved-search catalog.
+Time-window reasoning is a set of primer rules baked into the AI Assistant's system primer (present in both the Tier 1 and Tier 2 primer variants, in tier-appropriate forms — see below) that teach the LLM to **identify the dispatch window, normalize cumulative count to per-hour or per-day rate, and run a verify-query before declaring high-severity findings**. The rules ship as a dedicated `=== TIME-WINDOW REASONING — APPLY BEFORE EVERY SEVERITY CLAIM ===` block in the primer, inserted right after the data-boundary block and before the saved-search catalog.
 
 This page exists primarily for **SOC analysts** who use the AI Assistant for top-N investigations: knowing how the AI reasons about windows + rates + verification helps you read its replies critically, validate its severity claims, and recognize its self-correction behavior.
 
@@ -26,19 +26,19 @@ The bug wasn't a data-access problem (the AI had the right number). The bug was 
 
 ## :material-circle-box:{ .taiconcolor } The Four Rules
 
-The primer block teaches the AI to apply these four rules **before** declaring a finding's severity:
+The primer block teaches the AI to apply these rules **before** declaring a finding's severity. The **Tier 2** primer carries all four; the **Tier 1** primer carries three (hedge the window / verify / state the window) — Rule 2's rate normalization needs aggregate numbers a Tier 1 summary never contains:
 
 ### Rule 1 — Identify the Window
 
 Saved-search counts are CUMULATIVE over each search's own rolling window (typically -24h to -30d, baked into the saved-search SPL). The user's TimeRange picker in the UI does NOT necessarily align with that window.
 
-**Tier 1:** the summary the AI receives is `Returned N rows in M ms.` — no window data at all. The AI must hedge: *"X rows over the search's rolling window, exact span unknown"* OR infer from the saved-search NAME (e.g., `*_24h`, `*_after_hours`) when the name carries a window hint.
+**Tier 1:** the summary the AI receives is `Returned N rows in Mms.` (inside the `<TOOL_RESULT_DATA>` wrapper) — no window data at all. The AI must hedge: *"X rows over the search's rolling window, exact span unknown"* OR infer from the saved-search NAME (e.g., `*_24h`, `*_after_hours`) when the name carries a window hint.
 
 **Tier 2:** the summary includes a `Time range:` line ONLY when the result has a `_time` column (timecharts, time-series). For aggregate searches like `stats by user`, no `_time` column → no time-range line → AI must hedge as in Tier 1.
 
 ### Rule 2 — Normalize Count → Rate
 
-Convert sum / max from the aggregates to events/hour or events/day before assigning severity. Rough thresholds documented in the primer:
+Convert sum / max from the aggregates to events/hour or events/day before assigning severity *(Tier 2 primer only — the Tier 1 primer has no normalization rule and no threshold table, since the AI never receives the numbers to normalize)*. Rough thresholds documented in the Tier 2 primer:
 
 | Signal | High threshold |
 |---|---|

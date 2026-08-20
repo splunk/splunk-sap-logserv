@@ -1,7 +1,7 @@
 """
-additional_packaging.py - UCC post-build hook for the LogServ Data TA.
+additional_packaging.py - UCC post-build hook
 
-Jobs (order matters -- see cleanup_output_files):
+Seven jobs:
 
 1. Patch the UCC-generated rh_settings.py to import and use our custom
    FilterSettingsHandler instead of the default AdminExternalHandler.
@@ -10,49 +10,49 @@ Jobs (order matters -- see cleanup_output_files):
    restHandlerModule / restHandlerClass.)
 
 2. Patch EVERY [admin_external:*] stanza in restmap.conf to carry
-   handlertype / python.version / python.required = 3.13 / passSystemAuth =
-   true. The one such stanza is the Configuration "settings" handler.
-   python.required clears the AppInspect Cloud future_failure
-   check_admin_external_restmap_conf_python_required; passSystemAuth = true lets
-   the UCC Python handler run in system context so a Splunk Cloud Victoria
-   sc_subadmin Configuration save doesn't 403 for lack of admin_all_objects.
-   MUST run BEFORE job 3 appends the deployment_push [script:] stanza (an
-   earlier version mis-placed the inserts past the stanza because the appended
-   [script:] block had extended the collected body -- session 047). Walking
-   before any append avoids that.
+   handlertype / python.version / `python.required = 3.13` (AppInspect
+   future_failure check_admin_external_restmap_conf_python_required —
+   UCC 6.1.0 doesn't emit it by default) / `passSystemAuth = true`.
+   MUST run before job 3 appends a [script:] stanza — see
+   patch_admin_external_stanzas().
 
 3. Append the deployment_push REST endpoint stanzas to restmap.conf.
-   (UCC overwrites restmap.conf if a copy exists in package/default/, so we
-   append here.)
+   (UCC overwrites restmap.conf if a copy exists in package/default/,
+   so we append here instead.)
 
 4. Append web.conf expose stanza for deployment_push.
 
-5. Add python.required = 3.13 to every inputs.conf stanza that has
-   python.version but lacks it -- covers the [script://...] scripted inputs
-   (filter refresh / upgrade check). Clears AppInspect Cloud
-   check_scripted_inputs_python_required.
+5. Defensive cleanup of AArch64-incompatible binaries from lib/.
+   Belt-and-suspenders alongside the solnlib<8.0.0 pin in
+   requirements.txt — if a future UCC bump or transitive-dep change
+   re-introduces gRPC / protobuf / OpenTelemetry, this strip ensures
+   AppInspect stays clean.
 
-6. Defensive cleanup of AArch64-incompatible binaries from lib/ (gRPC /
-   protobuf / OpenTelemetry). Belt-and-suspenders alongside the
-   solnlib<8.0.0 pin so AppInspect Cloud-mode stays clean if a future UCC /
-   dep bump re-introduces them.
+6. Patch inputs.conf [script://...] stanzas to add
+   `python.required = 3.13` (AppInspect future_failure
+   check_scripted_inputs_python_required — UCC 6.1.0 doesn't emit it
+   by default for script stanzas). Was already in v0.0.5.0's
+   additional_packaging.py; added to v0.1.1 in session 043 after a
+   rebuild surfaced 1 future_failure that the prior released tarball
+   somehow lacked.
 
-7. Patch the UCC-generated metadata/default.meta to add `sc_subadmin` to the
-   global write ACL. UCC bakes in `write : [ admin, sc_admin ]` and ignores our
-   source-level value; without this patch sc_subadmin users on locked-down
-   Splunk Cloud Victoria deployments hit 403 on every write to TA-owned
-   knowledge objects. Added session 043.
-
-NOTE: the Azure queue input was split out into its own add-on
-(`splunk_ta_sap_logserv_azure`, kind `sap_logserv_azure_queue`, session 066),
-so this Data TA no longer carries any modular input -- only the Configuration
-(Filters + Cloud Provider) "settings" handler + the deployment_push endpoint.
+7. Patch the UCC-generated metadata/default.meta to add `sc_subadmin`
+   to the global write ACL. UCC's stock bake-in template emits
+   `write : [ admin, sc_admin ]` and ignores our source-level value
+   in package/metadata/default.meta. Without this patch, sc_subadmin
+   users on locked-down Splunk Cloud Victoria deployments (where
+   sc_admin is reserved for Splunk Cloud Ops staff and sc_subadmin is
+   the customer's effective top admin role) hit 403 on every write
+   attempt against TA-owned knowledge objects (filter Configuration
+   UI, passwords realm under the TA namespace, etc.). Added session
+   043 (2026-05-15) — verified missing from prior released tarballs
+   despite the session-041 source fix.
 """
 
 import os
 import re
-import glob
 import shutil
+import glob
 
 # ---- deployment push endpoint stanzas ----
 
@@ -90,10 +90,34 @@ NEW_IMPORT = "from splunk_ta_sap_logserv_rh_filter_settings import FilterSetting
 OLD_HANDLE = "handler=AdminExternalHandler,"
 NEW_HANDLE = "handler=FilterSettingsHandler,"
 
+# ---- admin_external python.required + passSystemAuth patch ----
+# UCC 6.1.0 emits `python.version = python3` in the admin_external stanza
+# but does NOT emit `python.required` (Python 3.13 compat declaration —
+# AppInspect future_failure) nor `passSystemAuth`. We add both.
+# passSystemAuth = true makes the Configuration settings save (Filters +
+# Cloud Provider tabs) write its conf in system context; without it the save
+# 403s ("This operation is forbidden") for Splunk Cloud Victoria sc_subadmin
+# users who lack admin_all_objects. The metadata write ACL still gates who
+# may attempt the save. (Demo Gen TA pattern — passSystemAuth added
+# session 047.)
+#
+# See patch_admin_external_stanzas() below. This replaced a single
+# `content.replace(..., 1)` in session 091: UCC currently emits exactly ONE
+# admin_external stanza (both Configuration tabs share one MultipleModel
+# settings endpoint), so the single replace was sufficient — but it would
+# have silently patched only the FIRST stanza if a second ever appeared
+# (an added modular input, or a tab that UCC gives its own endpoint). The
+# v0.0.6 line already carried the walker; this brings the two lines to
+# parity.
+
 # ---- AArch64-incompatible / unused-transitive-dep packages to strip ----
-# (gRPC + protobuf + OpenTelemetry via solnlib's instrumentation chain; the
-# .so files are x86_64-only and fail AppInspect Cloud's AArch64 check. The
-# solnlib<8.0.0 pin avoids them; this strip is defensive.)
+# These come in through solnlib's OpenTelemetry instrumentation chain
+# (gRPC + protobuf + OTel) which we don't use. The .so files are
+# x86_64-only, which fails AppInspect's AArch64 compatibility check.
+# Pinning solnlib<8.0.0 in requirements.txt avoids them in the first
+# place; this strip is defensive in case a future version bump
+# re-introduces them.
+
 LIB_STRIP_PATTERNS = [
     "google",
     "grpc",
@@ -105,60 +129,15 @@ LIB_STRIP_PATTERNS = [
 ]
 
 # ---- metadata/default.meta sc_subadmin write-ACL patch ----
+# UCC bakes in `write : [ admin, sc_admin ]` and ignores our source-level
+# value in package/metadata/default.meta. This patch restores sc_subadmin
+# to the write list so Splunk Cloud Victoria customer admins (whose top
+# role is sc_subadmin, not sc_admin) can write to TA-owned knowledge
+# objects without 403s. Idempotent — running twice or on already-patched
+# input is a no-op.
+
 META_WRITE_OLD = "write : [ admin, sc_admin ]"
 META_WRITE_NEW = "write : [ admin, sc_admin, sc_subadmin ]"
-
-
-def cleanup_output_files(output_path, ta_name):
-    app_dir = os.path.join(output_path, ta_name)
-    restmap_path = os.path.join(app_dir, "default", "restmap.conf")
-    webconf_path = os.path.join(app_dir, "default", "web.conf")
-    inputs_path = os.path.join(app_dir, "default", "inputs.conf")
-
-    # --- 1. Patch rh_settings.py to use our custom handler ---
-    rh_path = os.path.join(app_dir, "bin", "{}_rh_settings.py".format(ta_name))
-    if os.path.isfile(rh_path):
-        with open(rh_path, "r") as f:
-            content = f.read()
-        content = content.replace(OLD_IMPORT, NEW_IMPORT)
-        content = content.replace(OLD_HANDLE, NEW_HANDLE)
-        with open(rh_path, "w") as f:
-            f.write(content)
-
-    # --- 2. Patch ALL admin_external stanzas (BEFORE any [script:] append) ---
-    patch_admin_external_stanzas(restmap_path)
-
-    # --- 3. Append deployment push stanzas to restmap.conf ---
-    if os.path.isfile(restmap_path):
-        with open(restmap_path, "a") as f:
-            f.write(DEPLOYMENT_PUSH_STANZAS)
-
-    # --- 4. Append deployment_push expose stanza to web.conf ---
-    if os.path.isfile(webconf_path):
-        with open(webconf_path, "a") as f:
-            f.write(WEBCONF_EXPOSE_STANZA)
-    else:
-        with open(webconf_path, "w") as f:
-            f.write(WEBCONF_EXPOSE_STANZA.lstrip("\n"))
-
-    # --- 5. Patch inputs.conf: scripted-input python.required ---
-    patch_inputs_conf(inputs_path)
-
-    # --- 6. Defensive lib/ strip (AArch64-incompat + unused OTel/gRPC) ---
-    lib_dir = os.path.join(app_dir, "lib")
-    if os.path.isdir(lib_dir):
-        for pattern in LIB_STRIP_PATTERNS:
-            for match in glob.glob(os.path.join(lib_dir, pattern)):
-                if os.path.isdir(match):
-                    shutil.rmtree(match, ignore_errors=True)
-                elif os.path.isfile(match):
-                    try:
-                        os.remove(match)
-                    except OSError:
-                        pass
-
-    # --- 7. Patch metadata/default.meta to add sc_subadmin write ACL ---
-    patch_sc_subadmin_metadata(app_dir)
 
 
 def patch_admin_external_stanzas(restmap_path):
@@ -211,60 +190,111 @@ def patch_admin_external_stanzas(restmap_path):
         f.writelines(out)
 
 
-def patch_inputs_conf(inputs_path):
-    """Insert python.required = 3.13 right after the python.version line in
-    every inputs.conf stanza that declares python.version but lacks it -- the
-    [script://...] scripted inputs (filter refresh / upgrade check). Inserting
-    after the python.version line (not after the stanza's last content line)
-    avoids landing it past an inter-stanza comment block, since "collect body
-    until next [stanza]" sweeps trailing comments into the prior stanza's body.
-    Idempotent.
-    """
-    if not os.path.isfile(inputs_path):
-        return
-    with open(inputs_path, "r") as f:
-        lines = f.readlines()
+def cleanup_output_files(output_path, ta_name):
+    app_dir = os.path.join(output_path, ta_name)
 
-    out = []
-    i = 0
-    n = len(lines)
-    while i < n:
-        header = lines[i]
-        if not header.startswith("["):
-            out.append(header)
-            i += 1
-            continue
-        body = []
-        j = i + 1
-        while j < n and not lines[j].startswith("["):
-            body.append(lines[j])
-            j += 1
-        out.append(header)
-        out.extend(_insert_python_required_after_version(body))
-        i = j
+    # --- 1. Patch rh_settings.py to use our custom handler ---
+    rh_path = os.path.join(app_dir, "bin", "{}_rh_settings.py".format(ta_name))
+    if os.path.isfile(rh_path):
+        with open(rh_path, "r") as f:
+            content = f.read()
 
-    with open(inputs_path, "w") as f:
-        f.writelines(out)
+        content = content.replace(OLD_IMPORT, NEW_IMPORT)
+        content = content.replace(OLD_HANDLE, NEW_HANDLE)
 
+        with open(rh_path, "w") as f:
+            f.write(content)
 
-def _insert_python_required_after_version(body):
-    """Insert python.required = 3.13 right after the python.version line, if
-    python.version is present and python.required is not. No-op otherwise."""
-    body_str = "".join(body)
-    if "python.version" not in body_str or "python.required" in body_str:
-        return body
-    for idx, ln in enumerate(body):
-        if ln.lstrip().startswith("python.version"):
-            return body[: idx + 1] + ["python.required = 3.13\n"] + body[idx + 1:]
-    return body
+    # --- 2. Patch ALL admin_external stanzas (BEFORE any [script:] append) ---
+    restmap_path = os.path.join(app_dir, "default", "restmap.conf")
+    patch_admin_external_stanzas(restmap_path)
+
+    # --- 3. Append deployment push stanzas to restmap.conf ---
+    if os.path.isfile(restmap_path):
+        with open(restmap_path, "a") as f:
+            f.write(DEPLOYMENT_PUSH_STANZAS)
+
+    # --- 4. Append deployment_push expose stanza to web.conf ---
+    webconf_path = os.path.join(app_dir, "default", "web.conf")
+    if os.path.isfile(webconf_path):
+        with open(webconf_path, "a") as f:
+            f.write(WEBCONF_EXPOSE_STANZA)
+    else:
+        with open(webconf_path, "w") as f:
+            f.write(WEBCONF_EXPOSE_STANZA.lstrip("\n"))
+
+    # --- 5. Defensive lib/ strip (AArch64-incompat + unused OTel/gRPC) ---
+    lib_dir = os.path.join(app_dir, "lib")
+    if os.path.isdir(lib_dir):
+        for pattern in LIB_STRIP_PATTERNS:
+            for match in glob.glob(os.path.join(lib_dir, pattern)):
+                if os.path.isdir(match):
+                    shutil.rmtree(match, ignore_errors=True)
+                elif os.path.isfile(match):
+                    try:
+                        os.remove(match)
+                    except OSError:
+                        pass
+
+    # --- 6. Add python.required = 3.13 to scripted-input stanzas in
+    # inputs.conf. Cleared AppInspect Cloud future_failure
+    # check_scripted_inputs_python_required. The v0.0.5.0 Data TA's
+    # additional_packaging.py already carried this patch (session 041);
+    # v0.1.1 was missing it — added session 043 in lockstep with the
+    # sc_subadmin metadata patch below.
+    inputs_path = os.path.join(app_dir, "default", "inputs.conf")
+    if os.path.isfile(inputs_path):
+        with open(inputs_path, "r") as f:
+            lines = f.readlines()
+        out_lines = []
+        i = 0
+        n = len(lines)
+        while i < n:
+            line = lines[i]
+            out_lines.append(line)
+            if line.startswith("[script://"):
+                j = i + 1
+                body = []
+                while j < n and not lines[j].startswith("["):
+                    body.append(lines[j])
+                    j += 1
+                body_str = "".join(body)
+                if "python.required" not in body_str:
+                    last_idx = len(body) - 1
+                    while last_idx >= 0 and not body[last_idx].strip():
+                        last_idx -= 1
+                    body = (
+                        body[: last_idx + 1]
+                        + ["python.required = 3.13\n"]
+                        + body[last_idx + 1 :]
+                    )
+                out_lines.extend(body)
+                i = j
+            else:
+                i += 1
+        with open(inputs_path, "w") as f:
+            f.writelines(out_lines)
+
+    # --- 7. Patch metadata/default.meta to add sc_subadmin write ACL ---
+    patch_sc_subadmin_metadata(app_dir)
 
 
 def patch_sc_subadmin_metadata(app_dir):
     """Add sc_subadmin to the global write ACL in metadata/default.meta.
 
-    UCC bakes in `write : [ admin, sc_admin ]` and silently overwrites the
-    source value. Idempotent. Safe to run from cleanup_output_files() and from
-    a standalone repair script against an extracted tarball.
+    UCC bakes in `write : [ admin, sc_admin ]` and silently overwrites
+    whatever was in the source's package/metadata/default.meta. Without
+    this patch, sc_subadmin users on locked-down Splunk Cloud Victoria
+    deployments hit 403 on every write attempt against TA-owned
+    knowledge objects.
+
+    Idempotent: running on already-patched input is a no-op. Safe to
+    run from cleanup_output_files() AND from a standalone repair script
+    against an extracted tarball.
+
+    Args:
+        app_dir: path to the UCC-output TA directory
+                 (e.g., output/splunk_ta_sap_logserv).
     """
     meta_path = os.path.join(app_dir, "metadata", "default.meta")
     if not os.path.isfile(meta_path):
@@ -272,17 +302,24 @@ def patch_sc_subadmin_metadata(app_dir):
     with open(meta_path, "r") as f:
         content = f.read()
     if META_WRITE_NEW in content:
+        # Already patched — idempotent no-op.
         return False
     if META_WRITE_OLD not in content:
+        # Unexpected ACL value — don't blindly mutate; surface a
+        # warning instead so the operator knows to inspect manually.
         print(
             "[additional_packaging] WARNING: metadata/default.meta does not "
             "contain the expected stock UCC write ACL '{}'. Skipping "
             "sc_subadmin patch — please verify the file manually.".format(
-                META_WRITE_OLD))
+                META_WRITE_OLD
+            )
+        )
         return False
+    patched = content.replace(META_WRITE_OLD, META_WRITE_NEW)
     with open(meta_path, "w") as f:
-        f.write(content.replace(META_WRITE_OLD, META_WRITE_NEW))
+        f.write(patched)
     print(
         "[additional_packaging] Patched metadata/default.meta: added "
-        "sc_subadmin to global write ACL.")
+        "sc_subadmin to global write ACL."
+    )
     return True

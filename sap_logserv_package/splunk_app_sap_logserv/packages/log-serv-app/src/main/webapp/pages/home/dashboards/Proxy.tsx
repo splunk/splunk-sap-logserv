@@ -154,18 +154,27 @@ const QRAW_BASE = {
     responseTimeTrend: `${SQRAW} source="*access.log*" duration=* | timechart span=1d avg(duration) as "Avg (ms)", max(duration) as "Max (ms)" | eval "Avg (ms)"=round('Avg (ms)',0), "Max (ms)"=round('Max (ms)',0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 085) — sub-hour
  *  ranges read the raw query, wide ranges the rollup. */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const TOP_DOM_COLS: ColumnDef[] = [
@@ -247,11 +256,11 @@ const Proxy: React.FC = () => {
             subtitle="Squid proxy traffic — request volume, status codes, top domains, and bandwidth-by-domain trends"
         >
             <KpiRow>
-                <KpiCard label="Total Requests" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Requests" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Total Bandwidth" value={bandwidth.value} loading={bandwidth.loading} error={bandwidth.error}
+                <KpiCard label="Total Bandwidth" value={bandwidth.value} loading={bandwidth.loading} error={bandwidth.error} search={bandwidth.search}
                     sparkline={<SparklineFromQuery query={Q.sparkBandwidth} valueField="daily" fill />} />
-                <KpiCard label="Denied Requests" value={denied.value} loading={denied.loading} error={denied.error} formatValue={formatInteger} tone={deniedTone}
+                <KpiCard label="Denied Requests" value={denied.value} loading={denied.loading} error={denied.error} search={denied.search} formatValue={formatInteger} tone={deniedTone}
                     sparkline={<SparklineFromQuery query={Q.sparkDenied} valueField="count" color={logservTheme.colors.orange} fill />} />
             </KpiRow>
 

@@ -74,9 +74,15 @@ const getElk = async (): Promise<ElkInstance> => {
  * layoutLayered.ts sizeForNode for the visual-extent breakdown.
  */
 const sizeForNode = (n: TopologyNode): { width: number; height: number } => {
+    /* Build 324 - Regular Traffic SIDs + TENANT-tagged partners render at
+     * the former focused geometry (100 px circle), so their ELK boxes
+     * match sid_focused. */
     if (n.kind === 'sid_focused') return { width: 145, height: 175 };
-    if (n.kind === 'sid_secondary') return { width: 135, height: 165 };
-    return { width: 95, height: 145 };
+    if (n.kind === 'sid_secondary') return { width: 145, height: 175 };
+    if (n.tag === 'TENANT') return { width: 145, height: 175 };
+    /* Build 329 — height 145 -> 175 for the enrichment lines under IP
+     * squares (lockstep with layoutLayered.ts). */
+    return { width: 95, height: 175 };
 };
 
 export const computeMrtreeLayout = async (

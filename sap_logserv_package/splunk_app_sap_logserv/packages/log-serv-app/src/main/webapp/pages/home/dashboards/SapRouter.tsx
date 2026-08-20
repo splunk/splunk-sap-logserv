@@ -152,17 +152,26 @@ const QRAW_BASE = {
     errorDetail: `${SRRAW} is_error="true" error_function=* | stats count as Count, dc(peer_ip) as "Unique Peers", values(return_code) as "Return Codes", latest(error_detail) as "Last Error Detail" by error_function | sort -Count | rename error_function as "Function"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const TOP_PEERS_COLS: ColumnDef[] = [
@@ -239,13 +248,13 @@ const SapRouter: React.FC = () => {
             subtitle="SAP Router connection activity, error analysis, and network boundary monitoring"
         >
             <KpiRow>
-                <KpiCard label="Total Router Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Router Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Router Errors" value={errors.value} loading={errors.loading} error={errors.error} formatValue={formatInteger} tone={errorTone}
+                <KpiCard label="Router Errors" value={errors.value} loading={errors.loading} error={errors.error} search={errors.search} formatValue={formatInteger} tone={errorTone}
                     sparkline={<SparklineFromQuery query={Q.sparkErrors} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Invalid Data Events" value={inval.value} loading={inval.loading} error={inval.error} formatValue={formatInteger} tone={invalTone}
+                <KpiCard label="Invalid Data Events" value={inval.value} loading={inval.loading} error={inval.error} search={inval.search} formatValue={formatInteger} tone={invalTone}
                     sparkline={<SparklineFromQuery query={Q.sparkInval} valueField="count" color={logservTheme.colors.orange} fill />} />
-                <KpiCard label="Unique Peer IPs" value={peers.value} loading={peers.loading} error={peers.error} formatValue={formatInteger}
+                <KpiCard label="Unique Peer IPs" value={peers.value} loading={peers.loading} error={peers.error} search={peers.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkPeers} valueField="peers" fill />} />
             </KpiRow>
 

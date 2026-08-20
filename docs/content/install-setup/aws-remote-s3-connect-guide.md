@@ -94,7 +94,7 @@ You will also need to note the **AWS Region** where these resources are located,
     ![image](../../images/cloud-formation-s3-connect-04.png "Stack Name")
 
 2.<b class="taiconcolor">e</b> Enter just the name (not the ARN) of the S3 Bucket in your **_SAP ECS account_** in the **_CrossAccountS3Bucket_** parameter
-   - If your ARN looks like this *arn:aws:s3:::sap-hec-clz-ap-south-1-hec53-xsd* then just use the name like this *ap-hec-clz-ap-south-1-hec53-xsd*
+   - If your ARN looks like this *arn:aws:s3:::sap-hec-clz-ap-south-1-hec53-xsd* then just use the name like this *sap-hec-clz-ap-south-1-hec53-xsd*
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-connect-05.png "CrossAccountS3Bucket Parameter")
 

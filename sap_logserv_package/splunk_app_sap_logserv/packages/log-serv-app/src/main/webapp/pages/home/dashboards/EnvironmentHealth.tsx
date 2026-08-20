@@ -125,7 +125,7 @@ const Q_BASE = {
     // | head 200-capped: Splunk's default newest-first event scan short-circuits after 200,
     // so it reads only the most-recent buckets instead of scanning the full 30d (16.4M events
     // / ~2-3 min at 335M). A "most-recent-first" table never needs more than the latest N.
-    criticalEvents: `\`sap_logserv_idx_macro\` ((sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR (sourcetype="sap:hana:tracelogs" hana_trace_severity="fatal") OR (sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="XmlWinEventLog" severity="critical")) | head 200 | eval Category=case(sourcetype="sap:hana:audit", "HANA Audit", sourcetype="sap:abap:dispatcher", "ABAP Dispatcher", sourcetype="sap:hana:tracelogs", "HANA Trace", sourcetype="sap:sapstartsrv", "Auth Failure", sourcetype="XmlWinEventLog", "Windows Critical", 1=1, sourcetype) | eval Detail=case(sourcetype="sap:hana:audit", status." - ".audit_action." by ".executing_user, sourcetype="sap:abap:dispatcher", dp_severity." - ".coalesce(dp_message, _raw), sourcetype="sap:hana:tracelogs", hana_trace_severity." - ".hana_trace_component, sourcetype="sap:sapstartsrv", "Auth failure for ".coalesce(auth_user, "unknown"), sourcetype="XmlWinEventLog", coalesce(source, "WinEvent")." EventCode=".coalesce(EventCode, "N/A"), 1=1, "") | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | table Time host Category sourcetype Detail | sort -Time`,
+    criticalEvents: `\`sap_logserv_idx_macro\` ((sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR (sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR (sourcetype="sap:hana:tracelogs" hana_trace_severity="fatal") OR (sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="XmlWinEventLog" severity="critical")) | head 200 | eval Category=case(sourcetype="sap:hana:audit", "HANA Audit", sourcetype="sap:abap:dispatcher", "ABAP Dispatcher", sourcetype="sap:hana:tracelogs", "HANA Trace", sourcetype="sap:sapstartsrv", "Auth Failure", sourcetype="XmlWinEventLog", "Windows Critical", 1=1, sourcetype) | eval Detail=case(sourcetype="sap:hana:audit", status." - ".action_type." by ".executing_user, sourcetype="sap:abap:dispatcher", dp_severity." - ".coalesce(dp_message, _raw), sourcetype="sap:hana:tracelogs", hana_trace_severity." - ".hana_trace_component, sourcetype="sap:sapstartsrv", "Auth failure for ".coalesce(auth_user, "unknown"), sourcetype="XmlWinEventLog", coalesce(source, "WinEvent")." EventCode=".coalesce(EventCode, "N/A"), 1=1, "") | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | table Time host Category sourcetype Detail | sort -Time`,
     // Affected Hosts matrix (rollup, metric="tophost"). chart over host by
     // error_cat reproduces the raw `chart count by host error_cat | addtotals`.
     topHosts: `${TOPHOST} | chart sum(count) over host by error_cat | fillnull value=0 | addtotals | sort -Total`,
@@ -181,7 +181,7 @@ const QRAW_BASE = {
     hanaFailures: '`sap_logserv_idx_macro` sourcetype="sap:hana:audit" status!="SUCCESSFUL" | stats count',
     authFailures:
         '`sap_logserv_idx_macro` ((sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR ' +
-        '(sourcetype="sap:hana:audit" audit_action="CONNECT" status!="SUCCESSFUL")) | stats count',
+        '(sourcetype="sap:hana:audit" action_type="CONNECT" status!="SUCCESSFUL")) | stats count',
     firewallDrops: '`sap_logserv_idx_macro` sourcetype="linux_secure" IN_DROP | stats count',
     webErrorRate:
         '`sap_logserv_idx_macro` sourcetype="sap:webdispatcher:access" | eval is_err=if(tonumber(status)>=400,1,0) ' +
@@ -227,7 +227,7 @@ const QRAW_BASE = {
  *  the cross-cutting view. Build 157 / session 027 task 4. */
 const TOTAL_ERRORS_DRILLDOWN_SPL =
     '`sap_logserv_idx_macro` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR ' +
-    '(sourcetype="sap:abap:icm" icm_is_error=1) OR ' +
+    '(sourcetype="sap:abap:icm" icm_is_error="true") OR ' +
     '(sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="") OR ' +
     '(sourcetype="sap:hana:audit" status!="SUCCESSFUL") OR ' +
     '(sourcetype="sap:hana:tracelogs" hana_trace_severity IN ("error", "fatal")) OR ' +
@@ -244,18 +244,27 @@ const TOTAL_ERRORS_DRILLDOWN_SPL =
     '| stats count as Errors dc(host) as "Affected Hosts" latest(_time) as lt by Category sourcetype ' +
     '| eval "Last Seen"=strftime(lt,"%Y-%m-%d %H:%M") | fields - lt | sort -Errors';
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 085) — routes
  *  sub-hour ranges to the raw query, wide ranges to the rollup. */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const formatPercent = (raw: unknown): string => {
@@ -347,34 +356,34 @@ const EnvironmentHealth: React.FC = () => {
             subtitle="Cross-cutting operational view — KPIs, error trends by category, critical events, and host health matrix"
         >
             <KpiRow4>
-                <KpiCard label="Total Errors" value={totalErrors.value} loading={totalErrors.loading} error={totalErrors.error} formatValue={formatInteger} tone={errorsTone}
+                <KpiCard label="Total Errors" value={totalErrors.value} loading={totalErrors.loading} error={totalErrors.error} search={totalErrors.search} formatValue={formatInteger} tone={errorsTone}
                     sparkline={<SparklineFromQuery query={Q.sparkTotalErrors} valueField="count" color={logservTheme.colors.red} fill />}
                     onClick={goToTotalErrorsSearch}
                     clickTitle="Open the cross-cutting error breakdown in Splunk Search (new tab)" />
-                <KpiCard label="HANA Failed Ops" value={hanaFailures.value} loading={hanaFailures.loading} error={hanaFailures.error} formatValue={formatInteger} tone={Number(hanaFailures.value ?? 0) > 0 ? 'critical' : 'neutral'}
+                <KpiCard label="HANA Failed Ops" value={hanaFailures.value} loading={hanaFailures.loading} error={hanaFailures.error} search={hanaFailures.search} formatValue={formatInteger} tone={Number(hanaFailures.value ?? 0) > 0 ? 'critical' : 'neutral'}
                     sparkline={<SparklineFromQuery query={Q.sparkHanaFailures} valueField="count" color={logservTheme.colors.red} fill />}
                     onClick={goTo('hana-audit')}
                     clickTitle="Open HANA Audit dashboard (new tab)" />
-                <KpiCard label="Auth Failures" value={authFailures.value} loading={authFailures.loading} error={authFailures.error} formatValue={formatInteger} tone={Number(authFailures.value ?? 0) > 0 ? 'warning' : 'neutral'}
+                <KpiCard label="Auth Failures" value={authFailures.value} loading={authFailures.loading} error={authFailures.error} search={authFailures.search} formatValue={formatInteger} tone={Number(authFailures.value ?? 0) > 0 ? 'warning' : 'neutral'}
                     sparkline={<SparklineFromQuery query={Q.sparkAuthFailures} valueField="count" color={logservTheme.colors.red} fill />}
                     onClick={goTo('sap-services')}
                     clickTitle="Open SAP Services dashboard (new tab)" />
-                <KpiCard label="Firewall Drops" value={firewallDrops.value} loading={firewallDrops.loading} error={firewallDrops.error} formatValue={formatInteger} tone={fwTone}
+                <KpiCard label="Firewall Drops" value={firewallDrops.value} loading={firewallDrops.loading} error={firewallDrops.error} search={firewallDrops.search} formatValue={formatInteger} tone={fwTone}
                     sparkline={<SparklineFromQuery query={Q.sparkFirewallDrops} valueField="count" color={logservTheme.colors.red} fill />}
                     onClick={goTo('linux')}
                     clickTitle="Open Linux dashboard (new tab)" />
             </KpiRow4>
 
             <KpiRow3>
-                <KpiCard label="Web Error Rate" value={webErrorRate.value} loading={webErrorRate.loading} error={webErrorRate.error} formatValue={formatPercent} tone={errRateTone}
+                <KpiCard label="Web Error Rate" value={webErrorRate.value} loading={webErrorRate.loading} error={webErrorRate.error} search={webErrorRate.search} formatValue={formatPercent} tone={errRateTone}
                     sparkline={<SparklineFromQuery query={Q.sparkWebErrorRate} valueField="pct" color={logservTheme.colors.red} fill />}
                     onClick={goTo('web-dispatcher')}
                     clickTitle="Open Web Dispatcher dashboard (new tab)" />
-                <KpiCard label="Beaconing Domains" value={beaconing.value} loading={beaconing.loading} error={beaconing.error} formatValue={formatInteger}
+                <KpiCard label="Beaconing Domains" value={beaconing.value} loading={beaconing.loading} error={beaconing.error} search={beaconing.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.beaconing} valueField="count" color={logservTheme.colors.purple} fill />}
                     onClick={goTo('dns-analytics')}
                     clickTitle="Open DNS Analytics dashboard (new tab)" />
-                <KpiCard label="Data Pipeline — Events/Day (Avg)" value={pipelineEvents.value} loading={pipelineEvents.loading} error={pipelineEvents.error} formatValue={formatInteger}
+                <KpiCard label="Data Pipeline — Events/Day (Avg)" value={pipelineEvents.value} loading={pipelineEvents.loading} error={pipelineEvents.error} search={pipelineEvents.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkPipelineEvents} valueField="count" fill />}
                     onClick={goTo('data-pipeline-overview')}
                     clickTitle="Open Data Pipeline Overview dashboard (new tab)" />

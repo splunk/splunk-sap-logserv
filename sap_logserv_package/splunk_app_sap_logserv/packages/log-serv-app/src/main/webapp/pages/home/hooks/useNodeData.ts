@@ -41,8 +41,14 @@ interface HostRow {
     host: string;
     count: string | number;
     sourcetypes: string | number;
+    /** Build 325 — SAP instance numbers seen on this host (multivalue; the
+     *  REST JSON returns an array for 2+, a bare string for exactly 1, and
+     *  omits the field on rows aggregated before the change). */
+    instances?: string | string[];
     first_seen: string | number;
     last_seen: string | number;
+    /** Pre-cap distinct-host count, repeated on every row (build 322). */
+    host_total?: string | number;
 }
 
 export interface NodeProgram {
@@ -62,6 +68,11 @@ export interface NodeHost {
     host: string;
     count: number;
     sourcetypeCount: number;
+    /** Build 325 — SAP instance numbers seen on this host in the window
+     *  (e.g. ['00', '01']). Undefined when the rollup rows carry none —
+     *  either no sap_inst on the events, or rows aggregated before the
+     *  instances measure existed. */
+    instances?: string[];
     /** Epoch seconds — formatted at render time. */
     firstSeen: number;
     lastSeen: number;
@@ -80,6 +91,10 @@ export interface UseNodeDataResult {
     hosts: NodeHost[] | null;
     hostsLoading: boolean;
     hostsError: Error | null;
+    /** Distinct hosts BEFORE the read's `head` cap, so the panel can disclose a
+     *  truncation instead of presenting the cap as the count (build 322).
+     *  null when nothing has returned yet. */
+    hostTotal: number | null;
 }
 
 const num = (v: string | number | undefined): number => {
@@ -89,6 +104,15 @@ const num = (v: string | number | undefined): number => {
         return Number.isFinite(n) ? n : 0;
     }
     return 0;
+};
+
+/** Normalize a Splunk multivalue field: the REST JSON returns an array for
+ *  2+ values, a bare string for exactly 1, and omits the field entirely for
+ *  none. Returns undefined for none/empty so callers can gate the render. */
+const toMv = (v: string | string[] | undefined): string[] | undefined => {
+    const arr = Array.isArray(v) ? v : (typeof v === 'string' ? [v] : []);
+    const clean = arr.filter((x): x is string => typeof x === 'string' && x.length > 0);
+    return clean.length > 0 ? clean : undefined;
 };
 
 /** Splunk's `_time`-style fields come back as ISO strings or epoch numbers
@@ -153,6 +177,7 @@ export const useNodeData = (nodeId: string | null, refreshNonce = 0): UseNodeDat
                 programs: null, programsLoading: false, programsError: null,
                 errors: null, errorsLoading: false, errorsError: null,
                 hosts: null, hostsLoading: false, hostsError: null,
+                hostTotal: null,
             };
         }
         const hourly = hourlyResult.results
@@ -177,10 +202,23 @@ export const useNodeData = (nodeId: string | null, refreshNonce = 0): UseNodeDat
                 host: r.host,
                 count: num(r.count),
                 sourcetypeCount: num(r.sourcetypes),
+                instances: toMv(r.instances),
                 firstSeen: toEpoch(r.first_seen),
                 lastSeen: toEpoch(r.last_seen),
             }))
             : null;
+        /* Every row carries the same eventstats value; read it off the first.
+         * Falls back to the returned row count so the caption never claims a
+         * total it does not have (an older rollup read, mid-deploy, has no
+         * host_total field). */
+        const firstHostRow = hostsResult.results && hostsResult.results.length > 0
+            ? hostsResult.results[0]
+            : null;
+        const hostTotal = hosts === null
+            ? null
+            : (firstHostRow && firstHostRow.host_total != null
+                ? num(firstHostRow.host_total)
+                : hosts.length);
         return {
             hourly,
             hourlyLoading: hourlyResult.loading,
@@ -194,6 +232,7 @@ export const useNodeData = (nodeId: string | null, refreshNonce = 0): UseNodeDat
             hosts,
             hostsLoading: hostsResult.loading,
             hostsError: hostsResult.error,
+            hostTotal,
         };
     }, [nodeId,
         hourlyResult.results, hourlyResult.loading, hourlyResult.error,

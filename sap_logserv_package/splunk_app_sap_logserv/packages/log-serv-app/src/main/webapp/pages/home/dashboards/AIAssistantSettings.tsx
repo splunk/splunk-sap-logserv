@@ -474,7 +474,7 @@ const AUDIT_FORWARDER_FIELDS: FieldDef[] = [
         realm: 'logserv_ai_assistant_forwarder',
         name: 'hec_token',
         label: 'HEC Token',
-        hint: 'HTTP Event Collector token issued by the destination Splunk / SIEM. Used to authenticate audit-event POSTs from this Splunk Web tab to the forwarder URL configured under General. Must be a token with `ai_assistant_audit` (or your remote-index-of-choice) write permission. The destination must also allow CORS from this Splunk Web origin.',
+        hint: 'HTTP Event Collector token issued by the destination Splunk / SIEM. Used to authenticate audit-event POSTs from this Splunk Web tab to the forwarder URL configured under General. Must be a token with `logserv_ai_assistant_audit` (or your remote-index-of-choice) write permission. The destination must also allow CORS from this Splunk Web origin.',
         minLength: 20,
         showPrefix: true,
     },
@@ -1131,37 +1131,49 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                 <span />
             </FieldRow>
 
-            <FieldRow>
-                <div>
-                    <FieldLabel>Templates-only mode</FieldLabel>
-                    <FieldHint>
-                        When on, the free-form / LLM-driven path is disabled
-                        at runtime: chat input is read-only, the model picker
-                        and Power Mode toggle are hidden, the Provider
-                        Credentials tab is hidden, and an info banner explains
-                        the mode. The predefined-prompt path + Splunk MCP
-                        Server integration + audit log all stay fully active.
-                        Use this for demonstration environments and
-                        restricted-environment customers where LLM dispatch
-                        should not be available, without rebuilding the app.
-                    </FieldHint>
-                </div>
-                <ToggleLabel>
-                    <input
-                        type="checkbox"
-                        checked={draft.templates_only_mode}
-                        onChange={(e) =>
-                            setDraft((d) => ({
-                                ...d,
-                                templates_only_mode: e.target.checked,
-                            }))
-                        }
-                        disabled={busy}
-                    />
-                    {draft.templates_only_mode ? 'Templates-only' : 'Full LLM path'}
-                </ToggleLabel>
-                <span />
-            </FieldRow>
+            {/* Build 300 / session 092 — in a templates-only build the
+              * compile-time flag forces templates_only_mode true at the
+              * config-read chokepoint (utils/aiConfigApi.ts), so this
+              * toggle could not turn the LLM path back on. Rendering it
+              * would be a control that lies: the admin unchecks it, saves,
+              * and nothing changes. Hidden behind the same flag as the
+              * model-discovery rows below. In full-LLM builds (flag
+              * false) it always renders, exactly as before. */}
+            {!TEMPLATES_ONLY && (
+                <FieldRow>
+                    <div>
+                        <FieldLabel>Templates-only mode</FieldLabel>
+                        <FieldHint>
+                            When on, the free-form / LLM-driven path is disabled
+                            at runtime: chat input is read-only, the model picker
+                            and Power Mode toggle are hidden, the Provider
+                            Credentials tab is hidden, and an info banner explains
+                            the mode. The predefined-prompt path + Splunk MCP
+                            Server integration + audit log all stay fully active.
+                            Use this for demonstration environments and
+                            restricted-environment customers where LLM dispatch
+                            should not be available, without rebuilding the app.
+                        </FieldHint>
+                    </div>
+                    <ToggleLabel>
+                        <input
+                            type="checkbox"
+                            checked={draft.templates_only_mode}
+                            onChange={(e) =>
+                                setDraft((d) => ({
+                                    ...d,
+                                    templates_only_mode: e.target.checked,
+                                }))
+                            }
+                            disabled={busy}
+                        />
+                        {draft.templates_only_mode
+                            ? 'Templates-only'
+                            : 'Full LLM path'}
+                    </ToggleLabel>
+                    <span />
+                </FieldRow>
+            )}
 
             <FieldRow>
                 <div>
@@ -1671,8 +1683,8 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                     </FieldLabel>
                     <FieldHint>
                         Splunk index that receives every audit event. The
-                        default <code>ai_assistant_audit</code> matches the
-                        LogServ Index App's defaults. To rename, also update
+                        default <code>logserv_ai_assistant_audit</code> matches
+                        the index the Data TA defines. To rename, also update
                         the <code>sap_logserv_audit_idx_macro</code> macro
                         definition (Settings → Advanced search → Search
                         macros) so the in-app Audit Log viewer reads from
@@ -1768,7 +1780,7 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                         Splunk index name on the destination side. Leave
                         blank to use the HEC token's default. Common
                         practice is to mirror our local index name (
-                        <code>ai_assistant_audit</code>).
+                        <code>logserv_ai_assistant_audit</code>).
                     </FieldHint>
                 </div>
                 <FieldInput
@@ -2100,11 +2112,14 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
 
                     {templatesOnlyMode && (
                         <StatusBanner $tone="info">
-                            Templates-only mode — LLM dispatch is disabled by admin setting. Provider
+                            Templates-only mode — LLM dispatch is disabled
+                            {TEMPLATES_ONLY ? ' in this build' : ' by admin setting'}. Provider
                             / model / tier / Power-Mode fields on this page have NO effect while this
                             mode is on. The Provider Credentials sub-tab is hidden. The MCP server
-                            connection (Splunk MCP) and the Audit Log remain fully active. Toggle
-                            templates-only mode off in the General sub-tab to re-enable LLM dispatch.
+                            connection (Splunk MCP) and the Audit Log remain fully active.{' '}
+                            {TEMPLATES_ONLY
+                                ? 'This is a templates-only build — the mode is fixed at compile time and cannot be switched off from Settings.'
+                                : 'Toggle templates-only mode off in the General sub-tab to re-enable LLM dispatch.'}
                         </StatusBanner>
                     )}
 

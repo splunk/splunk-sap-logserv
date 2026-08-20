@@ -11,10 +11,17 @@ import TopologyBottomPanel from '../components/topology/TopologyBottomPanel';
 import LayoutNameModal from '../components/topology/LayoutNameModal';
 import ManageLayoutsModal from '../components/topology/ManageLayoutsModal';
 import { logservTheme } from '../styles/logservTheme';
-import { useTopologyData } from '../hooks/useTopologyData';
+import { useTopologyData, resolveTimeSpec } from '../hooks/useTopologyData';
 import { useNodeData } from '../hooks/useNodeData';
 import { useEdgeData } from '../hooks/useEdgeData';
+import { useSearch } from '../hooks/useSearch';
+import { useTimeRange } from '../state/TimeRangeProvider';
+import { SEARCH_NODE_HOST_COUNTS } from '../topology/searches';
+import HostCountContext from '../components/topology/HostCountContext';
+import IpEnrichmentContext from '../components/topology/IpEnrichmentContext';
+import { useIpEnrichment } from '../hooks/useIpEnrichment';
 import { ALL_INTEGRATION_TYPES } from '../topology/edgeStyle';
+import type { TrafficRow } from '../topology/panelFacts';
 import {
     loadCachedLayout,
     saveLayoutNamed,
@@ -46,6 +53,9 @@ import { type LayoutMode } from '../topology/layout';
 /* localStorage key for the user's preferred layout algorithm. Persists
  * the toolbar's Force / Layered toggle across page loads. Build 200. */
 const LAYOUT_MODE_STORAGE_KEY = 'logserv.topology.layoutMode';
+
+/** Stable identity for "this node has no traffic rows" (build 322). */
+const EMPTY_TRAFFIC_ROWS: TrafficRow[] = [];
 
 const readPersistedLayoutMode = (): LayoutMode => {
     try {
@@ -622,6 +632,58 @@ const IntegrationTopology: React.FC = () => {
     const liveActivity = topology.activity;
     const liveCallsPerHour = topology.callsPerHour;
 
+    /* Build 325 / session 110 (plan item D1) — ONE bulk windowed read for
+     * per-node distinct host counts: `scope -> dc(host)` over the same
+     * node_host rollup metric the Hosts tab reads, so the tooltip/facts
+     * number and that tab's `host_total` agree for the same node + window
+     * (dispatch timing across an hourly-aggregate boundary can briefly
+     * differ — this read resolves at page load, the tab at select time).
+     * The query carries a COARSE bucket_ts pushdown (JS-resolved window ± a
+     * margin) so mongod streams only the window's rows, not the whole
+     * 365-day retention; the precise trim stays the read's own `| addinfo`
+     * range (review fold, session 110). The query string changes with the
+     * picker, which is what re-dispatches useSearch; refreshNonce re-runs
+     * it alongside the KV fetches.
+     *
+     * The map deliberately EMPTIES while a (re-)dispatch is in flight:
+     * useSearch keeps the previous results across re-dispatch and KV rows
+     * land before SPL results, so without the guard a window change would
+     * present the PREVIOUS window's counts as current-window facts for a
+     * few seconds. An absent row is honest; a stale number is not.
+     *
+     * Delivery is via HostCountContext + the sidebar's nodeHostCount prop —
+     * NOT via the node objects — so the late-arriving result cannot touch
+     * the node-array identity TopologyGraph's layout effect keys on
+     * (re-running d3-force + manualFitView over the user's viewport). */
+    const { timeRange } = useTimeRange();
+    const hostCountsQuery = useMemo(
+        () => SEARCH_NODE_HOST_COUNTS(
+            resolveTimeSpec(timeRange.earliest),
+            resolveTimeSpec(timeRange.latest),
+        ),
+        [timeRange.earliest, timeRange.latest],
+    );
+    const hostCountsResult = useSearch<{ scope: string; hosts: string | number }>({
+        query: hostCountsQuery,
+        refreshNonce,
+    });
+    /* Build 329 / session 112 — the IP enrichment index (hostname + user
+     * names for IP partner squares). Same delivery discipline as the host
+     * counts: context + sidebar prop, never the node arrays. NOT
+     * picker-bound (latest-known semantics) — only the Refresh nonce
+     * re-fetches it. */
+    const ipEnrichment = useIpEnrichment(refreshNonce);
+
+    const hostCountByLabel = useMemo(() => {
+        const map = new Map<string, number>();
+        if (hostCountsResult.loading) return map;
+        (hostCountsResult.results ?? []).forEach((r) => {
+            const n = typeof r.hosts === 'number' ? r.hosts : Number(r.hosts);
+            if (r.scope && Number.isFinite(n) && n > 0) map.set(r.scope, n);
+        });
+        return map;
+    }, [hostCountsResult.results, hostCountsResult.loading]);
+
     /* Build 206 / session 036 — augment each node with `callBuckets`
      * derived from its incident edges. Drives the thin outer ring on
      * SidNode showing normal / warning / error call counts.
@@ -699,6 +761,10 @@ const IntegrationTopology: React.FC = () => {
                     error += errs;
                 }
             });
+            /* Build 325 note: the D1 host count is deliberately NOT attached
+             * here — this memo's output feeds TopologyGraph's layout effect,
+             * and the count arrives seconds after the KV render (see the
+             * hostCountByLabel comment above). */
             return { ...n, callBuckets: { normal, warning, error } };
         });
     }, [topology.nodes, topology.edges]);
@@ -1019,6 +1085,25 @@ const IntegrationTopology: React.FC = () => {
         () => (selectedNodeId ? liveEdges.filter((e) => e.source === selectedNodeId) : []),
         [selectedNodeId, liveEdges],
     );
+    /* Build 322 — resolve the selected node's traffic rows in a memo rather
+     * than with a `?? []` in the JSX, which would hand the sidebar a fresh
+     * array identity on every render. */
+    const selectedNodeTraffic = useMemo(
+        () => (selectedNodeId ? topology.hostTrafficByNode[selectedNodeId] ?? EMPTY_TRAFFIC_ROWS : EMPTY_TRAFFIC_ROWS),
+        [selectedNodeId, topology.hostTrafficByNode],
+    );
+    /* Build 325 (plan item D1) — the selected node's window host count for
+     * the Overview "Hosts (in range)" facts row. SID + tenant nodes only:
+     * on a partner IP the label-scoped count would headline far-end hosts
+     * the node does not own (the session-108 misread). The sidebar hedges
+     * the tenant label collision next to the row. */
+    const selectedNodeHostCount = useMemo(() => {
+        if (!selectedNode) return undefined;
+        const eligible = selectedNode.kind === 'sid_focused'
+            || selectedNode.kind === 'sid_secondary'
+            || selectedNode.tag === 'TENANT';
+        return eligible ? hostCountByLabel.get(selectedNode.label) : undefined;
+    }, [selectedNode, hostCountByLabel]);
 
     // ---- Trigger graph layout recompute when zone widths change so the
     //      ReactFlow canvas notices the new viewport and refits. We bump a
@@ -1207,25 +1292,34 @@ const IntegrationTopology: React.FC = () => {
                                     <span>Loading data &amp; layout…</span>
                                 </CanvasLoadingOverlay>
                             )}
-                            <ReactFlowProvider>
-                                <TopologyGraph
-                                    ref={topologyGraphRef}
-                                    key={forceRerunKey}
-                                    nodes={liveNodes}
-                                    edges={liveEdges}
-                                    savedPositions={savedLayout?.nodes ?? null}
-                                    snapMode={snapMode}
-                                    enabledTypes={enabledTypes}
-                                    selectedNodeId={selectedNodeId}
-                                    selectedEdgeId={selectedEdgeId}
-                                    layoutMode={layoutMode}
-                                    getLayoutWorld={getLayoutWorld}
-                                    onNodeClick={handleNodeClick}
-                                    onEdgeClick={handleEdgeClick}
-                                    onPaneClick={handlePaneClick}
-                                    onLayoutChange={handleLayoutChange}
-                                />
-                            </ReactFlowProvider>
+                            {/* Build 325 — the host-count map travels by context
+                              * so its late arrival re-renders node COMPONENTS
+                              * (cheap) without touching the nodes array the
+                              * layout effect keys on. Build 329 — the IP
+                              * enrichment index travels the same way. */}
+                            <HostCountContext.Provider value={hostCountByLabel}>
+                            <IpEnrichmentContext.Provider value={ipEnrichment}>
+                                <ReactFlowProvider>
+                                    <TopologyGraph
+                                        ref={topologyGraphRef}
+                                        key={forceRerunKey}
+                                        nodes={liveNodes}
+                                        edges={liveEdges}
+                                        savedPositions={savedLayout?.nodes ?? null}
+                                        snapMode={snapMode}
+                                        enabledTypes={enabledTypes}
+                                        selectedNodeId={selectedNodeId}
+                                        selectedEdgeId={selectedEdgeId}
+                                        layoutMode={layoutMode}
+                                        getLayoutWorld={getLayoutWorld}
+                                        onNodeClick={handleNodeClick}
+                                        onEdgeClick={handleEdgeClick}
+                                        onPaneClick={handlePaneClick}
+                                        onLayoutChange={handleLayoutChange}
+                                    />
+                                </ReactFlowProvider>
+                            </IpEnrichmentContext.Provider>
+                            </HostCountContext.Provider>
                         </CenterFrame>
                     </CenterZone>
 
@@ -1263,6 +1357,12 @@ const IntegrationTopology: React.FC = () => {
                                     nodeErrorsLoading={nodeData.errorsLoading}
                                     nodeHosts={nodeData.hosts}
                                     nodeHostsLoading={nodeData.hostsLoading}
+                                    nodeHostTotal={nodeData.hostTotal}
+                                    nodeHostCount={selectedNodeHostCount}
+                                    ipEnrichment={ipEnrichment}
+                                    nodeTraffic={selectedNodeTraffic}
+                                    endpointAttribution={topology.endpointAttribution}
+                                    hostOwnerByValue={topology.inventoryOwnerByValue}
                                     selectedEdge={selectedEdge}
                                     edgeNodes={liveNodes}
                                     edgeData={edgeData}

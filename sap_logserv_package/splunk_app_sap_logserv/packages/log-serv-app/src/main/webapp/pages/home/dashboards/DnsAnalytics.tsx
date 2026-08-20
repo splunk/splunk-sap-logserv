@@ -12,6 +12,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { shouldUseRawSource } from '../utils/hybridRouting';
+import { recordRawTwin } from '../utils/rawTwin';
 import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { chooseTimechartSpan } from '../utils/timechartSpan';
@@ -176,17 +177,26 @@ const QRAW_BASE = {
     queryTypes: `${DNS_RAW} record_type=* | ${RECORD_TYPE_RELABEL} | stats count as count by record_type | sort -count`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 085). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const BEACONING_COLS: ColumnDef[] = [
@@ -320,19 +330,17 @@ const DnsAnalytics: React.FC = () => {
             ? ` | search (${selectedClients.map((c) => `src="${c.replace(/"/g, '\\"')}"`).join(' OR ')})`
             : '';
         const limitVal = hasClientPick ? '0' : (topN === 'all' ? '0' : topN);
-        if (useRawSrc) {
-            // Sub-hour: raw DNS events at the real (sub-hour) span. `eval cnt=1 |
-            // sum(cnt)` null-fills empty (src,bin) cells to match the cached
-            // `sum(count)` (a plain `count` would 0-fill and diverge on sparse series).
-            return (
-                `${DNS_RAW}${clientFilterClause} | eval cnt=1 ` +
-                `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(cnt) AS Requests by src`
-            );
-        }
-        return (
+        // Sub-hour: raw DNS events at the real (sub-hour) span. `eval cnt=1 |
+        // sum(cnt)` null-fills empty (src,bin) cells to match the cached
+        // `sum(count)` (a plain `count` would 0-fill and diverge on sparse series).
+        const rawQ =
+            `${DNS_RAW}${clientFilterClause} | eval cnt=1 ` +
+            `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(cnt) AS Requests by src`;
+        const cachedQ =
             `${MAIN}${clientFilterClause} | search src!="(none)" | eval _time=bucket_ts ` +
-            `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(count) AS Requests by src`
-        );
+            `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(count) AS Requests by src`;
+        recordRawTwin(cachedQ, rawQ); // §17.8a-17 (grouped by src → real signal)
+        return useRawSrc ? rawQ : cachedQ;
     }, [span, topN, selectedClients, useRawSrc]);
 
     const clientsChartSubtitle = useMemo<string>(() => {
@@ -347,12 +355,16 @@ const DnsAnalytics: React.FC = () => {
     }, [span, topN, selectedClients, clientOptions.length]);
 
     const recordTypesQuery = useMemo(
-        () =>
-            useRawSrc
-                ? `${DNS_RAW} record_type=* | ${RECORD_TYPE_RELABEL} | eval cnt=1 `
-                  + `| timechart span=${span} usenull=f useother=f sum(cnt) BY record_type`
-                : `${RTYPE} | search record_type!="(none)" | ${RECORD_TYPE_RELABEL} | eval _time=bucket_ts `
-                  + `| timechart span=${span} usenull=f useother=f sum(count) BY record_type`,
+        () => {
+            const rawQ =
+                `${DNS_RAW} record_type=* | ${RECORD_TYPE_RELABEL} | eval cnt=1 `
+                + `| timechart span=${span} usenull=f useother=f sum(cnt) BY record_type`;
+            const cachedQ =
+                `${RTYPE} | search record_type!="(none)" | ${RECORD_TYPE_RELABEL} | eval _time=bucket_ts `
+                + `| timechart span=${span} usenull=f useother=f sum(count) BY record_type`;
+            recordRawTwin(cachedQ, rawQ); // §17.8a-17
+            return useRawSrc ? rawQ : cachedQ;
+        },
         [span, useRawSrc],
     );
 
@@ -365,11 +377,11 @@ const DnsAnalytics: React.FC = () => {
             subtitle="BIND DNS query activity — top clients, record types, beaconing detection, and resolver health"
         >
             <KpiRow>
-                <KpiCard label="Total Queries" value={queries.value} loading={queries.loading} error={queries.error} formatValue={formatInteger}
+                <KpiCard label="Total Queries" value={queries.value} loading={queries.loading} error={queries.error} search={queries.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkQueries} valueField="count" fill />} />
-                <KpiCard label="Unique Clients" value={clients.value} loading={clients.loading} error={clients.error} formatValue={formatInteger}
+                <KpiCard label="Unique Clients" value={clients.value} loading={clients.loading} error={clients.error} search={clients.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkClients} valueField="clients" fill />} />
-                <KpiCard label="Beaconing Domains" value={beaconing.value} loading={beaconing.loading} error={beaconing.error} formatValue={formatInteger} tone={beaconingTone}
+                <KpiCard label="Beaconing Domains" value={beaconing.value} loading={beaconing.loading} error={beaconing.error} search={beaconing.search} formatValue={formatInteger} tone={beaconingTone}
                     sparkline={<SparklineFromQuery query={Q.sparkBeaconing} valueField="daily" color={logservTheme.colors.orange} fill />} />
             </KpiRow>
 

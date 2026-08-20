@@ -107,17 +107,26 @@ const QRAW_BASE = {
     sidInstance: `${RAW_ABAP6} | fillnull value="(none)" sap_sid | stats count by sap_sid, sourcetype | sort -count`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const UPTIME_COLS: ColumnDef[] = [
@@ -184,11 +193,11 @@ const AbapOperations: React.FC = () => {
             subtitle="Operational health of SAP ABAP application layer — work processes, dispatcher, enqueue, and instance activity"
         >
             <KpiRow>
-                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Active SIDs" value={sids.value} loading={sids.loading} error={sids.error} formatValue={formatInteger}
+                <KpiCard label="Active SIDs" value={sids.value} loading={sids.loading} error={sids.error} search={sids.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkSids} valueField="sids" fill />} />
-                <KpiCard label="Dispatcher Errors" value={wpErrors.value} loading={wpErrors.loading} error={wpErrors.error} formatValue={formatInteger} tone={wpErrorsTone}
+                <KpiCard label="Dispatcher Errors" value={wpErrors.value} loading={wpErrors.loading} error={wpErrors.error} search={wpErrors.search} formatValue={formatInteger} tone={wpErrorsTone}
                     sparkline={<SparklineFromQuery query={Q.sparkWpErrors} valueField="count" color={logservTheme.colors.red} fill />} />
             </KpiRow>
 

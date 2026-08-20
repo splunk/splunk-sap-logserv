@@ -8,16 +8,32 @@ Authentication failures are usually investigated one layer at a time -- someone 
 
 ## Panels
 
-- **Total Auth Failures** -- Aggregate failed authentication count across all three layers (click to drill down)
-- **SAP Auth Failures** -- Count of sapstartsrv authentication failures (click to drill down)
-- **HANA Auth Failures** -- Count of HANA audit events where the connection/authentication was rejected (click to drill down)
-- **Windows Auth Failures** -- Count of Windows `XmlWinEventLog:Security` events corresponding to logon failures (click to drill down)
+The title row carries the app-wide **Cloud Provider** picker (All / aws / azure / gcp); any setting other than **All** scopes every panel below to that ingest channel.
+
+- **Total Auth Failures** -- Aggregate failed authentication count across all three layers
+- **SAP Auth Failures** -- Count of sapstartsrv authentication failures
+- **HANA Auth Failures** -- Count of HANA audit events where the connection/authentication was rejected
+- **Windows Auth Failures** -- Count of Windows Security-channel events (sourcetype `XmlWinEventLog`) where the CIM `action` field is `failure` (the classification comes from the Splunk Add-on for Windows on the search-head tier)
 - **Auth Failures Over Time by Layer** -- Stacked column chart showing daily totals per layer (SAP / HANA / Windows) so correlated spikes across layers are visible at a glance
-- **Top Users by Auth Failures** -- Horizontal bar of the 15 usernames with the most failures, summed across all layers
-- **Auth Failure Source IPs** -- Table of the top 20 source IPs with failure counts and per-layer breakdown; row drilldown to the matching events
-- **HANA Auth Activity by User** -- Table of the top HANA users by failed-auth count with client IP and last-seen time; row drilldown
-- **Recent Windows Auth Failures** -- Table of the 25 most recent Windows logon-failure events with user, source workstation, and logon type; row drilldown
-- **Recent SAP Auth Failures** -- Table of the 25 most recent sapstartsrv failed-auth events with user, source IP, and method; row drilldown
+- **Users by Auth Failures** -- Table of failing usernames ranked by failure count, summed across all three layers (paginated)
+- **Auth Failure Source IPs** -- Table of source IPs ranked by failure count, showing how many layers each IP hit and which ones, plus last-seen time (paginated); row drilldown opens that IP's full cross-stack auth history in Search
+- **HANA Auth Activity by User** -- Table of HANA users across ALL authentication activity (successes included), showing total events, distinct action types, failure count, risk level, and last-seen time, sorted by failures; row drilldown opens that user's full HANA auth log
+- **Recent Windows Auth Failures** -- Table of the most recent Windows failure events (up to 200) with user, event signature, source IP, logon type, and host; row drilldown opens Host Details for that host
+- **Recent SAP Auth Failures** -- Table of the most recent sapstartsrv failed-auth events (up to 200) with user, remote IP, source location, and host; row drilldown opens Host Details for that host
+
+## :material-circle-box:{ .taiconcolor } Where the Data Comes From
+
+- **Summary-backed panels** read the `logserv_xstack_auth_rollup` KV Store collection — metric
+  `fail` carries the cross-source authentication-failure grain over (layer, failed user) spanning
+  `sap:sapstartsrv`, `sap:hana:audit` and `XmlWinEventLog`; metric `failip` the per-source-IP
+  failure facts (layers hit, last seen); metric `hanauser` the full HANA authentication population
+  (successes included) per user/action/status/risk level. Populated at minute :15 of every hour by
+  `logserv_xstack_auth_aggregate`.
+- **Live panels** — the Windows events and SAP authentication tables are per-event listings
+  dispatched against the raw events at view time, capped at the 200 most recent matches each.
+
+Summary-backed panels switch automatically to their exact raw-equivalent search when the selected window is shorter than 90 minutes, so sub-hour investigation stays real-time. The collection keeps 365 days of hourly history (trimmed by a daily retention search); a fresh install seeds the last 30 days from **Settings → Dashboard Data → Run backfill**. The global **Cloud** dropdown filters the summaries through the `cloud_provider` dimension stored in every rollup row. Full schedule and freshness reference: [Performance & Data Freshness](../performance.md).
+
 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 

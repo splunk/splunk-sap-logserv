@@ -475,9 +475,13 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
             {templatesOnlyMode && (
                 <TemplatesOnlyBanner role="status">
                     <span aria-hidden>ℹ</span>
+                    {/* Build 301 — deliberately no prompt COUNT here. The
+                      * catalog grows every release (40 → 42 → 48 → 61 …) and
+                      * a hard-coded number in a user-visible string silently
+                      * goes stale; this one still read "48" at 61 prompts. */}
                     Templates-only mode — free-form prompts and LLM dispatch are disabled. Use
-                    "Browse predefined prompts" to run any of the 48 saved searches against your
-                    Splunk data via MCP.
+                    "Browse predefined prompts" to run any of the predefined saved searches
+                    against your Splunk data via MCP.
                 </TemplatesOnlyBanner>
             )}
             <TwoPane ref={twoPaneRef} $singleColumn={!mcpRequired} $leftPct={leftPct}>

@@ -4,6 +4,9 @@ This document covers the implementation details of the LogServ App's AI Assistan
 
 For the customer-facing documentation, see the [AI Assistant section](../ai-assistant/overview.md). The customer-facing pages cover what users see and how to use the feature; this page covers how it's built.
 
+!!! note "Build variant"
+    The published v0.1.1 App artifact is the **templates-only build**, in which the free-form LLM path is disabled (see **The Build Flag Pattern** below). Everything here describing free-form dispatch — tool definitions, primers, Power Mode, tier sanitization on vendor calls — describes code that is present but inert in that artifact, and active only in a locally built full-LLM variant (`yarn build`). The predefined-prompt path, MCP dispatch, tier sanitization of tool results, and the audit log are fully active in both.
+
 ---
 
 ## :material-circle-box:{ .taiconcolor } File Path Map
@@ -14,31 +17,34 @@ The AI Assistant subsystem lives in the LogServ App's React workspace at `packag
 |---|---|
 | `hooks/useAIAssistant.ts` | The orchestrator hook. Contains `runCannedPrompt`, `sendUserMessage`, `tier1Summary`, `tier2Summary`, `SYSTEM_PRIMER_TIER1`, `SYSTEM_PRIMER_TIER2`, `POWER_MODE_RULE_SUFFIX`, `SAVED_SEARCH_SPL`, `SAVED_SEARCH_DASHBOARDS`, `SAVED_SEARCH_CHART_HINTS`, `resolveNextSteps`, `wrapAsToolResultData`, `sanitizeAggregateValue`. |
 | `state/AIAssistantProvider.tsx` | React context + reducer. `DisplayMessage` shape including `toolResult.spl` / `earliest` / `latest` for drill-down chip URL pre-resolution. |
-| `components/ai/types/Hidden.ts` | The `Hidden<T>` and `Visible<T>` brand-type definitions, `markHidden`, `unwrapHidden`, `markVisible`, `unwrapVisible`, `sanitize`. |
+| `components/ai/types/Hidden.ts` | The `Hidden<T>` brand type: `markHidden`, `unwrapHidden`, `IsHidden<T>`. |
+| `components/ai/types/Visible.ts` | The `Visible<T>` brand type: `markVisible`, `unwrapVisible`, and the `sanitize` chokepoint. |
 | `components/ai/mcp/MCPClient.ts` | MCP client wrapper. Constructs requests, handles cookie + bearer auth, parses responses into `MCPToolResult`. |
-| `components/ai/providers/` | Per-vendor provider implementations: `AnthropicProvider.ts`, `OpenAIProvider.ts`, `AzureOpenAIProvider.ts`, `BedrockProvider.ts`, plus shared `credentials.ts`, `sseUtils.ts`, `anthropicEventTranslator.ts`. |
+| `components/ai/providers/` | Per-vendor provider implementations: `AnthropicProvider.ts`, `OpenAIProvider.ts`, `AzureOpenAIProvider.ts`, `BedrockProvider.ts`, plus shared `credentials.ts`, `sseUtils.ts`, `anthropicEventTranslator.ts`, and `outboundGuard.ts` (the runtime forbidden-key scan enforced on every outbound payload). |
+| `components/ai/modelDiscovery.ts` | Vendor model discovery — merges the curated static baseline with vendor-listed models, caches in the `logserv_ai_models` KV Store collection, sanitizes on read and write. |
 | `components/ai/chat/AIAssistant.tsx` | Top-level chat panel. Builds the `citationLookup: Map<string, { toolUseId; splUrl? }>` from `toolResultsInOrder`. |
 | `components/ai/chat/ChatMessage.tsx` | Renders user / assistant_text / tool_call / tool_result / system_notice / guidance messages. Contains `TEXT_PATTERN` regex for citation + severity + bold parsing. |
 | `components/ai/chat/ToolResultPanel.tsx` | Renders a single tool result as table / chart / KPI / pie. Contains the actions-slot rendering for `↗ Dashboard` / `↗ Run SPL` / Clear chips. |
 | `components/ai/chat/ChatInput.tsx` | Chat input toolbar. `✦ Power` toggle visibility gating + Templates-only gating. |
 | `components/ai/chat/PrivacyBanner.tsx` | Tier banner + model picker. Templates-only hides the picker. |
-| `components/ai/audit/AuditWriter.ts` | Browser-side audit batch + flush. Dual-writes to local `logserv_ai_assistant_audit` index AND optional HEC forwarder. |
-| `components/ai/audit/auditTypes.ts` | All 12 audit-event TypeScript types. |
-| `dashboards/AIAssistantSettings.tsx` | The 4-tab Settings page. Templates-only hides the Provider Credentials tab. |
+| `components/ai/audit/auditWriter.ts` | Browser-side audit batch + flush. Dual-writes to local `logserv_ai_assistant_audit` index AND optional HEC forwarder. |
+| `components/ai/audit/auditTypes.ts` | Every audit-event TypeScript type (the per-category table below is the inventory). |
+| `dashboards/AIAssistantSettings.tsx` | The Settings page (`#/settings`, H1 "Application Settings"): two top-level `TabLayout` panels — **AI Assistant** and **Dashboard Data** — with lightweight secondary sub-tabs (General / Provider Credentials / Splunk MCP / Audit Log) under AI Assistant. Templates-only hides the Provider Credentials sub-tab. |
+| `components/RollupBackfillPanel.tsx` | The Dashboard Data panel — per-rollup aggregation toggles, one-click backfill, retention display, Clear. |
 | `utils/splGuard.ts` | SPL static-analysis guard. Blocks `collect`/`outputlookup`/`outputcsv`/`delete`/`sendalert`/`sendemail`/`script`/`run`/`tscollect` for AI-authored ad-hoc SPL. |
 | `utils/jailbreakPatterns.ts` | User-prompt jailbreak-pattern detection. FNV-1a hash + matched-groups + char-class fingerprint capture. |
 | `utils/piiRedaction.ts` | Tier 2 PII redaction. FNV-1a 32-bit hash → 7-char hex tag, sync. Stable per-value across the run. |
 | `utils/rateLimit.ts` | Per-user rolling-1-hour rate limit. Records `rate_limited_prompt` audit event on hit. |
 | `utils/dailySpend.ts` | Cumulative-cost daily spend cap. Records `daily_spend_cap_hit` on overflow. |
 | `utils/vendorCost.ts` | Per-vendor pricing table for USD cost estimate. |
-| `utils/drilldownUrls.ts` | `buildDashboardUrl`, `buildHostDetailsUrl`, `buildSplunkSearchUrl`, `openInNewTab`, `splQuote`, `sourcetypeToDashboardSlug`. |
-| `buildFlags.ts` | Build-time feature flags. Currently exports `TEMPLATES_ONLY: boolean`. |
-| `utils/aiConfigApi.ts` | Read / write config from `default/ai_assistant_settings.conf` via REST. |
+| `utils/drilldownUrls.ts` | Drill-down and panel-action URL builders (dashboard / Host Details / Splunk Search / Open-in-Search / Job Inspector / results export), plus `openInNewTab` (centralises the `noopener,noreferrer` flags), `splQuote`, and `sourcetypeToDashboardSlug`. |
+| `buildFlags.ts` | Build-time values baked in by webpack DefinePlugin: the `TEMPLATES_ONLY` feature flag plus the `app.conf`-derived version / build / build-date values rendered in the About dialog. |
+| `utils/aiConfigApi.ts` | Read / write AI Assistant config. PRIMARY store is the KV Store collection `logserv_ai_assistant_settings` (single row `defaults`); `default/ai_assistant_settings.conf` is the fresh-install fallback + one-shot migration source. Resolution order: KV Store → conf → defaults. |
 | `utils/passwordsApi.ts` | Read / write credentials from Splunk's encrypted password store via `services/storage/passwords`. |
-| `utils/telemetryConfApi.ts` | Splunk-pattern legal-acknowledgement opt-in tracking via `default/ai_assistant_acks.conf`. |
+| `utils/telemetryConfApi.ts` | Legal-acknowledgement opt-in tracking. Operator-managed `optInVersion` is read from `default/ai_assistant_acks.conf`; user acknowledgement state is written to the KV Store collection `logserv_ai_assistant_acks` (one row per stanza). |
 | `state/dashboardRefreshPersistence.ts` | KV Store CRUD for the per-dashboard auto-refresh picker. |
-| `default/data/mcp/logserv_intent_map.json` | The 48-prompt catalog. |
-| `default/savedsearches.conf` | The 48 saved searches that intent-map prompts dispatch. |
+| `default/data/mcp/logserv_intent_map.json` | The predefined-prompt catalog. |
+| `default/savedsearches.conf` | The saved searches that intent-map prompts dispatch. |
 | `default/ai_assistant_settings.conf` | Org-wide AI Assistant config defaults. |
 | `default/ai_assistant_acks.conf` | Splunk-pattern legal-acknowledgement opt-in version + acknowledgement timestamps. |
 
@@ -46,28 +52,32 @@ The AI Assistant subsystem lives in the LogServ App's React workspace at `packag
 
 ## :material-circle-box:{ .taiconcolor } The `Hidden<T>` / `Visible<T>` Brand Type Pattern
 
-The privacy invariant — *"no event data from your Splunk instance is ever transmitted to any AI vendor"* — is mechanically enforced via TypeScript brand types in `components/ai/types/Hidden.ts`:
+The privacy invariant — *"no event data from your Splunk instance is ever transmitted to any AI vendor"* — is mechanically enforced via TypeScript brand types split across `components/ai/types/Hidden.ts` and `components/ai/types/Visible.ts`:
 
 ```typescript
+// components/ai/types/Hidden.ts
 declare const HIDDEN_BRAND: unique symbol;
-declare const VISIBLE_BRAND: unique symbol;
-
 export type Hidden<T> = T & { readonly [HIDDEN_BRAND]: true };
-export type Visible<T> = T & { readonly [VISIBLE_BRAND]: true };
-
 export const markHidden = <T>(v: T): Hidden<T> => v as Hidden<T>;
 export const unwrapHidden = <T>(v: Hidden<T>): T => v;
 
+// components/ai/types/Visible.ts
+declare const VISIBLE_BRAND: unique symbol;
+export type Visible<T> = T & { readonly [VISIBLE_BRAND]: true };
 export const markVisible = <T>(v: T): Visible<T> => v as Visible<T>;
 export const unwrapVisible = <T>(v: Visible<T>): T => v;
 
-export const sanitize = <T, S>(
+export const sanitize = <T>(
     hidden: Hidden<T>,
-    summarizer: (v: T) => S,
-): Visible<S> => markVisible(summarizer(unwrapHidden(hidden)));
+    summarizer: (value: T) => string,
+): Visible<string> => {
+    const inner = unwrapHidden(hidden);
+    const summary = summarizer(inner);
+    return markVisible(summary);
+};
 ```
 
-**Invariant:** the only way to obtain a `Visible<S>` from a `Hidden<T>` is via `sanitize(hidden, summarizer)`. The compiler refuses any other coercion path. The summarizer receives the unwrapped data and returns a non-data summary string; the orchestrator's call site picks the summarizer based on the active privacy tier (`tier1Summary` for Tier 1, `tier2Summary` for Tier 2).
+**Invariant:** the only way to obtain a `Visible<string>` from a `Hidden<T>` is via `sanitize(hidden, summarizer)`, whose return type is locked to `string` so a summarizer cannot pass the underlying data through. The compiler refuses any other coercion path. The summarizer receives the unwrapped data and returns a non-data summary string; the orchestrator's call site picks the summarizer based on the active privacy tier (`tier1Summary` for Tier 1, `tier2Summary` for Tier 2).
 
 **Where the chokepoint runs:** `useAIAssistant.ts` `sendUserMessage` → tool dispatch → `MCPClient` returns `Hidden<MCPToolResult>` → `sanitize(toolResult, tier === 2 ? tier2Summary : tier1Summary)` → resulting `Visible<string>` is appended to the outbound vendor message buffer.
 
@@ -79,19 +89,20 @@ export const sanitize = <T, S>(
 
 ## :material-circle-box:{ .taiconcolor } The Build Flag Pattern (`TEMPLATES_ONLY` and Future Flags)
 
-### Why compile-time, not runtime
+### How the flag disables the LLM path
 
-Compile-time flags are baked into the bundle at build time and CANNOT be changed post-deploy. The runtime alternative — an admin toggle that disables a code path — would let any admin flip it on. For deployments where a code path is intentionally not available (e.g., the LLM dispatch path under review), a compile-time variant is the right shape: the bundle has no code path that reaches the disabled feature, and there's no runtime setting that could enable one.
+`TEMPLATES_ONLY` is baked into the bundle at build time (webpack DefinePlugin) and cannot be changed post-deploy. Rather than duplicating a guard at every consumer, the flag **forces the runtime `templates_only_mode` value on** at the config-read chokepoint:
+
+1. **`utils/aiConfigApi.ts`** — the enforcement point. The flag is OR-ed into `templates_only_mode` inside `parseRawContent` (the single normalizer for BOTH the KV Store row and the conf stanza) and into `DEFAULT_AI_CONFIG` (the both-reads-failed fallback), so EVERY read path reports `templates_only_mode: true` regardless of what is stored. This is what defeats a stored KV row of `0` carried over from a full-LLM install.
+2. **`hooks/useAIAssistant.ts`** — ORs the flag into the `sendUserMessage` guard as prop-chain-independent defense in depth; a dispatch attempt short-circuits with a system notice directing the user to the prompt browser.
+3. **`state/AIAssistantConfig.ts`** — forces the pre-load default, so the UI never renders an LLM-enabled state while config is still loading.
+4. **`bin/build.js`** — patches the STAGED conf default to `true` so the artifact is self-describing (cosmetic; the webapp force is the gate).
+
+**What the flag does NOT do:** the vendor provider modules (`AnthropicProvider.ts`, `OpenAIProvider.ts`, `AzureOpenAIProvider.ts`, `BedrockProvider.ts`) remain in the bundle, and their endpoint strings remain visible in `home.js`. Bundle-level stripping was explicitly declined — this is a **functional disable**, not a code strip. For policy-driven deployments where the LLM code must be physically absent from the artifact, use the frozen v0.0.6 line, which deletes the provider implementations from source instead.
 
 ### Single source of truth
 
-`buildFlags.ts` is the canonical module for compile-time flags — it exports each flag as a typed boolean derived from a build-time substitution. Use sites import the flag from `buildFlags.ts` rather than reading the underlying env var directly. After minification + dead-code elimination, unreachable branches are eliminated from the bundle that has the flag off (verified via grep on the minified output for the absence of the underlying env-var token).
-
-The pattern composes: a build can carry multiple flags simultaneously, and DCE ensures each variant is lean.
-
-### Defense-in-depth runtime guards
-
-Even with compile-time gating, defense in depth pairs the UI gating with a runtime guard at the LLM dispatch entry point. When `TEMPLATES_ONLY` is true, the guard short-circuits the dispatch with a system notice directing the user to the prompt browser instead. The UI gating is the primary defense; the function-level guard catches any future code path that might bypass the disabled chat input (keyboard shortcut, programmatic dispatch, etc.).
+`buildFlags.ts` is the canonical module for compile-time values — it exports each flag as a typed boolean derived from a build-time substitution. Use sites import the flag from `buildFlags.ts` rather than reading the underlying env var directly. The two build variants of the same build number differ in exactly two bundle regions — the compiled flag module and styled-components' per-build salt — and that byte-diff is the proof the full-LLM build is otherwise unchanged.
 
 ---
 
@@ -115,11 +126,13 @@ Three numbered capture groups disambiguate which alternative fired:
 
 **Why module-scoped state:** `lastIndex` reset at function entry handles the common case. For recursive parses, save/restore around the call is required.
 
+**Alternatives considered for the bold-wrapped severity marker:** re-ordering the regex alternatives so severity matches first doesn't help — bold wraps around the severity, so even if severity tries first, it can't match inside an unmatched bold span. Updating the primer to forbid bold around severity markers helps future prompts but doesn't repair existing UI; the parser must be tolerant either way.
+
 ---
 
 ## :material-circle-box:{ .taiconcolor } The MCP Tool Definitions Sent on Every Free-Form Request
 
-The AI sees these two tool definitions on every free-form request. The schemas are sent in the system primer's tool-block:
+The AI sees these two tool definitions on every free-form request. The source of truth is `DEFAULT_TOOLS` in `hooks/useAIAssistant.ts` (TypeScript field `inputSchema`); the definitions are sent as the request's top-level `tools` array — the primer separately teaches the AI when to use each. The block below shows the **Anthropic wire form** (`input_schema`; the OpenAI/Azure path maps the same schema to `function.parameters`):
 
 ### `splunk_run_saved_search`
 
@@ -130,7 +143,7 @@ The AI sees these two tool definitions on every free-form request. The schemas a
     "input_schema": {
         "type": "object",
         "properties": {
-            "name": {"type": "string", "description": "Saved-search name from the catalog (e.g., logserv_hana_failed_auth)"},
+            "name": {"type": "string", "description": "Saved-search name from the catalog (e.g., logserv_hana_failed_auth_24h)"},
             "earliest_time": {"type": "string", "description": "Splunk earliest token (-24h, -7d, etc.)"},
             "latest_time": {"type": "string", "description": "Splunk latest token (now, etc.)"},
             "render_hint": {"type": "string", "enum": ["table", "timechart", "kpi", "pie"]},
@@ -149,17 +162,17 @@ Same schema shape but accepts a `query` (SPL string) instead of `name`. SPL is r
 
 ## :material-circle-box:{ .taiconcolor } The SPL Static-Analysis Guard
 
-`utils/splGuard.ts` exposes `analyzeSpl(spl: string): { blocked: boolean; reason?: string; operator?: string }`. Blocked operators:
+`utils/splGuard.ts` exposes `analyzeSpl(spl: string): { blocked: boolean; reason?: string; operator?: string }`. Blocked commands:
 
 ```typescript
-const BLOCKED_OPERATORS = [
+const FORBIDDEN_SPL_COMMANDS = [
     'collect', 'outputlookup', 'outputcsv',
     'delete', 'sendalert', 'sendemail',
     'script', 'run', 'tscollect',
 ];
 ```
 
-Detection runs after lowercasing + stripping leading whitespace per pipe segment. Quoted strings are stripped before matching to avoid false positives on legitimate SPL where these tokens appear inside string literals.
+Detection is a single case-insensitive regex, `\|\s*(<command>)\b`, matched against the raw query — it fires on any pipe-prefixed occurrence, including inside subsearch brackets. It does NOT strip quoted strings, so a forbidden command name appearing after a pipe inside a string literal is a known (deliberately conservative) false positive.
 
 **Audit on block:** `security_blocked_spl` event with `spl` (truncated to 1000 chars) + `operator` field. The synthetic error tool_result lets the AI see the failure and recover by writing a different query.
 
@@ -169,15 +182,16 @@ Detection runs after lowercasing + stripping leading whitespace per pipe segment
 
 ## :material-circle-box:{ .taiconcolor } Audit Event Schemas
 
-All audit events extend a `BaseAuditEvent` shape:
+All audit events extend the `AuditEventBase` shape:
 
 ```typescript
-interface BaseAuditEvent {
-    category: string;       // discriminator
-    timestamp: string;      // ISO-8601 UTC
-    user: string;           // Splunk username
-    sessionId: string;      // Per-tab session UUID
-    seq: number;            // Monotonic per-session sequence
+interface AuditEventBase {
+    category: AuditCategory; // discriminator — the string-literal union
+                             // that must be extended when adding a category
+    timestamp: string;       // ISO-8601 UTC
+    user: string;            // Splunk username
+    sessionId: string;       // Per-tab session UUID
+    seq: number;             // Monotonic per-session sequence
 }
 ```
 
@@ -187,15 +201,16 @@ Per-category extras:
 |---|---|
 | `local_only` (`LocalOnlyEvent`) | `promptId: string`, `spl: string`, `rowCount: number`, `executionMs: number`, `ok: boolean` |
 | `vendor_tier1` (`VendorTier1Event`) | `provider`, `model`, `inputTokens`, `outputTokens`, `vendorCostEstimateUsd`, `outboundBytes`, `promptLength`, `turnCount`, `powerMode?: boolean` |
-| `vendor_tier2` (extends Tier1Event) | `aggregateKind: string`, `tier2RedactionsApplied: number` |
+| `vendor_tier2` (`VendorTier2Event` — declared but never emitted; every vendor call records `vendor_tier1`) | `provider`, `model`, `outboundBytes`, `outboundSha256`, `aggregateKind`, `userApproved`, `distinctValueCount` |
 | `vendor_tier2_elevation` | `previousTier`, `newTier` |
 | `security_blocked_spl` (`SecurityBlockedSplEvent`) | `spl` (truncated to 1000 chars), `operator: string` |
-| `rate_limited_prompt` (`RateLimitedPromptEvent`) | `cap`, `attemptedCount`, `windowSeconds` |
+| `rate_limited_prompt` (`RateLimitedPromptEvent`) | `threshold`, `countInWindow`, `promptLength`, `secondsUntilNextSlot` |
 | `user_prompt_jailbreak_flag` (`UserPromptJailbreakFlagEvent`) | `promptHash` (FNV-1a 32-bit hex), `promptLength`, `matchedGroups: string[]`, `charClassFingerprint: string` |
 | `session_tool_cap_hit` (`SessionToolCapHitEvent`) | `cap`, `attemptedCount`, `toolName` |
-| `daily_spend_cap_hit` (`DailySpendCapHitEvent`) | `cap`, `currentSpend`, `attemptedSpend` |
+| `daily_spend_cap_hit` (`DailySpendCapHitEvent`) | `capUsd`, `spentTodayUsd`, `promptLength`, `secondsUntilMidnight` |
 | `audit_forwarder_failure` | `destinationUrl` (sanitized — query strings stripped), `reason`, `batchSize` |
 | `forwarder_disabled_acceptance` / `ai_assistant_enable_acceptance` | `host` (Splunk-stamped IP), `tcVersion`, `optInChoice`, `disclaimerHash` |
+| `model_discovery` (`ModelDiscoveryEvent`) | `provider`, `trigger` (`credential_save` / `settings_refresh` / `ttl`), `ok`, `modelCount`, `durationMs`, `error` |
 
 All schemas live at `components/ai/audit/auditTypes.ts`.
 
@@ -207,10 +222,10 @@ The `category` field on these events is a Splunk reserved name. The viewer's SPL
 
 ## :material-circle-box:{ .taiconcolor } Adding a New Predefined Prompt
 
-1. Edit `default/data/mcp/logserv_intent_map.json` — add a new entry to the `prompts` array. Required fields: `promptId`, `savedSearch`, `label`, `description`, `spl`, `renderHint`. Optional: `chartHint`, `chartPalette`, `dashboard`, `interpretation`, `nextSteps`.
+1. Edit `default/data/mcp/logserv_intent_map.json` — add a new entry to the `prompts` array. Required fields: `id`, `pack` (`sap_basis` | `security` | `operations` — drives which prompt-browser tab the prompt appears under), `savedSearch`, `label`, `description`, `spl`, `renderHint`. Type-optional but present on every shipped prompt (omitting them silently degrades the guidance card, the deep-dive links, and the Dashboard-Focused tab): `interpretation`, `nextSteps`, `dashboard`. Truly optional: `chartHint`, `chartPalette`.
 2. Edit `default/savedsearches.conf` — add a stanza with the same name as the prompt's `savedSearch` field. The SPL must match byte-for-byte.
 3. Bump the intent map's top-level `version` field.
-4. Run `yarn intentMap.consistency-test` (or equivalent in your CI) — the test asserts byte-equality between the intent map's SPL and savedsearches.conf for every prompt.
+4. Run `yarn check:intent-map` — it also runs automatically as the FIRST step of `yarn build` / `yarn build:templates-only`, so drift fails in seconds, before webpack. It asserts byte-equality between each prompt's `spl` and its `savedsearches.conf` stanza, and that every prompt-shaped stanza has a prompt (scheduled rollup jobs are exempt). The sibling gate `yarn check:diagnostics` runs the other consistency-test suites plus live conf-drift checks and must also pass for any build.
 5. **Pre-deploy SPL dry-run.** Dispatch the new prompt's SPL via `services/search/jobs/oneshot` against live data:
    ```bash
    curl -sk -u admin:<pw> --data-urlencode "search=<your spl>" \
@@ -224,7 +239,8 @@ The `category` field on these events is a Splunk reserved name. The viewer's SPL
 
 ```typescript
 interface IntentMapPrompt {
-    promptId: string;
+    id: string;
+    pack: 'sap_basis' | 'security' | 'operations';
     savedSearch: string;
     label: string;
     description: string;
@@ -248,19 +264,20 @@ Scan all SPL — including `nextSteps.spl` deep-dive strings — for risky comma
 
 ## :material-circle-box:{ .taiconcolor } Adding a New Audit Event Category
 
-1. Edit `components/ai/audit/auditTypes.ts` — add a new TypeScript interface extending `BaseAuditEvent` with the category-specific fields. Add the type to the `AuditEvent` union.
+1. Edit `components/ai/audit/auditTypes.ts` — add a new TypeScript interface extending `AuditEventBase` with the category-specific fields. Add the type to the `AuditEvent` union.
 2. Add the new category id to the discriminator string-literal type.
 3. Find the call site that should emit the event. Construct the event object and call `ctx.actions.recordAudit(event)`.
-4. Edit `components/AuditLogViewer.tsx` — add the new category id to `AUDIT_CATEGORIES` (the filter chip set) and to `CATEGORY_GRADIENTS` (the chip gradient lookup).
-5. Bump the UI App build.
+4. Edit `utils/auditQuery.ts` — add the category id to `AUDIT_CATEGORIES` (keep it alphabetical; this drives the viewer's filter chips and the category union).
+5. Edit `components/AuditLogViewer.tsx` — add a `case` to `renderHighlight` so the row shows its most actionable fields. Do NOT append to `CATEGORY_ACCENT_ORDER` unless `ACCENT_PALETTE` grows in lockstep — it maps positionally onto the 11-colour palette; an unlisted category deliberately falls back to the dormant grey via `chipColorForCategory`.
+6. Bump the UI App build.
 
-The audit writer (`components/ai/audit/AuditWriter.ts`) sends events to BOTH the local `logserv_ai_assistant_audit` index AND the optional HEC forwarder. No code change needed at the writer layer for new categories.
+The audit writer (`components/ai/audit/auditWriter.ts`) sends events to BOTH the local `logserv_ai_assistant_audit` index AND the optional HEC forwarder. No code change needed at the writer layer for new categories.
 
 ---
 
 ## :material-circle-box:{ .taiconcolor } System Primer Architecture
 
-Two primer variants ship: `SYSTEM_PRIMER_TIER1` and `SYSTEM_PRIMER_TIER2`. Both live in `hooks/useAIAssistant.ts` as exported constants. They share most of their content; the differences:
+Two primer variants ship: `SYSTEM_PRIMER_TIER1` and `SYSTEM_PRIMER_TIER2`. Both live in `hooks/useAIAssistant.ts` as module-private constants (only `SAVED_SEARCH_DASHBOARDS` and the hook itself are exported — a consumer needing primer text must export it first). They share most of their content; the differences:
 
 - **Tier 1** primer instructs the AI that summaries it receives are count + execution-time only, and to write SHAPE-aware narrative ("X rows returned for the search's rolling window") rather than inventing concrete values.
 - **Tier 2** primer informs the AI that summaries include aggregated metadata (per-column cardinality, top-N values + counts, numeric stats, time range), and instructs it to ground every claim in the actual values from the aggregates. PII redaction tagging is also explained.
@@ -269,7 +286,7 @@ Both primers include:
 
 - The TOOL_RESULT_DATA boundary block (`<TOOL_RESULT_DATA>...</TOOL_RESULT_DATA>` sentinels)
 - The TIME-WINDOW REASONING block (build 171)
-- The canonical saved-search catalog (48 entries)
+- The canonical saved-search catalog
 - The LogServ data model (sourcetypes + key fields, for ad-hoc SPL)
 - The decision rule for `splunk_run_saved_search` vs `splunk_run_query`
 - The SYNTHESIS RULES section: lettered finding format, severity-dot rendering, citation format, etc.
@@ -302,7 +319,7 @@ Same pattern applies to the dashboard chips (build 156): the `dashboardLinks` ar
 
 ## :material-circle-box:{ .taiconcolor } Legal Acknowledgement Modal Trigger Logic
 
-Two compile-time legal modals gate Settings save flows:
+Two legal acknowledgement modals gate Settings save flows:
 
 - **Enable Acceptance Modal** — gates `enabled = true` saves.
 - **Forwarder Disabled Acceptance Modal** — gates `audit_forwarder_enabled = false` saves.
@@ -321,19 +338,13 @@ The pure `optInVersion`-only path is what Splunk's stock telemetry uses (acknowl
 
 `telemetryConfApi.ts` exposes `readTcAcknowledgement(stanza)` / `writeTcAcknowledgement(stanza, choice, version)` parameterized by stanza name. The two modal stanzas are constants: `STANZA_FORWARDER_TC` and `STANZA_ENABLE_TC`.
 
-The conf-writer coerces `yes`/`no` to `'1'`/`'0'`. The audit event preserves the literal string in `_raw`, so the audit event is the canonical record while the conf is the state marker.
-
----
+The legacy conf-writer path coerces `yes`/`no` to `'1'`/`'0'`; the KV Store path stores the strings as-is. The audit event preserves the literal string in `_raw`, so the audit event is the canonical record while the stored acknowledgement is the state marker.
 
 ---
 
 ## :material-circle-box:{ .taiconcolor } Why Primer Rules Beat Other Fixes (TIME-WINDOW REASONING)
 
-Three alternative fixes were considered before settling on primer rules for the time-window reasoning behavior:
-
-1. **Surface the dispatch window in Tier 2 metadata even for non-`_time` results.** Would let the AI see the window directly without reasoning about it. Higher engineering effort (~4-6 hours) than primer rules; deferred unless rules alone don't move the needle.
-2. **Re-order the regex alternatives so severity matches first.** Doesn't help: bold wraps around the severity, so even if severity tries first, it can't match inside an unmatched bold span.
-3. **Update the primer to forbid bold around severity markers.** Helps for future prompts but doesn't repair existing UI. Parser must be tolerant either way.
+One alternative fix was considered before settling on primer rules for the time-window reasoning behavior: **surfacing the dispatch window in Tier 2 metadata even for non-`_time` results**, which would let the AI see the window directly without reasoning about it. Higher engineering effort than primer rules; deferred unless rules alone don't move the needle.
 
 Primer rules were the cheapest test of "is this a primer-rules issue?" and it worked: same prompt, same data, dramatically better self-correction behavior in one turn instead of needing a follow-up prompt to re-rank cumulative-noise findings.
 

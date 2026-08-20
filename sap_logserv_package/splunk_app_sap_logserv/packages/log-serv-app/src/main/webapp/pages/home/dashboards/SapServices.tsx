@@ -92,17 +92,26 @@ const QRAW_BASE = {
     hostexecSeverity: `${RAW_HEXEC} severity=* | stats count by severity | sort -count`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const AUTH_COLS: ColumnDef[] = [
@@ -167,11 +176,11 @@ const SapServices: React.FC = () => {
             subtitle="SAP startup service and host agent — authentication events, SSL/TLS failures, and service health"
         >
             <KpiRow>
-                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Auth Failures" value={authFail.value} loading={authFail.loading} error={authFail.error} formatValue={formatInteger} tone={authFailTone}
+                <KpiCard label="Auth Failures" value={authFail.value} loading={authFail.loading} error={authFail.error} search={authFail.search} formatValue={formatInteger} tone={authFailTone}
                     sparkline={<SparklineFromQuery query={Q.sparkAuthFail} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="SSL/TLS Events" value={sslEvents.value} loading={sslEvents.loading} error={sslEvents.error} formatValue={formatInteger} tone={sslTone}
+                <KpiCard label="SSL/TLS Events" value={sslEvents.value} loading={sslEvents.loading} error={sslEvents.error} search={sslEvents.search} formatValue={formatInteger} tone={sslTone}
                     sparkline={<SparklineFromQuery query={Q.sparkSslEvents} valueField="count" color={logservTheme.colors.orange} fill />} />
             </KpiRow>
 

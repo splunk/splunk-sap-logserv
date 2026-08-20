@@ -14,6 +14,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import LinkGraphContainer from '../components/LinkGraphContainer';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch } from '../hooks/useHybridSearch';
+import { recordRawTwin } from '../utils/rawTwin';
 import {
     useCloudProvider,
     mapCloudProviderQueries,
@@ -191,11 +192,19 @@ const buildQueries = (HOST: string) => {
     };
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const SOURCETYPE_COLS: ColumnDef[] = [
@@ -260,11 +269,24 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, 
     // heuristic — is the precise guard. Host-filtered cases stay RAW at every range
     // (narrowed -> fast, and avoids the MV-host double-count).
     const eventsPerDayQuery = useMemo(
-        () => withCloudProvider(
-            (HOST_RAW === '' && !shouldUseRawSource(timeRange.earliest, timeRange.latest))
-                ? `${PIPE_VOL} | eval _time=bucket_ts | timechart span=1d sum(count) as daily | stats avg(daily) AS perday`
-                : `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=1d count as daily | stats avg(daily) AS perday`,
-            provider),
+        () => {
+            const cachedQ = withCloudProvider(
+                `${PIPE_VOL} | eval _time=bucket_ts | timechart span=1d sum(count) as daily | stats avg(daily) AS perday`,
+                provider,
+            );
+            const rawQ = withCloudProvider(
+                `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=1d count as daily | stats avg(daily) AS perday`,
+                provider,
+            );
+            // §17.8a-17: twin recorded only for the no-host-filter case, where the
+            // cached arm is the one that dispatches at wide ranges. A scalar
+            // (no-BY stats) shape, so check 21 will not-evaluate it (§17.8a-1) —
+            // recording is harmless and keeps the map symmetric.
+            if (HOST_RAW === '') recordRawTwin(cachedQ, rawQ);
+            return (HOST_RAW === '' && !shouldUseRawSource(timeRange.earliest, timeRange.latest))
+                ? cachedQ
+                : rawQ;
+        },
         [HOST_RAW, provider, timeRange.earliest, timeRange.latest],
     );
     const perDay = useFirstRowField(eventsPerDayQuery, 'perday');
@@ -288,10 +310,19 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, 
         // No-filter case at hourly-or-coarser spans reads the byhost rollup; the
         // narrowed (host-filter / topN) cases AND sub-hour spans (the hourly grain
         // would under-resolve) stay RAW — both already fast.
-        const q = (HOST_RAW === '' && !span.endsWith('m'))
-            ? `${PIPE_BYHOST} | eval _time=bucket_ts | timechart span=${span} sum(count) by host limit=0 useother=false`
-            : `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=${span} count by host limit=${limitVal} useother=false`;
-        return withCloudProvider(q, provider);
+        const cachedQ = withCloudProvider(
+            `${PIPE_BYHOST} | eval _time=bucket_ts | timechart span=${span} sum(count) by host limit=0 useother=false`,
+            provider,
+        );
+        const rawQ = withCloudProvider(
+            `\`sap_logserv_idx_macro\` ${HOST_RAW} | timechart span=${span} count by host limit=${limitVal} useother=false`,
+            provider,
+        );
+        // §17.8a-17: twin recorded only when the cached arm is the dispatch
+        // candidate (no host pick). Grouped (timechart by host) shape → check 21
+        // has a real signal here.
+        if (HOST_RAW === '') recordRawTwin(cachedQ, rawQ);
+        return (HOST_RAW === '' && !span.endsWith('m')) ? cachedQ : rawQ;
     }, [span, topN, selectedHosts, HOST_RAW, provider]);
 
     const chartSubtitle = useMemo<string>(() => {
@@ -325,13 +356,13 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, 
     return (
         <>
             <KpiRow>
-                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Active Hosts" value={hosts.value} loading={hosts.loading} error={hosts.error} formatValue={formatInteger}
+                <KpiCard label="Active Hosts" value={hosts.value} loading={hosts.loading} error={hosts.error} search={hosts.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkHosts} valueField="hosts" fill />} />
-                <KpiCard label="Active Sourcetypes" value={sts.value} loading={sts.loading} error={sts.error} formatValue={formatInteger}
+                <KpiCard label="Active Sourcetypes" value={sts.value} loading={sts.loading} error={sts.error} search={sts.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkSt} valueField="st" fill />} />
-                <KpiCard label="Events / Day (Avg)" value={perDay.value} loading={perDay.loading} error={perDay.error} formatValue={formatInteger}
+                <KpiCard label="Events / Day (Avg)" value={perDay.value} loading={perDay.loading} error={perDay.error} search={perDay.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkPerday} valueField="count" fill />} />
             </KpiRow>
             <FullWidthPanel>

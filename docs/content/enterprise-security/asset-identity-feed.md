@@ -10,10 +10,10 @@ Two scheduled saved searches that emit CSV lookups every 4 hours:
 
 | Saved search | Cadence | Output lookup | Schema |
 |---|---|---|---|
-| `splunk_sap_logserv_es_asset_feed` | every 4h (cron `7 */4 * * *`) | `splunk_for_sap_logserv_assets.csv` | ES Asset (17 std cols + 2 extra) |
-| `splunk_sap_logserv_es_identity_feed` | every 4h (cron `19 */4 * * *`) | `splunk_for_sap_logserv_identities.csv` | ES Identity (15 std cols + 1 extra) |
+| `splunk_sap_logserv_es_asset_feed` | every 4h (cron `0 */4 * * *`) | `splunk_for_sap_logserv_assets.csv` | ES Asset (17 std cols + 2 extra) |
+| `splunk_sap_logserv_es_identity_feed` | every 4h (cron `1 */4 * * *`) | `splunk_for_sap_logserv_identities.csv` | ES Identity (16 std cols + 1 extra) |
 
-Schedules are offset by 12 minutes to avoid both firing in the same scheduler window.
+The two feeds are scheduled one minute apart (`:00` and `:01`) so they do not dispatch simultaneously.
 
 ## :material-circle-box:{ .taiconcolor } Asset feed
 
@@ -79,14 +79,16 @@ After the App installs, the lookups don't exist until the saved searches first r
 ```bash
 # Dispatch the asset feed
 curl -sk -u admin:<pw> -X POST \
+  -d dispatch.earliest_time=-7d@d -d dispatch.latest_time=now \
   https://<splunk-host>:8089/servicesNS/nobody/splunk_app_sap_logserv/saved/searches/splunk_sap_logserv_es_asset_feed/dispatch
 
 # Dispatch the identity feed
 curl -sk -u admin:<pw> -X POST \
+  -d dispatch.earliest_time=-7d@d -d dispatch.latest_time=now \
   https://<splunk-host>:8089/servicesNS/nobody/splunk_app_sap_logserv/saved/searches/splunk_sap_logserv_es_identity_feed/dispatch
 ```
 
-Wait ~10 seconds for both to complete, then verify:
+The explicit `dispatch.earliest_time` / `dispatch.latest_time` arguments matter: a REST dispatch does **not** apply the stanza's own dispatch window, and each run fully **overwrites** the CSV — a short-window ad-hoc run would replace the inventory with a truncated one. Wait for both jobs to complete (seconds on a small dataset; longer at customer volume — the feeds union several sourcetypes over 7 days), then verify:
 
 ```spl
 | inputlookup splunk_for_sap_logserv_assets | head 5
@@ -121,7 +123,7 @@ The merged record should now include `priority`, `category`, `bunit` from our fe
 
 ### :material-circle-box:{ .taiconcolor } Confirm correlation searches enrich notables
 
-Run any of the 5 base ES correlation searches. Notables in **Incident Review** should show:
+Run any of the base ES correlation searches. Notables in **Incident Review** should show:
 
 - `dest_asset_priority`, `dest_asset_category`, `dest_asset_bunit` populated for `dest=hec53v013858`
 - `user_identity_priority`, `user_identity_category`, `user_identity_watchlist` populated for `user=xcjadm`
@@ -159,7 +161,7 @@ The lookup CSVs remain on disk (last-known state) but are no longer refreshed.
 - **No identity start/end dates.** Our feed doesn't track account creation/deactivation. Customers needing `startDate`/`endDate` for behavior baselining should layer an HR-system-sourced identity feed alongside ours.
 - **Static priority/category logic.** The heuristics here are SPL `case()` rules. Customer-specific overrides require a manual override CSV (e.g., `my_company_sap_asset_overrides.csv`) placed above our feed in merge order.
 
-## :material-circle-box:{ .taiconcolor } Live verification on splunk-sh-idxr (reference data)
+## :material-circle-box:{ .taiconcolor } Example output shape (reference environment — your values will differ)
 
 After first dispatch on splunk-sh-idxr (the reference dev environment):
 

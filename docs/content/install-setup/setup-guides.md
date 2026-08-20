@@ -1,10 +1,10 @@
 # Setup Guides Overview
 
 ### :material-circle-box:{ .taiconcolor } Introduction
-Once the [prerequisites](prerequisites.md) and the [installation of the Splunk TA for SAP LogServ](install-ta.md) have been completed, use the provided setup guides to complete the setup based on the cloud provider where your SAP ECS environment is running in and your preferred deployment scenario.
+Once the [prerequisites](prerequisites.md) and the [installation of the Splunk TA for SAP LogServ](install-ta.md) have been completed, use the provided setup guides to complete the setup for the cloud provider your SAP ECS environment runs in and your preferred deployment scenario.
 
 !!! note
-    Starting with version 0.0.3, the TA includes **built-in index-time filtering** that works with all deployment scenarios below. After completing the AWS setup, see [Configuring Filters](configure-filters.md) to control which log types are indexed and drop stale data directly from Splunk Web — no Lambda-based filtering required.
+    The TA includes **built-in index-time filtering** that works with all deployment scenarios below. After completing the AWS setup, see [Configuring Filters](configure-filters.md) to control which log types are indexed and drop stale data directly from Splunk Web — no Lambda-based filtering required.
 
 ### :material-circle-box:{ .taiconcolor } Amazon Web Services (AWS)
 All AWS deployment scenarios achieve the end goal of ingesting LogServ logs into Splunk. However, there are some differences in functionality. All AWS deployment scenarios involve two distinct AWS accounts.  
@@ -18,7 +18,7 @@ For brevity and clarity, the AWS account at the top of the diagram will be refer
 The table below lists the AWS Resources required for each deployment scenario:
 
 | AWS Resources    | [AWS Remote S3 Connect Setup](aws-remote-s3-connect-guide.md) | [AWS Remote S3 Filter Setup](aws-remote-s3-filter-guide.md) | [AWS Remote S3 Copy Setup](aws-remote-s3-copy-guide.md) |
-|------------------------------------------ | --------- -------------- | ------------------------- | ---------------------- |
+|-------------------------------------------|---------------------------|---------------------------|------------------------|
 | S3 Bucket (**_SAP ECS account_**)          | ✅ Required             | ✅ Required               | ✅ Required           |      
 | SQS Queue (**_SAP ECS account_**)          | ✅ Required             | ✅ Required               | ✅ Required           | 
 | S3 Bucket (**_Secondary account_**)        | ❌ Not Required         | ❌ Not Required           | ✅ Required           | 
@@ -36,13 +36,13 @@ If you want to have a secondary copy of the logs from the S3 bucket in the SAP E
 The table below lists the different features supported by each deployment scenario:
 
 | Feature    | [AWS Remote S3 Connect Setup](aws-remote-s3-connect-guide.md) | [AWS Remote S3 Filter Setup](aws-remote-s3-filter-guide.md) | [AWS Remote S3 Copy Setup](aws-remote-s3-copy-guide.md) |
-|------------------------------------------ | --------- -------------- | ------------------------- | ---------------------- |
+|-------------------------------------------|---------------------------|---------------------------|------------------------|
 | Secondary Copy of Logs                    | ❌ Not Supported        | ❌ Not Supported          | ✅ Supported          |      
-| AWS Lambda-based Filtering                | ❌ Not Supported        | ✅ Supported              | ❌ Not supported | 
+| AWS Lambda-based Filtering                | ❌ Not Supported        | ✅ Supported              | ❌ Not Supported | 
 | **Native TA Index-Time Filtering**        | ✅ Supported            | ✅ Supported              | ✅ Supported          |
 
 ??? tip "Native TA Filtering vs. AWS Lambda-based Filtering"
-    Starting with version 0.0.3, the TA provides **native index-time filtering** that works with all deployment scenarios. This filtering happens inside Splunk at index time and is configured entirely through the Splunk Web UI.
+    The TA provides **native index-time filtering** that works with all deployment scenarios. This filtering happens inside Splunk at index time and is configured entirely through the Splunk Web UI.
 
     The **AWS Lambda-based filtering** (available in the S3 Filter Setup) filters S3 event notifications *before* they reach Splunk, reducing the number of SQS messages processed. Both approaches can be used independently or together for defense-in-depth filtering.
 
@@ -61,7 +61,7 @@ The table below lists the different features supported by each deployment scenar
 
 ### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-crop-square:{ .cboxmove } [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md) 
 ??? indented-note "Note"
-    This deployment scenario uses an IAM User with a configured Access Key and a cross-account IAM Role to directly access LogServ resources in the AWS SAP ECS account where the LogServ logs reside without the need to copy logs to a secondary S3 bucket. It also provides the mechanism to filter logs by times stamp and types of logs via parameters on the Lambda function.
+    This deployment scenario uses an IAM User with a configured Access Key and a cross-account IAM Role to directly access LogServ resources in the AWS SAP ECS account where the LogServ logs reside without the need to copy logs to a secondary S3 bucket. It also provides the mechanism to filter logs by timestamp and log type via parameters on the Lambda function.
 
     - No secondary S3 Bucket needed
     - Secondary SQS Queue needed
@@ -99,12 +99,13 @@ In a RISE / SAP ECS deployment, SAP provisions and manages the Azure storage acc
 
 When your SAP ECS environment runs in **Google Cloud Platform**, LogServ logs land in a Google Cloud Storage (GCS) bucket instead of Amazon S3. Ingest is handled by the first-party **Splunk TA for SAP LogServ on GCP** add-on (`splunk_ta_sap_logserv_gcp`) — the GCP counterpart to the Splunk Add-on for AWS — installed on **each Heavy Forwarder** (directly, **not** distributed by the Deployment Server, since its service-account key lives in the add-on's own `local/`). Its `sap_logserv_gcp_pubsub` modular input pulls a **Pub/Sub subscription** fed by the bucket's `OBJECT_FINALIZE` notifications and fetches each object with a service-account key, emitting `sourcetype = sap_logserv_logs` into the same downstream pipeline (routing, filtering, dashboards, ES integration) as the AWS path.
 
-In a RISE / SAP ECS deployment, SAP provisions and manages the GCS bucket, bucket notification, Pub/Sub topic, and subscription in the SAP-managed GCP project — you create nothing in GCP; you install the add-on and configure one input with the values SAP provides (project ID, subscription name, service-account JSON key).
+In a RISE / SAP ECS deployment, SAP provisions and manages the GCS bucket, bucket notification, Pub/Sub topic, and subscription in the SAP-managed GCP project. The one GCP resource **you** create is the **service account**: in a GCP account of your own (a secondary account, separate from the RISE project), create a service account, hand its **email address** to your SAP support contact, and SAP grants it read access to the LogServ subscription + bucket (`roles/pubsub.subscriber` + `roles/storage.objectViewer`) — the GCP analogue of the AWS path's customer-account cross-account IAM role. You then mint the account's JSON key, install the add-on, and configure one input with the project ID + subscription name SAP provides plus your key.
 
 ### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-crop-square:{ .cboxmove } [GCP Setup Guide](gcp-setup.md)
 ??? indented-note "Note"
     Notification-driven GCS ingest — the GCP equivalent of the AWS SQS-Based S3 Connect scenario.
 
+    - Create a service account in **your own** GCP account and hand its email to SAP support, who grant it `roles/pubsub.subscriber` + `roles/storage.objectViewer` on the LogServ resources
     - Install the LogServ GCP add-on per Heavy Forwarder (directly, not via the Deployment Server)
-    - Configure one `sap_logserv_gcp_pubsub` input with the project ID, subscription name, and service-account key SAP provides
-    - No AWS-style secondary account or cross-account IAM role — GCP uses a service-account key with `roles/pubsub.subscriber` + `roles/storage.objectViewer`
+    - Configure one `sap_logserv_gcp_pubsub` input with the project ID + subscription name SAP provides and your service account's JSON key
+    - Like the AWS Connect scenario's secondary account, the identity is customer-homed — SAP binds cross-project grants to it; no infrastructure lands in your project

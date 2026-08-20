@@ -1,7 +1,7 @@
 # Power Mode
 
-!!! warning "Current release: Power Mode is hidden — LLM dispatch is disabled"
-    Power Mode requires the LLM-driven path, which is **disabled at compile time** in the current release pending internal review. The `✦ Power` toggle is hidden in current builds regardless of the `power_user_roles` configuration. This page is preserved as the design reference for the future release that re-enables the LLM path.
+!!! warning "Full-LLM build variant only"
+    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): there is no LLM dispatch to force a saved-search before, so the `✦ Power` toggle is hidden there. This page applies to the separately-built **full-LLM variant** used in approved deployments.
 
 Power Mode is a role-gated **`✦ Power`** toggle in the AI Assistant chat-input toolbar that forces a saved-search dispatch before LLM synthesis on every prompt. When Power Mode is on, the AI MUST call `splunk_run_saved_search` (or `splunk_run_query`) at least once before generating any narrative response — forced-RAG. Reasoning from prior knowledge alone is disallowed; every reply is data-grounded.
 
@@ -21,7 +21,7 @@ Power Mode is **opt-in per organization** and **per-role**. The toggle is hidden
 
 1. Open Settings → AI Assistant → **General**.
 2. Find the **Power Users** subsection. The Multiselect is populated from Splunk's `services/authorization/roles` REST endpoint.
-3. Pick the roles that should see the Power toggle (typical: `admin`, `power`, `sc_admin`).
+3. Pick the roles that should see the Power toggle (typical: `admin`, `power`, `sc_admin`; on Splunk Cloud deployments where `sc_admin` is reserved for Splunk Ops, use `sc_subadmin`).
 4. Click **Save Defaults**.
 5. Affected users see the `✦ Power` button in their chat input toolbar on next page load.
 
@@ -44,7 +44,7 @@ A11y: `aria-pressed="true"` when on, `aria-pressed="false"` when off.
 
 - **Privacy tier behavior is unchanged.** Tier 1 still gives the AI count + timing only; Tier 2 still gives aggregated metadata only. Power Mode just enforces saved-search-first; tier still controls what AI sees about each search result.
 - **Tool dispatch is unchanged.** Same MCP path, same tool definitions (`splunk_run_saved_search`, `splunk_run_query`), same SPL static-analysis guard, same session tool-call cap.
-- **Audit categories are unchanged.** Power Mode runs through the same `vendor_tier1` / `vendor_tier2` audit events; the new field `powerMode?: boolean` records whether the toggle was on at dispatch time, for SOC pivot analysis.
+- **Audit categories are unchanged.** Power Mode runs through the same `vendor_tier1` audit event (emitted for every vendor call regardless of tier); the new field `powerMode?: boolean` records whether the toggle was on at dispatch time, for SOC pivot analysis.
 - **Per-user rate limit, daily spend cap, jailbreak detection.** All unchanged.
 
 ## :material-circle-box:{ .taiconcolor } When to Use Power Mode
@@ -56,14 +56,14 @@ A11y: `aria-pressed="true"` when on, `aria-pressed="false"` when off.
 | Compliance reports that the auditor will cross-check against the rendered tiles | ON (so every claim has a citation) |
 | Conceptual questions ("what's a HANA audit log?", "explain risk_level") | OFF (the AI's training knowledge is fine) |
 | One-shot follow-ups in an existing conversation where prior tool results already cover the answer | OFF (forces an unnecessary dispatch) |
-| Streaming-only chat-only mode (`mcp_required=false`) | Power Mode auto-hides — there's no tool path to force |
+| Streaming-only chat-only mode (`mcp_required=false`) | Leave it OFF — the toggle still appears for power-user roles, but there is no tool path to force, so the injected must-run-a-saved-search rule cannot be satisfied |
 
 ## :material-circle-box:{ .taiconcolor } Audit Trail
 
-Every free-form vendor call records a `vendor_tier1` or `vendor_tier2` audit event with a `powerMode` flag that captures whether the toggle was on for that turn. Use cases for the audit field:
+Every free-form vendor call records a `vendor_tier1` audit event with a `powerMode` flag that captures whether the toggle was on for that turn. Use cases for the audit field:
 
 - **SOC pivot:** filter audit events to `powerMode=true` to see only the strict-data-grounded turns.
 - **Compliance review:** confirm that audit-period investigations were run with Power Mode on (so every cited finding has a tool dispatch behind it).
 - **Cost analysis:** Power Mode-on turns dispatch more tools per turn → higher per-turn cost. The audit lets finance attribute spend to the gating choice.
 
-Power Mode does NOT generate a separate audit category — it's a flag on the existing `vendor_tier1` / `vendor_tier2` events. See [Audit Log](audit-log.md).
+Power Mode does NOT generate a separate audit category — it's a flag on the existing `vendor_tier1` event. See [Audit Log](audit-log.md).

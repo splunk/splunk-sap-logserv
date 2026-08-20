@@ -163,17 +163,26 @@ const QRAW_BASE = {
     queried: `${RAW_DNS} query=* | stats count as Queries, dc(src) as "Unique Clients", sum(eval(if(query_type="TXT", 1, 0))) as txt_count, sum(eval(if(query_type="MX", 1, 0))) as mx_count by query | eval pct_txt = tostring(round(txt_count*100/Queries, 1)) . "%" | eval pct_mx = tostring(round(mx_count*100/Queries, 1)) . "%" | sort -Queries | table query, Queries, "Unique Clients", pct_txt, pct_mx | rename query as "Domain", pct_txt as "%TXT", pct_mx as "%MX"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const BLOCKED_SRC_COLS: ColumnDef[] = [
@@ -274,23 +283,23 @@ const NetworkPerimeter: React.FC = () => {
             subtitle="Unified network-boundary view — firewall drops (inbound rejections), proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation"
         >
             <KpiRow>
-                <KpiCard label="Firewall Drops" value={fw.value} loading={fw.loading} error={fw.error} formatValue={formatInteger} tone={fwTone}
+                <KpiCard label="Firewall Drops" value={fw.value} loading={fw.loading} error={fw.error} search={fw.search} formatValue={formatInteger} tone={fwTone}
                     sparkline={<SparklineFromQuery query={Q.sparkFw} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Proxy Requests" value={proxy.value} loading={proxy.loading} error={proxy.error} formatValue={formatInteger}
+                <KpiCard label="Proxy Requests" value={proxy.value} loading={proxy.loading} error={proxy.error} search={proxy.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkProxy} valueField="count" fill />} />
-                <KpiCard label="DNS Queries" value={dns.value} loading={dns.loading} error={dns.error} formatValue={formatInteger}
+                <KpiCard label="DNS Queries" value={dns.value} loading={dns.loading} error={dns.error} search={dns.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkDns} valueField="count" fill />} />
-                <KpiCard label="Beaconing Domains" value={beacon.value} loading={beacon.loading} error={beacon.error} formatValue={formatInteger} tone={beaconTone}
+                <KpiCard label="Beaconing Domains" value={beacon.value} loading={beacon.loading} error={beacon.error} search={beacon.search} formatValue={formatInteger} tone={beaconTone}
                     sparkline={<SparklineFromQuery query={Q.sparkBeacon} valueField="daily" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Denied Requests" value={denied.value} loading={denied.loading} error={denied.error} formatValue={formatInteger} tone={deniedTone}
+                <KpiCard label="Denied Requests" value={denied.value} loading={denied.loading} error={denied.error} search={denied.search} formatValue={formatInteger} tone={deniedTone}
                     sparkline={<SparklineFromQuery query={Q.sparkDenied} valueField="count" color={logservTheme.colors.orange} fill />}
                     onClick={goDeniedKpi} clickTitle="Open denied-traffic SPL in Splunk Search" />
-                <KpiCard label="Outbound Bandwidth" value={bw.value} loading={bw.loading} error={bw.error}
+                <KpiCard label="Outbound Bandwidth" value={bw.value} loading={bw.loading} error={bw.error} search={bw.search}
                     sparkline={<SparklineFromQuery query={Q.sparkBw} valueField="daily" fill />} />
             </KpiRow>
 
             <FullWidthPanel>
-                <FramedPanel title="Perimeter Activity Over Time (log scale)" subtitle="Firewall + proxy + DNS daily counts overlaid">
+                <FramedPanel title="Perimeter Activity Over Time" subtitle="Firewall + proxy + DNS daily counts overlaid">
                     <TimeSeriesChart
                         query={qActivity}
                         height={300}

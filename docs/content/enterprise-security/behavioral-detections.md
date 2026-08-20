@@ -8,23 +8,25 @@ All 4 use **stats-based Z-score** detection that runs against built-in Splunk SP
 
 | Search name | What it baselines | Z-score threshold | Schedule |
 |---|---|---|---|
-| `splunk_sap_logserv_es_anomaly_user_auth_volume` | Per-user authentication-event count, hourly buckets | Z > 3 + count > 10 | hourly |
-| `splunk_sap_logserv_es_anomaly_webdisp_response` | Per-host webdispatcher P95 response time, hourly buckets | Z > 3 + P95 > 200 ms | hourly |
-| `splunk_sap_logserv_es_anomaly_topology_edge_volume` | Per-edge call volume from KV Store edge bucket data | abs(Z) > 3 + count > 10 | hourly |
-| `splunk_sap_logserv_es_anomaly_after_hours_admin` | Per-admin off-hours activity, daily buckets | Z > 2 + count > 5 | daily |
+| `splunk_sap_logserv_es_anomaly_user_auth_volume` | Per-user authentication-event count, hourly buckets | Z > 3 + count > 10 | daily (02:30) |
+| `splunk_sap_logserv_es_anomaly_webdisp_response` | Per-host Web Dispatcher **average** response time, from the hourly `logserv_web_timing_rollup` | Z > 3 + avg > 200 ms | daily (03:30) |
+| `splunk_sap_logserv_es_anomaly_topology_edge_volume` | Per-edge call volume from KV Store edge bucket data | abs(Z) > 3 + count > 10 | daily (04:30) |
+| `splunk_sap_logserv_es_anomaly_after_hours_admin` | Per-admin off-hours activity, daily buckets | Z > 2 + count > 5 | daily (05:30) |
+
+All four anomaly searches run **once daily** (scheduler-local early morning): an anomalous hour is reported the following morning, not within the hour.
 
 All 4 emit `action.notable=1` (ES Notable Review) and `action.risk=1` (RBA — risk score 30-40 / medium).
 
 ## :material-circle-box:{ .taiconcolor } How the stats-based Z-score works
 
-Each search builds the baseline from the **same 30-day window of data** that's being scored, using `eventstats` to compute per-entity mean and standard deviation across the window's hourly (or daily) buckets. The most-recent bucket is then compared:
+Each search builds the baseline from the **same 30-day window of data** that's being scored, using `eventstats` to compute per-entity mean and standard deviation across the window's hourly (or daily) buckets. Every bucket of the previous day is then compared (the searches run daily):
 
 ```spl
 | bin _time span=1h
 | stats count by entity, _time
 | eventstats avg(count) AS avg_count, stdev(count) AS stdev_count by entity
 | eval z_score = round((count - avg_count) / stdev_count, 2)
-| where _time >= relative_time(now(), "-1h@h") AND z_score > 3 AND count > 10
+| where _time >= relative_time(now(), "-1d@d") AND z_score > 3 AND count > 10
 ```
 
 **Combined thresholds** (Z + minimum-floor) keep the false-positive rate low:
@@ -39,7 +41,7 @@ The thresholds are tunable per search via the `where z_score > N` clause in `def
 
 ### :material-crop-square:{ .taiconcolor } 1. Per-User Authentication Volume Z-Score
 
-Compares each user's most-recent-hour authentication-event count to that user's own 30-day hourly baseline. Fires when Z > 3 AND count > 10.
+Compares each user's authentication-event count in each hourly bucket of the previous day to that user's own 30-day hourly baseline. Fires when Z > 3 AND count > 10.
 
 **Threat model:** Brute-force attempts against a previously dormant account, or a misconfigured client polling at high frequency.
 
@@ -47,7 +49,7 @@ Compares each user's most-recent-hour authentication-event count to that user's 
 
 ### :material-crop-square:{ .taiconcolor } 2. Webdispatcher Response-Time Anomaly
 
-Compares each host's most-recent-hour P95 latency to that host's own 30-day baseline. Fires when Z > 3 AND P95 > 200 ms.
+Compares each host's per-hour latency over the previous day to that host's own 30-day baseline. Fires when Z > 3 AND avg > 200 ms.
 
 **Threat model:** Backend health degradation, network path issue, or DDoS-style request flood degrading response time.
 
@@ -55,13 +57,13 @@ Compares each host's most-recent-hour P95 latency to that host's own 30-day base
 
 ### :material-crop-square:{ .taiconcolor } 3. Topology Edge Call-Volume Anomaly
 
-Reads pre-aggregated edge bucket rows directly from the `logserv_topology_edges` KV Store collection. Detects edges whose most-recent-hour call_count is statistically anomalous vs. that edge's own 30-day baseline. Fires when abs(Z) > 3 AND count > 10.
+Reads pre-aggregated edge bucket rows directly from the `logserv_topology_edges` KV Store collection. Detects edges whose hourly call_count over the previous day is statistically anomalous vs. that edge's own 30-day baseline. Fires when abs(Z) > 3 AND count > 10.
 
 **Threat model:** Surge = abnormally high cross-system traffic (DDoS, lateral-movement automation, failed retry storm). Drop = integration outage on either the source or target side.
 
 **FP profile:** Low. The KV Store's per-edge time series is much cleaner than raw event data, so the baseline is stable. The bidirectional check (`abs(Z) > 3` rather than just `Z > 3`) catches both surges AND drops.
 
-**Why this search is unique:** It reads from the topology KV Store rather than dispatching live SPL against raw events. Search execution time is sub-second regardless of cluster size.
+**Why this search is different:** It reads pre-aggregated edge bucket rows from the topology KV Store rather than scanning raw events, so its cost scales with the number of edges rather than event volume.
 
 ### :material-crop-square:{ .taiconcolor } 4. After-Hours Admin Activity Anomaly
 
@@ -101,7 +103,7 @@ Adjust thresholds in `local/savedsearches.conf` (override the `search =` line fo
 
 ```ini
 [splunk_sap_logserv_es_anomaly_user_auth_volume]
-search = `sap_logserv_idx_macro` ... | where _time >= relative_time(now(), "-1h@h") AND z_score > 4 AND count > 25 | sort -z_score
+search = `sap_logserv_idx_macro` ... | where _time >= relative_time(now(), "-1d@d") AND z_score > 4 AND count > 25 | sort -z_score
 ```
 
 **General tuning advice:**
@@ -109,7 +111,7 @@ search = `sap_logserv_idx_macro` ... | where _time >= relative_time(now(), "-1h@
 - **Too many FPs:** Raise the Z threshold (3 → 4 → 5) AND/OR raise the absolute-count floor.
 - **Missing real attacks:** Lower the Z threshold (3 → 2) — but expect more noise; pair with tighter floor.
 - **Bursty workloads triggering hits:** Add a `where NOT (entity IN (<known burst entities>))` exclusion clause, OR pre-tag the entity in the Identity feed and filter downstream.
-- **Service-account auth volumes drowning out human user signal:** The `is_service_account` field (when populated by the props EVAL pipeline) lets you split the search into two stanzas — one for service accounts (higher floor), one for humans (lower floor + tighter Z).
+- **Service-account auth volumes drowning out human user signal:** split by username pattern — e.g. `| eval is_svc=if(match(auth_user, "(?i)(adm$|^sapservice|_svc$|^svc_|_batch$|_daemon$|^sap_)"), 1, 0)`, the same classification `splunk_sap_logserv_es_service_account_interactive` applies — into two stanzas: one for service accounts (higher floor), one for humans (lower floor + tighter Z).
 
 ## :material-circle-box:{ .taiconcolor } AI Assistant integration
 
@@ -120,7 +122,7 @@ Each of the 4 anomaly searches has a corresponding entry in the AI Assistant pre
 - `security.anomaly_topology_edge_volume`
 - `security.anomaly_after_hours_admin`
 
-SOC analysts can ask the AI Assistant to dispatch them on demand for an investigative "explain why this user looks anomalous" workflow.
+SOC analysts can dispatch them on demand from the AI Assistant's predefined-prompt browser (Security pack) and read the result table plus its static interpretation guidance. (Asking the assistant in natural language to *explain* an anomaly requires the full-LLM build variant — the published templates-only package has no free-form chat.)
 
 ## :material-circle-box:{ .taiconcolor } See also
 

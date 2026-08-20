@@ -1,7 +1,25 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
+import { username as splunkUsername } from '@splunk/splunk-utils/config';
 import { logservTheme } from '../styles/logservTheme';
 import { useThemeMode } from '../state/ThemeModeProvider';
+import { useTimeRange } from '../state/TimeRangeProvider';
+import { useCloudProvider } from '../state/CloudProviderProvider';
+import { getActivePageSnapshot } from '../state/DiagnosticCollector';
+import { triggerDownload } from '../utils/download';
+import { beginDiagnosis, endDiagnosis } from '../utils/diagProbe';
+import { sweepDashboard, collectDashboardRollupSpl } from '../utils/diagSweep';
+import { gatherEnvironmentEvidence } from '../utils/diagEnvironment';
+import { probeIngestFacts } from '../utils/diagEvidence';
+import { sanitizeFetchedFactsRow, IngestFacts } from '../utils/diagIngestFacts';
+import {
+    buildDashboardReportModel,
+    buildEnvironmentReportModel,
+    ReportMeta,
+} from '../utils/diagReport';
+import { downloadReport } from '../utils/diagReportPdf';
+import { findDashboardByPath } from '../routes/dashboardRegistry';
+import { APP_VERSION, APP_BUILD, APP_BUILD_DATE, TEMPLATES_ONLY } from '../buildFlags';
 
 /**
  * ActionsDropdown — small button + popup menu rendered in the NavigationBar
@@ -150,7 +168,7 @@ const nextAnimationFrame = (): Promise<void> =>
     });
 
 /** Slug from the current dashboard for use in the download filename.
- *  e.g. "/platform/host-details" → "host-details". */
+ *  e.g. "/platform/host-details" -> "host-details". */
 const currentSlug = (): string => {
     const hash = window.location.hash || '';
     // hash is "#/platform/host-details" (router) — strip leading "#" and split
@@ -180,22 +198,9 @@ const dataUrlToBlob = (dataUrl: string): Blob => {
     return new Blob([bytes], { type: mime });
 };
 
-const triggerDownload = (blob: Blob, filename: string): void => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    // Free the object URL after a generous grace period. Chrome's
-    // "ask where to save each file" setting defers the actual write until
-    // the user picks a location — revoking too early makes the download
-    // fail with "Something went wrong" AFTER the save dialog (build 256).
-    // A few MB held for a minute is a fine trade for never racing the
-    // user's save dialog.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-};
+// triggerDownload was extracted to `utils/download.ts` in session 095 so the
+// Data Doctor report paths share the proven mechanism (build-256 lesson lives
+// with the helper). Imported at the top of this file.
 
 /* ─── Topology SVG pre-rasterization (build 273) ────────────────────────────
  *
@@ -212,8 +217,8 @@ const triggerDownload = (blob: Blob, filename: string): void => {
  * is not an occluded-window artifact.
  *
  * Fix: BEFORE invoking html2canvas, rasterize each topology svg through the
- * browser's NATIVE renderer (serialize → data:image/svg+xml → <img> →
- * canvas → PNG data URL), then swap the svgs for equivalent absolutely-
+ * browser's NATIVE renderer (serialize -> data:image/svg+xml -> <img> ->
+ * canvas -> PNG data URL), then swap the svgs for equivalent absolutely-
  * positioned <img> elements inside html2canvas's cloned document (onclone
  * is synchronous in 1.4.1, so all async work happens up front). Native
  * rasterization gets overflow, gradients, stroke-dasharray, markers and
@@ -469,13 +474,32 @@ const captureDashboardCanvas = async (root: HTMLElement, bgColor: string): Promi
     }
 };
 
+/** Human dashboard label for the report scope line — registry name when the
+ *  current hash path is a registered dashboard, the slug otherwise. */
+const currentDashboardLabel = (): string => {
+    const hash = window.location.hash || '';
+    const path = (hash.startsWith('#') ? hash.slice(1) : window.location.pathname).split('?')[0];
+    const dash = findDashboardByPath(path);
+    return dash ? dash.name : currentSlug();
+};
+
+const reportMeta = (): ReportMeta => ({
+    appVersion: APP_VERSION,
+    appBuild: APP_BUILD,
+    appBuildDate: APP_BUILD_DATE,
+    templatesOnly: TEMPLATES_ONLY,
+    username: splunkUsername || '',
+});
+
 const ActionsDropdown: React.FC = () => {
     const [open, setOpen] = useState<boolean>(false);
-    const [busy, setBusy] = useState<null | 'png' | 'pdf'>(null);
+    const [busy, setBusy] = useState<null | 'png' | 'pdf' | 'diag' | 'env'>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
     // Mode-resolved page background for the PNG/PDF capture (build 254).
     const { tokens } = useThemeMode();
+    const { timeRange } = useTimeRange();
+    const { provider } = useCloudProvider();
 
     // Close on outside click / escape.
     useEffect(() => {
@@ -567,6 +591,125 @@ const ActionsDropdown: React.FC = () => {
         }
     }, [busy, tokens.pageBackground]);
 
+    /* ── Session 095 — the Data Doctor reports (design §6 entry points 3/4,
+     * §7). Both keep the MENU OPEN so the StatusLine shows live progress, and
+     * both run through the app-wide `beginDiagnosis` singleton: starting one
+     * supersedes any drawer diagnosis in flight, and probes stay budgeted +
+     * concurrency-capped on a machine that may already be struggling. Closing
+     * the menu mid-run does not cancel — the run is bounded by its budget and
+     * every probe carries server-side auto_cancel. */
+
+    const handleDiagnoseDashboard = useCallback(async (): Promise<void> => {
+        if (busy) return;
+        const snapshot = getActivePageSnapshot();
+        if (snapshot.length === 0) {
+            setStatusMessage('No panels are registered on this page — open a dashboard first.');
+            return;
+        }
+        setBusy('diag');
+        setStatusMessage('Diagnosing…');
+        const runner = beginDiagnosis({ budgetMs: 180_000, concurrency: 2 });
+        try {
+            // §15.8a-28 — the dashboard report takes the operator facts as an
+            // explicit input, fetched ONCE at sweep start via the runner (a
+            // healthy dashboard diagnoses zero panels, so there may be no
+            // evidence object to derive them from). Deduped with the
+            // per-panel fetches by the memoizing runner.
+            let sweepIngestFacts: IngestFacts | null = null;
+            const fx = await probeIngestFacts(runner);
+            if (!fx.skipped && !fx.error) {
+                const rows = fx.rows as unknown[];
+                sweepIngestFacts =
+                    rows.length > 0
+                        ? sanitizeFetchedFactsRow(rows[0], Math.floor(Date.now() / 1000))
+                        : null;
+            }
+            const sweep = await sweepDashboard(runner, snapshot, provider, (done, total) => {
+                setStatusMessage(
+                    total === 0
+                        ? 'No empty panels — compiling the report…'
+                        : `Diagnosing empty panel ${Math.min(done + 1, total)} of ${total}…`,
+                );
+            });
+            // Superseded (another diagnosis called beginDiagnosis — e.g. the
+            // #/diagnostics page's auto-run, or the drawer): every remaining
+            // probe resolved `skipped`, so the sweep RESOLVED with junk
+            // evidence. Downloading (and thereby persisting) an
+            // all-NOT-CHECKED support artifact would be worse than nothing —
+            // skip both and say why (session-096 review, L2-F2).
+            if (runner.isCancelled()) {
+                setStatusMessage('Superseded by another diagnosis — run it again.');
+                return;
+            }
+            /* §20.3 — the whole dashboard's rollup-populating SPL, collected
+             * ALONGSIDE the sweep (never on SweepResult — §20.8a-5) and passed
+             * to the builder explicitly. Returns null when the budget is gone
+             * (the section is honestly absent, never a list of blanks). */
+            const rollupSearches = await collectDashboardRollupSpl(runner, snapshot);
+            if (runner.isCancelled()) {
+                setStatusMessage('Superseded by another diagnosis — run it again.');
+                return;
+            }
+            setStatusMessage('Rendering the report…');
+            const model = buildDashboardReportModel({
+                dashboardLabel: currentDashboardLabel(),
+                sweep,
+                meta: reportMeta(),
+                ingestFacts: sweepIngestFacts,
+                rollupSearches,
+            });
+            await downloadReport(model);
+            setStatusMessage(null);
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[ActionsDropdown] dashboard diagnosis failed', err);
+            setStatusMessage('Diagnosis failed — see console.');
+        } finally {
+            endDiagnosis(runner);
+            setBusy(null);
+        }
+    }, [busy, provider]);
+
+    const handleEnvironmentReport = useCallback(async (): Promise<void> => {
+        if (busy) return;
+        setBusy('env');
+        setStatusMessage('Checking the environment…');
+        const runner = beginDiagnosis({ budgetMs: 120_000, concurrency: 2 });
+        try {
+            const env = await gatherEnvironmentEvidence(
+                runner,
+                timeRange.earliest,
+                timeRange.latest,
+                (label) => setStatusMessage(label),
+                // §17.8a-18 — the report wants per-rollup bucket-continuity; the
+                // live Diagnostics page does not (it re-gathers on every change).
+                { bucketContinuity: true },
+            );
+            // Same supersede guard as the dashboard sweep above: a cancelled
+            // gather RESOLVES (skipped probes, not-checked rows) — never
+            // download or persist that as a report (session-096 review, L2-F2).
+            if (runner.isCancelled()) {
+                setStatusMessage('Superseded by another diagnosis — run it again.');
+                return;
+            }
+            setStatusMessage('Rendering the report…');
+            const model = buildEnvironmentReportModel({
+                env,
+                windowLabel: `${timeRange.earliest} -> ${timeRange.latest}`,
+                meta: reportMeta(),
+            });
+            await downloadReport(model);
+            setStatusMessage(null);
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[ActionsDropdown] environment report failed', err);
+            setStatusMessage('Diagnosis failed — see console.');
+        } finally {
+            endDiagnosis(runner);
+            setBusy(null);
+        }
+    }, [busy, timeRange.earliest, timeRange.latest]);
+
     return (
         <Wrapper ref={wrapperRef}>
             <ActionsButton
@@ -600,6 +743,26 @@ const ActionsDropdown: React.FC = () => {
                     >
                         <Icon aria-hidden>↓</Icon>
                         Download PDF
+                    </MenuItem>
+                    <MenuItem
+                        type="button"
+                        role="menuitem"
+                        onClick={handleDiagnoseDashboard}
+                        disabled={busy !== null}
+                        title="Run the Data Doctor over every panel on this dashboard and download the report (PDF + JSON)"
+                    >
+                        <Icon aria-hidden>✚</Icon>
+                        Diagnose dashboard (PDF)
+                    </MenuItem>
+                    <MenuItem
+                        type="button"
+                        role="menuitem"
+                        onClick={handleEnvironmentReport}
+                        disabled={busy !== null}
+                        title="Index, sourcetype and summarised-data health for the whole environment — download the report (PDF + JSON)"
+                    >
+                        <Icon aria-hidden>✚</Icon>
+                        Environment report (PDF)
                     </MenuItem>
                     {statusMessage && <StatusLine>{statusMessage}</StatusLine>}
                 </Menu>

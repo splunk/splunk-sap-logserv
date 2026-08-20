@@ -5,8 +5,8 @@ This page is intended for the **customer's security team** reviewing the LogServ
 !!! tip "Companion page"
     For the same controls organized along Google's [Secure AI Framework (SAIF)](https://saif.google/) four-pillar structure plus a coverage matrix of SAIF's 15 Key Risks, see [SAIF Security Architecture](security-architecture.md).
 
-!!! warning "Current release: LLM functionality intentionally disabled pending review"
-    The current release ships with the LLM-driven path **disabled at compile time pending internal review**. The controls described on this page are designed, implemented, and exercised by the build's CI pipeline — but the LLM dispatch pathway itself is gated off via the [Templates-only build flag](templates-only-build.md) until the review concludes. The predefined-prompt path + Splunk MCP integration + audit log remain fully active. This page documents the controls so reviewers can evaluate the security posture for a future release that re-enables the LLM path.
+!!! warning "Full-LLM build variant only"
+    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): the LLM-driven path is disabled at compile time, so the LLM-specific attack surface this page addresses **does not exist in the published package** — the strongest form of each control is that there is no vendor dispatch to attack. The controls below (prompt-injection sanitization, the type-system data boundary, tier-gated summaries, SPL static analysis, rate limits, spend caps) actively govern the separately-built **full-LLM variant**; the tamper-evident audit trail is live in both variants.
 
 ## :material-circle-box:{ .taiconcolor } LLM01 — Prompt Injection
 
@@ -25,7 +25,7 @@ This page is intended for the **customer's security team** reviewing the LogServ
 
 **Controls shipped:**
 
-- **TypeScript type-system enforcement.** The compiler refuses to put any tool-result value into the outbound vendor payload — there is no runtime check, no flag to flip, no policy to forget. The only conversion path produces a non-data summary that the caller's chosen summarizer controls. See [Privacy Tiers](privacy-tiers.md) and [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).
+- **TypeScript type-system enforcement, plus a runtime scan.** The compiler refuses to put any tool-result value into the outbound vendor payload, and every outbound payload is additionally serialized and scanned at dispatch time for Splunk data field keys (rejected if any appears) — either layer is sufficient; both ship. The only conversion path produces a non-data summary that the caller's chosen summarizer controls. See [Privacy Tiers](privacy-tiers.md) and [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).
 - **Privacy tier scoping.** Tier 1 (default) gives the AI count + execution time only — no values. Tier 2 (admin opt-in) adds aggregated metadata (top-N values + counts, numeric stats, time range). **Neither tier sends raw rows.**
 - **PII redaction at Tier 2.** Column-name-based detection redacts `email`, `user(name)`, `*_ip`, `mac`, `account` (hostname opt-in) before values are sent to the vendor. Stable per-value `<redacted-XXXXXXX>` tags so the AI can still reason about cardinality without seeing the actual identifier.
 - **`<TOOL_RESULT_DATA>` sentinel** (also LLM01) prevents the AI from accidentally treating sanitized data as instructions and echoing it back unsanitized.
@@ -107,11 +107,13 @@ The customer's DPA review should still confirm vendor-side prompt-logging polici
 **Controls shipped:**
 
 - **Per-user rolling-1-hour rate limit** on free-form prompts. Configurable via `rate_limit_per_hour` in Settings (default 30, 0 = disabled). Records `rate_limited_prompt` audit event on hit.
-- **Cumulative-cost daily spend cap** in USD. Configurable via `daily_spend_cap_usd` in Settings. Resets at 00:00 UTC. Records `daily_spend_cap_hit` audit event on hit.
+- **Cumulative-cost daily spend cap** in USD. Configurable via `daily_spend_cap_usd` in Settings. Resets at local midnight (the browser's calendar day). Records `daily_spend_cap_hit` audit event on hit.
 - **Per-session tool-call cap** to prevent infinite tool loops. Records `session_tool_cap_hit`.
-- **Token-usage observability** in every `vendor_tier1` / `vendor_tier2` audit event: input tokens, output tokens, total tokens, USD cost estimate. Lets finance attribute spend to specific users / sessions.
+- **Token-usage observability** in every `vendor_tier1` audit event (emitted for every vendor call regardless of tier): input tokens, output tokens, total tokens, USD cost estimate. Lets finance attribute spend to specific users / sessions.
 - **Streaming + abort** in the chat UI — users can cancel an in-flight expensive turn via the **Stop** button.
 - **Canned prompts are NOT rate-limited** — they bypass the AI vendor entirely and are bounded by Splunk's own search-quota controls, not vendor cost.
+
+Enforcement of the rate limit and the spend cap is browser-side (`localStorage` keyed by Splunk username), so the caps bound good-faith use rather than a determined user with a second browser or cleared site data; every block still emits an audit event, which is the durable control. The session tool-call cap is likewise in-memory per tab. Server-side enforcement is a tracked follow-up.
 
 ## :material-circle-box:{ .taiconcolor } Compliance Posture Summary
 
@@ -128,8 +130,6 @@ The customer's DPA review should still confirm vendor-side prompt-logging polici
 | LLM09 — Misinformation | Mitigated | AI-generated disclaimer + time-window reasoning + citation chips + predefined-prompt path |
 | LLM10 — Unbounded Consumption | Mitigated | Per-user rate limit + daily spend cap + session tool-call cap + token-usage audit |
 
-## :material-circle-box:{ .taiconcolor } Pending Internal Review
+## :material-circle-box:{ .taiconcolor } Which Variant These Controls Govern
 
-The current release ships with the LLM dispatch pathway gated off via the [Templates-only build flag](templates-only-build.md) pending internal review of the controls described on this page. The review's outcome will determine when a future release re-enables the LLM path. The predefined-prompt path + Splunk MCP Server integration + audit log remain fully active in the meantime — partners and customers running the current build can exercise the canned-prompt investigation flow + drill-down chips + audit observability without any LLM dispatch.
-
-For the controls described above to take effect, the LLM path must be re-enabled in a subsequent release. The same controls apply at that point; nothing on this page changes between the current release (LLM disabled) and the future re-enable release.
+The published v0.1.1 App package is the [templates-only build](templates-only-build.md): LLM dispatch is disabled at compile time, so the LLM-specific items above (LLM01/02/04/07/09/10) are moot in it by construction — there is no vendor dispatch to attack — while the audit trail, its forwarder, and the supply-chain controls remain live. In the separately-built **full-LLM variant**, every control on this page actively governs the LLM path; nothing about the controls differs between variants beyond whether the path they protect exists.

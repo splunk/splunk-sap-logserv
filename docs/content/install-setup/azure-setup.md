@@ -5,9 +5,6 @@ This page covers ingesting LogServ data from **Microsoft Azure Blob Storage** us
 !!! info "The Azure infrastructure is provided by SAP — you only install the add-on and configure the input"
     In a RISE / SAP ECS deployment the **storage account, blob container, Storage Queue, Event Grid subscription, and SAS are all provisioned and managed by SAP in the SAP ECS Azure account.** You do **not** create or configure anything in Azure. Your only tasks are to **install the `splunk_ta_sap_logserv_azure` add-on on each Heavy Forwarder** and create a **Splunk input** on it — one per Azure landscape (most deployments have a single landscape, hence one input; you can define several on the same HF if you ingest from more than one — see [Multiple landscapes / fleets](#multiple-landscapes-fleets)), using a small set of parameter values that you obtain from your **SAP support contact** — see [Parameters to obtain from SAP](#parameters-to-obtain-from-sap).
 
-!!! note "Current release: LLM functionality intentionally disabled pending review"
-    The current release ships with the AI Assistant's LLM-driven path **disabled at compile time pending internal review**. The setup procedure on this page applies in full regardless. See [Templates-only Build Flag](../ai-assistant/templates-only-build.md).
-
 ## :material-circle-box:{ .taiconcolor } Architecture overview
 
 ![Azure queue-driven ingest architecture](../../images/azure-queue-architecture.png)
@@ -44,8 +41,8 @@ Obtain the storage account name, the queue name, and the SAS from your **SAP sup
 
 **On your side (each Heavy Forwarder that will ingest Azure data):**
 
-- **LogServ Data TA `0.0.6`+** installed on the Heavy Forwarder (it provides the index-time routing/filtering/stamping; see [Installing the Data TA](install-ta.md)). The Data TA is normally distributed by the Deployment Server.
-- **Splunk TA for SAP LogServ on Azure (`splunk_ta_sap_logserv_azure`) `0.0.6`+** installed on the **same Heavy Forwarder** (see [Install the Azure add-on](#install-the-azure-add-on)). It registers the `sap_logserv_azure_queue` input kind. The input is inert until you create an input instance.
+- **LogServ Data TA `0.1.1`+** installed on the Heavy Forwarder (it provides the index-time routing/filtering/stamping; see [Installing the Data TA](install-ta.md)). The Data TA is normally distributed by the Deployment Server.
+- **Splunk TA for SAP LogServ on Azure (`splunk_ta_sap_logserv_azure`) `0.1.1`+** installed on the **same Heavy Forwarder** (see [Install the Azure add-on](#install-the-azure-add-on)). It registers the `sap_logserv_azure_queue` input kind. The input is inert until you create an input instance.
 - Network egress from the Heavy Forwarder to `<account>.blob.core.windows.net` **and** `<account>.queue.core.windows.net` (port 443 / HTTPS).
 
 !!! warning "Compact JSON format required"
@@ -70,8 +67,8 @@ The input fetches blobs **and** reads/deletes queue messages with the single SAS
 | SAS field | Must include | For |
 |---|---|---|
 | `ss` (services) | `b` (blob) **and** `q` (queue) | blob fetch + queue ops |
-| `srt` (resource types) | `s` `c` `o` (service/container/object) | account-SAS resource scope |
-| `sp` (permissions) | `r` `l` (blob read/list) **and** `p` `d`/`u` (queue process/delete/update) | fetch blobs + consume queue |
+| `srt` (resource types) | `o` (object) is what the add-on actually needs; `sco` is fine if that is what SAP issues | account-SAS resource scope |
+| `sp` (permissions) | `r` (blob read) **and** `p` (queue process — covers Get + Delete Messages); add `a` (add) only if you configure a `dead_letter_queue` (poison messages are written to it) | fetch blobs + consume queue |
 
 You can decode a SAS string to check its scope before configuring the input:
 
@@ -84,10 +81,10 @@ echo "$SAS" | tr '&' '\n' | grep -E '^(ss|srt|sp|se)='
 
 ## :material-circle-box:{ .taiconcolor } Install the Azure add-on
 
-Install `splunk_ta_sap_logserv_azure-0.0.6.tar.gz` **directly on each Heavy Forwarder** that will ingest Azure data — exactly the tier where `Splunk_TA_aws` is installed for the AWS path.
+Install `splunk_ta_sap_logserv_azure-0.1.1.tar.gz` **directly on each Heavy Forwarder** that will ingest Azure data — exactly the tier where `Splunk_TA_aws` is installed for the AWS path.
 
 - Splunk Web → **Manage Apps → Install app from file** → upload the tarball, **or**
-- `/opt/splunk/bin/splunk install app /path/splunk_ta_sap_logserv_azure-0.0.6.tar.gz`, **or**
+- `/opt/splunk/bin/splunk install app /path/splunk_ta_sap_logserv_azure-0.1.1.tar.gz`, **or**
 - configuration management (Ansible / Puppet / Chef) drops the app into `etc/apps/`, then `chown -R splunk:splunk` and restart.
 
 !!! danger "Do NOT distribute the Azure add-on via the Deployment Server"
@@ -143,13 +140,13 @@ disabled = 0
 | `sas_token` | — | The SAS from SAP (blob + queue scoped). Encrypted credential, stored in the add-on's `local/passwords.conf`, never in `inputs.conf`. |
 | `index` | `sap_logserv_logs` | Target index. Does **not** affect parsing — the Data TA's index-time pipeline keys on the sourcetype, not the index. You may point it at a custom index, but the dashboards query through the `sap_logserv_idx_macro` macro, so update that macro to match (see caveat below). |
 | `event_sourcetype` (UI label **Sourcetype**) | `sap_logserv_logs` | **Fixed at `sap_logserv_logs`.** The add-on hard-codes this sourcetype (it is not read from the stanza), and the field is shown read-only when editing the input. Leave it at the default. |
-| `interval` | `60` | Seconds between firings. Each firing drains the queue within a time budget (`min(240, interval×0.9)`). |
+| `interval` | `60` | Seconds between firings (10–3600). Each firing drains the queue within a per-firing time budget (currently `min(240 s, interval × 0.9)`). |
 | `batch_size` | `32` | Queue messages dequeued per request (1–32, the Azure max). |
 | `visibility_timeout` | `300` | Seconds a dequeued message is hidden while processing (30–604800). |
-| `max_blobs_per_fire` | `500` | Cap on blobs ingested per firing (backlog safety valve). |
-| `poison_threshold` | `5` | A message redelivered more than this many times is dead-lettered / dropped. |
+| `max_blobs_per_fire` | `500` | Cap on blobs ingested per firing (1–100000; backlog safety valve). |
+| `poison_threshold` | `5` | A message redelivered more than this many times (1–100) is dead-lettered / dropped. |
 | `dead_letter_queue` | *(empty)* | Optional queue name for poison messages (Storage Queue has no native DLQ). |
-| `include_filters` / `exclude_filters` | *(empty)* | Optional substring filters on the blob subject (beyond the built-in `logserv` match). |
+| `include_filters` / `exclude_filters` | *(empty)* | Optional **comma-separated**, case-insensitive substrings matched against the blob path (the Event Grid subject), applied on top of the built-in `logserv` requirement. Subjects containing `azure-webjobs-hosts` are always skipped. |
 | `verify_ssl` | `1` | TLS verification for Azure REST calls. |
 
 !!! note "Sourcetype is fixed; the Index is yours to change"
@@ -172,14 +169,14 @@ The input stamps every event it emits with the indexed field `cloud_provider=azu
 !!! note "Scaling one queue by cloning — supported (like the AWS add-on), but at-least-once"
     Separate input *instances* are normally for **different** queues (different `queue_name`). You *can* also point several identical inputs at the **same** queue to raise throughput — this is the same competing-consumer pattern Splunk's AWS add-on uses to scale its **SQS-Based S3** input: the queue's visibility lease hands each message to one consumer at a time, so N inputs fetch and ingest N batches of blobs in parallel (across one HF, since the input is not single-instance, or across several HFs). Understand the trade-off first:
 
-    - A **single** input is **exactly-once even under redelivery** — its per-input dedup checkpoint (`<input_name>.dedup.json`) skips an already-ingested blob if a message reappears.
+    - A **single** input is **effectively duplicate-free across the queue's redelivery window** — its per-input dedup checkpoint (`<input_name>.dedup.json`; entries are retained for about 7 days, up to 50,000 blobs) skips an already-ingested blob if a message reappears.
     - **Cloned same-queue inputs don't share that checkpoint**, so they fall back to **at-least-once** (the same guarantee as the AWS SQS-S3 input). If a blob's fetch + ingest exceeds the message's `visibility_timeout` (default 300 s), the message reappears and another input re-ingests it → **duplicate events**. The guard is identical to the AWS pattern: **set `visibility_timeout` comfortably above your worst-case per-message processing time.** (`dequeue_count` is the queue's server-side, shared counter, so the `poison_threshold` decision stays coordinated across the clones — but unlike SQS, Azure Storage Queue has no native dead-letter/redrive, so poison handling is the TA's client-side `poison_threshold` + optional `dead_letter_queue`.)
 
     For typical LogServ volumes a **single input already keeps up** (it drains up to `max_blobs_per_fire` blobs per firing). Prefer raising `batch_size` / `max_blobs_per_fire` or lowering `interval` on one input before cloning; clone same-queue inputs only when one input genuinely can't keep up, and raise `visibility_timeout` when you do.
 
 ## :material-circle-box:{ .taiconcolor } Reliability behavior
 
-- **At-least-once + dedup.** A queue message is deleted **only after** its blob ingests successfully; each blob is deduplicated by `url|etag` in a checkpoint sidecar, so a redelivered message re-ingests nothing.
+- **At-least-once + dedup.** A queue message carrying LogServ blobs is deleted **only after** those blobs ingest successfully (poison messages and irrelevant / unparseable notifications are removed without ingest — see below); each blob is deduplicated by `url|etag` in a checkpoint sidecar, so a redelivered message re-ingests nothing.
 - **Transient failures leave the message.** A 5xx / network error on a blob fetch leaves the message on the queue (it redelivers after the visibility timeout); already-ingested blobs in that message are no-ops on retry.
 - **Blob-read denied (401/403) leaves the message** and logs loudly — this is the queue-only-SAS signal (get a blob-readable credential from SAP, the message reprocesses).
 - **Poison messages** (redelivered more than `poison_threshold` times) are moved to `dead_letter_queue` if configured, else dropped, so one permanently-bad blob can't loop forever.
@@ -222,6 +219,6 @@ index=sap_logserv_logs cloud_provider=azure _index_earliest=-1h | stats count by
 
 ## :material-circle-box:{ .cboxmove } Next steps
 
-- Confirm the [LogServ App is installed](install-ta.md) on your Search Head
+- Confirm the [LogServ App is installed](../logserv-app/installation.md) on your Search Head
 - Review the [supported log types](../getting-started/supported-log-types.md) reference
 - For Splunk Cloud Victoria considerations, see [Splunk Cloud Victoria Notes](splunk-cloud-victoria-notes.md)

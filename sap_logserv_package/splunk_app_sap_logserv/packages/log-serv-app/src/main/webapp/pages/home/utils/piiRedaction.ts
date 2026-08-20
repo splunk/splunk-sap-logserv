@@ -158,3 +158,37 @@ export const redactValueIfPII = (
     if (!isPiiColumn(columnName, opts)) return value;
     return `<redacted-${fnv1a32Hex7(value)}>`;
 };
+
+/**
+ * SS16.6/SS16.8a-29 (build 315) — VALUE-CONTENT redaction for free text, the
+ * capability this module deliberately did not have before: the opt-in raw
+ * event samples put whole `_raw` strings into a vendor-bound PDF, so the
+ * app's PII policy (usernames and emails never leave in clear) has to be
+ * applied inside the text, not by column name.
+ *
+ * Scope is DELIBERATELY narrow: email addresses, and `user=<x>`-shaped
+ * assignments (the same column-name family `PII_COLUMN_PATTERNS` flags),
+ * replaced with the standard FNV tag so cardinality survives. Hostnames and
+ * IP addresses are NOT touched — they are the envelope evidence the sample
+ * exists to show, and the report banner says so in as many words. Credential
+ * shapes are handled separately by `scrubPaste` (diagIngestFacts), which the
+ * sample path runs FIRST.
+ */
+export const redactFreeTextPii = (text: string): string => {
+    /* §20.8a-3 — BOUNDED quantifiers. The unbounded `+` local part is
+     * quadratic on any long run of local-part-legal characters with no '@'
+     * (measured 12.4 s on a 100 K base64/hex run vs 34 ms bounded), and
+     * full-length raw samples now feed this exactly that shape. RFC 5321
+     * caps the local part at 64 and the domain at 255, so real addresses
+     * redact byte-identically. */
+    let out = text.replace(
+        /[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,24}/g,
+        (m) => `<redacted-${fnv1a32Hex7(m)}>`,
+    );
+    out = out.replace(
+        /((?:^|[^A-Za-z0-9_])(?:src_|dest_|target_|auth_|executing_)?user(?:name)?["']?\s*[:=]\s*)(["']?)([^"',;\s]+)\2/gi,
+        (_m, prefix: string, q: string, v: string) =>
+            `${prefix}${q}<redacted-${fnv1a32Hex7(v)}>${q}`,
+    );
+    return out;
+};

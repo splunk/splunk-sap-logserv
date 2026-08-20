@@ -102,6 +102,8 @@ See the [Azure Setup Guide](../install-setup/azure-setup.md) for the full Azure 
   Splunk Heavy Forwarders --> (same Data TA routing + filtering) --> Indexer --> Search Head
 ```
 
+The service account is **customer-homed**: you create it in a GCP account of your own, hand its email to SAP support, and SAP grants it read access to the LogServ subscription + bucket (the GCP analogue of the AWS path's cross-account IAM role).
+
 See the [GCP Setup Guide](../install-setup/gcp-setup.md) for the full GCP ingest setup.
 
 ## :material-circle-box:{ .taiconcolor } Index-Time Filtering
@@ -110,7 +112,7 @@ The Data TA provides built-in index-time filtering that lets you control which l
 
 - **Include patterns** -- Only ingest log types that match the pattern (e.g., `linux/*` to include only Linux logs)
 - **Exclude patterns** -- Drop specific log types (e.g., `linux/cron` to exclude cron logs)
-- **Days in past** -- Drop data older than a specified number of days based on the S3 object path date
+- **Days in past** -- Drop events whose embedded `_time` timestamp in the raw NDJSON is older than midnight UTC N days ago (the cutoff keys on the event's own timestamp, not on the storage object's path date)
 
 Filtered events are routed to `nullQueue` and never consume Splunk license. Filter settings are configured on the Deployment Server and pushed to Heavy Forwarders automatically.
 
@@ -136,7 +138,7 @@ The LogServ App is built as a React application. The Data TA architecture is ind
   - **Build pipeline:** webpack-based bundle build atop `@splunk/webpack-configs`. Each Splunk app page resolves to a single React bundle.
   - **UI primitives:** `@splunk/react-ui` (forms, tables, modals), `@splunk/visualizations` (charts), `@xyflow/react` (Topology graph), `styled-components` for theming.
   - **State management:** React context for cross-cutting concerns (AI Assistant, time range, refresh ticker); `useState` / `useReducer` for component-local state. No Redux.
-  - **Data fetching:** custom `useSearch` hook wraps `@splunk/search-job` for SPL dispatches; results expose `rows / loading / error` to consuming components.
+  - **Data fetching:** custom `useSearch` hook wraps `@splunk/search-job` for SPL dispatches; results expose `rows / loading / error` plus the search metadata the panel toolbar and Data Doctor consume (dispatched SPL, sid, effective time window, row count). Rollup-backed panels auto-route sub-90-minute windows to a byte-equal raw query — see [Performance & Data Freshness](../logserv-app/dashboards/performance.md).
   - **Routing:** React Router 7 with `HashRouter` so URLs survive Splunk Web's app-namespace routing; query strings carry time-range hydration (`?earliest=...&latest=...`).
 
 **Build-time feature flags:**
@@ -172,12 +174,12 @@ Tool results from the Splunk MCP Server are typed `Hidden<MCPToolResult>` in Typ
 
 **Two paths:**
 
-  - **Predefined prompts (no LLM call):** the user opens the prompt browser and clicks one of the 48 cataloged prompts. The orchestrator dispatches the saved search via the Splunk MCP Server, renders the result tile in the right pane, and appends a static interpretation + suggested-next-steps card. **No vendor LLM is invoked.** This is the path used in the templates-only build.
+  - **Predefined prompts (no LLM call):** the user opens the prompt browser and clicks one of the cataloged prompts. The orchestrator dispatches the saved search via the Splunk MCP Server, renders the result tile in the right pane, and appends a static interpretation + suggested-next-steps card. **No vendor LLM is invoked.** This is the path used in the templates-only build.
   - **Free-form prompts (LLM-driven):** the user types a natural-language question. The orchestrator sends the system primer + user message + tool definitions to the active vendor (Anthropic / OpenAI / Azure OpenAI / AWS Bedrock). The vendor picks tools, the orchestrator dispatches them in parallel via MCP, the vendor sees only the privacy-tier summary, and the vendor synthesizes a narrative response.
 
 **Audit log:**
 
-Every AI Assistant action — both paths — produces audit events into a dedicated `logserv_ai_assistant_audit` index. Categories include `local_only` (canned-prompt dispatches), `vendor_tier1` / `vendor_tier2` (LLM calls with token counts + USD cost estimate), `security_blocked_spl`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, plus three legal-acknowledgement categories. The Audit Log tab in Settings provides an in-app browser; an optional HEC forwarder can stream events to a separate Splunk / SIEM destination for tamper-evidence.
+Every AI Assistant action — both paths — produces audit events into a dedicated `logserv_ai_assistant_audit` index. Categories include `local_only` (canned-prompt dispatches), `vendor_tier1` / `vendor_tier2` (LLM calls with token counts + USD cost estimate), `security_blocked_spl`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, the two legal-acknowledgement categories, and more — the [Audit Log](../ai-assistant/audit-log.md) page enumerates the full category set. The Audit Log tab in Settings provides an in-app browser; an optional HEC forwarder can stream events to a separate Splunk / SIEM destination for tamper-evidence.
 
 **Splunk MCP Server prerequisite:**
 
@@ -208,4 +210,4 @@ User-arranged graph layouts are persisted via Splunk KV Store collection `logser
 
 **Data refresh:**
 
-Topology data is populated by three hourly scheduled saved searches (`logserv_topology_aggregate_nodes / _edges / _inventory`, cron `5 * * * *`) that write to the KV Store collections. The view re-reads the KV Store on initial mount, on global TimeRange picker change, and whenever the user clicks the toolbar's **Refresh** button. There is no auto-polling — Splunk's hourly cron is what governs data freshness. The previous Live | Lookup toggle was removed in session 044 because the underlying data only changes hourly, so client-side polling at 30s intervals re-rendered the same data 119 times per hour. Per-node detail panels (right sidebar tabs) continue to re-fetch via on-demand SPL whenever a node is selected.
+Topology data is populated by three hourly scheduled saved searches (`logserv_topology_aggregate_nodes / _edges / _inventory`, cron `5 * * * *`) that write to the KV Store collections. The view re-reads the KV Store on initial mount, on global TimeRange picker change, and whenever the user clicks the toolbar's **Refresh** button. There is no auto-polling — Splunk's hourly cron is what governs data freshness. An earlier Live | Lookup toggle was removed because the underlying data only changes hourly, so client-side polling at 30s intervals re-rendered the same data 119 times per hour. Per-node detail panels (right sidebar tabs) continue to re-fetch via on-demand SPL whenever a node is selected.

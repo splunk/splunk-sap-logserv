@@ -3,7 +3,7 @@
         "name": "splunk_ta_sap_logserv_azure",
         "restRoot": "splunk_ta_sap_logserv_azure",
         "displayName": "Splunk TA for SAP LogServ on Azure",
-        "version": "0.0.6",
+        "version": "0.1.1",
         "schemaVersion": "0.0.9",
         "isVisible": true
     },

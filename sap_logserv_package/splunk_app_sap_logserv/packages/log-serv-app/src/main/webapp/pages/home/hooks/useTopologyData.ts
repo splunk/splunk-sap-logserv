@@ -9,6 +9,9 @@ import type {
     IntegrationType,
 } from '../topology/types';
 import { detectDbVendor } from '../topology/types';
+import { collectBucketIds, edgeDisplayId } from '../topology/edgeIds';
+import { buildNodeTraffic, buildEdgeAppServers } from '../topology/panelFacts';
+import type { EndpointAttribution, TrafficRow, TrafficEdgeGroup } from '../topology/panelFacts';
 
 /**
  * useTopologyData — KV Store-backed composite hook (session 035 / build 188).
@@ -72,6 +75,11 @@ interface EdgeBucketRow {
     bucket_ts: number;
     call_count: number;
     error_count: number;
+    /** Build 325 / session 110 — RFC rows only: the SID-side gateway
+     *  listening address (a group-by of the rfc arm, projected as a real
+     *  field since the per-app-server key change). Absent on other types
+     *  AND on RFC rows stored before build 325. */
+    local_ip?: string;
     /** Build 224 / session 037 — first-class warning count from
      *  hana_tenant edges. Null for non-hana_tenant edge types. */
     warning_count?: number;
@@ -116,6 +124,24 @@ export interface UseTopologyDataResult {
     inventoryStatus: { totalEndpoints: number; resolved: number };
     staleness?: StaleNess;
     isEmpty: boolean;
+    /* ---- Build 322 / session 108 — the right panel's attribution facts ----
+     * Classification happens HERE, keyed by node id, because the sidebar has
+     * no access to what makes the verdict honest and would inevitably
+     * re-derive it by comparing a rendered label against a canonical value —
+     * the shape of the five prior id-vs-label bugs in this view (§8a-7). */
+
+    /** node id -> canonical (kind, value) + the inventory's owning SID.
+     *  A node id ABSENT from this record must render no badge at all: "we
+     *  could not resolve this id" is a different statement from "no system
+     *  claims it". */
+    endpointAttribution: Record<string, EndpointAttribution>;
+    /** canonical_value -> owning SID. The Hosts tab's rows are raw host names
+     *  from the `node_host` metric and the inventory is keyed by
+     *  canonical_value, so that one lookup is legitimately by value. */
+    inventoryOwnerByValue: Record<string, string>;
+    /** node id -> traffic rows accounting for 100% of that node's calls.
+     *  Sums to the panel's own `Total calls` by construction (§8a-1). */
+    hostTrafficByNode: Record<string, TrafficRow[]>;
 }
 
 const APP = 'splunk_app_sap_logserv';
@@ -145,8 +171,13 @@ const STALENESS_THRESHOLD_HOURS = 6;
  *
  * If the spec doesn't match any pattern, falls back to `now` and logs to
  * console (defensive — never throw).
+ *
+ * Exported since build 325: IntegrationTopology resolves the same window to
+ * build SEARCH_NODE_HOST_COUNTS' coarse mongod-pushdown bounds, so the bulk
+ * host-count read and the KV graph fetches share one resolver (and one set
+ * of resolver quirks — the filed preset gap affects both identically).
  */
-const resolveTimeSpec = (spec: string, now: number = Math.floor(Date.now() / 1000)): number => {
+export const resolveTimeSpec = (spec: string, now: number = Math.floor(Date.now() / 1000)): number => {
     if (!spec || spec === 'now') return now;
     const numeric = Number(spec);
     if (Number.isFinite(numeric) && numeric > 0) return numeric;
@@ -243,17 +274,42 @@ const parseFilterClauses = (raw: string | undefined): { field: string; value: st
     }
 };
 
-/** Top-2 sources by outbound call volume become focused. Preserves the
- *  existing build-109 visual convention. */
-const computeFocusedNodeIds = (edges: TopologyEdge[]): Set<string> => {
+/** How many SAP systems rank as "High Traffic SID". Build 331 / session
+ *  112 — user-directed 10 -> 5. On estates with <= 5 SIDs every SID is
+ *  High Traffic (the accepted small-estate behavior, unchanged in shape). */
+const HIGH_TRAFFIC_TOP_N = 5;
+
+/* Build 324 / session 109 — "High Traffic SID" promotion (replaces the
+ * old top-2-by-SOURCED-volume focus computation):
+ *
+ *   - Volume = TOTAL incident calls (inbound + outbound + bidirectional):
+ *     every edge credits its callCount to BOTH endpoints. User decision —
+ *     "High Traffic" means total traffic touching the system, not just
+ *     calls it originates (under sourced-only, a mostly-inbound system
+ *     like XCP ranked near the bottom).
+ *   - Candidates are SIDs ONLY (`sidNodeIds` = every real-bucket +
+ *     synthetic SID node id): partner/IP nodes neither occupy ranking
+ *     slots nor get promoted. This makes the build-224 guard structural
+ *     and fixes the quirk where high-volume client IPs consumed the
+ *     promotion slots.
+ *   - Top HIGH_TRAFFIC_TOP_N (build 324 set 10, build 331 tightened to 5
+ *     per user direction). Below-cutoff SIDs are Regular Traffic.
+ *   - The hard-coded XCP|XHQ seed no longer participates: stored row
+ *     kinds do not influence the outcome (old rows may still carry
+ *     `sid_focused`; the render recomputes both directions). */
+const computeHighTrafficNodeIds = (
+    edges: TopologyEdge[],
+    sidNodeIds: Set<string>,
+): Set<string> => {
     const totals = new Map<string, number>();
     edges.forEach((e) => {
-        if (e.direction === 'client' || e.direction === 'bidi') {
-            totals.set(e.source, (totals.get(e.source) ?? 0) + e.callCount);
-        }
+        totals.set(e.source, (totals.get(e.source) ?? 0) + e.callCount);
+        totals.set(e.target, (totals.get(e.target) ?? 0) + e.callCount);
     });
-    const sorted = Array.from(totals.entries()).sort((a, b) => b[1] - a[1]);
-    return new Set(sorted.slice(0, 2).map(([id]) => id));
+    const sorted = Array.from(totals.entries())
+        .filter(([id]) => sidNodeIds.has(id))
+        .sort((a, b) => b[1] - a[1]);
+    return new Set(sorted.slice(0, HIGH_TRAFFIC_TOP_N).map(([id]) => id));
 };
 
 export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
@@ -467,12 +523,23 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
         // ---- Aggregate edges by (retargeted source, retargeted target, type) ----
         // Apply inventory retargeting BEFORE aggregation so multiple raw-IP
         // edges that resolve to the same SID-SID pair collapse into one edge.
-        // Group key is "<retargetedSource>::<retargetedTarget>::<type>" — stable
-        // across renders for the same logical edge regardless of which buckets
-        // are in scope. The row's own SPL-derived `id` is retained on the
-        // first row of each group for session-036 right-pane drilldowns.
+        // Group key is edgeDisplayId(retargetedSource, retargetedTarget, type)
+        // — stable across renders for the same logical edge regardless of
+        // which buckets are in scope. It MUST include the type: `splType` is
+        // taken from an arbitrary member row below, so without it a merged
+        // edge could span two types and the Performance read would aggregate
+        // one type's bucket_labels under the other's histogram.
+        //
+        // Build 321: every member row is retained (`rows`), so the group can
+        // emit `bucketIds` — the stored ids the detail tabs read. Before 321
+        // only the first row was kept and the DISPLAY id was emitted as the
+        // edge id, which the SPL sanitizer rejected: all four Edge Details
+        // tabs dispatched nothing from build 240 to build 320.
         const edgeMap = new Map<string, {
             row: EdgeBucketRow;
+            rows: EdgeBucketRow[];
+            /** bucket_ts -> per-hour totals, for the in-memory activity series. */
+            activityByBucket: Map<number, { count: number; errorCount: number }>;
             retargetedSource: string;
             retargetedTarget: string;
             displayId: string;
@@ -494,15 +561,41 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             authSuccessTotal: number;
             authFailTotal: number;
         }>();
+        /* Every bucket the edge rows span, ascending — the x-axis the
+         * in-memory activity series is zero-filled against. ActivityTrendChart
+         * positions bars by INDEX (x = i * barW), so a sparse series would
+         * silently compress the timeline. */
+        const allEdgeBuckets = Array.from(
+            new Set(edgeRows.map((r) => r.bucket_ts)),
+        ).sort((a, b) => a - b);
+
         edgeRows.forEach((row) => {
             const w = row.call_count > 0 ? row.call_count : 0;
             const retargetedSource = retarget(row.source_id);
             const retargetedTarget = retarget(row.target_id);
-            const groupKey = `${retargetedSource}::${retargetedTarget}::${row.type}`;
+            const groupKey = edgeDisplayId(retargetedSource, retargetedTarget, row.type);
             const existing = edgeMap.get(groupKey);
+            const bucketAdd = (
+                target: Map<number, { count: number; errorCount: number }>,
+            ): void => {
+                const prev = target.get(row.bucket_ts);
+                if (prev) {
+                    prev.count += row.call_count;
+                    prev.errorCount += row.error_count ?? 0;
+                } else {
+                    target.set(row.bucket_ts, {
+                        count: row.call_count,
+                        errorCount: row.error_count ?? 0,
+                    });
+                }
+            };
             if (!existing) {
+                const activityByBucket = new Map<number, { count: number; errorCount: number }>();
+                bucketAdd(activityByBucket);
                 edgeMap.set(groupKey, {
                     row,
+                    rows: [row],
+                    activityByBucket,
                     retargetedSource,
                     retargetedTarget,
                     displayId: groupKey,
@@ -525,6 +618,8 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
                     authFailTotal: row.auth_fail_count ?? 0,
                 });
             } else {
+                existing.rows.push(row);
+                bucketAdd(existing.activityByBucket);
                 existing.callCountTotal += row.call_count;
                 existing.errorCountTotal += row.error_count ?? 0;
                 existing.warningCountTotal += row.warning_count ?? 0;
@@ -561,12 +656,20 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             }
         });
 
-        const edges: TopologyEdge[] = Array.from(edgeMap.values())
-            // Drop self-loops AFTER retargeting — an IP-target edge that
-            // retargets to its own source SID becomes a self-loop and gets
-            // filtered here (e.g. RFC edge XCP -> 10.x.y.z where the IP is
-            // also XCP's own local_ip).
-            .filter((agg) => agg.retargetedSource !== agg.retargetedTarget)
+        /* Drop self-loops AFTER retargeting — an IP-target edge that retargets
+         * to its own source SID becomes a self-loop and gets filtered here
+         * (e.g. RFC edge XCP -> 10.x.y.z where the IP is also XCP's own
+         * local_ip).
+         *
+         * Build 322: the surviving groups are named because the per-node
+         * traffic rows accumulate from THEM, not from `edgeRows`. A self-loop
+         * contributes to no rendered edge and to no headline total, so
+         * counting one would make the Hosts tab's traffic table out-sum the
+         * `Total calls` row one scroll above it (§8a-3). */
+        const survivingGroups = Array.from(edgeMap.values())
+            .filter((agg) => agg.retargetedSource !== agg.retargetedTarget);
+
+        const edges: TopologyEdge[] = survivingGroups
             .map((agg) => ({
                 id: agg.displayId,
                 source: agg.retargetedSource,
@@ -574,6 +677,30 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
                 type: splTypeToIntegrationType(agg.row.type),
                 direction: agg.row.direction,
                 callCount: agg.callCountTotal,
+                /* The stored ids the Edge Details tabs read. Sorted inside
+                 * collectBucketIds — load-bearing: useSearch keys its dispatch
+                 * effect on the derived query STRING, and the KV fetch issues
+                 * no `sort` parameter, so row order is unspecified. */
+                bucketIds: collectBucketIds(agg.rows),
+                /* Zero-filled against every bucket any edge spans, so the
+                 * Overview legend decomposes `callCount` exactly. */
+                activity: allEdgeBuckets.map((ts) => {
+                    const b = agg.activityByBucket.get(ts);
+                    return {
+                        time: ts,
+                        count: b ? b.count : 0,
+                        errorCount: b ? b.errorCount : 0,
+                    };
+                }),
+                /* Build 325 (plan item E3) — RFC edges carry the per-app-
+                 * server split of ALL member rows (grouped by the stored
+                 * local_ip; pre-325 rows group under null). Sums to
+                 * callCount by construction — same self-checking property
+                 * as the activity series above. Other types store no
+                 * local_ip, so the field stays absent there. */
+                appServers: agg.row.type === 'rfc'
+                    ? buildEdgeAppServers(agg.rows)
+                    : undefined,
                 splType: agg.row.type,
                 splFilterClauses: parseFilterClauses(agg.row.spl_filter_clauses),
                 splSourcetype: agg.row.spl_sourcetype,
@@ -667,6 +794,9 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             if (synthSid) {
                 // Synthetic SID node: surfaces the SID in the topology even
                 // though it had no direct gateway events in the time window.
+                // Build 324 — kind is finalized AFTER the High Traffic
+                // promotion is computed (refinedSynthesizedNodes below);
+                // seeded here as Regular.
                 synthesizedNodes.push({
                     id,
                     label: synthSid,
@@ -675,18 +805,25 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
                     eventCount: 0,
                 });
             } else {
+                /* Build 324 — tenant_db endpoints get the TENANT tag
+                 * (SID-format tenant circle + combo icon in PartnerNode);
+                 * all other unmatched endpoints stay EXT partners. */
+                const isTenantDb = nodeIdToCanonical.get(id)?.kind === 'tenant_db';
                 synthesizedNodes.push({
                     id,
                     label: idLabelHints.get(id) ?? id,
                     kind: 'partner',
-                    tag: 'EXT',
+                    tag: isTenantDb ? 'TENANT' : 'EXT',
                     eventCount: 0,
                 });
             }
         });
 
-        // Compute focused node ids from edge volumes (top-2 by outbound call_count).
-        const focusedIds = computeFocusedNodeIds(edges);
+        // Build 324 — High Traffic promotion: top-HIGH_TRAFFIC_TOP_N SIDs
+        // (5 since build 331) by TOTAL incident call volume. sidToNodeId
+        // covers every SID (real bucket rows + synthesized), so its values
+        // are the complete candidate set.
+        const highTrafficIds = computeHighTrafficNodeIds(edges, new Set(sidToNodeId.values()));
 
         /* Build 213 / session 036 — derive `knownHanaSystems` from edge
          * data. The KEY DISTINCTION (build 213 fix): in a `hana_tenant`
@@ -729,25 +866,30 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
         };
 
         const aggregatedNodes: TopologyNode[] = Array.from(nodeAggMap.values()).map((agg) => {
-            /* Build 224 / session 037 — only promote a node to `sid_focused`
-             * if the SPL has already classified it as some kind of SID
-             * (`sid_focused` or `sid_secondary`). Without this guard, a
-             * high-volume partner IP (e.g. a webdispatcher clientip whose
-             * outbound calls outpace XCP's) would get promoted to focused
-             * because computeFocusedNodeIds picks top-2 sources by call
-             * volume regardless of node kind. This bug was latent until
-             * Path C added webdispatcher clientip / gateway peer_ip /
-             * hana:audit client_ip as nodeAggMap entries — pre-Path-C
-             * those IPs were synthesized partners and skipped this path. */
+            /* Build 324 / session 109 — kind is recomputed BOTH ways for
+             * SIDs: top-HIGH_TRAFFIC_TOP_N High Traffic → sid_focused,
+             * every other SID → sid_secondary (this also DEMOTES stale
+             * stored `sid_focused` rows from the retired XCP|XHQ seed
+             * era). The build-224 "SIDs only" guard is structural now —
+             * the candidate set fed to computeHighTrafficNodeIds is SIDs
+             * by construction, and partners keep their stored kind here. */
             const isSid = agg.row.kind === 'sid_focused' || agg.row.kind === 'sid_secondary';
-            const baseKind: NodeKind = isSid && focusedIds.has(agg.row.id)
-                ? 'sid_focused'
+            const baseKind: NodeKind = isSid
+                ? (highTrafficIds.has(agg.row.id) ? 'sid_focused' : 'sid_secondary')
                 : agg.row.kind;
+            /* Build 324 — tenant_db endpoints (from edge clauses) carry the
+             * TENANT tag so PartnerNode renders the SID-format tenant
+             * circle. Defensive here: tenant endpoints normally have no
+             * bucket rows (the synthesized path below is the usual one). */
+            const canonicalKind = nodeIdToCanonical.get(agg.row.id)?.kind;
+            const tag = canonicalKind === 'tenant_db'
+                ? ('TENANT' as SystemTag)
+                : refineTag(agg.row.label, agg.row.tag);
             return {
                 id: agg.row.id,
                 label: agg.row.label,
                 kind: baseKind,
-                tag: refineTag(agg.row.label, agg.row.tag),
+                tag,
                 eventCount: agg.eventCountTotal,
             };
         });
@@ -758,7 +900,14 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
          * a uniform pass for both real-bucket and synthesized nodes. */
         const refinedSynthesizedNodes = synthesizedNodes.map((n) => ({
             ...n,
-            tag: refineTag(n.label, n.tag),
+            /* Build 324 — synthetic SIDs participate in the High Traffic
+             * promotion like real-bucket SIDs (e.g. the HANA systems,
+             * which never get gateway-fed bucket rows). TENANT tags are
+             * preserved (refineTag would not match them anyway). */
+            kind: n.kind === 'sid_secondary' && highTrafficIds.has(n.id)
+                ? ('sid_focused' as NodeKind)
+                : n.kind,
+            tag: n.tag === 'TENANT' ? n.tag : refineTag(n.label, n.tag),
         }));
 
         const nodes: TopologyNode[] = [...aggregatedNodes, ...refinedSynthesizedNodes];
@@ -830,6 +979,52 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             });
         });
 
+        /* ---- Build 322 / session 108 — the right panel's attribution facts ----
+         *
+         * endpointAttribution answers "what is this endpoint, and who owns it"
+         * for every id we can canonically identify. `owner` comes from the
+         * inventory, which is fetched unwindowed and is written on
+         * last-unambiguous-hour evidence with no retention sweep — the panel
+         * discloses that; the record itself just reports what is there.
+         *
+         * hostTrafficByNode reads the SURVIVING groups' member rows, because
+         * retargeting folds an inventory-resolved host endpoint into its SID's
+         * node BEFORE grouping: the rendered edge's node-side endpoint is the
+         * SID, and the host name survives only on the stored rows (§8a-2).
+         * That is also what gives the table per-host granularity when several
+         * hosts fold onto one SID. Nothing here MUTATES a row — `agg.rows`
+         * holds references shared with collectBucketIds and the build-321
+         * activity accumulator. */
+        const endpointAttribution: Record<string, EndpointAttribution> = {};
+        nodeIdToCanonical.forEach((canonical, id) => {
+            const owner = (canonical.kind === 'ip' || canonical.kind === 'host')
+                ? (inventoryByValue.get(canonical.value) ?? null)
+                : null;
+            endpointAttribution[id] = {
+                kind: canonical.kind,
+                value: canonical.value,
+                owner,
+                resolved: owner !== null,
+            };
+        });
+
+        const inventoryOwnerByValue: Record<string, string> = {};
+        inventoryByValue.forEach((sid, value) => {
+            inventoryOwnerByValue[value] = sid;
+        });
+
+        const trafficGroups: TrafficEdgeGroup[] = survivingGroups.map((agg) => ({
+            retargetedSource: agg.retargetedSource,
+            retargetedTarget: agg.retargetedTarget,
+            splType: agg.row.type,
+            direction: agg.row.direction,
+            rows: agg.rows,
+        }));
+        const hostTrafficByNode = buildNodeTraffic(
+            trafficGroups,
+            (id) => nodeIdToCanonical.get(id) ?? null,
+        );
+
         return {
             nodes,
             edges,
@@ -840,6 +1035,9 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             inventoryStatus: { totalEndpoints, resolved },
             staleness,
             isEmpty,
+            endpointAttribution,
+            inventoryOwnerByValue,
+            hostTrafficByNode,
         };
     }, [nodeRows, edgeRows, inventoryRows, loading, errors]);
 };

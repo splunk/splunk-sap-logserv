@@ -2,8 +2,8 @@
 
 This page is for **customer security teams** evaluating the LogServ App's AI Assistant feature against Google's [Secure AI Framework (SAIF)](https://saif.google/). It complements the [OWASP LLM Top 10 Compliance](owasp-llm-compliance.md) page — same set of controls, organized along SAIF's four-pillar structure and mapped to SAIF's 15 Key Risks catalog.
 
-!!! warning "Current release: LLM functionality intentionally disabled pending review"
-    The current release ships with the LLM-driven path **disabled at compile time pending internal review**. The controls described on this page are designed, implemented, and exercised by the build's CI pipeline — but the LLM dispatch pathway itself is gated off via the [Templates-only build flag](templates-only-build.md) until the review concludes. The predefined-prompt path + Splunk MCP integration + audit log remain fully active. This page documents the security architecture so reviewers can evaluate the posture for a future release that re-enables the LLM path.
+!!! warning "Full-LLM build variant only"
+    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): it dispatches to no LLM vendor, so the AI-specific risk surface this page maps **does not exist in the published package**. The architecture described below governs the separately-built **full-LLM variant** used in approved deployments.
 
 ## :material-circle-box:{ .taiconcolor } The Privacy Boundary
 
@@ -40,7 +40,7 @@ SAIF's Data pillar covers how AI systems handle training data, user data, and th
 
 - `Hidden<T>` type system blocks event data egress at compile time.
 - Tier 1 (default) sends only count + timing.
-- Tier 2 PII redaction hashes identifier columns (email, user, username, IP, MAC, account) using a per-value tag (`<redacted-XXXXXXX>`) so the LLM can still reason about cardinality without seeing the raw value. Hostname redaction is opt-in via Settings.
+- Tier 2 PII redaction replaces identifier-column values (email, user, username, IP, MAC, account) with a stable per-value pseudonym tag (`<redacted-XXXXXXX>` — a short non-cryptographic digest chosen for stability, not pre-image resistance) so the LLM can still reason about cardinality without seeing the raw value. Hostname redaction is opt-in via Settings.
 - Every elevation from Tier 0/1 → Tier 2 is recorded in the audit log with the admin's user identity, timestamp, and previous tier.
 
 ### :material-server-network:{ .taiconcolor } Model
@@ -63,7 +63,7 @@ SAIF's Application pillar covers input validation, access management, and output
 
 **Input Validation — multi-layered:**
 
-- **User-prompt anomaly detection.** Eight pattern groups (role redefinition, persona shift, system prompt leak, control tokens, long base64 blobs, system impersonation, tool extraction, excessive length) run on every user prompt before dispatch. **Flag-and-proceed semantics:** matches fire a `user_prompt_jailbreak_flag` audit event for SOC review but do not block the prompt — regex-based detection has false positives, and blocking would cripple legitimate investigative queries.
+- **User-prompt anomaly detection.** Five pattern groups (role redefinition, persona shift, system-prompt leak, control tokens, long base64 blobs) run on every user prompt before dispatch; prompt length and a character-class fingerprint are captured as recorded signals alongside the matched groups. **Flag-and-proceed semantics:** matches fire a `user_prompt_jailbreak_flag` audit event for SOC review but do not block the prompt — regex-based detection has false positives, and blocking would cripple legitimate investigative queries.
 - **SPL static analysis on AI-authored queries.** Every `splunk_run_query` call from the AI runs through a guard that blocks forbidden operators (`collect`, `outputlookup`, `delete`, `sendalert`, `script`, etc.). Blocked queries surface as a `security_blocked_spl` audit event.
 - **Tool-result sanitization.** AI-authored tool arguments are schema-validated. Tier 2 categorical aggregates pass through a per-value sanitizer that replaces strings matching known jailbreak idioms with `<filtered>`.
 - **`<TOOL_RESULT_DATA>` sentinel block** wraps every tool-result summary the AI sees. The system primer instructs the AI to treat anything inside the sentinel as data from the customer's environment, never as instructions.
@@ -71,7 +71,7 @@ SAIF's Application pillar covers input validation, access management, and output
 **Application Access Management:**
 
 - **Per-user prompt rate limit** (configurable; default tunable in Settings) bounds free-form prompt volume per hour.
-- **Per-user daily spend cap** (configurable; default `0` = no cap) bounds vendor cost per day. Tally resets at local midnight. Predefined-prompt executions don't accumulate against the cap.
+- **Per-user daily spend cap** (default **50.00 USD**; set to `0` to disable) bounds vendor cost per day. Tally resets at local midnight. Predefined-prompt executions don't accumulate against the cap.
 - **Per-chat-session MCP tool-dispatch cap** is defense-in-depth above the per-message `MAX_TOOL_TURNS` limit. Prevents runaway tool-loops in adversarial automation.
 - **Feature toggle.** The master `enabled` switch in Settings gates the entire feature; transitions from OFF to ON require admin acceptance of a liability acknowledgement modal (recorded with the admin's user identity, timestamp, disclaimer hash, and version per Splunk's standard opt-in pattern).
 
@@ -102,7 +102,7 @@ There are no destructive operations available to the AI: no event deletion, no c
 
 **Agent Observability:**
 
-- **Hash-chained audit log.** Every meaningful AI Assistant event (canned prompt execution, free-form vendor call, blocked SPL, rate-limit hit, spend-cap hit, prompt anomaly, tier elevation, settings change) lands in the `logserv_ai_assistant_audit` index with a stable per-tab session ID + monotonic sequence number. The chat panel surfaces "AI is generating response" status; the [Audit Log viewer](audit-log.md) in Settings lets reviewers filter by category, user, and time range.
+- **Sequenced audit log.** Every meaningful AI Assistant event (canned prompt execution, free-form vendor call, blocked SPL, rate-limit hit, spend-cap hit, prompt anomaly, tier elevation, settings change) lands in the `logserv_ai_assistant_audit` index with a stable per-tab session ID + monotonic per-session sequence number, so gaps and reordering are detectable; tamper-evidence comes from the optional HEC forwarder to a separately-administered destination. The chat panel surfaces "AI is generating response" status; the [Audit Log viewer](audit-log.md) in Settings lets reviewers filter by category, user, and time range.
 - **HEC audit forwarder.** Admin can configure a Splunk HEC destination (e.g., a separate indexer, a SIEM, S3-with-Object-Lock owned by a different admin team) for tamper-evident off-host audit copies. Forwarder failures themselves are recorded locally so an off-host divergence is detectable.
 - **Vendor token-usage audit events** capture provider, model, input/output tokens, USD cost estimate (computed locally from list pricing), and turn count — letting SOC teams pivot on cost-anomaly indicators.
 
@@ -120,15 +120,15 @@ The table below maps each SAIF Key Risk to LogServ's posture. **Strong** = flags
 | 4 | Excessive Data Handling (EDH) | **Strong** | `Hidden<T>` privacy boundary, Tier 1 default, Tier 2 PII redaction. |
 | 5 | Model Exfiltration (MXF) | N/A | LogServ does not host models. |
 | 6 | Model Deployment Tampering (MDT) | Partial | Splunkbase precert + DS-channel distribution. Tarball GPG signing is a known gap. |
-| 7 | Denial of ML Service (DMS) | Partial | Per-user prompt rate limit + per-user daily spend cap + per-session tool dispatch cap. |
+| 7 | Denial of ML Service (DMS) | Partial | Per-user prompt rate limit + per-user daily spend cap + per-session tool dispatch cap (browser-side enforcement — see Known Residual Gaps). |
 | 8 | Model Reverse Engineering (MRE) | N/A | Publishable system primer, no proprietary prompt engineering. |
 | 9 | Insecure Integrated Component (IIC) | **Strong** | Read-only tool catalog, schema-validated tool calls, SPL static-analysis guard. |
-| 10 | Prompt Injection (PIJ) | Partial | Tool-result vector physically blocked by `Hidden<T>` + sentinel + per-value sanitizer. User-prompt vector flagged (8 pattern groups), not blocked. |
+| 10 | Prompt Injection (PIJ) | Partial | Tool-result vector physically blocked by `Hidden<T>` + sentinel + per-value sanitizer. User-prompt vector flagged (five pattern groups), not blocked. |
 | 11 | Model Evasion (MEV) | N/A | LogServ has no classifiers to evade; ML-evasion is vendor-side. |
 | 12 | Sensitive Data Disclosure (SDD) | **Strong** | Same controls as EDH (privacy boundary + redaction). |
 | 13 | Inferred Sensitive Data (ISD) | Partial | Strong by construction (Tier 1 = no values; Tier 2 = redacted aggregates). Hostname redaction is opt-in — small inference surface for environment topology when off. |
 | 14 | Insecure Model Output (IMO) | **Strong** | LLM output never executed; no `dangerouslySetInnerHTML`; drill-down URLs encoded + tab-nabbing flags. |
-| 15 | Rogue Actions (RA) | **Strong** | Read-only tool surface, no autonomous loop, hash-chained audit log + off-host forwarder. |
+| 15 | Rogue Actions (RA) | **Strong** | Read-only tool surface, no autonomous loop, sequenced audit log + off-host HEC forwarder. |
 
 **Summary:** 5 Strong, 5 Partial, 5 N/A. Zero "Not covered" — every SAIF risk in scope for LogServ's architecture has at least partial mitigation.
 
@@ -168,6 +168,7 @@ Honesty matters in a security architecture page. The following gaps are document
 1. **User-prompt jailbreak detection is flag-and-proceed, not block.** Regex pattern matching has false positives. Pattern coverage will grow as new attack patterns surface in the wild. The flag-and-proceed posture lets SOC teams review while preserving legitimate investigative use.
 2. **Hostname redaction at Tier 2 is opt-in (default off).** Hostname patterns can leak environment topology. Admins can flip the default in Settings if their threat model requires it.
 3. **Tarball GPG signing is not yet implemented.** Splunkbase AppInspect precert + DS-channel distribution cover most of the threat model, but a signed tarball would provide an additional integrity proof point. Tracked as a follow-up item.
+4. **The rate limit and daily spend cap are enforced browser-side** (`localStorage` keyed by Splunk username). They bound good-faith use; a user with a second browser or cleared storage can exceed them. Every block still writes an audit event, so attempts remain visible. Server-side enforcement is a tracked follow-up.
 
 ---
 
@@ -190,5 +191,5 @@ Concrete actions a customer's security team can take to validate or strengthen t
 - [Settings](settings.md) — admin-controlled toggles and configuration
 - [Audit Log](audit-log.md) — viewer + filter conventions + tamper-evidence model
 - [Free-Form Prompts](free-form-prompts.md) — system primer + tool catalog
-- [Templates-only Build Flag](templates-only-build.md) — the current LLM-disabled gating mechanism
+- [Build Variants](templates-only-build.md) — the templates-only build published as the v0.1.1 release tarball
 - Google's [Secure AI Framework (SAIF)](https://saif.google/) — the external reference framework this page maps against

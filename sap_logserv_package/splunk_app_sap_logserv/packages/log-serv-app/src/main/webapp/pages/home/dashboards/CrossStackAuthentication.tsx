@@ -133,17 +133,26 @@ const QRAW_BASE = {
     hanaUsers: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" action_category="Authentication" | stats count as "Events", dc(action_type) as "Action Types", sum(eval(if(status!="SUCCESSFUL",1,0))) as "Failures", values(risk_level) as "Risk Level", latest(_time) as last_seen by src_user | eval "Last Seen"=strftime(last_seen, "%Y-%m-%d %H:%M:%S") | sort -Failures | fields - last_seen | rename src_user as "User"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const TOP_USER_COLS: ColumnDef[] = [
@@ -235,13 +244,13 @@ const CrossStackAuthentication: React.FC = () => {
             subtitle="Unified authentication failure analysis across SAP, HANA, and Windows layers"
         >
             <KpiRow>
-                <KpiCard label="Total Auth Failures" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger} tone={totalTone}
+                <KpiCard label="Total Auth Failures" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger} tone={totalTone}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="SAP Auth Failures" value={sap.value} loading={sap.loading} error={sap.error} formatValue={formatInteger} tone={sapTone}
+                <KpiCard label="SAP Auth Failures" value={sap.value} loading={sap.loading} error={sap.error} search={sap.search} formatValue={formatInteger} tone={sapTone}
                     sparkline={<SparklineFromQuery query={Q.sparkSap} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="HANA Auth Failures" value={hana.value} loading={hana.loading} error={hana.error} formatValue={formatInteger} tone={hanaTone}
+                <KpiCard label="HANA Auth Failures" value={hana.value} loading={hana.loading} error={hana.error} search={hana.search} formatValue={formatInteger} tone={hanaTone}
                     sparkline={<SparklineFromQuery query={Q.sparkHana} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Windows Auth Failures" value={win.value} loading={win.loading} error={win.error} formatValue={formatInteger} tone={winTone}
+                <KpiCard label="Windows Auth Failures" value={win.value} loading={win.loading} error={win.error} search={win.search} formatValue={formatInteger} tone={winTone}
                     sparkline={<SparklineFromQuery query={Q.sparkWin} valueField="count" color={logservTheme.colors.red} fill />} />
             </KpiRow>
 

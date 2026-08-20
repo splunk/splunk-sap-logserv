@@ -24,10 +24,10 @@
 #   2. ucc-gen build — generates output/splunk_ta_sap_logserv/ from
 #      splunk_ta_sap_logserv/package/ + globalConfig.json. UCC also auto-
 #      invokes additional_packaging.py's cleanup_output_files() hook
-#      AFTER its own templates have run, which is where our six post-
+#      AFTER its own templates have run, which is where our seven post-
 #      build patches live (handler swap, restmap append, web.conf expose,
-#      inputs.conf python.required injection, restmap.conf admin_external
-#      python.required injection, sc_subadmin metadata write-ACL patch).
+#      python.required injection, lib/ AArch64-incompat strip, inputs.conf
+#      python.required, sc_subadmin metadata write-ACL patch).
 #   3. ucc-gen package — tars output/ into the release artifact.
 #
 # Stickies / things to know:

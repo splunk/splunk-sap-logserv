@@ -12,6 +12,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { shouldUseRawSource } from '../utils/hybridRouting';
+import { recordRawTwin } from '../utils/rawTwin';
 import { useCloudProvider, mapCloudProviderQueries, withCloudProvider } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { chooseTimechartSpan } from '../utils/timechartSpan';
@@ -160,18 +161,27 @@ const buildTopUrisRawQuery = (filter: UriStatusFilter): string => {
     return `${WRAW}${clause} uri=* | eval response_time_ms=tonumber(total_us)/1000 | stats count as Requests, avg(response_time_ms) as "Avg Response (ms)" by uri | eval "Avg Response (ms)"=round('Avg Response (ms)',1) | sort -Requests | table uri, Requests, "Avg Response (ms)"`;
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086) — sub-hour
  *  ranges read the raw query, wide ranges the rollup. */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const formatPercent = (raw: unknown): string => {
@@ -237,15 +247,20 @@ const WebDispatcher: React.FC = () => {
     // visible alongside the much larger 2xx series instead of getting
     // crushed under stacked bars.
     const trafficByStatusQuery = useMemo(
-        () =>
-            withCloudProvider(
-                useRawSrc
-                    ? `${WRAW} | eval status_group=case(tonumber(status)<300,"Success (2xx)",tonumber(status)<400,"Redirect (3xx)",tonumber(status)<500,"Client Error (4xx)",tonumber(status)>=500,"Server Error (5xx)",1==1,"Other") ` +
-                      `| timechart span=${span} count by status_group | fillnull value=0`
-                    : `${WD_STATUS} | eval _time=bucket_ts ` +
-                      `| timechart span=${span} sum(count) by status_group | fillnull value=0`,
+        () => {
+            const rawQ = withCloudProvider(
+                `${WRAW} | eval status_group=case(tonumber(status)<300,"Success (2xx)",tonumber(status)<400,"Redirect (3xx)",tonumber(status)<500,"Client Error (4xx)",tonumber(status)>=500,"Server Error (5xx)",1==1,"Other") ` +
+                    `| timechart span=${span} count by status_group | fillnull value=0`,
                 provider,
-            ),
+            );
+            const cachedQ = withCloudProvider(
+                `${WD_STATUS} | eval _time=bucket_ts ` +
+                    `| timechart span=${span} sum(count) by status_group | fillnull value=0`,
+                provider,
+            );
+            recordRawTwin(cachedQ, rawQ); // §17.8a-17
+            return useRawSrc ? rawQ : cachedQ;
+        },
         [span, useRawSrc, provider],
     );
 
@@ -255,17 +270,22 @@ const WebDispatcher: React.FC = () => {
     // The raw twin uses sum/count/max (not avg) so empty-bin behavior (Avg=0,
     // Max=null) matches the cached arm byte-for-byte.
     const responseTimeTrendQuery = useMemo(
-        () =>
-            withCloudProvider(
-                useRawSrc
-                    ? `${WRAW} | eval response_time_ms=tonumber(total_us)/1000 ` +
-                      `| timechart span=${span} sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" ` +
-                      `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`
-                    : `${WD_CORE} | eval _time=bucket_ts ` +
-                      `| timechart span=${span} sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" ` +
-                      `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+        () => {
+            const rawQ = withCloudProvider(
+                `${WRAW} | eval response_time_ms=tonumber(total_us)/1000 ` +
+                    `| timechart span=${span} sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" ` +
+                    `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
                 provider,
-            ),
+            );
+            const cachedQ = withCloudProvider(
+                `${WD_CORE} | eval _time=bucket_ts ` +
+                    `| timechart span=${span} sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" ` +
+                    `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+                provider,
+            );
+            recordRawTwin(cachedQ, rawQ); // §17.8a-17
+            return useRawSrc ? rawQ : cachedQ;
+        },
         [span, useRawSrc, provider],
     );
 
@@ -343,11 +363,11 @@ const WebDispatcher: React.FC = () => {
             subtitle="SAP Web Dispatcher HTTP traffic — request volume, error rates, top URIs, and recent errors"
         >
             <KpiRow>
-                <KpiCard label="Total Requests" value={requests.value} loading={requests.loading} error={requests.error} formatValue={formatInteger}
+                <KpiCard label="Total Requests" value={requests.value} loading={requests.loading} error={requests.error} search={requests.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkRequests} valueField="count" fill />} />
-                <KpiCard label="Error Rate" value={errorRate.value} loading={errorRate.loading} error={errorRate.error} formatValue={formatPercent} tone={errRateTone}
+                <KpiCard label="Error Rate" value={errorRate.value} loading={errorRate.loading} error={errorRate.error} search={errorRate.search} formatValue={formatPercent} tone={errRateTone}
                     sparkline={<SparklineFromQuery query={Q.sparkErrorRate} valueField="daily" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Avg Response Time" value={avgResponse.value} loading={avgResponse.loading} error={avgResponse.error} formatValue={formatLatency}
+                <KpiCard label="Avg Response Time" value={avgResponse.value} loading={avgResponse.loading} error={avgResponse.error} search={avgResponse.search} formatValue={formatLatency}
                     sparkline={<SparklineFromQuery query={Q.sparkAvgResponse} valueField="daily" color={logservTheme.colors.orange} fill />} />
             </KpiRow>
 

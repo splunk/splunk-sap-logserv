@@ -139,17 +139,26 @@ const QRAW_BASE = {
     topProgramsByTasks: `${RAW_ICM} icm_tasks=* icm_program=* | stats count as Calls, sum(icm_tasks) as st, max(icm_tasks) as "Max Tasks", max(icm_memory) as "Max Mem (KB)" by icm_program | eval Avg = round(st/Calls, 1) | sort -"Max Tasks" | head 20 | rename icm_program AS Program | table Program Calls Avg "Max Tasks" "Max Mem (KB)"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const TOP_FUNC_COLS: ColumnDef[] = [
@@ -234,13 +243,13 @@ const WorkProcessPerformance: React.FC = () => {
             subtitle="SAP ABAP work process utilization, dispatcher health, and function-level activity"
         >
             <KpiRow>
-                <KpiCard label="Total WP Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total WP Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Active SIDs" value={sids.value} loading={sids.loading} error={sids.error} formatValue={formatInteger}
+                <KpiCard label="Active SIDs" value={sids.value} loading={sids.loading} error={sids.error} search={sids.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkSids} valueField="sids" fill />} />
-                <KpiCard label="Dispatcher Errors" value={errors.value} loading={errors.loading} error={errors.error} formatValue={formatInteger} tone={errorTone}
+                <KpiCard label="Dispatcher Errors" value={errors.value} loading={errors.loading} error={errors.error} search={errors.search} formatValue={formatInteger} tone={errorTone}
                     sparkline={<SparklineFromQuery query={Q.sparkErrors} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Active WP Functions" value={functions.value} loading={functions.loading} error={functions.error} formatValue={formatInteger}
+                <KpiCard label="Active WP Functions" value={functions.value} loading={functions.loading} error={functions.error} search={functions.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkFunctions} valueField="functions" fill />} />
             </KpiRow>
 

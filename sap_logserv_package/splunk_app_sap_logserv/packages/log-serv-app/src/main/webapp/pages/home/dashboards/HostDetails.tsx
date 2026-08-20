@@ -103,18 +103,27 @@ const LINK_GRAPH_WIDTH_SAFETY_MARGIN = 280;
  *  ResizeObserver fires. Sized for a typical 1920 px viewport. */
 const LINK_GRAPH_NODE_WIDTH_FALLBACK = 540;
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 085) — sub-hour
  *  ranges read the raw query, wide ranges the rollup. See hooks/useHybridSearch. */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const colsForKey = (key: string, label: string): ColumnDef[] => [
@@ -130,11 +139,42 @@ interface ConditionalProps {
     children: React.ReactNode;
 }
 
+/**
+ * Renders a panel only when its search actually returned rows — the Role
+ * Activity tab shows a panel per role the host is running, so a host with no
+ * HANA traffic simply has no HANA panel.
+ *
+ * Session 093: a FAILED search used to return `null` too, which made it
+ * indistinguishable from "this host doesn't run that role". A broken query, a
+ * missing rollup collection or a permissions error on `inputlookup` all
+ * presented as silence — the single worst case for anyone trying to work out
+ * why a panel isn't there, and the only surface in the app that swallowed an
+ * error instead of rendering it. An errored panel now renders its frame with
+ * the message, exactly like every other panel in the app.
+ *
+ * Loading still returns `null` (the panel appears when its data does) and a
+ * genuinely-empty result still returns `null` (that is the intended design of
+ * this tab, not a fault).
+ */
 const ConditionalPanel: React.FC<ConditionalProps> = ({ title, subtitle, search, children }) => {
-    if (search.loading || search.error) return null;
+    if (search.error) {
+        return (
+            <FramedPanel title={title} subtitle={subtitle} search={search}>
+                <ErrorLine>{search.error.message || 'Search failed'}</ErrorLine>
+            </FramedPanel>
+        );
+    }
+    if (search.loading) return null;
     if (!search.results || search.results.length === 0) return null;
     return <FramedPanel title={title} subtitle={subtitle} search={search}>{children}</FramedPanel>;
 };
+
+const ErrorLine = styled.div`
+    padding: ${logservTheme.spacing.lg};
+    color: ${logservTheme.colors.red};
+    text-align: center;
+    font-size: ${logservTheme.fontSize.small};
+`;
 
 // =====================================================================================
 // Host picker
@@ -643,15 +683,15 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
     return (
         <>
             <KpiRow>
-                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Data Volume" value={volume.value} loading={volume.loading} error={volume.error} formatValue={formatBytes}
+                <KpiCard label="Data Volume" value={volume.value} loading={volume.loading} error={volume.error} search={volume.search} formatValue={formatBytes}
                     sparkline={<SparklineFromQuery query={Q.sparkVolume} valueField="total_bytes" fill />} />
-                <KpiCard label="Active Sourcetypes" value={sts.value} loading={sts.loading} error={sts.error} formatValue={formatInteger}
+                <KpiCard label="Active Sourcetypes" value={sts.value} loading={sts.loading} error={sts.error} search={sts.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkSts} valueField="sts" fill />} />
-                <KpiCard label="Errors / Criticals" value={errors.value} loading={errors.loading} error={errors.error} formatValue={formatInteger} tone={errorsTone}
+                <KpiCard label="Errors / Criticals" value={errors.value} loading={errors.loading} error={errors.error} search={errors.search} formatValue={formatInteger} tone={errorsTone}
                     sparkline={<SparklineFromQuery query={Q.sparkErrors} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Auth Failures" value={auth.value} loading={auth.loading} error={auth.error} formatValue={formatInteger} tone={authTone}
+                <KpiCard label="Auth Failures" value={auth.value} loading={auth.loading} error={auth.error} search={auth.search} formatValue={formatInteger} tone={authTone}
                     sparkline={<SparklineFromQuery query={Q.sparkAuth} valueField="count" color={logservTheme.colors.red} fill />} />
             </KpiRow>
             <FullWidthPanel>
@@ -783,14 +823,17 @@ const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTop
     const sudo = useHybridSearch({ cached: roleRead('sudo_user', 'sudo_user'), raw: roleReadRaw('sudo_user', 'sudo_user') });
     const dns = useHybridSearch({ cached: roleRead('dns_query', 'query'), raw: roleReadRaw('dns_query', 'query') });
 
+    // Session 093: gate on "every search has finished" as well as "every search
+    // is empty". `allEmpty` used to inspect only `results`, so it was true while
+    // all seven were still in flight and the "no role-specific activity"
+    // message flashed on every load and every refresh before the data arrived.
+    // Also treat an errored search as NOT empty — its panel now renders (with
+    // the error), so claiming there is no activity at all would contradict it.
+    const roleSearches = [hanaAudit, abapWp, webDisp, sapRouter, winEvents, sudo, dns];
+    const allSettled = roleSearches.every((s) => !s.loading);
     const allEmpty =
-        (!hanaAudit.results || hanaAudit.results.length === 0) &&
-        (!abapWp.results || abapWp.results.length === 0) &&
-        (!webDisp.results || webDisp.results.length === 0) &&
-        (!sapRouter.results || sapRouter.results.length === 0) &&
-        (!winEvents.results || winEvents.results.length === 0) &&
-        (!sudo.results || sudo.results.length === 0) &&
-        (!dns.results || dns.results.length === 0);
+        allSettled &&
+        roleSearches.every((s) => !s.error && (!s.results || s.results.length === 0));
 
     return (
         <>
@@ -807,7 +850,7 @@ const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTop
                 <ConditionalPanel title="SAP Router Peers" subtitle="sap:saprouter" search={sapRouter}>
                     <DataTable columns={colsForKey('peer_ip', 'Peer IP')} rows={sapRouter.results} />
                 </ConditionalPanel>
-                <ConditionalPanel title="Windows Event Codes" subtitle="XmlWinEventLog top 15" search={winEvents}>
+                <ConditionalPanel title="Windows Event Codes" subtitle="XmlWinEventLog" search={winEvents}>
                     <DataTable columns={colsForKey('EventCode', 'Event Code')} rows={winEvents.results} />
                 </ConditionalPanel>
                 <ConditionalPanel title="Sudo Commands" subtitle="linux_messages_syslog" search={sudo}>

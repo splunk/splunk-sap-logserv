@@ -108,17 +108,26 @@ const QRAW_BASE = {
     powershell: `${RAW_WIN} | where match(source, "(?i)powershell") | timechart span=1d count as "PowerShell Events" | fillnull value=0`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const TOP_EVENT_COLS: ColumnDef[] = [
@@ -177,11 +186,11 @@ const Windows: React.FC = () => {
             subtitle="Windows operational health — event severity trends, top event codes, service state changes, and PowerShell activity"
         >
             <KpiRow>
-                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Critical / Error" value={critical.value} loading={critical.loading} error={critical.error} formatValue={formatInteger} tone={criticalTone}
+                <KpiCard label="Critical / Error" value={critical.value} loading={critical.loading} error={critical.error} search={critical.search} formatValue={formatInteger} tone={criticalTone}
                     sparkline={<SparklineFromQuery query={Q.sparkCritical} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Active Hosts" value={hosts.value} loading={hosts.loading} error={hosts.error} formatValue={formatInteger}
+                <KpiCard label="Active Hosts" value={hosts.value} loading={hosts.loading} error={hosts.error} search={hosts.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkHosts} valueField="hosts" fill />} />
             </KpiRow>
 

@@ -6,6 +6,7 @@ import RefreshIntervalPicker from './RefreshIntervalPicker';
 import CloudProviderPicker from './CloudProviderPicker';
 import DocsHelpIcon from './DocsHelpIcon';
 import { RefreshProvider } from '../state/RefreshProvider';
+import { DiagnosticCollectorProvider } from '../state/DiagnosticCollector';
 import { dashboardIdFromPath } from '../state/dashboardRefreshPersistence';
 import { resolveDocsUrl } from '../utils/docsLinks';
 
@@ -39,6 +40,13 @@ interface DashboardLayoutProps {
      *  Topology (excluded from the arc), and the Settings page. Every other
      *  dashboard gets the CloudProviderPicker automatically. */
     noCloudFilter?: boolean;
+    /** Opt OUT of the per-dashboard auto-refresh interval picker (session
+     *  096). Set on pages whose content is not driven by useSearch (the
+     *  Diagnostics page drives the diagProbe runner) — the picker would tick
+     *  a nonce nothing consumes while still writing a KV row and showing the
+     *  pulsing auto-on affordance. The RefreshProvider keeps wrapping either
+     *  way (its default interval 0 never ticks). */
+    noRefreshPicker?: boolean;
     children: ReactNode;
 }
 
@@ -115,6 +123,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     subtitle,
     titleRowActions,
     noCloudFilter = false,
+    noRefreshPicker = false,
     children,
 }) => {
     const location = useLocation();
@@ -127,6 +136,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         // dashboard goes through this wrapper, so the menu can locate the
         // current dashboard's root reliably without per-page wiring.
         <Wrapper data-dashboard-root="true">
+            {/* Session 093 — one diagnostic registry per dashboard page. Must
+                sit ABOVE everything that renders a panel: every FramedPanel
+                re-provides PanelMetaContext, so a collector provided lower down
+                would be shadowed for anything inside a panel. Registration is a
+                ref write, so this provider costs no renders. */}
+            <DiagnosticCollectorProvider>
             <RefreshProvider dashboardId={dashboardId}>
                 <TitleRow>
                     <TitleBlock>
@@ -139,12 +154,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <ActionsBlock>
                         {titleRowActions}
                         {!noCloudFilter && <CloudProviderPicker />}
-                        <RefreshIntervalPicker />
+                        {!noRefreshPicker && <RefreshIntervalPicker />}
                         <DocsHelpIcon href={docsUrl} />
                     </ActionsBlock>
                 </TitleRow>
                 {children}
             </RefreshProvider>
+            </DiagnosticCollectorProvider>
         </Wrapper>
     );
 };

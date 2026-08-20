@@ -1,6 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
+import {
+    RollupDef,
+    ROLLUPS,
+    ROLLUPS_SORTED,
+    ALL_AGG_SEARCHES,
+    ALL_COLLECTIONS,
+} from '../routes/rollupRegistry';
+import { COMPLETE_SECONDS } from '../utils/diagEnvironment';
 
 /**
  * Dashboard Data — admin control for the entire KV-Store rollup data layer that
@@ -59,140 +67,21 @@ const POLL_INTERVAL_MS = 2500;
  *  bounded so the button always re-enables. */
 const MAX_POLLS = 2000; // ~83 min/arm ceiling
 const MAX_NULL_STREAK = 24; // ~60s of consecutive poll failures → sid likely gone
-/** A rollup is "complete" if its oldest bucket reaches back ~30 days. NOTE: this
- *  is an oldest-bucket heuristic — it proves history reaches back, not that every
- *  interior bucket is dense. A prior *truncated* union-backfill could leave the
- *  right oldest bucket with gaps and read as complete; "Re-run backfill (all)"
- *  recovers it (idempotent). A fresh install via this panel is always dense. */
-const COMPLETE_SECONDS = 29 * 86400;
+/* COMPLETE_SECONDS ("a rollup is complete when its oldest bucket reaches back
+ * ~30 days") moved to utils/diagEnvironment.ts in session 096 so this panel and
+ * the #/diagnostics page share the completeness PREDICATE structurally. NOTE:
+ * it remains an oldest-bucket heuristic — it proves history reaches back, not
+ * that every interior bucket is dense. A prior *truncated* union-backfill could
+ * leave the right oldest bucket with gaps and read as complete; "Re-run
+ * backfill (all)" recovers it (idempotent). A fresh install via this panel is
+ * always dense. */
 /** Uniform retention window across every rollup (set in the *_retention saved
  *  searches). Displayed read-only; change default/savedsearches.conf to alter. */
 const RETENTION_DISPLAY = '365 days';
 
-/** A logical rollup. One entry may span multiple KV collections / aggregate
- *  searches / backfill stanzas (the Environment Topology graph = 3 each, the
- *  beaconing-detection pair = 2 each); single-dashboard rollups are 1 each.
- *  Reconciled exhaustively against default/{savedsearches,collections}.conf in
- *  session 063 — every *_aggregate / *_backfill / logserv_*_rollup collection
- *  appears exactly once below. */
-interface RollupDef {
-    /** unique id used to key per-row state. */
-    key: string;
-    /** human label (the dashboard this rollup powers). */
-    label: string;
-    /** every KV collection this rollup writes (Clear fans out over all). */
-    collections: string[];
-    /** subset of `collections` whose oldest bucket gates completeness — excludes
-     *  flat (non-time-bucketed) collections like the topology inventory. */
-    completenessCollections: string[];
-    /** the *_aggregate saved search(es) the master/row enable toggle acts on. */
-    aggregateSearches: string[];
-    /** the *_backfill saved search stanza name(s) — full name, fetched + split
-     *  into top-level arms. */
-    backfillStanzas: string[];
-    /** the *_retention saved search(es) — informational. */
-    retentionSearches: string[];
-    /** the time-bucket field the completeness collections use. */
-    bucketField: 'bucket_ts' | 'day_ts';
-}
-
-/** Build a standard single-collection rollup entry (1 collection / 1 of each
- *  search). `coll` defaults to `logserv_<key>_rollup` (the hana row overrides it
- *  because its collection is logserv_hana_category_rollup, key 'hana'). */
-const single = (
-    key: string,
-    label: string,
-    coll?: string,
-    bucketField: 'bucket_ts' | 'day_ts' = 'bucket_ts',
-): RollupDef => {
-    const collection = coll ?? `logserv_${key}_rollup`;
-    return {
-        key,
-        label,
-        collections: [collection],
-        completenessCollections: [collection],
-        aggregateSearches: [`logserv_${key}_aggregate`],
-        backfillStanzas: [`logserv_${key}_backfill`],
-        retentionSearches: [`logserv_${key}_retention`],
-        bucketField,
-    };
-};
-
-const ROLLUPS: RollupDef[] = [
-    single('wp_perf', 'Work Process Performance'),
-    single('severity', 'Environment Health'),
-    single('hana', 'HANA Audit', 'logserv_hana_category_rollup'),
-    single('compliance', 'Change & Configuration Activity'),
-    single('saprouter', 'SAP Router'),
-    single('abapnet', 'ABAP Network & Security'),
-    single('xstack_auth', 'Cross-Stack Authentication'),
-    single('perimeter', 'Network Perimeter'),
-    single('linux', 'Linux System & Security'),
-    single('web_timing', 'Web & API Performance'),
-    single('hana_trace', 'HANA Trace'),
-    single('windows', 'Windows'),
-    single('sapservices', 'SAP Services'),
-    single('mc', 'Multi-Cloud Overview'),
-    single('cloudconn', 'Cloud Connector'),
-    single('proxy', 'Proxy Analytics'),
-    single('dns', 'DNS Analytics'),
-    single('pipeline', 'Data Pipeline Overview'),
-    single('hostdetails', 'Host Details'),
-    single('webdisp_slowtrace', 'Web Dispatcher Slowest Traces'),
-    single('topology_detail', 'Environment Topology (detail tabs)'),
-    single('stmap', 'Sourcetype Mapping (Host Details / Data Pipeline)'),
-    single('hostrole', 'Host Role Activity (Host Details)'),
-    // Beaconing detection — two day-bucketed rollups (the count rollup +
-    // the build-237 per-(query,src) gap-stats detail rollup) folded into one row.
-    {
-        key: 'beaconing',
-        label: 'Beaconing detection (Environment Health / DNS / Network Perimeter)',
-        collections: ['logserv_beaconing_rollup', 'logserv_beaconing_detail_rollup'],
-        completenessCollections: ['logserv_beaconing_rollup', 'logserv_beaconing_detail_rollup'],
-        aggregateSearches: ['logserv_beaconing_aggregate', 'logserv_beaconing_detail_aggregate'],
-        backfillStanzas: ['logserv_beaconing_backfill', 'logserv_beaconing_detail_backfill'],
-        retentionSearches: ['logserv_beaconing_retention', 'logserv_beaconing_detail_retention'],
-        bucketField: 'day_ts',
-    },
-    // Environment Topology graph — nodes/edges (bucketed) + inventory (flat).
-    // Completeness checks the two bucketed collections; inventory is a current
-    // snapshot (no time dimension) so it's backfilled + cleared but not
-    // history-gated. Backfill now uses the per-arm top-level dispatch (was the
-    // old Topology tab's truncation-prone single-union saved-search dispatch).
-    {
-        key: 'topology_graph',
-        label: 'Environment Topology (graph)',
-        collections: [
-            'logserv_topology_nodes',
-            'logserv_topology_edges',
-            'logserv_topology_inventory',
-        ],
-        completenessCollections: ['logserv_topology_nodes', 'logserv_topology_edges'],
-        aggregateSearches: [
-            'logserv_topology_aggregate_nodes',
-            'logserv_topology_aggregate_edges',
-            'logserv_topology_aggregate_inventory',
-        ],
-        backfillStanzas: [
-            'logserv_topology_backfill_nodes',
-            'logserv_topology_backfill_edges',
-            'logserv_topology_backfill_inventory',
-        ],
-        retentionSearches: ['logserv_topology_retention'],
-        bucketField: 'bucket_ts',
-    },
-];
-
-/** Flattened views of the static registry (concat — Array.flat/flatMap need an
- *  ES2019 lib; this tsconfig targets earlier). */
-const ALL_AGG_SEARCHES: string[] = ([] as string[]).concat(
-    ...ROLLUPS.map((d) => d.aggregateSearches),
-);
-const ALL_COLLECTIONS: string[] = ([] as string[]).concat(...ROLLUPS.map((d) => d.collections));
-/** The per-rollup table is rendered alphabetically by dashboard label (ascending)
- *  so admins can scan it by name; the registry array stays in its logical
- *  definition order (which everything else iterates — order-independent). */
-const ROLLUPS_SORTED: RollupDef[] = [...ROLLUPS].sort((a, b) => a.label.localeCompare(b.label));
+/* The rollup registry moved to routes/rollupRegistry.ts in session 095 — the
+   Missing-Data Diagnostic needs it too, and a second copy would drift (it
+   already did once, session 062). */
 
 // ─── REST helpers (raw fetch — the repo's model for imperative dispatch/poll) ──
 /** Read Splunk Web's CSRF token (`splunkweb_csrf_token_<port>` cookie). */
@@ -1169,6 +1058,27 @@ const RollupBackfillPanel: React.FC = () => {
                         already-complete rollups are skipped. Runs server-side; already-dispatched
                         searches keep running if you leave this page, and re-opening resumes any
                         remaining work.
+                    </FieldHint>
+                    {/* Build 325 (plan item E2) — the RFC re-key upgrade note. Phrased by
+                      * FEATURE, not by version (session-017 sticky: no version numbers in
+                      * user-visible strings). Two halves, both load-bearing: (1) plain
+                      * Backfill after the upgrade would double-count RFC history
+                      * (append=true writes the new per-app-server keys beside the old
+                      * collided rows, and this button's completeness check skips the
+                      * collection anyway); (2) Clear discards up to a year of graph
+                      * history while the backfill restores ~30 days (session-091 sticky e)
+                      * — long-established installs deserve the surgical alternative. */}
+                    <FieldHint style={{ marginTop: 8 }}>
+                        Upgrading note: if this install predates the per-app-server RFC
+                        breakdown in the Environment Topology view, use the per-rollup
+                        <strong> Clear</strong> and then <strong>Backfill</strong> on
+                        &ldquo;Environment Topology (graph)&rdquo; once — the upgrade re-keys
+                        that rollup&apos;s RFC rows per app server, so a Backfill without the
+                        Clear would double-count RFC history (and the completeness check above
+                        will otherwise skip it as already complete). The Clear also discards
+                        topology graph history older than the 30-day backfill window; on
+                        installs older than that, the release notes describe an RFC-only
+                        migration that keeps the rest of the history.
                     </FieldHint>
                 </div>
                 <ButtonRow>

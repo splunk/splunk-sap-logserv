@@ -1,7 +1,8 @@
 import React, { ReactNode, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
-import { PanelMeta, PanelMetaContext, PanelActions } from './PanelMeta';
+import { PanelMeta, PanelMetaContext, PanelDiagnosticContext, PanelActions } from './PanelMeta';
+import { textFromNode } from '../utils/reactText';
 
 /**
  * FramedPanel — the v0.0.4.2 "framed dark cards" container.
@@ -177,17 +178,56 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
     const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
     const meta = search ?? captured;
     const showToolbar = !noToolbar && !!meta;
+    /* Session 095 — the same explicit `search` the toolbar uses, plus the
+     * panel's title, so the diagnosis drawer can name where it was opened from.
+     * Memoised on the fields it actually reads: this value is handed to every
+     * descendant through context, and a fresh object each render would re-render
+     * every table body on the page for nothing.
+     *
+     * §14.6 (build 313): the title is extracted OUTSIDE the memo (a JSX title
+     * ReactNode has a fresh identity every render — keying the memo on it
+     * would mint a fresh context object each time), and a TITLE-ONLY context
+     * is provided when there is no `search` prop: chart-owning panels feed
+     * EmptyStateHint their facts directly, but the drawer/report previously
+     * had no way to learn the panel's name from them ("(untitled)"). JSX
+     * titles with text content are flattened via textFromNode. */
+    const titleText = typeof title === 'string' ? title : textFromNode(title);
+    const diagnosticValue = useMemo(
+        () =>
+            search
+                ? { ...search, title: titleText }
+                : titleText
+                  ? { title: titleText }
+                  : null,
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [search, titleText],
+    );
     const headerRight =
         actions || showToolbar ? (
             <HeaderRight>
                 {actions}
-                {showToolbar && meta && <PanelActions meta={meta} />}
+                {showToolbar && meta && <PanelActions meta={meta} title={typeof title === 'string' ? title : undefined} />}
             </HeaderRight>
         ) : null;
     const showHeader = title || subtitle || headerRight;
     const isClickable = !!onClick;
     return (
         <PanelMetaContext.Provider value={ctx}>
+            {/* Session 093 — search metadata flowing DOWN, so an inner DataTable
+                can explain its own empty state (it receives only
+                rows/loading/error and cannot otherwise know which query
+                produced it).
+
+                Deliberately `search`, NOT `meta` (= `search ?? captured`):
+                `captured` is reported UP by an inner CHART, so a panel holding
+                both a chart and a table would hand the table the chart's SPL
+                and it would explain itself using the wrong query. `captured`
+                also never carries the diagnostic fields — `usePanelMetaReporter`
+                reports only the four toolbar fields. Charts don't read this
+                context at all; they pass their facts to EmptyStateHint
+                directly. So the explicit `search` prop is the only trustworthy
+                source here, and a panel without one correctly says nothing. */}
+            <PanelDiagnosticContext.Provider value={diagnosticValue}>
             <Root
                 $compact={compact}
                 $clickable={isClickable}
@@ -274,6 +314,7 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
                 )}
                 <Body $fill={fillHeight}>{children}</Body>
             </Root>
+            </PanelDiagnosticContext.Provider>
         </PanelMetaContext.Provider>
     );
 };

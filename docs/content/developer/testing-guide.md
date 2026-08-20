@@ -7,6 +7,8 @@ This guide walks through a full clean-slate test of the SAP LogServ packages:
 - **Data TA** (`splunk_ta_sap_logserv`) -- installed on the DS and pushed to HFs
 - **LogServ App** (`splunk_app_sap_logserv`) -- installed on the SH only
 
+Azure Blob or GCS ingest additionally requires the **LogServ Azure add-on** (`splunk_ta_sap_logserv_azure`) or **LogServ GCP add-on** (`splunk_ta_sap_logserv_gcp`), installed directly on each HF — never via the DS, because a DS push overwrites the add-on's own `local/` where its SAS token / service-account key lives. This guide's phases cover the AWS SQS-based channel; repeat the ingest-verification phases against the queue-driven channel when a cloud add-on is in scope.
+
 The test validates the complete workflow: install, DS automation, filter configuration, deployment push, data ingestion, and filter verification.
 
 ## :material-circle-box:{ .taiconcolor } Prerequisites
@@ -121,6 +123,12 @@ Should return nothing.
     - The **"Server Class Setup Required"** notice
     - The **"Deploy to Forwarders"** button
 
+### Phase 3b: Configure the Cloud Provider Tab
+
+1. Go to **Configuration > Cloud Provider**, set the value matching this deployment's ingest channel (AWS / Microsoft Azure / Google Cloud Platform — or **Not set** on a mixed HF where per-input `_meta` attribution is used), and **Save**
+2. Verify the generated `[logserv_set_cloud_provider]` block appears in `local/transforms.conf` between the `### BEGIN LOGSERV CLOUD_PROVIDER CONFIG ###` markers
+3. In Part 3 below, confirm the **Multi-Cloud Overview** dashboard reflects the choice
+
 ### Phase 4: Verify DS Automation
 
 Confirm the Data TA was copied to deployment-apps:
@@ -209,22 +217,24 @@ This should return 0 results if your Days in Past is less than 10.
 
 After data is flowing, verify the LogServ App dashboards:
 
-1. Navigate to the **LogServ App** in Splunk Web
-2. Check each dashboard loads with data:
+1. **Seed the rollup collections.** The dashboards read hourly KV-Store rollups, which are empty on a fresh install. Go to **Settings → Dashboard Data** and click **Run backfill** (idempotent, resumable, seeds 30 days of history). Without this, most panels render empty and the deployment will look broken even though ingest succeeded.
+2. Navigate to the **LogServ App** in Splunk Web
+3. Walk the nav menus (Home / Applications / Integration / Security / Platform / Topology) and confirm each dashboard renders — start with **Environment Health**, the default landing view. A quick spot-check sample:
     - **Data Pipeline Overview** -- shows host event counts and sourcetype distribution
     - **DNS Analytics** -- shows DNS query patterns (requires `isc:bind:query` data)
     - **HANA Audit** -- shows HANA audit events (requires `sap:hana:audit` data)
-    - **Web Dispatcher Access** -- shows HTTP traffic (requires `sap:webdispatcher:access` data)
+    - **Web Dispatcher** (Integration) -- shows HTTP traffic (requires `sap:webdispatcher:access` data)
     - **Host Details** -- drill down from Overview by clicking a host row
+4. A panel that legitimately has no data explains itself inline — click **"Why is this empty?"** to open the Data Doctor drawer
 
 !!! tip "Time range"
-    Set the Global Time Range to **All time** or an appropriate window that covers your test data.
+    Set the Global Time Range to **All time** or an appropriate window that covers your test data. Rolled-up panels read hourly buckets, so a freshly ingested hour is not summarised yet — use a window covering completed hours of test data, and remember windows under 90 minutes automatically fall back to the exact raw query.
 
 ---
 
 ## Cleanup Scripts
 
-Automated cleanup scripts are available at `cleanup_scripts/` in the project root:
+Automated cleanup scripts are available at `tools/testing_cleanup_scripts/`:
 
 | Script | Target | Purpose |
 |--------|--------|---------|
@@ -236,5 +246,5 @@ Automated cleanup scripts are available at `cleanup_scripts/` in the project roo
 All scripts use `systemctl` for Splunk management. Run from local Git Bash:
 
 ```bash
-cd cleanup_scripts && bash run_all_cleanups.sh
+cd tools/testing_cleanup_scripts && bash run_all_cleanups.sh
 ```

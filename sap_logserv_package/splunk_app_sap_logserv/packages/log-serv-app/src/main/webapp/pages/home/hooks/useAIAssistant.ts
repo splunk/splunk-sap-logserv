@@ -25,6 +25,7 @@ import { analyzeUserPrompt } from '../utils/jailbreakPatterns';
 import { estimateTurnCostUsd } from '../utils/vendorCost';
 import { redactValueIfPII, PiiRedactionOptions } from '../utils/piiRedaction';
 import { ChartPalette } from '../styles/chartPalettes';
+import { TEMPLATES_ONLY } from '../buildFlags';
 import intentMap from '../../../../resources/splunk/default/data/mcp/logserv_intent_map.json';
 
 /**
@@ -984,9 +985,16 @@ export const useAIAssistant = (opts: UseAIAssistantOptions = {}): UseAIAssistant
      * render so the chat-input toggle takes effect on the very next
      * message — no remount needed. */
     const powerMode = opts.powerMode === true;
-    /* Runtime templates-only mode. Replaces the prior compile-time
-     * TEMPLATES_ONLY build flag with admin-controlled runtime config. */
-    const templatesOnlyMode = opts.templatesOnlyMode === true;
+    /* Runtime templates-only mode, admin-controlled via Settings.
+     *
+     * Build 300 — OR'd with the compile-time TEMPLATES_ONLY flag so a
+     * templates-only build short-circuits `sendUserMessage` even if the
+     * runtime value never reached this hook (prop chain regression, a
+     * future caller that forgets to thread it, a stale KV row). This is
+     * the defense-in-depth guard that buildFlags.ts documents: "the
+     * free-form sendUserMessage code path bails immediately with a
+     * system notice". Literal `false ||` in a regular build. */
+    const templatesOnlyMode = TEMPLATES_ONLY || opts.templatesOnlyMode === true;
 
     // Per-chat-session MCP tool dispatch counter (LLM06 — Excessive
     // Agency). Resets when the chat is cleared (messages array

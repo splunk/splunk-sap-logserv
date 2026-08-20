@@ -90,8 +90,29 @@ const Q_BASE = {
     topUsers: `${MAIN} | search executing_user!="(none)" | stats sum(count) as Events, dc(eval(if(action_type="(none)",null(),action_type))) as ActionTypes, sum(eval(if(status!="SUCCESSFUL" AND status!="(none)",count,0))) as Failures by executing_user | sort -Events`,
     clientIps: `${MAIN} | search client_ip!="(none)" | stats sum(count) as Events, ${DCU} as Users, sum(eval(if(status!="SUCCESSFUL" AND status!="(none)",count,0))) as Failures, max(last_seen) as last_seen by client_ip | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M") | sort -Events`,
     // highRiskEvents + afterHoursAdmin stay RAW — per-event listings.
+    // afterHoursAdmin derives its window INLINE from _time (canonical: hour < 8
+    // OR hour > 18 OR weekend) rather than reading the props.conf
+    // is_business_hours field. Session 091: the previous `where
+    // is_business_hours=false` never matched — in a `where` clause a bare
+    // `false` parses as a FIELD reference, not a boolean, so the filter
+    // degenerated to `is_weekend=1` and the panel showed weekend-only,
+    // omitting every weekday after-hours event (the security-relevant slice)
+    // and mislabelling every row "Weekend". Inline _time arithmetic cannot
+    // fail silently in either direction. LOCKSTEP LIST — the canonical window
+    // (hour < 8 OR hour > 18 OR weekend) is embedded in four places and
+    // nothing automated asserts they agree, so change all four together:
+    //   1. this query
+    //   2. ChangeConfig.tsx ENRICH
+    //   3. savedsearches.conf [logserv_compliance_aggregate]
+    //   4. savedsearches.conf [logserv_compliance_backfill]
+    // props.conf [sap:hana:audit] carries the same window for ad-hoc search
+    // and documents the two deliberate exceptions (the ES correlation
+    // searches and logserv_hana_after_hours_admin use their own windows).
+    // Missing #4 is the dangerous one: the backfill repopulates 30 days of
+    // historical rollup rows, so a stale copy silently overwrites corrected
+    // history and only shows up as a wide-window vs sub-hour disagreement.
     highRiskEvents: `\`sap_logserv_idx_macro\` ${ST} is_critical=true | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, action_type, action_category, risk_level, status, host, client_ip, sql_statement`,
-    afterHoursAdmin: `\`sap_logserv_idx_macro\` ${ST} is_admin_user=true | eval is_weekend=if(strftime(_time,"%w") IN ("0","6"), 1, 0) | where is_business_hours=false OR is_weekend=1 | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Day=strftime(_time, "%a") | eval Hour=strftime(_time, "%H:%M") | eval Period=case(is_weekend=1 AND is_business_hours=false, "Weekend / After Hours", is_weekend=1, "Weekend", 1=1, "After Hours") | sort -_time | table Time, Day, Period, executing_user, action_type, status, host, client_ip`,
+    afterHoursAdmin: `\`sap_logserv_idx_macro\` ${ST} is_admin_user=true | eval is_weekend=if(strftime(_time,"%w") IN ("0","6"), 1, 0) | eval is_after_hours=if(tonumber(strftime(_time,"%H")) < 8 OR tonumber(strftime(_time,"%H")) > 18, 1, 0) | where is_after_hours=1 OR is_weekend=1 | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Day=strftime(_time, "%a") | eval Hour=strftime(_time, "%H:%M") | eval Period=case(is_weekend=1 AND is_after_hours=1, "Weekend / After Hours", is_weekend=1, "Weekend", 1=1, "After Hours") | sort -_time | table Time, Day, Period, executing_user, action_type, status, host, client_ip`,
 };
 
 /* ---------------------------------------------------------------------------
@@ -126,17 +147,26 @@ const QRAW_BASE = {
     clientIps: `${RAW_HANA} client_ip=* | stats count as Events, dc(executing_user) as Users, sum(eval(if(status!="SUCCESSFUL",1,0))) as Failures, max(_time) as last_seen by client_ip | eval last_seen=strftime(last_seen, "%Y-%m-%d %H:%M") | sort -Events`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const HEALTH_COLS: ColumnDef[] = [
@@ -270,11 +300,11 @@ const HanaAudit: React.FC = () => {
             subtitle="SAP HANA audit log analysis — user activity, failed operations, risk-tiered events, and after-hours access patterns"
         >
             <KpiRow>
-                <KpiCard label="Total Audit Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Audit Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="Failed Operations" value={failures.value} loading={failures.loading} error={failures.error} formatValue={formatInteger} tone={failuresTone}
+                <KpiCard label="Failed Operations" value={failures.value} loading={failures.loading} error={failures.error} search={failures.search} formatValue={formatInteger} tone={failuresTone}
                     sparkline={<SparklineFromQuery query={Q.sparkFailures} valueField="count" color={logservTheme.colors.red} fill />} />
-                <KpiCard label="Active Users" value={users.value} loading={users.loading} error={users.error} formatValue={formatInteger}
+                <KpiCard label="Active Users" value={users.value} loading={users.loading} error={users.error} search={users.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkUsers} valueField="users" fill />} />
             </KpiRow>
 

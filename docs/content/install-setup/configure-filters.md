@@ -2,7 +2,7 @@
 
 ### :material-circle-box:{ .taiconcolor } Overview
 
-The Splunk TA for SAP LogServ provides two complementary approaches to filtering LogServ data. You can use either one independently or combine them for defense-in-depth filtering.
+The Splunk TA for SAP LogServ provides two complementary approaches to filtering LogServ data — you can use either one independently or combine them for defense-in-depth filtering. (A third, lighter layer exists on the Azure and GCP ingest add-ons: their inputs accept optional `include_filters` / `exclude_filters` substring patterns applied to the object path *before download*, a cheap pre-filter — the canonical allow/deny policy still lives on this page's Filters tab.)
 
 | | Native TA Index-Time Filtering | AWS Lambda-Based Filtering |
 |---|---|---|
@@ -38,7 +38,7 @@ The remainder of this page covers **Native TA Index-Time Filtering** in detail. 
 
 ### :material-circle-box:{ .taiconcolor } What It Does
 
-Starting with version 0.0.3, the TA includes built-in **index-time filtering** configured entirely through the Splunk Web UI — no manual editing of configuration files is required.
+The TA includes built-in **index-time filtering** configured entirely through the Splunk Web UI — no manual editing of configuration files is required.
 
 ??? tip "How It Works"
     - **Include Filters** — Only events matching at least one include pattern are eligible for indexing. Everything else is dropped before indexing (zero license cost).
@@ -86,7 +86,7 @@ In this model:
 
 #### :material-crop-square:{ .taiconcolor } Enable Filtering
 
-Check the **Enable Filtering** checkbox to activate index-time filtering. When disabled, all events are indexed without any filtering.
+Check the **Enable Filtering** checkbox to activate index-time filtering. **Default: unchecked** — out of the box no index-time filtering is applied, and the Include / Exclude / Days-in-the-Past values below take effect only once this box is checked. When disabled, all events are indexed without any filtering.
 
 #### :material-crop-square:{ .taiconcolor } Include Filters
 
@@ -260,23 +260,59 @@ If your Days in Past is less than 10, this search should return no results.
 
 ---
 
+## Reading the Active Filter Configuration
+
+Support workflows (and the LogServ App's [Data Doctor](../logserv-app/dashboards/platform/diagnostics.md))
+sometimes need the ACTIVE filter configuration as text. Two ways to read it:
+
+**REST — authoritative on the deployment server (distributed) or the single instance:**
+
+```bash
+curl -k -u <splunk-admin> "https://<deployment-server>:8089/servicesNS/nobody/splunk_ta_sap_logserv/splunk_ta_sap_logserv_settings/filter_settings?output_mode=json"
+```
+
+Omit `?output_mode=json` for the XML form. The response carries `filter_enabled`,
+`include_filters`, `exclude_filters` and `days_in_past` exactly as configured.
+
+**File — the only reliable artifact on a DS-managed Heavy Forwarder:**
+
+```bash
+sudo cat /opt/splunk/etc/apps/splunk_ta_sap_logserv/local/transforms.conf
+```
+
+!!! warning "The HF's REST endpoint is misleading"
+    On a deployment-server-managed Heavy Forwarder the `filter_settings` REST endpoint
+    returns the shipped defaults — the pushed configuration lives only in the generated
+    `local/transforms.conf`. Always use the file on an HF.
+
+The LogServ App's **Platform → Diagnostics** page prints these same commands and accepts the
+pasted output, turning the ingest filters into evidence its missing-data diagnosis can reason
+about — see [Supplying the ingest-filter configuration](../logserv-app/dashboards/platform/diagnostics.md#supplying-the-ingest-filter-configuration).
+
+!!! tip "The transforms paste also carries the Cloud Provider stamp"
+    A pasted `local/transforms.conf` includes the generated `[logserv_set_cloud_provider]`
+    stanza when the [Cloud Provider Attribution](#cloud-provider-attribution) dropdown is set,
+    so the Data Doctor also records the configured stamp and can explain how it interacts
+    with a dashboard's Cloud filter. A missing stanza is *not* read as "Not set" — the paste
+    may be truncated; only a settings-conf paste can supply the explicit `not_set` value.
+
 ## Supported Log Types
 
 ### :material-circle-box:{ .taiconcolor } Log Type Reference
 
-The table below lists all log types currently supported by the TA. The `clz_dir` and `clz_subdir` columns show the values used in filter patterns. Use these values when configuring your include and exclude filters.
+The table below lists the **Primary** log types — those with dedicated sourcetype routing. The `clz_dir` and `clz_subdir` columns show the values used in filter patterns; use these values when configuring your include and exclude filters. The canonical, complete reference (including the **Secondary** log types, which have no dedicated routing but can still be filtered by their own `clz_dir/clz_subdir` paths) is [Supported Log Types](../getting-started/supported-log-types.md).
 
 | clz_dir | clz_subdir | Splunk Sourcetype |
 |---------|------------|-------------------|
 | abap | audit | `sap:abap:audit` |
-| abap | dispatcher | `sap:abap:dispatcher` |
+| abap | dispatcher † | `sap:abap:dispatcher` |
 | abap | enqueueserver | `sap:abap:enqueueserver` |
-| abap | event | `sap:abap:event` |
+| abap | event † | `sap:abap:event` |
 | abap | gateway | `sap:abap:gateway` |
 | abap | icm | `sap:abap:icm` |
 | abap | messageserver | `sap:abap:messageserver` |
 | abap | sapstartsrv | `sap:abap:sapstartsrv` |
-| abap | workprocess | `sap:abap:workprocess` |
+| abap | workprocess † | `sap:abap:workprocess` |
 | dns | binddns | `isc:bind:query`, `isc:bind:lameserver`, `isc:bind:network`, `isc:bind:transfer` |
 | hana | hanaaudit | `sap:hana:audit` |
 | hana | tracelogs | `sap:hana:tracelogs` |
@@ -298,6 +334,8 @@ The table below lists all log types currently supported by the TA. The `clz_dir`
 | windows | WinEventLog:Powershell | `XmlWinEventLog` |
 | windows | WinEventLog:Security | `XmlWinEventLog` |
 | windows | WinEventLog:System | `XmlWinEventLog` |
+
+† `abap/dispatcher`, `abap/event`, and `abap/workprocess` were discontinued by SAP from LogServ delivery effective April 2026 — filters on them affect historical data only. Contact SAP about continued collection.
 
 ??? tip "Filter pattern examples using this table"
     - To include all DNS logs: `dns/*` or `dns/binddns`
@@ -455,7 +493,7 @@ The LogServ Azure add-on's **`sap_logserv_azure_queue`** input carries `_meta = 
 
 ### :material-circle-box:{ .taiconcolor } Deploy to Forwarders (Deployment Server)
 
-The Cloud Provider tab uses the same deployment flow as the Filters tab. When you Save on a Deployment Server, the TA writes the selection into its `local/transforms.conf` and mirrors it to the `deployment-apps/` copy. Click **Deploy to Forwarders** to trigger a scoped reload of the `SAP_LogServ_HeavyForwarders` server class; the Heavy Forwarders pick up the change on their next phone-home (typically 30–60 seconds). This is identical to the Filters-tab deploy procedure described earlier on this page — same server class, same button.
+The Cloud Provider tab uses the same deployment flow as the Filters tab. When you Save on a Deployment Server, the TA writes the selection into its `local/transforms.conf` and mirrors it to the `deployment-apps/` copy. Click **Deploy to Forwarders** to trigger a deployment-server configuration reload; the Heavy Forwarders in the `SAP_LogServ_HeavyForwarders` server class pick up the change on their next phone-home (typically within one phone-home interval — 30–60 seconds by default). This is identical to the Filters-tab deploy procedure described earlier on this page — same server class, same button.
 
 <br>
 
@@ -501,7 +539,7 @@ If you are setting up from scratch, follow the [AWS Remote S3 Filter Setup Guide
 
 #### :material-crop-square:{ .taiconcolor } Migration from Existing S3 Connect Deployment
 
-If you already have a working **S3 Connect** deployment and want to add Lambda-based filtering, follow the [AWS Remote S3 Connect to Filter Migration](aws-remote-s3-connect-to-filter-migration-guide.md). The Python migration script adds the Lambda resources to your existing IAM infrastructure without recreating it.
+If you already have a working **S3 Connect** deployment and want to add Lambda-based filtering, follow the [AWS Remote S3 Connect to Filter Migration](aws-remote-s3-connect-to-filter-migration-guide.md) (a legacy reference kept outside the site navigation). The Python migration script adds the Lambda resources to your existing IAM infrastructure without recreating it. For most deployments the native index-time filtering above is the simpler path.
 
 <br>
 

@@ -1,11 +1,13 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useContext, useRef, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import styled from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
 import { useThemeMode } from '../../../state/ThemeModeProvider';
 import { darken } from '../../../utils/colorMath';
-import { isDatabaseTag } from '../../../topology/types';
+import { isDatabaseTag, displayTag } from '../../../topology/types';
+import HostCountContext from '../HostCountContext';
 import CylinderIcon from './CylinderIcon';
+import AppServersIcon from './AppServersIcon';
 import NodeTooltip from './NodeTooltip';
 
 /**
@@ -36,6 +38,9 @@ interface SidNodeData {
     healthPct?: number;
     /** Build 206 / session 036 — drives the thin outer call-bucket ring. */
     callBuckets?: { normal: number; warning: number; error: number };
+    /** Build 326 — the Details-panel selection (the cyan glow), decoupled
+     *  from RF `selected`, which now means group membership (design §8a). */
+    inspected?: boolean;
     [key: string]: unknown;
 }
 
@@ -279,7 +284,13 @@ export {
 
 const Wrapper = styled.div<{
     $kind: 'sid_focused' | 'sid_secondary';
-    $selected: boolean;
+    /** Details-panel selection (cyan glow). Build 326: renamed from
+     *  $selected — fed from data.inspected, NOT the RF selected prop. */
+    $inspected: boolean;
+    /** Build 326 — RF group membership (Shift+drag / modifier-click).
+     *  Paint-only dashed outline; geometry untouched (no FloatingEdge /
+     *  sizeForNode / collide lockstep needed). */
+    $grouped: boolean;
     $halo: string;
     $isDb: boolean;
 }>`
@@ -328,10 +339,18 @@ const Wrapper = styled.div<{
          * r 52 → 63), layoutLayered/layoutMrtree sizeForNode
          * (115×145 → 135×165), layout.ts DEFAULT_COLLIDE_SECONDARY
          * (100 → 120). DB-tagged PARTNER nodes keep the old 68 px
-         * disc — they are partners, not SIDs. */
+         * disc — they are partners, not SIDs.
+         *
+         * Build 324 / session 109 — kinds re-labeled High/Regular
+         * Traffic SID with IDENTICAL chrome (user decision): both render
+         * at the former focused geometry (100 px wrap, 92 px disc, 4 px
+         * health halo). Derived geometry updated in lockstep again:
+         * FloatingEdge anchorFor sid_secondary → cy+50/r69,
+         * sizeForNode secondary → 145×175, DEFAULT_COLLIDE_SECONDARY →
+         * 130. The kind prop remains for labels + Systems-panel logic. */
         position: relative;
-        width: ${(p) => (p.$kind === 'sid_focused' ? '100px' : '90px')};
-        height: ${(p) => (p.$kind === 'sid_focused' ? '100px' : '90px')};
+        width: 100px;
+        height: 100px;
         /* Build 207 — explicit overflow:visible so the larger SVG ring
          * (now further out from the disc) isn't clipped by the wrapper. */
         overflow: visible;
@@ -344,29 +363,34 @@ const Wrapper = styled.div<{
     }
 
     .disc {
-        width: ${(p) => (p.$kind === 'sid_focused' ? '92px' : '86px')};
-        height: ${(p) => (p.$kind === 'sid_focused' ? '92px' : '86px')};
+        width: 92px;
+        height: 92px;
         border-radius: 50%;
         background: ${logservTheme.colors.panelBackground};
-        border: ${(p) => (p.$kind === 'sid_focused' ? `4px solid ${p.$halo}` : `2px solid ${logservTheme.colors.textDefault}`)};
-        box-shadow: ${(p) => (p.$selected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLightGlow}` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
+        border: 4px solid ${(p) => p.$halo};
+        box-shadow: ${(p) => (p.$inspected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLightGlow}` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
+        /* Build 326 — §8a-11: group-membership outline. NEUTRAL textActive
+         * ink (cyanLight is already spent on OData edges + selected-edge
+         * stroke + inspected borders) + dashed as the second
+         * differentiator. offset 6px sits inside the free corridor
+         * between the inspected glow (+3px) and the health ring's inner
+         * edge (+11.25px). outline is paint-only — border box, RF
+         * measurements and every geometry-lockstep consumer untouched. */
+        outline: ${(p) => (p.$grouped ? `2px dashed ${logservTheme.colors.textActive}` : 'none')};
+        outline-offset: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: ${logservTheme.fontWeight.bold};
-        color: ${(p) => (p.$kind === 'sid_focused' ? p.$halo : logservTheme.colors.textActive)};
+        color: ${(p) => p.$halo};
         transition: box-shadow 120ms ease-out;
-        /* DB variant: stack cylinder above SID label, shrink font slightly
-         * so both fit comfortably inside the same disc footprint. */
-        flex-direction: ${(p) => (p.$isDb ? 'column' : 'row')};
-        gap: ${(p) => (p.$isDb ? '1px' : '0')};
-        font-size: ${(p) => {
-            /* Build 277 — secondary font scales with the 90%-of-focused
-             * disc (20 * 0.9 = 18; DB 14 * 0.9 ≈ 13) so label/disc
-             * proportions match the focused variant. */
-            if (p.$isDb) return p.$kind === 'sid_focused' ? '14px' : '13px';
-            return p.$kind === 'sid_focused' ? '20px' : '18px';
-        }};
+        /* Build 324 — EVERY SID disc now stacks an icon above the SID
+         * text (rack for app SIDs per the session-109 selection, cylinder
+         * for DB-vendor SIDs), so the column layout + 14 px text that
+         * were the DB variant's are now universal. */
+        flex-direction: column;
+        gap: 1px;
+        font-size: 14px;
     }
 
     .label {
@@ -388,17 +412,25 @@ const Wrapper = styled.div<{
 const SidNode: React.FC<NodeProps> = ({ id, data, selected }) => {
     const d = data as SidNodeData;
     const halo = haloColor(d.healthPct);
+    /* Build 325 (plan item D1) — the window host count arrives via context,
+     * keyed by the node's LABEL (the bulk read's scope), NOT via node data:
+     * the count lands seconds after layout, and a data-borne count would
+     * re-fire the layout pipeline (see HostCountContext). SID labels have no
+     * label-collision hazard — the count genuinely means "hosts that logged
+     * events for this system" (the Hosts tab's own SID wording). */
+    const hostCounts = useContext(HostCountContext);
+    const hostCount = hostCounts.get(d.label);
     /* Build 211 / session 036 — accept any vendor-specific DB tag
      * (HANA / ORACLE / MSSQL / POSTGRES / DB2) plus the generic DB
      * fallback. SidNode renders the cylinder icon + label-stack
      * layout for any of these. The actual vendor is preserved in
      * `d.tag` so the tooltip + label show specific vendor. */
     const isDb = isDatabaseTag(d.tag as never);
-    const tagPlusCount = `${d.tag} · ${d.eventCount.toLocaleString()}`;
-    const cylSize = d.kind === 'sid_focused'
-        ? { w: 28, h: 32 }
-        : { w: 25, h: 29 };
-    const kindLabel = d.kind === 'sid_focused' ? 'Focused SAP SID' : 'Secondary SAP SID';
+    /* Build 324 — chips use the SHORT display-tag form; the tooltip and
+     * the right-pane Tag row carry the full form (session-109 decision). */
+    const tagPlusCount = `${displayTag(d.tag as never, { short: true })} · ${d.eventCount.toLocaleString()}`;
+    const cylSize = { w: 28, h: 32 };
+    const kindLabel = d.kind === 'sid_focused' ? 'High Traffic SID' : 'Regular Traffic SID';
 
     // Build 141: hover-driven anchor rect for the portaled tooltip. The
     // wrapper ref captures the node's screen position via
@@ -417,15 +449,22 @@ const SidNode: React.FC<NodeProps> = ({ id, data, selected }) => {
      * CSS width. Disc has content-box + border, so border-box = visible
      * disc diameter. Ring radius computes from this so the gap between
      * disc visual edge and ring inner is consistent. */
-    const discDiameter = d.kind === 'sid_focused' ? 100 : 90;
+    /* Build 324 — both kinds render at the former focused geometry. */
+    const discDiameter = 100;
 
     return (
         <Wrapper
             ref={wrapperRef}
             $kind={d.kind}
-            $selected={selected ?? false}
+            $inspected={d.inspected ?? false}
+            $grouped={selected ?? false}
             $halo={halo}
             $isDb={isDb}
+            /* Build 326 — §8a-17: announce group membership. Set here (the
+             * prop updates with RF selection) rather than via a static
+             * node.domAttributes, which applyNodeChanges would leave
+             * stale. */
+            aria-selected={selected ?? false}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
@@ -433,8 +472,9 @@ const SidNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             <NodeTooltip
                 name={d.label}
                 kind={kindLabel}
-                tag={d.tag}
+                tag={displayTag(d.tag as never)}
                 events={d.eventCount}
+                hosts={hostCount}
                 anchorRect={anchorRect}
             />
             <div className="discWrap">
@@ -448,12 +488,17 @@ const SidNode: React.FC<NodeProps> = ({ id, data, selected }) => {
                     <CallBucketRing
                         diameter={discDiameter}
                         buckets={d.callBuckets}
-                        isFocused={d.kind === 'sid_focused'}
+                        isFocused
                         nodeId={id ?? d.label}
                     />
                 )}
                 <div className="disc">
-                    {isDb && <CylinderIcon width={cylSize.w} height={cylSize.h} />}
+                    {/* Build 324 — every SID carries an icon: cylinder for
+                      * DB-vendor SIDs (unchanged), the session-109 rack
+                      * selection for all other SIDs (plan §B4). */}
+                    {isDb
+                        ? <CylinderIcon width={cylSize.w} height={cylSize.h} />
+                        : <AppServersIcon width={32} height={30} />}
                     <span>{d.label}</span>
                 </div>
             </div>

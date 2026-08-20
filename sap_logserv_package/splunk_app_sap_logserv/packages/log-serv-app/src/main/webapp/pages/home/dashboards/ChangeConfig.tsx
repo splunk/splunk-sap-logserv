@@ -23,8 +23,10 @@ import { logservTheme } from '../styles/logservTheme';
  * Recent Privileged Changes + Recent After-Hours Changes.
  *
  * The change-event filter is a 3-source synthesis (HANA / Windows / Linux). The base
- * filter, the operator/category enrichment, and the after-hours decoration are all
- * verbatim from v0.0.4.2 — extracted to constants for readability.
+ * filter and the operator/category enrichment are verbatim from v0.0.4.2 — extracted
+ * to constants for readability. The after-hours decoration was rewritten in session
+ * 091 (see the ENRICH comment): one inline `_time` window for every source, 08:00–18:59
+ * business hours, replacing a per-sourcetype case() that read dead props.conf fields.
  */
 
 const KpiRow = styled.div`
@@ -53,8 +55,20 @@ const PanelGrid2 = styled.div`
 // historical data ingested before the migration remains visible.
 const CHANGE_FILTER = `( (sourcetype="sap:hana:audit" (action_category IN ("User Management","User Creation","User Deletion","Permission Grant","Permission Revoke","Password Management","Account Status Change","Password Reset") OR action_type IN ("CREATE TABLE","ALTER TABLE","DROP TABLE","CREATE VIEW","ALTER VIEW","DROP VIEW","CREATE SCHEMA","ALTER SCHEMA","DROP SCHEMA","CREATE FUNCTION","ALTER FUNCTION","DROP FUNCTION","CREATE PROCEDURE","ALTER PROCEDURE","DROP PROCEDURE","AUDIT POLICY","CREATE AUDIT POLICY","ALTER AUDIT POLICY","DROP AUDIT POLICY"))) OR (sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757)) OR ((sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") ("COMMAND=" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd)) )`;
 
-// Source-prefixed operator + category + after-hours derivation (verbatim)
-const ENRICH = `eval change_source = case(sourcetype="sap:hana:audit", "HANA", sourcetype="XmlWinEventLog", "Windows", 1=1, "Linux") | rex field=_raw "sudo:\\s+(?<sudo_op>\\w+)\\s*:" | rex field=_raw "\\((?<paren_op>\\w+)\\)" | eval operator = case(sourcetype="sap:hana:audit", "HANA:" . executing_user, sourcetype="XmlWinEventLog", "Windows:" . coalesce(SubjectUserName, user, "unknown"), 1=1, "Linux:" . coalesce(sudo_op, paren_op, os_user, "unknown")) | eval category = case(sourcetype="sap:hana:audit" AND action_category="Permission Grant", "Permission Grant", sourcetype="sap:hana:audit" AND action_category="Permission Revoke", "Permission Revoke", sourcetype="sap:hana:audit" AND action_category IN ("User Creation","User Deletion","User Management"), "User Management", sourcetype="sap:hana:audit" AND action_category IN ("Password Management","Password Reset"), "Password Change", sourcetype="sap:hana:audit" AND action_category="Account Status Change", "Account Status", sourcetype="sap:hana:audit", "DDL / Config", sourcetype="XmlWinEventLog" AND EventCode IN (4720,4722,4725,4726,4738,4781), "User Management", sourcetype="XmlWinEventLog" AND EventCode=4724, "Password Change", sourcetype="XmlWinEventLog" AND EventCode IN (4728,4729,4732,4733,4756,4757), "Group Membership", sourcetype="XmlWinEventLog" AND EventCode IN (4740,4767), "Account Status", match(_raw, "(?i)passwd\\b"), "Password Change", match(_raw, "(?i)(useradd|usermod|userdel)"), "User Management", match(_raw, "(?i)(groupadd|groupmod|groupdel)"), "Group Membership", match(_raw, "COMMAND="), "Sudo Command", 1=1, "Other") | eval hr = tonumber(strftime(_time, "%H")) | eval dw = strftime(_time, "%A") | eval is_after_hours = case(sourcetype="sap:hana:audit", if(is_business_hours="false" OR is_weekend="true", 1, 0), 1=1, if(hr < 7 OR hr > 19 OR match(dw, "(?i)(saturday|sunday)"), 1, 0))`;
+// Source-prefixed operator + category + after-hours derivation.
+// The operator/category classification is verbatim from v0.0.4.2. The
+// after-hours decoration is NOT: session 091 replaced a per-sourcetype
+// case() — which routed sap:hana:audit to the props.conf is_business_hours /
+// is_weekend fields — with the single inline `_time` expression below.
+// Those props fields were pinned to the dead constant "false" by an
+// EVAL -> EVAL chain, so the quoted comparison matched EVERY HANA event and
+// the KPI reported 50,000 of 50,000 as after-hours. Both branches are now
+// identical by construction, so the case() is gone. Canonical window:
+// after-hours = hour < 8 OR hour > 18 OR weekend (08:00-18:59 = business).
+// Keep in lockstep with props.conf [sap:hana:audit], HanaAudit's
+// afterHoursAdmin, and the [logserv_compliance_aggregate] / _backfill arms
+// in savedsearches.conf — those two confs embed this exact expression.
+const ENRICH = `eval change_source = case(sourcetype="sap:hana:audit", "HANA", sourcetype="XmlWinEventLog", "Windows", 1=1, "Linux") | rex field=_raw "sudo:\\s+(?<sudo_op>\\w+)\\s*:" | rex field=_raw "\\((?<paren_op>\\w+)\\)" | eval operator = case(sourcetype="sap:hana:audit", "HANA:" . executing_user, sourcetype="XmlWinEventLog", "Windows:" . coalesce(SubjectUserName, user, "unknown"), 1=1, "Linux:" . coalesce(sudo_op, paren_op, os_user, "unknown")) | eval category = case(sourcetype="sap:hana:audit" AND action_category="Permission Grant", "Permission Grant", sourcetype="sap:hana:audit" AND action_category="Permission Revoke", "Permission Revoke", sourcetype="sap:hana:audit" AND action_category IN ("User Creation","User Deletion","User Management"), "User Management", sourcetype="sap:hana:audit" AND action_category IN ("Password Management","Password Reset"), "Password Change", sourcetype="sap:hana:audit" AND action_category="Account Status Change", "Account Status", sourcetype="sap:hana:audit", "DDL / Config", sourcetype="XmlWinEventLog" AND EventCode IN (4720,4722,4725,4726,4738,4781), "User Management", sourcetype="XmlWinEventLog" AND EventCode=4724, "Password Change", sourcetype="XmlWinEventLog" AND EventCode IN (4728,4729,4732,4733,4756,4757), "Group Membership", sourcetype="XmlWinEventLog" AND EventCode IN (4740,4767), "Account Status", match(_raw, "(?i)passwd\\b"), "Password Change", match(_raw, "(?i)(useradd|usermod|userdel)"), "User Management", match(_raw, "(?i)(groupadd|groupmod|groupdel)"), "Group Membership", match(_raw, "COMMAND="), "Sudo Command", 1=1, "Other") | eval hr = tonumber(strftime(_time, "%H")) | eval dw = strftime(_time, "%A") | eval is_after_hours = if(hr < 8 OR hr > 18 OR match(dw, "(?i)(saturday|sunday)"), 1, 0)`;
 
 /**
  * Dashboard-perf roadmap tier #6 (KV-Store precompute, session 051 / build 212).
@@ -165,17 +179,26 @@ const QRAW_BASE = {
     operators: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | stats count by operator | sort -count | rename operator as "Operator", count as "Change Events"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 087). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const OPERATOR_COLS: ColumnDef[] = [
@@ -289,17 +312,17 @@ const ChangeConfig: React.FC = () => {
             subtitle="Cross-stack audit trail — HANA user/role/privilege changes, Windows account and group modifications, Linux sudo and user-management activity, with compliance-focused privileged and after-hours views"
         >
             <KpiRow>
-                <KpiCard label="Total Change Events" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Change Events" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="User Account Changes" value={userChanges.value} loading={userChanges.loading} error={userChanges.error} formatValue={formatInteger}
+                <KpiCard label="User Account Changes" value={userChanges.value} loading={userChanges.loading} error={userChanges.error} search={userChanges.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkUserChanges} valueField="count" fill />} />
-                <KpiCard label="Permission Grants" value={permGrants.value} loading={permGrants.loading} error={permGrants.error} formatValue={formatInteger}
+                <KpiCard label="Permission Grants" value={permGrants.value} loading={permGrants.loading} error={permGrants.error} search={permGrants.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkPermGrants} valueField="count" fill />} />
-                <KpiCard label="Password Events" value={password.value} loading={password.loading} error={password.error} formatValue={formatInteger}
+                <KpiCard label="Password Events" value={password.value} loading={password.loading} error={password.error} search={password.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkPassword} valueField="count" fill />} />
-                <KpiCard label="After-Hours Changes" value={afterHours.value} loading={afterHours.loading} error={afterHours.error} formatValue={formatInteger} tone={ahTone}
+                <KpiCard label="After-Hours Changes" value={afterHours.value} loading={afterHours.loading} error={afterHours.error} search={afterHours.search} formatValue={formatInteger} tone={ahTone}
                     sparkline={<SparklineFromQuery query={Q.sparkAfterHours} valueField="count" color={logservTheme.colors.orange} fill />} />
-                <KpiCard label="Unique Operators" value={operatorsKpi.value} loading={operatorsKpi.loading} error={operatorsKpi.error} formatValue={formatInteger}
+                <KpiCard label="Unique Operators" value={operatorsKpi.value} loading={operatorsKpi.loading} error={operatorsKpi.error} search={operatorsKpi.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkOperators} valueField="operators" fill />} />
             </KpiRow>
 
@@ -340,7 +363,7 @@ const ChangeConfig: React.FC = () => {
                 <FramedPanel search={priv} title="Recent Privileged Changes (Compliance Focus)" subtitle="High-privilege subset for compliance review, most-recent first">
                     <DataTable columns={PRIV_COLS} rows={priv.results} loading={priv.loading} error={priv.error} emptyMessage="No privileged changes in this time range." initialSortKey="Time" initialSortDir="desc" />
                 </FramedPanel>
-                <FramedPanel search={ah} title="Recent After-Hours Changes (Outside Business Hours)" subtitle="Changes outside 7am–7pm or on weekends, most-recent first">
+                <FramedPanel search={ah} title="Recent After-Hours Changes (Outside Business Hours)" subtitle="Changes outside 8am–7pm or on weekends, most-recent first">
                     <DataTable columns={AH_COLS} rows={ah.results} loading={ah.loading} error={ah.error} emptyMessage="No after-hours changes in this time range." initialSortKey="Time" initialSortDir="desc" />
                 </FramedPanel>
             </PanelGrid2>

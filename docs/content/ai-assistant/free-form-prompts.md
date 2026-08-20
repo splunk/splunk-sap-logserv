@@ -1,7 +1,7 @@
 # Free-form Prompts
 
-!!! warning "Current release: this entire feature is disabled pending review"
-    The free-form / LLM-driven path is **disabled at compile time** in the current release pending internal review. Chat input is greyed out, Send button is disabled, model picker and Power Mode toggle are hidden, and the Provider Credentials Settings tab is hidden. None of the behavior described on this page is reachable in the current build. This page is preserved as the design reference for the future release that re-enables the LLM path. See [Templates-only Build](templates-only-build.md) for the build mechanism and [OWASP LLM Top 10 Compliance](owasp-llm-compliance.md) for the security posture under review.
+!!! warning "Full-LLM build variant only"
+    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): the free-form / LLM-driven path this page describes is **disabled at compile time** there, and no vendor call is ever made. This page applies to the separately-built **full-LLM variant** used in approved deployments.
 
 Free-form prompts are the LLM-driven path through the AI Assistant. The user types a natural-language question; the orchestrator sends a system primer + the question + tool definitions to one of four supported LLM providers; the vendor picks tools, the orchestrator dispatches them via the [Splunk MCP Server](mcp-setup.md), and the vendor synthesizes a narrative response from the privacy-tier-bounded summaries. The narrative ends up in the chat panel on the left; the actual data lands in tool-result tiles on the right.
 
@@ -11,12 +11,12 @@ This path requires a configured [LLM provider credential](settings.md#provider-c
 
 | Provider | API Endpoint | Auth | Models |
 |---|---|---|---|
-| **Anthropic** | `api.anthropic.com` (direct) | API key | Claude Opus 4.7 / Sonnet 4.6 / Haiku 4.5 |
-| **OpenAI** | `api.openai.com` (direct) | API key | GPT-4o / GPT-5 family (per OpenAI catalog) |
-| **Azure OpenAI** | Customer's Azure deployment URL | Azure auth + URL pattern | Per Azure deployment configuration |
-| **AWS Bedrock** | Bedrock API (Claude on Bedrock) | Bedrock API Keys (no SigV4 signing) | Claude on Bedrock — same models as Anthropic direct |
+| **Anthropic** | `api.anthropic.com` (direct) | API key | Claude Opus 4.8 / Sonnet 5 / Haiku 4.5 baseline + any model discovered from `/v1/models` |
+| **OpenAI** | `api.openai.com` (direct) | API key | GPT-5.1 / GPT-5 / GPT-4o / o3 baseline + discovered chat-capable models |
+| **Azure OpenAI** | Customer's Azure deployment URL | Azure auth + URL pattern | Per Azure deployment configuration (deployments auto-discovered) |
+| **AWS Bedrock** | Bedrock API (Claude on Bedrock) | Bedrock API Keys (no SigV4 signing) | Claude on Bedrock — baseline + `ListFoundationModels` discovery |
 
-Active provider + default model are admin-configured in [Settings → General](settings.md). Per-user model picker in the chat panel's privacy banner lets users switch within the active provider's `models[]` list.
+Active provider + default model are admin-configured in [Settings → General](settings.md). Per-user model picker in the chat panel's privacy banner lets users switch within the active provider's model list — the curated baseline plus any vendor-discovered models (see [How model discovery works](settings.md#how-model-discovery-works)).
 
 AWS Bedrock support currently requires Bedrock API Keys. IAM-only credentials (no Bedrock API Key) aren't supported — the React app can't sign SigV4 requests from the browser.
 
@@ -54,7 +54,7 @@ The AI's tool definitions on every free-form request are:
 
 ### `splunk_run_saved_search`
 
-Dispatch a saved search from the LogServ App's catalog (one of the 61 prompts described in [Predefined Prompts](predefined-prompts.md)).
+Dispatch a saved search from the LogServ App's catalog (one of the catalogued prompts described in [Predefined Prompts](predefined-prompts.md)).
 
 | Arg | Type | Description |
 |---|---|---|
@@ -71,7 +71,7 @@ Dispatch ad-hoc SPL written by the AI. Used when no saved search fits the user's
 | Arg | Type | Description |
 |---|---|---|
 | `query` | string (required) | SPL string. Must start with the LogServ macro `\`sap_logserv_idx_macro\`` (the AI's primer enforces this) and use only read-only commands. |
-| `earliest_time` | string (optional) | Same as above. |
+| `earliest_time` | string (optional) | Defaults to the user's currently selected time range when omitted. |
 | `latest_time` | string (optional) | Same as above. |
 | `render_hint` | string (optional) | Same as above. |
 | `top_n` | integer (optional) | Same as above. |
@@ -83,7 +83,7 @@ Dispatch ad-hoc SPL written by the AI. Used when no saved search fits the user's
 A system-message prelude is sent on every free-form request. The primer teaches the AI:
 
 - A data-boundary rule that distinguishes customer data from instructions (mitigates [LLM01 / LLM04](owasp-llm-compliance.md))
-- The catalog of 61 saved searches (so the AI prefers `splunk_run_saved_search` when a saved search fits)
+- The full saved-search catalog, built from the intent map at compile time (so the AI prefers `splunk_run_saved_search` when a saved search fits)
 - The LogServ data model (sourcetypes + key fields) for ad-hoc SPL
 - The read-only-operators list for `splunk_run_query`
 - The [time-window reasoning rules](time-window-reasoning.md) that kick in for severity claims
@@ -111,15 +111,15 @@ Free-form prompts are subject to a per-user rolling-1-hour rate limit, configura
 When a user hits the cap, the next prompt:
 
 1. Renders the user message in chat as usual (preserves history continuity).
-2. Surfaces a system_notice in chat: *"Rate limit reached: N prompts in the last hour. Try again at HH:MM."*
+2. Surfaces a system_notice in chat stating the limit was reached, how many free-form prompts were counted against the hourly threshold, roughly how long until the oldest prompt ages out, and which admin setting (`rate_limit_per_hour`) raises the cap.
 3. Records a `rate_limited_prompt` audit event with the user's identity, the cap value, and the timestamp.
 4. Does NOT invoke the LLM vendor.
 
-The cap is per-user, not per-session — opening a new browser tab doesn't reset it. Maps to [LLM10 — Unbounded Consumption](owasp-llm-compliance.md).
+The cap is per-user, not per-session — opening a new browser tab doesn't reset it. Enforcement is browser-side (`localStorage`), so it is per-user **per browser**: a second browser or device gets its own budget, and clearing site data resets the counter. The `rate_limited_prompt` / `daily_spend_cap_hit` audit events still fire on every block, so the SOC record survives either way — treat both caps as defense-in-depth, not a hard quota; vendor-side limits and your billing dashboard remain the enforcement of record. Maps to [LLM10 — Unbounded Consumption](owasp-llm-compliance.md).
 
 ## :material-circle-box:{ .taiconcolor } Token-Usage Audit + USD Cost Estimate
 
-Every Tier 1 / Tier 2 vendor call records a `vendor_tier1` or `vendor_tier2` audit event with:
+Every vendor call — whichever tier is active — records a **`vendor_tier1`** audit event with:
 
 - Provider (anthropic / openai / azure_openai / bedrock)
 - Model
@@ -128,17 +128,18 @@ Every Tier 1 / Tier 2 vendor call records a `vendor_tier1` or `vendor_tier2` aud
 - Outbound bytes
 - Prompt length (chars)
 - Number of tool turns in this dispatch
-- For Tier 2: number of PII redactions applied
+- `tier2RedactionsApplied` — number of PII redactions applied on this turn (0 at Tier 1)
+- `powerMode` — whether the forced-RAG [Power Mode](power-mode.md) was active
 
 The Audit Log tab in Settings provides aggregate views; the USD cost estimate is a sticker price (not the customer's negotiated rate, which we don't know) and should be treated as an order-of-magnitude indicator. See [Audit Log](audit-log.md).
 
 ## :material-circle-box:{ .taiconcolor } Daily Spend Cap
 
-To prevent runaway vendor spend, the orchestrator enforces a per-app-instance daily USD spend cap (configurable in Settings, default $X / day; admin sets per organization risk tolerance). When a vendor call would push cumulative cost over the cap, the orchestrator:
+To prevent runaway vendor spend, the orchestrator enforces a per-user (per browser) daily USD spend cap (configurable in Settings, default $X / day; admin sets per organization risk tolerance). When a vendor call would push cumulative cost over the cap, the orchestrator:
 
 1. Refuses the dispatch.
 2. Records a `daily_spend_cap_hit` audit event.
-3. Surfaces a system_notice: *"Daily spend cap reached ($X.XX of $Y.YY budgeted). Resets at 00:00 UTC. Contact your admin to raise the cap."*
+3. Surfaces a system_notice stating the cap was reached, how much of the budget is spent, and that the tally resets at local midnight (the browser's calendar day).
 
 The cap is **cumulative-cost-based**, not request-count-based — a single high-token-count free-form turn counts against the budget the same way many cheap turns do. Maps to [LLM10 — Unbounded Consumption](owasp-llm-compliance.md).
 

@@ -18,6 +18,8 @@ import {
     MarkerType,
     useStoreApi,
     type EdgeTypes,
+    SelectionMode,
+    type OnNodeDrag,
 } from '@xyflow/react';
 import FloatingEdge from './FloatingEdge';
 import '@xyflow/react/dist/style.css';
@@ -40,10 +42,12 @@ import { edgeStyleFor } from '../../topology/edgeStyle';
  *   - Dims edges whose IntegrationType is not in `enabledTypes`
  */
 
-const FlowWrap = styled.div`
+const FlowWrap = styled.div<{ $mode: 'light' | 'dark' }>`
     width: 100%;
     height: 100%;
     background: ${logservTheme.colors.pageBackground};
+    /* Build 326 — anchor for the group-selection hint chip. */
+    position: relative;
 
     /* @xyflow/react overrides for dark theme cohesion. The library uses
      * CSS variables prefixed with --xy-* (v12). These keep the controls,
@@ -61,6 +65,15 @@ const FlowWrap = styled.div`
     /* minimap mask: set via the <MiniMap maskColor> PROP (mode-aware,
      * build 257) — the prop renders inline and always beats this var. */
     --xy-attribution-background-color: transparent;
+    /* Build 326 — §8a-16: the Shift+drag selection band is styled through
+     * the library's OWN hooks (--xy-selection-*), not class overrides.
+     * Fill/border need per-mode rgba literals (the theme layer forbids
+     * alpha-suffixing tokens — magneticTokens header), so FlowWrap takes
+     * $mode like the Background color / MiniMap maskColor props do. The
+     * border ink matches the per-node membership outline (textActive
+     * family) so band + resulting outlines read as one gesture. */
+    --xy-selection-background-color: ${(p) => (p.$mode === 'light' ? 'rgba(15, 18, 20, 0.06)' : 'rgba(247, 247, 247, 0.08)')};
+    --xy-selection-border: 1.5px dashed ${(p) => (p.$mode === 'light' ? 'rgba(35, 40, 46, 0.75)' : 'rgba(247, 247, 247, 0.7)')};
 
     /* Edge labels — keep them readable on the dark canvas. */
     .react-flow__edge-text {
@@ -91,9 +104,68 @@ const FlowWrap = styled.div`
         transition: none;
     }
 
+    /* Build 326 — §8a-5: during a GROUP drag only the GRABBED node gets
+     * RF's "dragging" class (it comes from that node wrapper's own local
+     * useDrag state); without this rule every other member chases the
+     * pointer through the 600 ms glide above — the exact rubber-banding
+     * the .dragging override exists to prevent. Cost accepted: a node
+     * that stays selected across a layout recompute skips the glide. */
+    .react-flow__node.selected {
+        transition: none;
+    }
+
+    /* Build 326 — §8a-1: the built-in NodesSelection bounding rect is
+     * SUPPRESSED. It covers the whole selection bbox with
+     * pointer-events:all at z-index 3 (above every node + edge): it
+     * swallows pane clicks inside the bbox, makes interior unselected
+     * nodes unclickable/unhoverable, disappears on the first node click
+     * anyway (nodesSelectionActive → false), and auto-focuses itself so
+     * arrow keys move the group with NO drag-stop (silent Save Layout
+     * loss). display:none also defeats the auto-focus — hidden elements
+     * can't take focus. The per-node dashed outline (SidNode/PartnerNode
+     * $grouped) is the durable group visual; group drag works through
+     * the member nodes themselves (RF's getDragItems keys off
+     * node.selected, not the rect). */
+    .react-flow__nodesselection-rect {
+        display: none;
+    }
+
+    /* Build 326 — §8a a11y: the imported library stylesheet sets
+     * outline:none on focused nodes, leaving keyboard users with no
+     * focus indicator at all. Restore a SOLID ring on keyboard focus —
+     * distinct from the dashed group-membership outline — using the
+     * per-mode focus-ring ink. */
+    .react-flow__node.selectable:focus-visible {
+        outline: 2px solid ${(p) => (p.$mode === 'light' ? '#3e84e5' : '#7cadf7')};
+        outline-offset: 2px;
+    }
+
     .react-flow__attribution {
         font-size: 9px;
         opacity: 0.4;
+    }
+`;
+
+/* Build 326 — §8a-15: discoverability hint for the group gesture. Renders
+ * top-RIGHT of the canvas (top-left belongs to CanvasLoadingOverlay),
+ * pointer-events:none, role="status" so the count is announced once.
+ * Counts NODES only — RF selects edges by connectivity, which would
+ * over-claim the group (§8a-10). */
+const SelectionHint = styled.div`
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    pointer-events: none;
+    background: ${logservTheme.colors.panelBackground};
+    border: 1px solid ${logservTheme.colors.panelBorderWeak};
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: ${logservTheme.colors.textDefault};
+
+    b {
+        color: ${logservTheme.colors.textActive};
     }
 `;
 
@@ -350,15 +422,24 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
      * (new node set), force-rerun, and saved-layout load.
      */
     React.useEffect(() => {
-        setFlowNodes(
-            nodes.map((n, i) => ({
+        setFlowNodes((prev) => {
+            /* Build 326 — §8a-8: preserve RF group membership across the
+             * rebuild. This effect re-runs on Refresh, time-range changes
+             * AND Save Layout (the save churns savedPositions identity);
+             * without carrying `selected` forward, all three silently
+             * wiped an active group. Ids that left the node set drop out
+             * naturally. `data.inspected` is the Details-panel selection
+             * (decoupled from RF `selected` — §8a/D1). */
+            const prevSelected = new Set(prev.filter((p) => p.selected).map((p) => p.id));
+            return nodes.map((n, i) => ({
                 id: n.id,
                 type: n.kind,
                 position: initialPositions[i] ?? { x: 0, y: 0 },
-                data: { ...n },
-                selected: n.id === selectedNodeId,
-            })),
-        );
+                data: { ...n, inspected: n.id === selectedNodeId },
+                selected: prevSelected.has(n.id),
+                ariaLabel: n.label,
+            }));
+        });
         /* Two nested rAFs: first lets React commit the setFlowNodes change,
          * second lets ReactFlow's internals (node sizing, viewport bounds)
          * settle before fitView reads them. Without the double-rAF, fitView
@@ -383,10 +464,29 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [nodes, initialPositions]);
 
-    /** Selection-only updates without re-positioning. */
+    /** Inspection-only updates without re-positioning. Build 326 — this
+     *  effect used to write RF `selected`, which CLOBBERED any group
+     *  selection on every Details-panel change; it now writes
+     *  `data.inspected` (the Details glow) and leaves `selected` to RF.
+     *  §8a-13: the rewrite is SURGICAL — only the nodes whose value
+     *  actually changes get a new data object; a blanket rewrite would
+     *  re-render all ~60-90 memoized node components per click. */
     React.useEffect(() => {
-        setFlowNodes((prev) => prev.map((fn) => ({ ...fn, selected: fn.id === selectedNodeId })));
+        setFlowNodes((prev) => prev.map((fn) => {
+            const next = fn.id === selectedNodeId;
+            const cur = (fn.data as { inspected?: boolean }).inspected ?? false;
+            return cur === next ? fn : { ...fn, data: { ...fn.data, inspected: next } };
+        }));
     }, [selectedNodeId]);
+
+    /* Build 326 — post-commit mirror of flowNodes so drag-stop / debounced
+     * keyboard-move notifications read positions WITHOUT doing side
+     * effects inside a setState updater (§8a-4; updaters double-run under
+     * StrictMode). Effects run after commit, before any queued timeout. */
+    const flowNodesRef = useRef<Node[]>([]);
+    React.useEffect(() => {
+        flowNodesRef.current = flowNodes;
+    }, [flowNodes]);
 
     /** Edge sync — re-run when edges, filter set, edge selection, or theme
      *  mode changes (filter affects opacity; selection affects stroke width
@@ -449,41 +549,143 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
         );
     }, [edges, enabledTypes, selectedEdgeId, tokens]);
 
+    /* Build 326 — notify the layout owner ("Unsaved changes" + what Save
+     * Layout serializes) from the post-commit mirror, never from inside a
+     * setState updater (§8a-4). */
+    const notifyLayout = useCallback(() => {
+        if (!onLayoutChange) return;
+        onLayoutChange(flowNodesRef.current.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y })));
+    }, [onLayoutChange]);
+
+    const kbNotifyTimer = useRef<number | null>(null);
+    React.useEffect(() => () => {
+        if (kbNotifyTimer.current !== null) window.clearTimeout(kbNotifyTimer.current);
+    }, []);
+
     const handleNodesChange = useCallback((changes: NodeChange[]) => {
         setFlowNodes((nds) => applyNodeChanges(changes, nds));
-    }, []);
+        /* Build 326 — §8a-9: arrow keys on a focused MEMBER move the whole
+         * selection through RF's moveSelectedNodes, which emits only
+         * position changes and never fires onNodeDragStop — so keyboard
+         * moves would bypass dirty-tracking and Save Layout would
+         * silently discard them. Any non-dragging position change
+         * debounce-notifies the layout owner. (A pointer drag's final
+         * dragging:false change also lands here — the duplicate notify
+         * is idempotent upstream.) */
+        if (onLayoutChange && changes.some((c) => c.type === 'position' && !c.dragging)) {
+            if (kbNotifyTimer.current !== null) window.clearTimeout(kbNotifyTimer.current);
+            kbNotifyTimer.current = window.setTimeout(notifyLayout, 300);
+        }
+    }, [onLayoutChange, notifyLayout]);
 
     const handleEdgesChange = useCallback((changes: EdgeChange[]) => {
-        setFlowEdges((eds) => applyEdgeChanges(changes, eds));
+        /* Build 326 — §8a-10: RF box-selection selects edges by
+         * CONNECTIVITY (every edge incident to a selected node), which
+         * over-claims the group, and the flags would persist in flowEdges
+         * indefinitely (the edge-sync effect's deps never fire on a box
+         * selection). Edge selection in this app is driven by
+         * selectedEdgeId through the edge-sync effect — drop RF's edge
+         * select changes entirely. */
+        const kept = changes.filter((c) => c.type !== 'select');
+        if (kept.length === 0) return;
+        setFlowEdges((eds) => applyEdgeChanges(kept, eds));
     }, []);
 
-    const handleNodeDragStop = useCallback<NodeMouseHandler>(
-        (_event, node) => {
-            // Snap-to-grid on release if the toolbar toggle is on.
+    /* Build 326 — §8a-2: typed OnNodeDrag (3-arg). This fires for EVERY
+     * drag; `draggedNodes` carries all moved members on a group drag.
+     * There is deliberately NO onSelectionDragStop — it would double-fire
+     * alongside this handler (its array also sits in a different argument
+     * position), and the bounding rect that produces rect-drags is
+     * suppressed anyway (§8a-1). */
+    const handleNodeDragStop = useCallback<OnNodeDrag>(
+        (_event, node, draggedNodes) => {
+            /* §8a-3 — snap applies ONE delta (computed from the grabbed
+             * node) to every dragged member, preserving the group's shape;
+             * per-node independent rounding would deform it by up to half
+             * a grid cell per axis per node. */
             if (snapMode) {
+                const members = draggedNodes && draggedNodes.length > 0 ? draggedNodes : [node];
                 const snapped = snapToGrid(node.position.x, node.position.y);
-                setFlowNodes((nds) =>
-                    nds.map((n) => (n.id === node.id ? { ...n, position: snapped } : n)),
-                );
+                const dx = snapped.x - node.position.x;
+                const dy = snapped.y - node.position.y;
+                if (dx !== 0 || dy !== 0) {
+                    const ids = new Set(members.map((m) => m.id));
+                    setFlowNodes((nds) => nds.map((n) => (ids.has(n.id)
+                        ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } }
+                        : n)));
+                }
             }
-            // Always notify upward — the dashboard tracks "dirty layout" + the
-            // toolbar's "Save Layout" button serializes whatever we've got.
-            if (onLayoutChange) {
-                setFlowNodes((nds) => {
-                    onLayoutChange(nds.map((n) => ({ id: n.id, x: n.position.x, y: n.position.y })));
-                    return nds;
-                });
-            }
+            // Notify after React commits (the mirror effect has run by then).
+            window.setTimeout(notifyLayout, 0);
         },
-        [snapMode, onLayoutChange],
+        [snapMode, notifyLayout],
     );
 
     const handleNodeClick = useCallback<NodeMouseHandler>(
-        (_event, node) => {
+        (event, node) => {
+            /* Build 326 — §8a-6/7: modifier clicks are selection gestures
+             * (RF toggles membership natively; Shift is in
+             * multiSelectionKeyCode so Shift+click can't silently REPLACE
+             * the group) — they must not open/steal the Details panel. */
+            if (event.shiftKey || event.ctrlKey || event.metaKey) return;
+            /* Plain click = inspect. RF does NOT collapse a selection when
+             * the clicked node is already selected (it only hides its
+             * bounding rect) — clear it ourselves so the dashed outline
+             * stays an exclusively multi-select visual and never stacks
+             * with the inspected glow from a plain click. RF's internal
+             * click-select runs BEFORE this callback in the same event, so
+             * this clear wins the batch. */
+            setFlowNodes((nds) => (nds.some((n) => n.selected)
+                ? nds.map((n) => (n.selected ? { ...n, selected: false } : n))
+                : nds));
             if (onNodeClick) onNodeClick(node.id);
         },
         [onNodeClick],
     );
+
+    /* Build 326 — §8a-14: Escape clears the group. Document-level (focus
+     * routinely leaves the canvas — RF blurs nodes on Ctrl+click unselect,
+     * and the suppressed rect never holds it), guarded: no-op when nothing
+     * is selected; never fires from form fields, open dialogs, or other
+     * UI (toolbar dropdowns/modals own their Escape) — only when the
+     * event target is the body or inside the flow canvas itself. */
+    React.useEffect(() => {
+        const onKey = (e: KeyboardEvent): void => {
+            if (e.key !== 'Escape') return;
+            /* e.target can be a non-Element (document/window on synthetic
+             * dispatch paths) — guard before closest(). */
+            const t = e.target instanceof Element ? e.target : null;
+            if (t && t.closest('input, textarea, select, [contenteditable="true"]')) return;
+            /* Build 328 — only a VISIBLE dialog owns Escape. Splunk Web
+             * keeps a HIDDEN "Disconnected from Splunk server" overlay
+             * with role="dialog" permanently in the DOM, so a bare
+             * querySelector('[role="dialog"], [aria-modal="true"]') is
+             * ALWAYS truthy and ate every Escape (caught in the build-327
+             * rendered pass). */
+            const dialogOpen = Array.prototype.some.call(
+                document.querySelectorAll('[role="dialog"], [aria-modal="true"]'),
+                (el: HTMLElement) => el.offsetWidth > 0 || el.offsetHeight > 0,
+            );
+            if (dialogOpen) return;
+            if (t && t !== document.body) {
+                const flowEl = document.querySelector('.react-flow');
+                if (!flowEl || !flowEl.contains(t)) return;
+            }
+            setFlowNodes((nds) => (nds.some((n) => n.selected)
+                ? nds.map((n) => (n.selected ? { ...n, selected: false } : n))
+                : nds));
+        };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, []);
+
+    /* Build 326 — §8a-15: node count for the hint chip. Stable callback
+     * (RF re-fires its selection-listener effect when the handler identity
+     * changes) with an equality bail-out. */
+    const [groupCount, setGroupCount] = React.useState(0);
+    const handleSelectionChange = useCallback(({ nodes: selNodes }: { nodes: Node[]; edges: Edge[] }) => {
+        setGroupCount((prev) => (prev === selNodes.length ? prev : selNodes.length));
+    }, []);
 
     const handleEdgeClick = useCallback<EdgeMouseHandler>(
         (_event, edge) => {
@@ -599,7 +801,7 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
     }, []);
 
     return (
-        <FlowWrap>
+        <FlowWrap $mode={mode}>
             <ReactFlow
                 nodes={flowNodes}
                 edges={flowEdges}
@@ -611,6 +813,7 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                 onNodeClick={handleNodeClick}
                 onEdgeClick={handleEdgeClick}
                 onPaneClick={handlePaneClick}
+                onSelectionChange={handleSelectionChange}
                 onInit={(inst) => { flowRef.current = inst; }}
                 fitView
                 colorMode={mode}
@@ -618,6 +821,34 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                 proOptions={{ hideAttribution: true }}
                 minZoom={MIN_ZOOM}
                 maxZoom={MAX_ZOOM}
+                /* Build 326 — group select + move (design §8a). Shift+drag
+                 * draws the selection band (plain drag still PANS);
+                 * Shift/Ctrl/Cmd+click toggle membership — Shift MUST be
+                 * in multiSelectionKeyCode or Shift+click REPLACES the
+                 * selection (§8a-7). Partial: a node partially inside the
+                 * band selects (100 px nodes). deleteKeyCode={null}
+                 * disables RF's LIVE default (Backspace deletes every
+                 * selected node from flow state) — null, NOT undefined:
+                 * undefined re-enables 'Backspace' via RF's destructuring
+                 * default (§8a-19, gate-pinned). selectNodesOnDrag={false}
+                 * keeps a plain solo drag from painting the group visual;
+                 * its documented side effect (§8a-18): dragging an
+                 * UNSELECTED node releases the group and moves only that
+                 * node. */
+                selectionKeyCode="Shift"
+                selectionMode={SelectionMode.Partial}
+                multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
+                deleteKeyCode={null}
+                selectNodesOnDrag={false}
+                /* §8a-17: with delete disabled, RF's stock screen-reader
+                 * description ("Press delete to remove it") becomes a
+                 * false instruction — describe the real key set. */
+                ariaLabelConfig={{
+                    'node.a11yDescription.default':
+                        'Press enter or space to select a node, and escape to clear the selection.',
+                    'node.a11yDescription.keyboardDisabled':
+                        'Press enter or space to select a node. You can then use the arrow keys to move the selection. Press escape to clear it.',
+                }}
             >
                 {/* Faint Magnetic dot-grid (plan §8, Phase 3 / build 257):
                   * near-invisible texture, not a visible grid — low-alpha
@@ -651,6 +882,15 @@ const TopologyGraph = forwardRef<TopologyGraphHandle, TopologyGraphProps>(({
                     style={{ width: 140, height: 100, cursor: 'grab' }}
                 />
             </ReactFlow>
+            {/* Build 326 — §8a-15: group-gesture hint. ≥1 so even a
+              * single-node box selection (dashed outline, no Details
+              * panel) is explained. */}
+            {groupCount >= 1 && (
+                <SelectionHint role="status">
+                    <b>{groupCount}</b>
+                    {` node${groupCount === 1 ? '' : 's'} selected — drag a highlighted node to move the group · Shift/Ctrl+click adjusts · Esc clears`}
+                </SelectionHint>
+            )}
         </FlowWrap>
     );
 });

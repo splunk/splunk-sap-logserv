@@ -7,6 +7,7 @@ import PlaceholderDashboard from './PlaceholderDashboard';
 import { dashboards } from '../routes/dashboardRegistry';
 import { logservTheme } from '../styles/logservTheme';
 import { GlobalRefreshProvider } from '../state/GlobalRefreshProvider';
+import { DiagnosticDrawerProvider } from '../state/DiagnosticDrawerProvider';
 import { AIAssistant, SidePanel } from './ai/chat';
 
 const SESSION_KEY_AI_PANEL_OPEN = 'logserv.aiAssistant.sidePanel.expanded';
@@ -52,6 +53,7 @@ const HostDetails = lazy(() => import('../dashboards/HostDetails'));
 const IntegrationTopology = lazy(() => import('../dashboards/IntegrationTopology'));
 const MultiCloudOverview = lazy(() => import('../dashboards/MultiCloudOverview'));
 const AIAssistantSettings = lazy(() => import('../dashboards/AIAssistantSettings'));
+const Diagnostics = lazy(() => import('../dashboards/Diagnostics'));
 
 const Page = styled.div`
     min-height: 100vh;
@@ -199,6 +201,13 @@ const AppShell: React.FC<AppShellProps> = ({
     return (
         <Page>
             <GlobalRefreshProvider>
+            {/* Session 095 — one app-level diagnosis drawer, portaled to
+                document.body. Mounted here so every panel on every route can
+                open it, and so only ONE can ever be open: the failure this
+                diagnoses empties every panel at once, and per-panel drawers
+                would let an operator multiply the load on an instance they are
+                trying to rescue. */}
+            <DiagnosticDrawerProvider>
                 <NavigationBar
                     onToggleAIAssistant={aiAssistantEnabled ? toggleAiPanel : undefined}
                     aiAssistantOpen={aiPanelOpen}
@@ -242,6 +251,7 @@ const AppShell: React.FC<AppShellProps> = ({
                     <Route path="/platform/host-details" element={<HostDetails />} />
                     <Route path="/topology/integration-topology" element={<IntegrationTopology />} />
                     <Route path="/platform/multi-cloud-overview" element={<MultiCloudOverview />} />
+                    <Route path="/diagnostics" element={<Diagnostics />} />
                     <Route path="/settings" element={<AIAssistantSettings onConfigSaved={onAIConfigSaved} templatesOnlyMode={aiAssistantTemplatesOnlyMode} />} />
                     {/* back-compat redirect — old bookmarks / help-icon links to the
                         pre-build-245 route still land on the renamed Settings page. */}
@@ -288,7 +298,8 @@ const AppShell: React.FC<AppShellProps> = ({
                                 d.path !== '/platform/data-pipeline-overview' &&
                                 d.path !== '/platform/host-details' &&
                                 d.path !== '/topology/integration-topology' &&
-                                d.path !== '/platform/multi-cloud-overview'
+                                d.path !== '/platform/multi-cloud-overview' &&
+                                d.path !== '/diagnostics'
                         )
                         .map((d) => (
                             <Route
@@ -300,6 +311,7 @@ const AppShell: React.FC<AppShellProps> = ({
                     <Route path="*" element={<PlaceholderDashboard fallback />} />
                 </Routes>
             </Suspense>
+            </DiagnosticDrawerProvider>
             </GlobalRefreshProvider>
         </Page>
     );

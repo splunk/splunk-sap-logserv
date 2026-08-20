@@ -135,17 +135,26 @@ const QRAW_BASE = {
     slowClients: `${ST_BOTH_RAW} response_time_ms=* clientip=* | stats count as events, avg(response_time_ms) as avg_ms, max(response_time_ms) as max_ms, dc(uri) as unique_uris by clientip | eval avg_ms=round(avg_ms,0), max_ms=round(max_ms,0) | sort -max_ms | rename clientip as "Client IP", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", unique_uris as "Unique URIs"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const SLOW_URI_COLS: ColumnDef[] = [
@@ -243,17 +252,17 @@ const WebApiPerformance: React.FC = () => {
             subtitle="Web Dispatcher and Cloud Connector HTTP traffic performance — four-stage request timing, response-time percentiles, TLS posture, and cross-source error correlation"
         >
             <KpiRow>
-                <KpiCard label="Total Requests" value={total.value} loading={total.loading} error={total.error} formatValue={formatInteger}
+                <KpiCard label="Total Requests" value={total.value} loading={total.loading} error={total.error} search={total.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />} />
-                <KpiCard label="HTTP Error Rate" value={errorRate.value} loading={errorRate.loading} error={errorRate.error} tone={errorTone}
+                <KpiCard label="HTTP Error Rate" value={errorRate.value} loading={errorRate.loading} error={errorRate.error} search={errorRate.search} tone={errorTone}
                     sparkline={<SparklineFromQuery query={Q.sparkErrorRate} valueField="daily" color={logservTheme.colors.red} fill />}
                     onClick={goErrorRateKpi} clickTitle="Open all 4xx/5xx events in Splunk Search" />
-                <KpiCard label="Avg Response Time" value={avgRt.value} loading={avgRt.loading} error={avgRt.error}
+                <KpiCard label="Avg Response Time" value={avgRt.value} loading={avgRt.loading} error={avgRt.error} search={avgRt.search}
                     sparkline={<SparklineFromQuery query={Q.sparkAvgRt} valueField="daily" fill />} />
-                <KpiCard label="Auth Failures" value={authFail.value} loading={authFail.loading} error={authFail.error} formatValue={formatInteger} tone={authFailTone}
+                <KpiCard label="Auth Failures" value={authFail.value} loading={authFail.loading} error={authFail.error} search={authFail.search} formatValue={formatInteger} tone={authFailTone}
                     sparkline={<SparklineFromQuery query={Q.sparkAuthFail} valueField="count" color={logservTheme.colors.red} fill />}
                     onClick={goAuthFailKpi} clickTitle="Open auth-failure events in Splunk Search" />
-                <KpiCard label="Unique URLs" value={uniqueUrls.value} loading={uniqueUrls.loading} error={uniqueUrls.error} formatValue={formatInteger}
+                <KpiCard label="Unique URLs" value={uniqueUrls.value} loading={uniqueUrls.loading} error={uniqueUrls.error} search={uniqueUrls.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkUniqueUrls} valueField="urls" fill />} />
             </KpiRow>
 

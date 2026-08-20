@@ -11,6 +11,11 @@
 #   pip install splunk-appinspect
 #
 # This script runs AppInspect checks for the Data TA package.
+#
+# Located alongside additional_packaging.py (NOT inside package/) so
+# UCC doesn't bundle it into the runtime tarball — AppInspect's
+# `check_for_bin_files` flags any file with execute permissions
+# outside bin/ inside the published artifact.
 
 set -euo pipefail
 

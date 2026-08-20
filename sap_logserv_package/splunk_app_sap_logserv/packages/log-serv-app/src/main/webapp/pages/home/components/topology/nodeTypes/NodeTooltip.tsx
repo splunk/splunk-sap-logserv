@@ -106,12 +106,17 @@ interface NodeTooltipProps {
     kind: string;
     tag: string;
     events: number;
+    /** Build 325 / session 110 (plan item D1) — distinct hosts that logged
+     *  events for this node in the current window, from the bulk node_host
+     *  rollup read. Omitted / 0 renders no row (partner IPs never carry it;
+     *  SID + tenant nodes carry it once the bulk read returns). */
+    hosts?: number;
     /** Bounding rect of the anchor node, captured by the parent on hover-in.
      *  When null (mouse not hovering), the tooltip is unmounted. Build 141. */
     anchorRect: DOMRect | null;
 }
 
-const NodeTooltip: React.FC<NodeTooltipProps> = ({ name, kind, tag, events, anchorRect }) => {
+const NodeTooltip: React.FC<NodeTooltipProps> = ({ name, kind, tag, events, hosts, anchorRect }) => {
     // Early-out when not hovered. Combined with portal mounting below,
     // means we render zero DOM nodes for un-hovered nodes — much lighter
     // than the prior approach of always-rendering with opacity:0.
@@ -127,6 +132,9 @@ const NodeTooltip: React.FC<NodeTooltipProps> = ({ name, kind, tag, events, anch
             <div className="tt-row"><span className="tt-label">Kind</span><span className="tt-value">{kind}</span></div>
             <div className="tt-row"><span className="tt-label">Tag</span><span className="tt-value">{tag}</span></div>
             <div className="tt-row"><span className="tt-label">Events</span><span className="tt-value">{events.toLocaleString()}</span></div>
+            {hosts != null && hosts > 0 && (
+                <div className="tt-row"><span className="tt-label">Hosts</span><span className="tt-value">{hosts.toLocaleString()}</span></div>
+            )}
         </Wrap>,
         document.body,
     );

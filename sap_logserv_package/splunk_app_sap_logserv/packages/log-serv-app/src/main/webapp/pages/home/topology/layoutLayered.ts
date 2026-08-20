@@ -88,7 +88,11 @@ const getElk = async (): Promise<ElkInstance> => {
  *     below; total ~145.5. Pad to 135 x 165.
  *   - partner: square 53 + outline 17 each side = 87 wide;
  *     outline 17 + 20 label margin + 14 label + 2 + 10 tag = 63
- *     below; total ~133. Pad to 95 x 145.
+ *     below; total ~133. Build 329 adds up to two enrichment lines
+ *     (hostname 11 px + user 10 px + margins ~26 px) under the label on
+ *     IP squares -> total ~159. Pad to 95 x 175 (static for ALL
+ *     partners: enrichment arrives via context AFTER layout by design —
+ *     the session-110 delivery rule — so sizing cannot be per-node).
  *
  * Without this update ELK packed nodes by their UNDERSIZED bounding
  * boxes (50/60/70 wide), so the new larger rings overlapped neighbors
@@ -96,9 +100,15 @@ const getElk = async (): Promise<ElkInstance> => {
  * crowding screenshot in session 036.
  */
 const sizeForNode = (n: TopologyNode): { width: number; height: number } => {
+    /* Build 324 - Regular Traffic SIDs + TENANT-tagged partners render at
+     * the former focused geometry (100 px circle), so their ELK boxes
+     * match sid_focused. */
     if (n.kind === 'sid_focused') return { width: 145, height: 175 };
-    if (n.kind === 'sid_secondary') return { width: 135, height: 165 };
-    return { width: 95, height: 145 };
+    if (n.kind === 'sid_secondary') return { width: 145, height: 175 };
+    if (n.tag === 'TENANT') return { width: 145, height: 175 };
+    /* Build 329 — height 145 -> 175 for the enrichment lines (see the
+     * visual-extent breakdown above). */
+    return { width: 95, height: 175 };
 };
 
 export const computeLayeredLayout = async (

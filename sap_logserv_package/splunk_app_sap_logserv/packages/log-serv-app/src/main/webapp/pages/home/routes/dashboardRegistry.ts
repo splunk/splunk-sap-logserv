@@ -48,6 +48,11 @@ export const dashboards: DashboardInfo[] = [
     { slug: 'proxy', name: 'Proxy', category: 'platform', path: '/platform/proxy' },
     { slug: 'host-details', name: 'Host Details', category: 'platform', path: '/platform/host-details' },
     { slug: 'multi-cloud-overview', name: 'Multi-Cloud Overview', category: 'platform', path: '/platform/multi-cloud-overview' },
+    // The Data Doctor's environment page (session 096 / build 311). Flat
+    // /diagnostics path per the design — known cosmetic: the Platform
+    // dropdown's trigger underline keys on startsWith('/platform/') and will
+    // not light while on this page; the menu item's exact-path highlight does.
+    { slug: 'diagnostics', name: 'Diagnostics', category: 'platform', path: '/diagnostics' },
 ];
 
 export const dashboardsByCategory: Record<DashboardCategory, DashboardInfo[]> = {

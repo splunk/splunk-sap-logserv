@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
 import { useTimeRange } from '../state/TimeRangeProvider';
@@ -9,6 +9,13 @@ import {
     formatLastRun,
     openInNewTab,
 } from '../utils/drilldownUrls';
+import { useDiagnosticDrawer } from '../state/DiagnosticDrawerProvider';
+import { useCloudProvider } from '../state/CloudProviderProvider';
+import { getActivePageSnapshot } from '../state/DiagnosticCollector';
+import { rawTwinFor } from '../utils/rawTwin';
+import { coverageFor } from '../utils/columnCoverage';
+import { resolveColumnOrigins, ColumnOrigin } from '../utils/splProbe';
+import { isDiagnosisActive, subscribeDiagnosisActive } from '../utils/diagProbe';
 
 /**
  * Build 234 — per-panel action toolbar infrastructure.
@@ -31,6 +38,27 @@ export interface PanelMeta {
     dispatchedAt?: number;
     /** Re-run just this panel. */
     refresh?: () => void;
+
+    /* --- session 093: diagnostic fields ---------------------------------
+     * All optional, and all named to match `UseSearchResult` exactly, so the
+     * ~93 call sites that already pass `search={someUseSearchResult}` to
+     * FramedPanel gain them for free — a UseSearchResult is structurally a
+     * PanelMeta. Charts, which report rather than receive, pass them through
+     * `usePanelMetaReporter`. */
+
+    /** The window the search actually ran over (NOT the picker's current
+     *  value — a few panels override the range). */
+    effectiveEarliest?: string;
+    effectiveLatest?: string;
+    /** Rows returned; null when nothing has arrived yet. */
+    rowCount?: number | null;
+    /** False when the search was deliberately not dispatched. */
+    dispatched?: boolean;
+    /** The panel's user-visible title. Session 095 — the diagnosis drawer names
+     *  the panel it was opened from, and FramedPanel is the only place that
+     *  knows it. Set by FramedPanel when it provides PanelDiagnosticContext;
+     *  charts reporting UP never set it. */
+    title?: string;
 }
 
 interface PanelMetaCtx {
@@ -40,6 +68,36 @@ interface PanelMetaCtx {
 /** Default is a no-op — useSearch consumers outside a FramedPanel (KPI cards,
  *  sparklines) report into the void harmlessly. */
 export const PanelMetaContext = createContext<PanelMetaCtx>({ report: () => undefined });
+
+/**
+ * The SAME metadata, flowing DOWN (session 093).
+ *
+ * `PanelMetaContext` carries a panel's search metadata UP from an inner chart.
+ * This one carries the resolved metadata back DOWN to any descendant that
+ * needs to explain itself — specifically `DataTable`, which is handed only
+ * `rows` / `loading` / `error` and therefore cannot know which query produced
+ * its empty state.
+ *
+ * Provided by `FramedPanel` from the same `meta = search ?? captured` value
+ * that drives the toolbar, so tables get it with no call-site changes.
+ *
+ * Charts do NOT read this — they own their search and pass the facts to
+ * `EmptyStateHint` directly, which avoids the one-render lag inherent in
+ * report-up-then-provide-down.
+ */
+/* §14.6 (build 313): the context's value is `Partial<PanelMeta>`, NOT
+ * PanelMeta — a chart-owning panel has no `search` prop to spread, yet its
+ * TITLE must still reach the drawer/report (previously those panels provided
+ * NO context and every report from them read "Panel diagnosis — (untitled)").
+ * PanelMeta itself keeps `spl` required (PanelActions dereferences it
+ * unguarded); every consumer of THIS context already optional-chains, and
+ * EmptyStateHint bails on a missing spl, so a title-only value degrades
+ * identically to the old null for everything except the title. */
+export const PanelDiagnosticContext = createContext<Partial<PanelMeta> | null>(null);
+
+/** Read the enclosing FramedPanel's search metadata, if there is one. */
+export const usePanelDiagnostic = (): Partial<PanelMeta> | null =>
+    useContext(PanelDiagnosticContext);
 
 /** Charts call this with their useSearch meta; it pushes the meta to the
  *  enclosing FramedPanel's context whenever the SID / SPL / dispatch time
@@ -52,6 +110,12 @@ export const usePanelMetaReporter = (meta: PanelMeta): void => {
         // report identity is stable (FramedPanel's setState); re-report when
         // the meaningful fields change.
         // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Session 093 note: the diagnostic fields (effectiveEarliest/Latest,
+        // rowCount, dispatched) are intentionally NOT in this dep list. They
+        // ride along on whatever object is reported, and re-reporting on every
+        // rowCount change would fire this effect on each streaming re-emit for
+        // no benefit — the toolbar does not use them, and charts feed
+        // EmptyStateHint directly rather than through this context.
     }, [meta.spl, meta.sid, meta.dispatchedAt, meta.refresh, report]);
 };
 
@@ -115,23 +179,113 @@ const InspectIcon = () => (
 const RefreshIcon = () => (
     <svg viewBox="0 0 16 16" aria-hidden><path d="M13 8 A5 5 0 1 1 11.5 4.5" /><polyline points="11.2,1.8 11.7,4.6 8.9,5.1" /></svg>
 );
+/** §18.1 — the Diagnose (pulse) glyph. Exported for KpiCard's corner
+ *  affordance so the two entries share one visual. */
+export const DiagnoseIcon = () => (
+    <svg viewBox="0 0 16 16" aria-hidden><polyline points="1.5,8.5 4.5,8.5 6,4 8.5,12 10,8.5 14.5,8.5" /></svg>
+);
+
+/** §18.8a-24 — a REACTIVE view of the diagnosis singleton, so the Diagnose
+ *  affordances re-render on begin/end. The click handler's imperative
+ *  `isDiagnosisActive()` check remains the actual enforcement. */
+export const useDiagnosisActive = (): boolean => {
+    const [active, setActive] = useState(isDiagnosisActive());
+    useEffect(() => subscribeDiagnosisActive(() => setActive(isDiagnosisActive())), []);
+    return active;
+};
 
 interface PanelActionsProps {
     meta: PanelMeta;
+    /** The panel's user-visible title, passed by FramedPanel (the toolbar
+     *  renders OUTSIDE the diagnostic context provider — §18.8a-26). */
+    title?: string;
 }
 
 /** The 4-icon panel toolbar: Open in Search / Download / Inspect / Refresh,
  *  preceded by a "&lt;1m ago" last-run stamp. Inspect + Download disable until
  *  the SID resolves. Stops click-propagation so a clickable (drilldown) panel
  *  doesn't also fire its row/panel handler. */
-export const PanelActions: React.FC<PanelActionsProps> = ({ meta }) => {
+export const PanelActions: React.FC<PanelActionsProps> = ({ meta, title }) => {
     const { timeRange } = useTimeRange();
+    const { open: openDrawer, isOpen: drawerOpen } = useDiagnosticDrawer();
+    const { provider } = useCloudProvider();
+    const diagActive = useDiagnosisActive();
     const { spl, sid, dispatchedAt, refresh } = meta;
     const stamp = formatLastRun(dispatchedAt);
     const stop = (e: React.MouseEvent) => e.stopPropagation();
+
+    /* §18.1/§18.8a-4 — the always-available Diagnose entry. Facts come from
+     * the meta when it carries the diagnostic fields (the explicit
+     * `search`-prop panels); a CHART's captured meta carries only the four
+     * toolbar fields, so the page registry (live per-search primitives for
+     * every hook, charts included) fills the gap at CLICK time. EmptyStateHint's
+     * defensive defaults apply on top; a window that stays unknown makes the
+     * drawer REFUSE to dispatch (§18.8a-5) rather than probe all-time. */
+    const openDiagnosis = (): void => {
+        let earliest = meta.effectiveEarliest;
+        let latest = meta.effectiveLatest;
+        let rowCount = meta.rowCount;
+        let dispatched = meta.dispatched;
+        let errorMessage: string | null = null;
+        if (earliest === undefined || rowCount === undefined) {
+            const reg = getActivePageSnapshot().find((r) => r.spl === spl);
+            if (reg) {
+                earliest = earliest ?? reg.earliest;
+                latest = latest ?? reg.latest;
+                if (rowCount === undefined) rowCount = reg.rowCount;
+                if (dispatched === undefined) dispatched = reg.dispatched;
+                errorMessage = reg.errorMessage;
+            }
+        }
+        const coverage = coverageFor(spl);
+        let columnOrigins: Record<string, ColumnOrigin> | null = null;
+        if (coverage) {
+            const blanks = coverage.columns
+                .filter((c) => c.populated === 0 && !c.hasRender)
+                .map((c) => c.key);
+            if (blanks.length > 0) columnOrigins = resolveColumnOrigins(spl, blanks);
+        }
+        openDrawer({
+            title: title || '',
+            facts: {
+                spl,
+                earliest: earliest ?? '',
+                latest: latest ?? '',
+                dispatched: dispatched ?? true,
+                loading: false,
+                errorMessage,
+                rowCount: rowCount ?? null,
+                cloudProvider: provider,
+                rawAlternate: rawTwinFor(spl),
+            },
+            columnCoverage: coverage,
+            columnOrigins,
+        });
+    };
+
     return (
         <Bar onClick={stop}>
             {stamp && <Stamp title="Last run">{stamp}</Stamp>}
+            <IconBtn
+                type="button"
+                title={
+                    drawerOpen || diagActive
+                        ? 'A diagnosis is already running'
+                        : 'Diagnose this panel'
+                }
+                aria-label="Diagnose this panel"
+                disabled={drawerOpen || diagActive}
+                onClick={(e) => {
+                    stop(e);
+                    // §18.8a-24 — the imperative check is the guard: a click
+                    // during a sweep must NO-OP, never silently supersede a
+                    // three-minute run.
+                    if (isDiagnosisActive()) return;
+                    openDiagnosis();
+                }}
+            >
+                <DiagnoseIcon />
+            </IconBtn>
             <IconBtn
                 type="button"
                 title="Open in Search"

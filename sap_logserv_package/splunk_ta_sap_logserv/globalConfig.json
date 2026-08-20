@@ -3,7 +3,7 @@
         "name": "splunk_ta_sap_logserv",
         "restRoot": "splunk_ta_sap_logserv",
         "displayName": "Splunk TA for SAP LogServ",
-        "version": "0.0.6",
+        "version": "0.1.1",
         "schemaVersion": "0.0.9",
         "isVisible": true
     },
@@ -96,28 +96,16 @@
                             "field": "cloud_provider",
                             "label": "Cloud Provider",
                             "type": "singleSelect",
-                            "help": "Stamp every indexed SAP LogServ event with an indexed cloud_provider field identifying which cloud the data was ingested from. This is an index-time attribution applied on the parsing tier (Heavy Forwarders / Indexer) to ALL events the Data TA routes. Select the provider that matches where THIS tier's SAP ECS data lives. 'Not set' (default) applies no stamp — events carry no cloud_provider field unless your ingest add-on sets one (the LogServ Azure and GCP add-ons set cloud_provider::azure / cloud_provider::gcp on their inputs automatically). NOTE: this is a deployment-wide setting; on a single Heavy Forwarder that ingests from MORE THAN ONE cloud simultaneously, use per-input attribution instead. On a deployment server, changes are staged to deployment-apps/ and a Deploy to Forwarders button appears below.",
+                            "help": "Stamp every indexed SAP LogServ event with an indexed cloud_provider field identifying which cloud the data was ingested from. This is an index-time attribution applied on the parsing tier (Heavy Forwarders / Indexer) to ALL events the Data TA routes. Select the provider that matches where THIS tier's SAP ECS data lives. 'Not set' (default) applies no stamp — events carry no cloud_provider field unless your ingest add-on sets one (e.g., the Splunk Add-on for Microsoft Cloud Services sets cloud_provider::azure on its inputs). NOTE: this is a deployment-wide setting; on a single Heavy Forwarder that ingests BOTH AWS and Azure data simultaneously, use per-input attribution instead. On a deployment server, changes are staged to deployment-apps/ and a Deploy to Forwarders button appears below.",
                             "defaultValue": "not_set",
                             "required": false,
                             "options": {
                                 "createSearchChoice": false,
                                 "autoCompleteFields": [
-                                    {
-                                        "value": "not_set",
-                                        "label": "Not set"
-                                    },
-                                    {
-                                        "value": "aws",
-                                        "label": "AWS"
-                                    },
-                                    {
-                                        "value": "azure",
-                                        "label": "Microsoft Azure"
-                                    },
-                                    {
-                                        "value": "gcp",
-                                        "label": "Google Cloud Platform"
-                                    }
+                                    {"value": "not_set", "label": "Not set"},
+                                    {"value": "aws", "label": "AWS"},
+                                    {"value": "azure", "label": "Microsoft Azure"},
+                                    {"value": "gcp", "label": "Google Cloud Platform"}
                                 ]
                             }
                         }

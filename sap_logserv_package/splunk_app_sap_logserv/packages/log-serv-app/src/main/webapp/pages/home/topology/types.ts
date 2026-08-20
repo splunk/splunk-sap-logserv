@@ -5,6 +5,10 @@
  * Phase 2 (session 024): real SPL aggregations marshalled into the same shape.
  */
 
+/* Type-only import; erased at compile time, so no runtime cycle with
+ * panelFacts (which itself imports nothing from this module). */
+import type { EdgeAppServerRow } from './panelFacts';
+
 export type IntegrationType =
     | 'rfc'           // Remote Function Call (sync)
     | 'idoc'          // Intermediate Document (async)
@@ -46,7 +50,19 @@ export type SystemTag =
     | 'MSSQL'         // Microsoft SQL Server
     | 'POSTGRES'      // PostgreSQL
     | 'DB2'           // IBM DB2
+    | 'TENANT'        // HANA tenant database (session 109 — tenant_db edge endpoints)
     | 'EXT';          // External / non-SAP
+
+/** User-visible tag strings (session 109 / build 324). Internal SystemTag
+ *  values stay stable (session-023 sticky: rename user-visible labels only);
+ *  this map is applied wherever a tag renders. `short` = the under-node
+ *  chip form (kept compact per the session-109 decision: short chips, full
+ *  string in the Tag row + hover tooltip). */
+export const displayTag = (tag: SystemTag, opts?: { short?: boolean }): string => {
+    if (tag === 'HANA') return 'HANA SYSTEM';
+    if (tag === 'TENANT') return opts?.short ? 'HANA TENANT' : 'APP SERVERS - HANA TENANT';
+    return tag;
+};
 
 /** Predicate: is this tag a database-vendor tag? Used by node renderers
  *  (SidNode + PartnerNode) to decide whether to show the cylinder icon,
@@ -93,6 +109,13 @@ export interface TopologyNode {
     eventCount: number;
     /** Optional health percentage (0-100) — drives the red/green halo on focused SIDs. */
     healthPct?: number;
+    /* Build 325 note: the D1 per-node host count is deliberately NOT a
+     * field on this interface. Attaching it would put the late-arriving
+     * bulk SPL read into the node-array identity that TopologyGraph's
+     * layout effect keys on — re-running d3-force and clobbering the
+     * user's viewport/drags seconds after every load (review fold,
+     * session 110). It travels via HostCountContext (the tooltip) and
+     * the sidebar's nodeHostCount prop instead. */
     /** Build 206 / session 036 — call-volume breakdown for the thin outer
      *  ring rendered on SID circular nodes. Computed in IntegrationTopology
      *  by summing across incident edges:
@@ -110,7 +133,27 @@ export interface TopologyNode {
     };
 }
 
+/** One hourly point of an edge's activity series. Computed in-memory from the
+ *  same `logserv_topology_edges` bucket rows that produce the edge's headline
+ *  totals (build 321) — so the Overview tab's "Successful calls + Errors"
+ *  legend is a decomposition of "Calls in window" BY CONSTRUCTION. It used to
+ *  be a separate SPL dispatch whose window was resolved by Splunk's calendar
+ *  arithmetic (`| addinfo`, search-head-local TZ, exclusive upper bound) while
+ *  the headline was resolved in JS (UTC-snapped, inclusive) — two disagreeing
+ *  decompositions of one number, rendered adjacent. */
+export interface EdgeActivityPoint {
+    /** Epoch seconds of the hourly bucket. */
+    time: number;
+    count: number;
+    errorCount: number;
+}
+
 export interface TopologyEdge {
+    /** The key of the RENDERED edge — `edgeDisplayId(source, target, type)`
+     *  over the RETARGETED endpoints (topology/edgeIds.ts). Stable across
+     *  renders, used as the ReactFlow key, the selection key and the persisted
+     *  `selectedEdgeId`. NOT a storage key: never splice it into SPL — use
+     *  `bucketIds`. */
     id: string;
     source: string;
     target: string;
@@ -118,6 +161,16 @@ export interface TopologyEdge {
     /** Direction ranked from the source node's perspective. */
     direction: 'client' | 'server' | 'bidi';
     callCount: number;
+    /** Build 321 — the distinct `logserv_topology_edges.id` values (also the
+     *  detail rollup's `scope`) whose hourly buckets compose this rendered
+     *  edge. A set, not a scalar: inventory retargeting can collapse several
+     *  stored edges onto one rendered edge. REQUIRED, deliberately: it is the
+     *  only compiler-enforced guarantee that a future construction site cannot
+     *  repeat the build-240 regression of feeding the display id to SPL. */
+    bucketIds: string[];
+    /** Build 321 — the per-hour activity series, summed in-memory across
+     *  `bucketIds` over exactly the window that produced `callCount`. */
+    activity: EdgeActivityPoint[];
     /** Optional business-process tag for filtering. */
     process?: BusinessProcess;
     /** Session 035 / build 188 — preserves the canonical SPL-emitted edge
@@ -127,10 +180,16 @@ export interface TopologyEdge {
      *  tab content. Optional to keep fixture-data + non-KV-Store callers
      *  type-clean. */
     splType?: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant';
-    /** Session 035 / build 188 — canonical SPL filter clauses for raw-event
-     *  drilldown, denormalized from the KV Store edge bucket row's
-     *  `spl_filter_clauses` JSON-encoded array. Session 036 right-pane tabs
-     *  splice these clauses into per-edge SPL queries. */
+    /** Session 035 / build 188 — canonical SPL filter clauses, denormalized
+     *  from the KV Store edge bucket row's `spl_filter_clauses` JSON array.
+     *  Session 036's right pane spliced these into per-edge SPL; since the
+     *  build-240 KV rewrite the tabs read the rollup by `bucketIds` instead,
+     *  so these survive only as ENDPOINT LABEL HINTS (useTopologyData recovers
+     *  a synthesized partner's label from them when it has no node row).
+     *  Build 325 caveat: they come from ONE member row, so on an RFC edge
+     *  they pin a single `local_ip` of the N the edge may span — never
+     *  rebuild a raw-event filter from them (a future consumer would filter
+     *  to one app server while the headline sums all of them). */
     splFilterClauses?: { field: string; value: string }[];
     /** Session 035 / build 188 — canonical sourcetype that produced this
      *  edge's underlying events. Pairs with splFilterClauses for raw-event
@@ -158,6 +217,13 @@ export interface TopologyEdge {
     hanaOpMaxMs?: number;
     authSuccessCount?: number;
     authFailCount?: number;
+    /** Build 325 / session 110 (plan item E3) — RFC edges only: the
+     *  per-app-server split of this rendered edge's member rows, grouped by
+     *  the stored `local_ip` (the SID-side gateway listening address the
+     *  build-325 key change projects onto RFC rows). Sums to `callCount` by
+     *  construction. Rows stored before the key change carry no address and
+     *  group under `localIp: null`. Absent on non-RFC edges. */
+    appServers?: EdgeAppServerRow[];
 }
 
 /** Tuple counted in the bottom Live Activity table. */

@@ -1,7 +1,7 @@
 # Privacy Tiers
 
-!!! warning "Current release: privacy tiers are designed but not exercised — LLM dispatch is disabled"
-    The current release ships with the LLM-driven path **disabled at compile time pending internal review**. The privacy tiers described on this page are designed and implemented (the `Hidden<T>` / `Visible<T>` type-system enforcement is always active and will protect any future LLM dispatch), but **no LLM dispatch happens in the current build** — there is no vendor traffic to govern via tier selection. The tier setting in Settings → General is preserved so the configuration survives across releases; it just has no effect until the LLM path is re-enabled in a future release.
+!!! warning "Full-LLM build variant only"
+    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): it makes **no vendor calls at all**, so nothing whatsoever leaves your Splunk environment and the tier setting has nothing to govern. This page applies to the separately-built **full-LLM variant** used in approved deployments, where the tier selected in Settings → AI Assistant → General governs every vendor dispatch. The `Hidden<T>` / `Visible<T>` type-system enforcement is compile-time in both variants — there is no code path that can put raw Splunk event data into an outbound vendor payload regardless of tier.
 
 The AI Assistant supports three privacy tiers that control what an external LLM vendor sees about your Splunk data. Tier selection is admin-configurable in [Settings → General](settings.md). The active tier is enforced by the TypeScript type system at build time, not by runtime policy: every outbound vendor payload must pass through a single sanitize chokepoint, and the chokepoint's summarizer is what the tier setting controls. For the type-system mechanism, see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).
 
@@ -11,11 +11,11 @@ The AI Assistant supports three privacy tiers that control what an external LLM 
 |---|---|---|---|
 | **Tier 0** (future release) | None — Ollama local | Same as Tier 1 (count + timing only) | Air-gapped customers, regulated industries with no-outbound-internet constraints |
 | **Tier 1** (default) | Cloud LLM (Anthropic / OpenAI / Azure / Bedrock) | `Returned N rows in M ms.` Nothing else. | Most customers — strongest cloud-LLM privacy posture |
-| **Tier 2** (admin opt-in) | Same cloud LLM | Tier 1 line + per-column cardinality + top-N values + counts (categorical) + min/max/avg/sum (numeric) + time range. **Still no raw rows.** | Customers who want data-grounded narrative replies and have legal authority to expose aggregate metadata to the vendor |
+| **Tier 2** (admin opt-in) | Same cloud LLM | Tier 1 line + per-column cardinality + top-N values + counts (categorical) + min/max/avg/sum (numeric) + a time range when the result carries a `_time` column. **Still no raw rows.** | Customers who want data-grounded narrative replies and have legal authority to expose aggregate metadata to the vendor |
 
 ## :material-circle-box:{ .taiconcolor } Tier 0 — Ollama Local (future release)
 
-**Status:** roadmap, ~1 week of engineering effort. Not yet shipped.
+**Status:** roadmap — not yet shipped. Selecting `ollama` today silently falls back to the mock provider.
 
 **What it does:** routes the LLM call to a locally-hosted Ollama server instead of a cloud vendor. No outbound internet traffic; no third-party data processor. Strongest possible privacy posture short of disabling free-form prompts entirely (see [Templates-only Build](templates-only-build.md) for that).
 
@@ -71,15 +71,17 @@ That's the entire summary. Nothing about the column names, the row contents, the
 <TOOL_RESULT_DATA>
 Returned 47 rows in 320ms.
 Time range: 2026-04-15T00:00:00Z → 2026-05-05T23:59:59Z.
-Column "user" (distinct=23): xcjadm=8, BKPADMIN=6, ENCRYPTMON=5, sapadm=4, svc_monitor=3 (+18 more).
+Column "user" (distinct=23): <redacted-4e4945f>=8, <redacted-ddd08ff>=6, <redacted-a1c2e3b>=5, <redacted-0f9b774>=4, <redacted-5d21c08>=3 (+18 more).
 Column "stack" (distinct=3): Windows=21, HANA=19, SAP=7.
 Column "failures" (numeric, distinct=42): min=1 max=4799 avg=87.4 sum=4108.
 </TOOL_RESULT_DATA>
 ```
 
-The AI now sees the column names, top-N values + counts (per-column-cardinality limited to top 10 by default; configurable up to 50 via the AI's `top_n` tool arg), numeric stats, and the time range. **It still does NOT see the raw rows** — there is no way for the AI to know which user issued how many failures across which stacks; only the per-column distributions.
+The `user` column above shows the shipped default (`tier2_pii_redaction = true`): identifier-pattern columns arrive as stable `<redacted-…>` tags. With `tier2_pii_redaction = false` the same line carries the raw values (`xcjadm=8, BKPADMIN=6, …`). The `Time range:` line is present only when the result carries a `_time` column (timecharts / time-series) — it is absent for `stats by …` aggregates.
 
-**PII redaction** (Tier 2 only): if the column name matches a known identifier pattern (`email`, `user(name)`, `*_ip`, `mac`, `account`, with hostname opt-in), the values are replaced with stable `<redacted-XXXXXXX>` tags before being shown to the AI. The same value across the run produces the same tag, so the AI can still reason about cardinality + frequency, but never sees the actual identifier. See [OWASP LLM Top 10 — LLM02](owasp-llm-compliance.md).
+The AI now sees the column names, top-N values + counts (per-column-cardinality limited to top 10 by default; configurable up to 50 via the AI's `top_n` tool arg), numeric stats, and (for time-series results) the time range. Internal (`_`-prefixed) columns and single-valued categorical columns are omitted from the summary; a single-valued numeric column is kept — it is usually the KPI itself. **It still does NOT see the raw rows** — there is no way for the AI to know which user issued how many failures across which stacks; only the per-column distributions.
+
+**PII redaction** (Tier 2 only): if the column name matches a known identifier pattern (`email`, `user(name)`, `src_ip` / `source_ip` / `client_ip` / `remote_ip` / `dest_ip` / `destination_ip` — with or without the underscore — `mac`, `account`, with hostname opt-in), the values are replaced with stable `<redacted-XXXXXXX>` tags before being shown to the AI. Other address-bearing column names — notably `peer_ip` and a bare `ip` — are **not** matched; admins with strict postures should verify their own field names against the pattern list. The same value across the run produces the same tag, so the AI can still reason about cardinality + frequency, but never sees the actual identifier. See [OWASP LLM Top 10 — LLM02](owasp-llm-compliance.md).
 
 **What the AI does with this:** the AI can write data-grounded narrative replies — *"the top failing user is `<redacted-4e4945f>` with 42 attempts; the failure mix is 21 Windows, 19 HANA, 7 SAP — Windows is the dominant stack but the spread suggests a coordinated probe rather than a single-source brute-force"*. The AI now grounds its severity assessments in actual numbers instead of inferring from row counts alone.
 
@@ -89,13 +91,13 @@ The AI now sees the column names, top-N values + counts (per-column-cardinality 
 - The customer wants narrative replies with concrete values, not just shape descriptions.
 - PII concerns are mitigated by the column-name-based redaction (or the customer is comfortable with the redaction's coverage).
 
-**Audit trail for Tier 2:** every Tier 2 vendor call records a `vendor_tier2` audit event including:
+**Audit trail:** every vendor call — whichever tier is active — records a **`vendor_tier1`** audit event including:
 - Token counts (input + output)
 - USD cost estimate
 - Number of PII redactions applied (`tier2RedactionsApplied`)
 - The user identity that triggered the call
 
-When elevating from Tier 1 → Tier 2 in Settings, a `vendor_tier2_elevation` audit event captures the admin's identity and timestamp. See [Audit Log](audit-log.md).
+When elevating to Tier 2 in Settings (from Tier 0 or Tier 1), a `vendor_tier2_elevation` audit event captures the admin's identity and timestamp. See [Audit Log](audit-log.md).
 
 ## :material-circle-box:{ .taiconcolor } How the Privacy Invariant Is Enforced
 
@@ -105,7 +107,7 @@ This is the primary defense against [LLM02 — Sensitive Information Disclosure]
 
 ## :material-circle-box:{ .taiconcolor } Switching Tiers
 
-Tier is configured in [Settings → General](settings.md). Switching tiers takes effect on the **next** vendor call — in-flight calls complete with the previously active tier, and the audit event records which tier was active at dispatch time.
+Tier is configured in [Settings → General](settings.md). Switching tiers takes effect on the **next** vendor call — in-flight calls complete with the previously active tier. Note the emitted `vendor_tier1` event does not carry the active tier: the tier in force at a given time is derivable only from the Settings history (`vendor_tier2_elevation` events) plus a non-zero `tier2RedactionsApplied`.
 
 **Elevating from Tier 1 → Tier 2:**
 
@@ -116,7 +118,7 @@ Tier is configured in [Settings → General](settings.md). Switching tiers takes
 
 **Lowering from Tier 2 → Tier 1 / Tier 0:**
 
-1. Same path. The save is recorded as a regular config change, no special audit event.
+1. Same path. A downgrade produces **no audit event and no conf-change record** — settings persist to the `logserv_ai_assistant_settings` KV Store collection, so only elevation to Tier 2 is audited (`vendor_tier2_elevation`).
 2. The next vendor call uses the lower tier.
 
 **No tier:** if the customer wants to disable the LLM-driven path entirely (canned prompts only), use the [Templates-only build variant](templates-only-build.md) — the tier setting becomes moot since there are no vendor calls.

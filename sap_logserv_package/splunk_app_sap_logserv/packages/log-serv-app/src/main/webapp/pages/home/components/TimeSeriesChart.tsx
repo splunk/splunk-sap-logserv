@@ -11,6 +11,7 @@ import { useThemeMode } from '../state/ThemeModeProvider';
 import GradientWrap from './GradientWrap';
 import LegendTitleTooltips from './LegendTitleTooltips';
 import PanelLoading from './PanelLoading';
+import EmptyStateHint from './EmptyStateHint';
 import { usePanelMetaReporter } from './PanelMeta';
 
 /**
@@ -103,7 +104,19 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     seriesColorsByField: seriesColorsByFieldProp,
     chartType = 'column',
 }) => {
-    const { results, loading, error, sid, spl, dispatchedAt, refresh } = useSearch({ query });
+    const {
+        results,
+        loading,
+        error,
+        sid,
+        spl,
+        dispatchedAt,
+        refresh,
+        effectiveEarliest,
+        effectiveLatest,
+        rowCount,
+        dispatched,
+    } = useSearch({ query });
     // build 234 — report search meta up to the enclosing FramedPanel so it can
     // render the Open-in-Search / Download / Inspect / Refresh toolbar.
     usePanelMetaReporter({ spl, sid, dispatchedAt, refresh });
@@ -166,9 +179,20 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     }
 
     if (!dataSources) {
+        // Session 093 — the chart owns its search, so it feeds EmptyStateHint
+        // directly rather than via the FramedPanel context (no one-render lag).
         return (
             <Container $height={height}>
-                <StatusLine>No data in this time range.</StatusLine>
+                <StatusLine>
+                    No data in this time range.
+                    <EmptyStateHint
+                        spl={spl}
+                        earliest={effectiveEarliest}
+                        latest={effectiveLatest}
+                        dispatched={dispatched}
+                        rowCount={rowCount}
+                    />
+                </StatusLine>
             </Container>
         );
     }

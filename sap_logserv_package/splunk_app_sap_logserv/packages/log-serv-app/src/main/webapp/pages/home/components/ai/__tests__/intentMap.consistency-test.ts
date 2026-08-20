@@ -278,14 +278,44 @@ for (const p of intentMap.prompts) {
 }
 
 // Reverse direction: every saved search starting with `logserv_` should be
-// referenced by an intent-map prompt — EXCEPT for scheduled-aggregation
-// stanzas under the `logserv_topology_*` namespace (session 035 KV Store
-// pipeline). Those are cron-driven population searches, not user-facing
-// prompts; they intentionally don't have intent-map entries.
-const SKIP_TOPOLOGY_AGGREGATION = /^logserv_topology_(aggregate_|backfill_|retention$)/;
+// referenced by an intent-map prompt — EXCEPT the scheduled KV-Store rollup
+// jobs, which are cron-driven precompute searches rather than user-facing
+// prompts and intentionally have no intent-map entry.
+//
+// This exemption originally covered only `logserv_topology_*` (session 035,
+// the first KV-Store pipeline). Sessions 050–062 generalized that pipeline to
+// ~25 per-dashboard rollup collections, each contributing an `_aggregate` +
+// `_backfill` + `_retention` stanza, but the exemption was never widened —
+// so the check had been failing with 75 errors on a clean tree (found in
+// session 091, alongside 0 SPL-drift failures: the forward pass was healthy,
+// only this reverse pass was stale).
+//
+// Two naming shapes exist, and both are load-bearing:
+//   1. Per-dashboard rollups put the job verb LAST:
+//      logserv_compliance_aggregate / _backfill / _retention
+//   2. The Environment Topology graph rollups put it INFIX, because one
+//      collection is split across three searches:
+//      logserv_topology_aggregate_nodes / _backfill_edges / …
+//      (`logserv_topology_retention` and the newer
+//      `logserv_topology_detail_*` stanzas match shape 1.)
+//
+// Deliberately anchored and narrow: it matches only the three known job
+// suffixes under the `logserv_` prefix, so a genuinely un-prompted *prompt-
+// shaped* saved search still fails the check. Verified in session 091 against
+// the full conf: the predicate covers all 82 un-prompted stanzas and swallows
+// zero prompt-backed ones.
+const ROLLUP_JOB_SUFFIXED = /^logserv_[a-z0-9_]+_(aggregate|backfill|retention)$/;
+const ROLLUP_JOB_TOPOLOGY = /^logserv_topology_(aggregate|backfill)_[a-z0-9_]+$/;
+const isScheduledRollupJob = (name: string): boolean =>
+    ROLLUP_JOB_SUFFIXED.test(name) || ROLLUP_JOB_TOPOLOGY.test(name);
+
+let skippedRollupJobs = 0;
 for (const stanzaName of Object.keys(savedSearches)) {
     if (!stanzaName.startsWith('logserv_')) continue;
-    if (SKIP_TOPOLOGY_AGGREGATION.test(stanzaName)) continue;
+    if (isScheduledRollupJob(stanzaName)) {
+        skippedRollupJobs++;
+        continue;
+    }
     if (!seenSavedSearchNames.has(stanzaName)) {
         failed++;
         console.error(
@@ -293,6 +323,9 @@ for (const stanzaName of Object.keys(savedSearches)) {
         );
     }
 }
+// Report the exemption rather than applying it silently — a sudden change in
+// this number is the signal that the rollup pipeline grew or was renamed.
+console.log(`scheduled rollup jobs exempt from the reverse pass: ${skippedRollupJobs}`);
 
 if (failed > 0) {
     console.error(`\n${failed} consistency checks failed.`);

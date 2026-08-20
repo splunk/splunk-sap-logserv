@@ -18,6 +18,7 @@
  */
 
 import { PrivacyTier, ProviderName, readAIConfig } from '../utils/aiConfigApi';
+import { TEMPLATES_ONLY } from '../buildFlags';
 
 export interface AIAssistantConfig {
     /** Master switch — when false, all AI Assistant UI is hidden. */
@@ -106,7 +107,11 @@ export const parsePowerUserRoles = (csv: string): string[] => {
  *  Mirrors `default/ai_assistant_settings.conf`. */
 export const DEFAULT_AI_ASSISTANT_CONFIG: AIAssistantConfig = {
     enabled: false,
-    templatesOnlyMode: false,
+    // Build 300 — this is what every consumer renders with during the
+    // brief window before the async config load resolves. In a
+    // templates-only build it must start true so that window can never
+    // present an LLM-enabled UI. Literal `false` in a regular build.
+    templatesOnlyMode: TEMPLATES_ONLY,
     provider: 'mock',
     defaultModel: 'mock-fast',
     tier: 1,

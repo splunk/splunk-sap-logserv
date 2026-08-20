@@ -111,17 +111,26 @@ const QRAW = {
     eventsByProvider: `${MACRO} | ${CP} | stats count by cloud_provider | rename cloud_provider as "Cloud Provider" count as "Event Count"`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const sourcetypeColumns: ColumnDef[] = [
@@ -179,6 +188,7 @@ const MultiCloudOverview: React.FC = () => {
                     value={total.value as number | string | undefined}
                     loading={total.loading}
                     error={total.error}
+                    search={total.search}
                     formatValue={formatInteger}
                     sub={<SparklineFromQuery query={Q.sparkTotal} valueField="count" color={logservTheme.colors.cyanAccent} fill />}
                 />
@@ -187,6 +197,7 @@ const MultiCloudOverview: React.FC = () => {
                     value={aws.value as number | string | undefined}
                     loading={aws.loading}
                     error={aws.error}
+                    search={aws.search}
                     tone="neutral"
                     formatValue={formatInteger}
                     sub={<SparklineFromQuery query={Q.sparkAws} valueField="count" color={logservTheme.colors.teal} fill />}
@@ -196,6 +207,7 @@ const MultiCloudOverview: React.FC = () => {
                     value={azure.value as number | string | undefined}
                     loading={azure.loading}
                     error={azure.error}
+                    search={azure.search}
                     tone="neutral"
                     formatValue={formatInteger}
                     sub={<SparklineFromQuery query={Q.sparkAzure} valueField="count" color={logservTheme.colors.purple} fill />}
@@ -205,6 +217,7 @@ const MultiCloudOverview: React.FC = () => {
                     value={gcp.value as number | string | undefined}
                     loading={gcp.loading}
                     error={gcp.error}
+                    search={gcp.search}
                     tone="neutral"
                     formatValue={formatInteger}
                     sub={<SparklineFromQuery query={Q.sparkGcp} valueField="count" color={logservTheme.colors.cyanLight} fill />}

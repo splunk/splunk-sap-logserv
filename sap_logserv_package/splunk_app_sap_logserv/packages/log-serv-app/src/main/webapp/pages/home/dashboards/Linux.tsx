@@ -159,17 +159,26 @@ const QRAW_BASE = {
     tcpOomTimeline: `${RAW_OOM} "TCP: out of memory" host=* | timechart span=1d count by host | fillnull value=0`,
 };
 
-interface FirstRow { value: unknown; loading: boolean; error: Error | null; }
+interface FirstRow {
+    value: unknown;
+    loading: boolean;
+    error: Error | null;
+    /** Session 093 — the whole search result, so the KpiCard this feeds
+     *  can explain a missing value (see KpiCard’s `search` prop). */
+    search: import('../hooks/useSearch').UseSearchResult;
+}
 const useFirstRowField = (q: string, f: string): FirstRow => {
-    const { results, loading, error } = useSearch({ query: q });
+    const search = useSearch({ query: q });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 /** useFirstRowField over a hybrid cached/raw pair (session 086). */
 const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRow => {
-    const { results, loading, error } = useHybridSearch({ cached, raw });
+    const search = useHybridSearch({ cached, raw });
+    const { results, loading, error } = search;
     const value = results && results[0] ? (results[0] as Record<string, unknown>)[f] : undefined;
-    return { value, loading, error };
+    return { value, loading, error, search };
 };
 
 const SAP_INSTANCE_COLS: ColumnDef[] = [
@@ -296,6 +305,7 @@ const Linux: React.FC = () => {
                     value={total.value}
                     loading={total.loading}
                     error={total.error}
+                    search={total.search}
                     formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />}
                 />
@@ -304,6 +314,7 @@ const Linux: React.FC = () => {
                     value={fwDrops.value}
                     loading={fwDrops.loading}
                     error={fwDrops.error}
+                    search={fwDrops.search}
                     formatValue={formatInteger}
                     tone={fwTone}
                     sparkline={
@@ -320,6 +331,7 @@ const Linux: React.FC = () => {
                     value={topDropSrc.value}
                     loading={topDropSrc.loading}
                     error={topDropSrc.error}
+                    search={topDropSrc.search}
                     tone={dropSrcTone}
                 />
                 <KpiCard
@@ -327,6 +339,7 @@ const Linux: React.FC = () => {
                     value={hosts.value}
                     loading={hosts.loading}
                     error={hosts.error}
+                    search={hosts.search}
                     formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkHosts} valueField="hosts" fill />}
                 />

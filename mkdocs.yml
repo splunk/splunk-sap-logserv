@@ -75,7 +75,7 @@ nav:
     - Supported Log Types: 'content/getting-started/supported-log-types.md'
     - Prerequisites: 'content/getting-started/prerequisites.md'
     - Quick Install Reference: 'content/getting-started/quick-install-reference.md'
-    - Upgrading from v0.0.5: 'content/getting-started/upgrading.md'
+    - Upgrading to this release: 'content/getting-started/upgrading.md'
 - LogServ Data TA:
     - Prerequisites: 'content/install-setup/prerequisites.md'
     - Installing the Data TA: 'content/install-setup/install-ta.md'
@@ -94,6 +94,7 @@ nav:
     - Prerequisites: 'content/logserv-app/prerequisites.md'
     - Installing the LogServ App: 'content/logserv-app/installation.md'
     - Performance & Data Freshness: 'content/logserv-app/dashboards/performance.md'
+    - Data Doctor (Diagnostics): 'content/logserv-app/dashboards/platform/diagnostics.md'
     - Dashboards Overview:
         - Overview: 'content/logserv-app/dashboards/index.md'
         - Environment Health: 'content/logserv-app/dashboards/environment-health.md'
@@ -135,18 +136,19 @@ nav:
     - Behavioral & Anomaly Detections: 'content/enterprise-security/behavioral-detections.md'
 - AI Assistant:
     - Overview: 'content/ai-assistant/overview.md'
-    - Privacy Tiers: 'content/ai-assistant/privacy-tiers.md'
     - Predefined Prompts: 'content/ai-assistant/predefined-prompts.md'
-    - Free-form Prompts: 'content/ai-assistant/free-form-prompts.md'
-    - Power Mode: 'content/ai-assistant/power-mode.md'
     - Drill-down Chips: 'content/ai-assistant/drill-down-chips.md'
     - Splunk MCP Setup: 'content/ai-assistant/mcp-setup.md'
     - Settings & Configuration: 'content/ai-assistant/settings.md'
     - Audit Log: 'content/ai-assistant/audit-log.md'
-    - Time-Window Reasoning: 'content/ai-assistant/time-window-reasoning.md'
-    - Templates-only Build: 'content/ai-assistant/templates-only-build.md'
-    - OWASP LLM Top 10 Compliance: 'content/ai-assistant/owasp-llm-compliance.md'
-    - SAIF Security Architecture: 'content/ai-assistant/security-architecture.md'
+    - Build Variants: 'content/ai-assistant/templates-only-build.md'
+    - Full-LLM Variant:
+        - Free-form Prompts: 'content/ai-assistant/free-form-prompts.md'
+        - Privacy Tiers: 'content/ai-assistant/privacy-tiers.md'
+        - Power Mode: 'content/ai-assistant/power-mode.md'
+        - Time-Window Reasoning: 'content/ai-assistant/time-window-reasoning.md'
+        - OWASP LLM Top 10 Compliance: 'content/ai-assistant/owasp-llm-compliance.md'
+        - SAIF Security Architecture: 'content/ai-assistant/security-architecture.md'
 - Developer Reference:
     - Testing Guide: 'content/developer/testing-guide.md'
     - Architecture and Internals: 'content/developer/developer-reference.md'

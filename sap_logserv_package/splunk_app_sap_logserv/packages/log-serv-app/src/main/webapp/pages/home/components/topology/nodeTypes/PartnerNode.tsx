@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useContext, useRef, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import styled from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
@@ -9,7 +9,10 @@ import {
     computeBucketSegments,
     CallBucketRing,
 } from './SidNode';
-import { isDatabaseTag } from '../../../topology/types';
+import { isDatabaseTag, displayTag } from '../../../topology/types';
+import AppServersDbIcon from './AppServersDbIcon';
+import IpEnrichmentContext from '../IpEnrichmentContext';
+import { nodeUserLine } from '../../../topology/enrichment';
 
 /**
  * Custom node for remote partners (non-SAP systems, external endpoints,
@@ -35,6 +38,9 @@ interface PartnerNodeData {
     tag: string;
     eventCount: number;
     callBuckets?: { normal: number; warning: number; error: number };
+    /** Build 326 — the Details-panel selection (the cyan chrome), decoupled
+     *  from RF `selected`, which now means group membership (design §8a). */
+    inspected?: boolean;
     [key: string]: unknown;
 }
 
@@ -164,7 +170,15 @@ const CallBucketSquare: React.FC<CallBucketSquareProps> = ({ width, height, corn
     );
 };
 
-const Wrapper = styled.div<{ $selected: boolean }>`
+const Wrapper = styled.div<{
+    /** Details-panel selection (cyan chrome). Build 326: renamed from
+     *  $selected — fed from data.inspected, NOT the RF selected prop. */
+    $inspected: boolean;
+    /** Build 326 — RF group membership (Shift+drag / modifier-click).
+     *  Paint-only dashed outline on each variant element; geometry
+     *  untouched. */
+    $grouped: boolean;
+}>`
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -210,8 +224,14 @@ const Wrapper = styled.div<{ $selected: boolean }>`
         height: 50px;
         border-radius: 6px;
         background: ${logservTheme.colors.tableHeaderBackground};
-        border: 1.5px solid ${(p) => (p.$selected ? logservTheme.colors.cyanLight : logservTheme.colors.panelBorderWeak)};
-        box-shadow: ${(p) => (p.$selected ? `0 0 0 2px ${logservTheme.colors.cyanAccent}` : '0 1px 3px rgba(0, 0, 0, 0.4)')};
+        border: 1.5px solid ${(p) => (p.$inspected ? logservTheme.colors.cyanLight : logservTheme.colors.panelBorderWeak)};
+        box-shadow: ${(p) => (p.$inspected ? `0 0 0 2px ${logservTheme.colors.cyanAccent}` : '0 1px 3px rgba(0, 0, 0, 0.4)')};
+        /* Build 326 — §8a-11: group-membership outline (neutral textActive
+         * ink, dashed). offset 5px sits inside the free corridor between
+         * the inspected shadow (+2px) and the CallBucketSquare (+9.5px).
+         * Paint-only. */
+        outline: ${(p) => (p.$grouped ? `2px dashed ${logservTheme.colors.textActive}` : 'none')};
+        outline-offset: 5px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -242,12 +262,55 @@ const Wrapper = styled.div<{ $selected: boolean }>`
         height: 64px;
         border-radius: 50%;
         background: ${logservTheme.colors.panelBackground};
-        border: 2px solid ${(p) => (p.$selected ? logservTheme.colors.cyanLight : logservTheme.colors.textDefault)};
-        box-shadow: ${(p) => (p.$selected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLightGlow}` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
+        border: 2px solid ${(p) => (p.$inspected ? logservTheme.colors.cyanLight : logservTheme.colors.textDefault)};
+        box-shadow: ${(p) => (p.$inspected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLightGlow}` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
+        /* Build 326 — §8a-11: group outline; offset 5px clears the
+         * inspected glow (+3px) inside the DB ring corridor. Paint-only. */
+        outline: ${(p) => (p.$grouped ? `2px dashed ${logservTheme.colors.textActive}` : 'none')};
+        outline-offset: 5px;
         display: flex;
         align-items: center;
         justify-content: center;
         color: ${logservTheme.colors.textActive};
+        transition: box-shadow 120ms ease-out;
+    }
+
+    /* Build 324 / session 109 — HANA TENANT partners render as a
+     * SID-format circle (the former focused geometry: 100 px wrap,
+     * 92 px disc, 4 px accent border) with the "app servers + DB"
+     * combined icon inside (session-109 selection) + the tenant name
+     * at 14 px, mimicking SidNode's interior. Derived geometry in
+     * lockstep: FloatingEdge anchorFor TENANT → cy+50/r69, ELK
+     * sizeForNode tenant → 145×175, layout collide → 130. */
+    .tenantDiscWrap {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        overflow: visible;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .tenantDisc {
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        background: ${logservTheme.colors.panelBackground};
+        border: 4px solid ${(p) => (p.$inspected ? logservTheme.colors.cyanLight : logservTheme.colors.cyanAccent)};
+        box-shadow: ${(p) => (p.$inspected ? `0 0 0 3px ${logservTheme.colors.cyanAccent}, 0 0 14px ${logservTheme.colors.cyanLightGlow}` : '0 2px 6px rgba(0, 0, 0, 0.45)')};
+        /* Build 326 — §8a-11: group outline; offset 6px (SID-format
+         * geometry — corridor between the glow +3px and the ring
+         * +11.25px). Paint-only. */
+        outline: ${(p) => (p.$grouped ? `2px dashed ${logservTheme.colors.textActive}` : 'none')};
+        outline-offset: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        align-items: center;
+        justify-content: center;
+        font-weight: ${logservTheme.fontWeight.bold};
+        font-size: 14px;
+        color: ${logservTheme.colors.cyanAccent};
         transition: box-shadow 120ms ease-out;
     }
 
@@ -275,6 +338,51 @@ const Wrapper = styled.div<{ $selected: boolean }>`
         color: ${logservTheme.colors.textMuted};
         letter-spacing: 0.4px;
     }
+
+    /* Build 329 / session 112 — IP enrichment lines, rendered directly under
+     * the IP label (user-ratified placement) when the node's label hits the
+     * logserv_topology_ip_enrichment index: the resolved hostname, then the
+     * user line (single name, or an "N users" count — decision 1). Both are
+     * SEPARATE elements: the .label stays the raw IP, so refineTag (which
+     * classifies from the LABEL) can never be flipped by an enrichment
+     * string (session-107 trap). Height cost ~26 px is carried in lockstep
+     * by the ELK sizeForNode partner boxes (95x145 -> 95x175) + the d3
+     * collide radius — see layoutLayered/layoutMrtree/layout.ts. */
+    .enrichHost {
+        margin-top: 1px;
+        font-size: 11px;
+        color: ${logservTheme.colors.textDefault};
+        text-align: center;
+        max-width: 160px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .enrichUser {
+        margin-top: 1px;
+        font-size: 10px;
+        color: ${logservTheme.colors.textMuted};
+        text-align: center;
+        max-width: 160px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Build 327 — on the TENANT variant the name renders INSIDE the disc,
+     * so the .tag chip is the first element BELOW tenantDiscWrap — at the
+     * shared 2 px margin the circular health ring's bottom arc (radius
+     * 100/2 + 14, stroke 5.5 → extends ~19.5 px past the wrap) crossed
+     * straight through it (user-reported, build-324 regression: the chip
+     * margin was never bumped when tenants grew to the SID-format ring).
+     * 22 px = SidNode's .label clearance for the identical ring geometry.
+     * Height grows ~20 px; ELK sizeForNode tenant (145×175) still has
+     * ~39 px slack, FloatingEdge anchors measure from the node TOP, and
+     * the collide radius is center-circular — no lockstep changes. */
+    .tagTenant {
+        margin-top: 22px;
+    }
 `;
 
 const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
@@ -282,6 +390,15 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
     /* Build 211 / session 036 — accept any DB-vendor tag (HANA / ORACLE /
      * MSSQL / POSTGRES / DB2) plus the generic DB fallback. */
     const isDb = isDatabaseTag(d.tag as never);
+    /* Build 324 — tenant_db endpoints carry the TENANT tag (assigned in
+     * useTopologyData) and get the SID-format circle + combo icon. */
+    const isTenant = d.tag === 'TENANT';
+    /* Build 329 / session 112 — IP-keyed enrichment index (context, never
+     * node data — the HostCountContext delivery rule). Hostname-labeled
+     * partners simply miss the map. */
+    const enrichIndex = useContext(IpEnrichmentContext);
+    const enrichEntry = enrichIndex.get(d.label);
+    const enrichUserLine = enrichEntry ? nodeUserLine(enrichEntry) : null;
     const wrapperRef = useRef<HTMLDivElement>(null);
     const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
     const handleMouseEnter = useCallback((): void => {
@@ -292,19 +409,50 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
     return (
         <Wrapper
             ref={wrapperRef}
-            $selected={selected ?? false}
+            $inspected={d.inspected ?? false}
+            $grouped={selected ?? false}
+            /* Build 326 — §8a-17: announce group membership; the prop
+             * updates with RF selection (a static node.domAttributes
+             * would go stale under applyNodeChanges). */
+            aria-selected={selected ?? false}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
         >
             <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+            {/* Build 325 note: NO `hosts` row here, by design. Of the nodes
+              * this component renders, only tenants would carry a count —
+              * and a tenant's label-scoped count is the APPLICATION system's
+              * hosts (the label collision), which a name/value tooltip row
+              * cannot hedge. The sidebar's facts row covers tenants WITH the
+              * hedge a sentence can carry (review fold, session 110). */}
             <NodeTooltip
                 name={d.label}
                 kind="Remote partner"
-                tag={d.tag}
+                tag={displayTag(d.tag as never)}
                 events={d.eventCount}
                 anchorRect={anchorRect}
             />
-            {isDb ? (
+            {isTenant ? (
+                /* Build 324 / session 109 — HANA tenant: SID-format circle
+                 * with the combined app-servers+DB icon above the tenant
+                 * name (the tenant IS the application's database side).
+                 * Circular health ring like SIDs (isFocused = the 4 px
+                 * border geometry). */
+                <div className="tenantDiscWrap">
+                    {d.callBuckets && (
+                        <CallBucketRing
+                            diameter={100}
+                            buckets={d.callBuckets}
+                            isFocused
+                            nodeId={id ?? d.label}
+                        />
+                    )}
+                    <div className="tenantDisc" aria-label={d.label}>
+                        <AppServersDbIcon width={44} height={29} />
+                        <span>{d.label}</span>
+                    </div>
+                </div>
+            ) : isDb ? (
                 /* Build 213 / session 036 — DB-tagged partners render as
                  * a CIRCULAR disc + circular health ring + cylinder icon
                  * (mimicking SidNode's secondary-SID visual). User
@@ -354,8 +502,27 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
                     </div>
                 </div>
             )}
-            <div className="label">{d.label}</div>
-            <div className="tag">{d.tag} · {d.eventCount.toLocaleString()}</div>
+            {/* Build 324 — tenant name renders INSIDE the disc (SID style),
+              * so the below-disc label would duplicate it; chip uses the
+              * SHORT display-tag form ("HANA TENANT"), full form in the
+              * tooltip + right-pane Tag row (session-109 decision). */}
+            {!isTenant && <div className="label">{d.label}</div>}
+            {/* Build 329 / session 112 — enrichment lines under the IP label
+              * (resolved hostname + user name/count). Rendered only when the
+              * label hits the IP-keyed index, so hostname-labeled squares are
+              * untouched. Titles carry the full strings past the ellipsis. */}
+            {!isTenant && enrichEntry?.hostname && (
+                <div className="enrichHost" title={enrichEntry.hostname}>{enrichEntry.hostname}</div>
+            )}
+            {!isTenant && enrichEntry && enrichUserLine && (
+                <div
+                    className="enrichUser"
+                    title={enrichEntry.users.map((u) => u.name).join(', ')}
+                >
+                    {enrichUserLine}
+                </div>
+            )}
+            <div className={isTenant ? 'tag tagTenant' : 'tag'}>{displayTag(d.tag as never, { short: true })} · {d.eventCount.toLocaleString()}</div>
             <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
         </Wrapper>
     );

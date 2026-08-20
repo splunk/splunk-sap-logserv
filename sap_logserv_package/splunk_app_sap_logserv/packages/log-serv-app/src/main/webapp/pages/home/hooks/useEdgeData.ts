@@ -1,21 +1,24 @@
 import { useMemo } from 'react';
 import { useSearch } from './useSearch';
 import {
-    SEARCH_EDGE_ACTIVITY,
     SEARCH_EDGE_OPERATIONS,
     SEARCH_EDGE_PERFORMANCE,
     SEARCH_EDGE_ERRORS,
 } from '../topology/searches';
-import type { TopologyEdge } from '../topology/types';
+import { sanitizeEdgeIds } from '../topology/edgeIds';
+import type { EdgeActivityPoint, TopologyEdge } from '../topology/types';
 
 /**
  * useEdgeData — per-selected-edge SPL data for the right sidebar's 5-tab
  * Edge Details panel. Build 202 / session 036.
  *
- * Symmetric to useNodeData. Each tab beyond Overview + Performance has a
- * corresponding SPL search:
- *   - Overview     → derived from the cached topology data (no extra SPL)
- *   - Activity     → SEARCH_EDGE_ACTIVITY (timechart count + error_count)
+ * Symmetric to useNodeData:
+ *   - Overview     → derived from the cached topology data (no SPL)
+ *   - Activity     → `edge.activity`, computed in-memory by useTopologyData
+ *                    (build 321). No dispatch: the Overview tab renders this
+ *                    series' totals directly beneath `callCount`, so they must
+ *                    decompose it exactly - which holds only if both come from
+ *                    the same rows over the same window.
  *   - Operations   → SEARCH_EDGE_OPERATIONS (top entity by edge type)
  *   - Performance  → SEARCH_EDGE_PERFORMANCE (per-type distribution)
  *                    NOTE: aggregated p50/p95/max numbers come straight from
@@ -24,17 +27,14 @@ import type { TopologyEdge } from '../topology/types';
  *                    distribution histogram below those numbers.
  *   - Errors       → SEARCH_EDGE_ERRORS (top failures by edge type)
  *
- * The hook only fires SPL searches when `edge` is non-null. If `edge.splType`
- * or `edge.splFilterClauses` or `edge.splSourcetype` is missing (e.g. a
- * fixture-data edge from the prototype era), the searches return null and
- * the right pane renders an empty-state message.
+ * The three SPL reads fire only when `edge` is non-null, carries `splType`,
+ * and carries a valid `bucketIds` set (the stored `logserv_topology_edges.id`
+ * values behind the rendered edge - see topology/edgeIds.ts). When they do not
+ * fire, `dispatched` is false and the right pane says so, rather than
+ * asserting the absence of events it never looked for: from build 240 to 320
+ * this hook passed the composite DISPLAY id to the builders, every read was
+ * rejected, and all four tabs claimed "no events for this edge".
  */
-
-interface ActivityRow {
-    _time: string;
-    count: string | number;
-    error_count: string | number;
-}
 
 interface OperationsRow {
     entity: string;
@@ -53,12 +53,9 @@ interface ErrorRow {
     last_seen: string | number;
 }
 
-export interface EdgeActivityPoint {
-    /** Epoch seconds of the bucket. */
-    time: number;
-    count: number;
-    errorCount: number;
-}
+/** Re-exported from topology/types so existing importers keep working; the
+ *  series itself now rides on TopologyEdge (build 321). */
+export type { EdgeActivityPoint };
 
 export interface EdgeOperationRow {
     entity: string;
@@ -91,6 +88,17 @@ export interface UseEdgeDataResult {
     errors: EdgeErrorRow[] | null;
     errorsLoading: boolean;
     errorsError: Error | null;
+    /** False when the three SPL reads were deliberately NOT dispatched (no
+     *  splType, or no usable stored id set). Lets the UI distinguish "queried,
+     *  found nothing" from "never queried" - the ambiguity that hid the
+     *  build-240 regression for 80 builds. */
+    dispatched: boolean;
+    /** True when the rendered edge spans more stored edges than one read may
+     *  splice (MAX_EDGE_IDS): the three tabs then cover `idsUsed` of
+     *  `idsTotal`, and say so. */
+    truncated: boolean;
+    idsUsed: number;
+    idsTotal: number;
 }
 
 const num = (v: string | number | undefined): number => {
@@ -116,32 +124,29 @@ const EMPTY: UseEdgeDataResult = {
     operations: null, operationsLoading: false, operationsError: null,
     performance: null, performanceLoading: false, performanceError: null,
     errors: null, errorsLoading: false, errorsError: null,
+    dispatched: false, truncated: false, idsUsed: 0, idsTotal: 0,
 };
 
 export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdgeDataResult => {
-    /* Resolve SPL strings up front so all four useSearch calls execute on
+    /* Resolve SPL strings up front so all three useSearch calls execute on
      * every render regardless of whether they have valid args (React hook
-     * rules require unconditional hook calls). The detail tabs now read the
-     * hourly KV-Store rollup keyed by the edge id (session 060 / build 240),
-     * so we only need splType (to pick the Performance read variant) + the
-     * edge id. When the edge is null or lacks splType/id each query resolves
-     * to null + enabled=false so useSearch is a no-op.
+     * rules require unconditional hook calls). The detail tabs read the hourly
+     * KV-Store rollup scoped by the STORED edge ids (session 060 / build 240,
+     * corrected in build 321), so we need splType (to pick the Performance
+     * read variant) + `edge.bucketIds`. When the edge is null or either is
+     * missing, each query resolves to null + enabled=false so useSearch is a
+     * no-op -- and `dispatched` reports that, so the pane can say it.
      */
     const splType = edge?.splType ?? null;
-    const edgeId = edge?.id ?? '';
-    const canQuery = splType != null && !!edgeId;
-
-    const activityQuery = canQuery
-        ? SEARCH_EDGE_ACTIVITY(splType, edgeId)
-        : null;
-    const activityResult = useSearch<ActivityRow>({
-        query: activityQuery ?? '',
-        enabled: !!activityQuery,
-        refreshNonce,
-    });
+    /* The STORED ids - never `edge.id`, which is the composite display key
+     * (that substitution is exactly the build-240 bug). Sanitized once here
+     * for the truncation counters; each builder re-sanitizes independently. */
+    const selection = sanitizeEdgeIds(edge?.bucketIds);
+    const edgeIds = selection ? selection.ids : [];
+    const canQuery = splType != null && selection != null;
 
     const operationsQuery = canQuery
-        ? SEARCH_EDGE_OPERATIONS(splType, edgeId)
+        ? SEARCH_EDGE_OPERATIONS(splType, edgeIds)
         : null;
     const operationsResult = useSearch<OperationsRow>({
         query: operationsQuery ?? '',
@@ -150,7 +155,7 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
     });
 
     const performanceQuery = canQuery
-        ? SEARCH_EDGE_PERFORMANCE(splType, edgeId)
+        ? SEARCH_EDGE_PERFORMANCE(splType, edgeIds)
         : null;
     const performanceResult = useSearch<PerformanceRow>({
         query: performanceQuery ?? '',
@@ -159,7 +164,7 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
     });
 
     const errorsQuery = canQuery
-        ? SEARCH_EDGE_ERRORS(splType, edgeId)
+        ? SEARCH_EDGE_ERRORS(splType, edgeIds)
         : null;
     const errorsResult = useSearch<ErrorRow>({
         query: errorsQuery ?? '',
@@ -168,14 +173,18 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
     });
 
     return useMemo<UseEdgeDataResult>(() => {
-        if (!edge || !canQuery) return EMPTY;
-        const activity = activityResult.results
-            ? activityResult.results.map((r) => ({
-                time: toEpoch(r._time),
-                count: num(r.count),
-                errorCount: num(r.error_count),
-            }))
-            : null;
+        if (!edge) return EMPTY;
+        /* Activity rides on the edge itself, so it is available even when the
+         * SPL reads cannot run - it is derived from the very rows that
+         * produced the edge's headline totals. */
+        const activity = Array.isArray(edge.activity) ? edge.activity : null;
+        if (!canQuery) {
+            return {
+                ...EMPTY,
+                activity,
+                idsTotal: Array.isArray(edge.bucketIds) ? edge.bucketIds.length : 0,
+            };
+        }
         const operations = operationsResult.results
             ? operationsResult.results.map((r) => ({
                 entity: r.entity,
@@ -198,8 +207,8 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
             : null;
         return {
             activity,
-            activityLoading: activityResult.loading,
-            activityError: activityResult.error,
+            activityLoading: false,
+            activityError: null,
             operations,
             operationsLoading: operationsResult.loading,
             operationsError: operationsResult.error,
@@ -209,9 +218,12 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
             errors,
             errorsLoading: errorsResult.loading,
             errorsError: errorsResult.error,
+            dispatched: true,
+            truncated: selection ? selection.truncated : false,
+            idsUsed: edgeIds.length,
+            idsTotal: selection ? selection.requested : 0,
         };
-    }, [edge, canQuery,
-        activityResult.results, activityResult.loading, activityResult.error,
+    }, [edge, canQuery, edgeIds.length, selection,
         operationsResult.results, operationsResult.loading, operationsResult.error,
         performanceResult.results, performanceResult.loading, performanceResult.error,
         errorsResult.results, errorsResult.loading, errorsResult.error]);
