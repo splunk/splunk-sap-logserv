@@ -1,0 +1,3184 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/install-setup/gcp-setup/">
+      
+      
+        <link rel="prev" href="../azure-setup/">
+      
+      
+        <link rel="next" href="../../logserv-app/prerequisites/">
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>GCP Setup Guide - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sap-logserv-on-gcp-setup-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              GCP Setup Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-for-the-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters for the input
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parameters for the input">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-onboarding-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      The onboarding sequence
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-sap-must-grant-your-service-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      What SAP must grant your service account
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-the-gcp-add-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the GCP add-on
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-the-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the input
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configure the input">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#via-splunk-web-per-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Via Splunk Web (per Heavy Forwarder)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#via-rest-scriptable-per-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Via REST (scriptable, per Heavy Forwarder)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud_provider-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      cloud_provider attribution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-landscapes-fleets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple landscapes / fleets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reliability-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reliability behavior
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-backfill" class="md-nav__link">
+    <span class="md-ellipsis">
+      Historical backfill
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Full-LLM Variant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Full-LLM Variant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-for-the-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters for the input
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parameters for the input">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-onboarding-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      The onboarding sequence
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-sap-must-grant-your-service-account" class="md-nav__link">
+    <span class="md-ellipsis">
+      What SAP must grant your service account
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-the-gcp-add-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the GCP add-on
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-the-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the input
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configure the input">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#via-splunk-web-per-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Via Splunk Web (per Heavy Forwarder)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#via-rest-scriptable-per-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Via REST (scriptable, per Heavy Forwarder)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud_provider-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      cloud_provider attribution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-landscapes-fleets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple landscapes / fleets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reliability-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reliability behavior
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-backfill" class="md-nav__link">
+    <span class="md-ellipsis">
+      Historical backfill
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="sap-logserv-on-gcp-setup-guide">SAP LogServ on GCP — Setup Guide<a class="headerlink" href="#sap-logserv-on-gcp-setup-guide" title="Permanent link">&para;</a></h1>
+<p>This page covers ingesting LogServ data from <strong>Google Cloud Storage (GCS)</strong> using the standalone <strong>Splunk TA for SAP LogServ on GCP</strong> add-on (<code>splunk_ta_sap_logserv_gcp</code>) and its <strong><code>sap_logserv_gcp_pubsub</code></strong> modular input — the GCP twin of <code>Splunk_TA_aws</code>&rsquo;s <strong>SQS-Based S3</strong> input and of the LogServ Azure add-on&rsquo;s Storage-Queue input. A GCS bucket notification publishes an <code>OBJECT_FINALIZE</code> message to a <strong>Pub/Sub</strong> topic; this input pulls a <strong>Pub/Sub subscription</strong> on that topic, fetches each named object with a Google <strong>service-account key</strong>, gunzips it, and emits its NDJSON. This is the model SAP&rsquo;s own LogServ-on-GCP collector uses (Pub/Sub object-creation notifications). You install this small, first-party add-on <strong>on each Heavy Forwarder</strong> — the same deployment model as the Splunk Add-on for AWS and the LogServ Azure add-on — and the LogServ <strong>Data TA</strong> on the same HF provides the downstream sourcetype routing, filtering, and stamping. The downstream pipeline (sourcetype routing, filtering, dashboards, ES integration) is identical to the AWS S3 and Azure Blob paths.</p>
+<div class="admonition info">
+<p class="admonition-title">SAP provides the GCP infrastructure — you provide the service account that reads it</p>
+<p>In a RISE / SAP ECS deployment the <strong>GCS bucket, bucket notification, Pub/Sub topic, and Pub/Sub subscription are all provisioned and managed by SAP in the SAP-managed GCP project.</strong> You do not build any of that. What you <strong>do</strong> provide is the <em>identity</em> the Splunk input runs as: a <strong>service account you create in a GCP account of your own</strong> (a secondary account, separate from the SAP-managed RISE project — any project your organization controls). You hand the service account&rsquo;s <strong>email address</strong> to your <strong>SAP support contact</strong>, SAP grants it read access to the LogServ bucket + Pub/Sub subscription, and you mint its <strong>JSON key</strong> for the Splunk input — see <a href="#the-onboarding-sequence">The onboarding sequence</a>. On the Splunk side your tasks are to <strong>install the <code>splunk_ta_sap_logserv_gcp</code> add-on on each Heavy Forwarder</strong> and create a <strong>Splunk input</strong> on it — one per GCP landscape (most deployments have a single landscape, hence one input; you can define several on the same HF if you ingest from more than one — see <a href="#multiple-landscapes-fleets">Multiple landscapes / fleets</a>), using the values from <a href="#parameters-for-the-input">Parameters for the input</a>.</p>
+</div>
+<h2 id="architecture-overview"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Architecture overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
+<p><img alt="GCP Pub/Sub-driven ingest architecture" src="../../../images/gcp-pubsub-architecture.png" /></p>
+<div class="highlight"><pre><span></span><code>SAP LogServ RISE-ECS  (SAP-managed GCP project)
+  └─&gt; writes NDJSON.gz objects to Google Cloud Storage under the logserv/ prefix
+        └─&gt; GCS bucket notification (OBJECT_FINALIZE)
+              └─&gt; Pub/Sub topic ──&gt; Pub/Sub PULL subscription (one message per new object)
+                    |
+                    |    [Customer GCP account]  service account created by YOU;
+                    |    SAP grants it read access to the LogServ bucket + subscription;
+                    |    its JSON key authenticates the Splunk input below
+                    |
+                    └─&gt; [GCP TA: sap_logserv_gcp_pubsub]  (runs on the Heavy Forwarder)
+                          ├─ pulls the subscription, fetches each object with the
+                          │  service-account credential, gunzips, splits NDJSON
+                          └─&gt; emits via EventWriter, sourcetype=sap_logserv_logs
+                                └─&gt; [LogServ Data TA pipeline]  (same Heavy Forwarder):
+                                      transforms.conf routes by clz_dir/clz_subdir,
+                                      Configuration -&gt; Filters nullQueue, _time drop,
+                                      splunk_solution / cloud_provider stamping
+                                        └─&gt; forwarded to the Indexer
+                                              └─&gt; dashboards + ES integration
+</code></pre></div>
+<p>Everything from the LogServ object writer down through the <strong>Pub/Sub subscription lives in the SAP-managed GCP project and is managed by SAP.</strong> The one piece homed on <strong>your</strong> side of GCP is the <strong>service account</strong>: it lives in a customer-managed GCP account, SAP grants it cross-project read access to the LogServ subscription + bucket, and its JSON key is what the Splunk input authenticates with — the GCP analogue of the AWS path&rsquo;s customer-account <strong>cross-account IAM role</strong>. The <strong>GCP TA&rsquo;s <code>sap_logserv_gcp_pubsub</code> input</strong> runs on <strong>your Heavy Forwarder</strong>, pulls the subscription SAP exposes to you, and hands its events to the <strong>LogServ Data TA</strong> (also on that HF) for routing/filtering/stamping. This is exactly how <code>Splunk_TA_aws</code> and the LogServ Azure add-on cooperate with the Data TA on their respective paths.</p>
+<p><strong>Why EventWriter, not HEC:</strong> the input runs on the Heavy Forwarder and emits through the HF&rsquo;s native index-time pipeline, so every existing LogServ Data TA feature — <code>clz_dir</code>/<code>clz_subdir</code> sourcetype routing, the Configuration → Filters <code>nullQueue</code> filtering, the <code>days_in_past</code> / <code>_time</code> drop, and the <code>splunk_solution</code> / <code>cloud_provider</code> stamping — applies to GCP events <strong>unchanged</strong>, exactly as it does to AWS S3 and Azure Blob events. The input is <strong>stdlib-only</strong> (Pub/Sub + GCS REST over <code>urllib</code>, with a pure-Python OAuth2 service-account token exchange — no Google SDK), so it adds no AArch64 / native-binary burden and is Splunk Cloud-clean.</p>
+<div class="admonition note">
+<p class="admonition-title">Why not the Splunk Add-on for Google Cloud Platform?</p>
+<p>The general-purpose <a href="https://splunkbase.splunk.com/app/3088">Splunk Add-on for Google Cloud Platform (Splunkbase 3088)</a> ships a &ldquo;Cloud Pub/Sub Based Bucket&rdquo; input with the same notification-driven shape, but as of add-on 3088 v5.0.3 (validated 2026-07-05) it does <strong>not decompress gzipped objects</strong> — and SAP LogServ objects are gzipped NDJSON (<code>*.json.gz</code>), so its ingest fails on real LogServ data. It also requires an extra <code>roles/pubsub.viewer</code> grant beyond the roles SAP documents. The LogServ GCP add-on exists to close those gaps: native gunzip, the exact SAP-documented service-account roles, and <code>cloud_provider=gcp</code> stamping out of the box.</p>
+</div>
+<h2 id="prerequisites"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<p><strong>Provided by SAP</strong> (in the SAP-managed GCP project — you obtain the <em>values</em>, you do not build the resources):</p>
+<ul>
+<li>A <strong>GCS bucket</strong> holding the LogServ objects (under the <code>logserv/</code> prefix — same path convention as AWS S3 and Azure Blob: <code>&lt;bucket&gt;/logserv/&lt;clz_dir&gt;/&lt;clz_subdir&gt;/&lt;YYYY&gt;/&lt;MM&gt;/&lt;DD&gt;/&lt;file&gt;.json.gz</code>).</li>
+<li>A <strong>bucket notification</strong> publishing <code>OBJECT_FINALIZE</code> events to a <strong>Pub/Sub topic</strong>, and a <strong>PULL subscription</strong> on that topic dedicated to your Splunk consumer (recommended: ack deadline 300 s+ and a dead-letter policy).</li>
+<li>The <strong>cross-project IAM grants</strong> on those resources for the service account you provide (see below).</li>
+</ul>
+<p>Obtain the GCP project ID and the subscription name from your <strong>SAP support contact</strong> — see <a href="#parameters-for-the-input">Parameters for the input</a>.</p>
+<p><strong>Provided by you in GCP (the service account — see <a href="#the-onboarding-sequence">The onboarding sequence</a>):</strong></p>
+<ul>
+<li>A <strong>GCP account of your own</strong> — a <em>secondary</em> account, separate from the SAP-managed RISE project; any project your organization controls. No infrastructure is deployed in it — it is only the administrative home of the identity.</li>
+<li>A <strong>service account</strong> created in that project. You hand its <strong>email address</strong> to your SAP support contact, and SAP grants it <strong><code>roles/pubsub.subscriber</code> on the LogServ subscription</strong> and <strong><code>roles/storage.objectViewer</code> on the LogServ bucket</strong> (see <a href="#what-sap-must-grant-your-service-account">What SAP must grant your service account</a>).</li>
+<li>A <strong>JSON key</strong> for that service account, minted by your GCP admin (check the org-policy warning in <a href="#the-onboarding-sequence">The onboarding sequence</a> <em>before</em> install day).</li>
+<li>The <strong>Cloud Pub/Sub API</strong> and <strong>Cloud Storage API</strong> enabled in the service account&rsquo;s home project (Google attributes API quota to the credential&rsquo;s <em>home</em> project, not to the project holding the resources).</li>
+</ul>
+<p><strong>On your Splunk side (each Heavy Forwarder that will ingest GCP data):</strong></p>
+<ul>
+<li><strong>LogServ Data TA <code>0.1.1</code>+</strong> installed on the Heavy Forwarder (it provides the index-time routing/filtering/stamping; see <a href="../install-ta/">Installing the Data TA</a>). The Data TA is normally distributed by the Deployment Server.</li>
+<li><strong>Splunk TA for SAP LogServ on GCP (<code>splunk_ta_sap_logserv_gcp</code>) <code>0.1.1</code>+</strong> installed on the <strong>same Heavy Forwarder</strong> (see <a href="#install-the-gcp-add-on">Install the GCP add-on</a>). It registers the <code>sap_logserv_gcp_pubsub</code> input kind. The input is inert until you create an input instance.</li>
+<li>Network egress from the Heavy Forwarder to <code>oauth2.googleapis.com</code>, <code>pubsub.googleapis.com</code>, and <code>storage.googleapis.com</code> (port 443 / HTTPS).</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Compact JSON format required</p>
+<p>Each object is gzipped NDJSON (one event per line). The index-time routing transforms assume <strong>compact JSON</strong> (no whitespace after <code>:</code>). The SAP LogServ collector emits compact JSON natively, so no action is required on your side. (For reference: pretty-printed JSON would bypass the transforms and land as <code>sourcetype=sap_logserv_logs</code>, breaking dashboards.)</p>
+</div>
+<h2 id="parameters-for-the-input"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Parameters for the input<a class="headerlink" href="#parameters-for-the-input" title="Permanent link">&para;</a></h2>
+<p>SAP has already provisioned the bucket, notification, topic, and subscription in the SAP-managed GCP project — the only GCP resource <strong>you</strong> create is the service account (<a href="#the-onboarding-sequence">The onboarding sequence</a>). <strong>Contact your SAP support contact</strong> to obtain the two SAP-side values, then plug them — plus your own service-account key — into the Splunk input (<a href="#configure-the-input">Configure the input</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Input field</th>
+<th>Provided by</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GCP project ID</td>
+<td><code>project_id</code></td>
+<td>SAP</td>
+<td>The GCP project that hosts the LogServ Pub/Sub subscription (SAP&rsquo;s LogServ project — e.g. the <code>LOGSERV_PROJECT_ID</code> value SAP&rsquo;s own forwarder documentation references). 6–30 chars: lowercase letters, digits, hyphens; starts with a letter, ends with a letter or digit.</td>
+</tr>
+<tr>
+<td>Subscription name</td>
+<td><code>subscription_name</code></td>
+<td>SAP</td>
+<td>The Pub/Sub <strong>PULL</strong> subscription receiving the bucket&rsquo;s <code>OBJECT_FINALIZE</code> notifications. Must be dedicated to your Splunk consumer (competing consumers split messages).</td>
+</tr>
+<tr>
+<td>Service-account key</td>
+<td><code>service_account_key</code></td>
+<td><strong>You</strong></td>
+<td>The full Google service-account <strong>JSON key file</strong> contents, minted from the service account you created in your own GCP account (after SAP confirms the grants). Treat it as a secret.</td>
+</tr>
+</tbody>
+</table>
+<p>The bucket name and <code>logserv/</code> prefix are carried inside each notification message — they are not separate input fields. The three Google endpoints your Heavy Forwarder must reach are fixed (<code>oauth2.googleapis.com</code>, <code>pubsub.googleapis.com</code>, <code>storage.googleapis.com</code>).</p>
+<h3 id="the-onboarding-sequence">The onboarding sequence<a class="headerlink" href="#the-onboarding-sequence" title="Permanent link">&para;</a></h3>
+<p>The service account is <strong>customer-homed</strong>: it lives in a GCP account you control (the <em>secondary</em> account in the architecture diagram), and SAP binds cross-project grants on the SAP-managed LogServ resources to it. Nothing is deployed in your project — it is only the administrative home of the identity. The sequence:</p>
+<ol>
+<li><strong>Create the service account</strong> in a GCP project your organization controls: <strong>IAM &amp; Admin → Service Accounts → Create service account</strong>. A descriptive name such as <code>splunk-logserv-ingest</code> helps everyone&rsquo;s audit trail. The account needs <strong>no roles in your own project</strong>.</li>
+<li><strong>Hand the service account&rsquo;s email address</strong> (<code>&lt;name&gt;@&lt;your-project-id&gt;.iam.gserviceaccount.com</code>) <strong>to your SAP support contact</strong> and request LogServ consumer access for it.</li>
+<li><strong>SAP grants the account</strong> <code>roles/pubsub.subscriber</code> on the LogServ subscription and <code>roles/storage.objectViewer</code> on the LogServ bucket (cross-project IAM bindings on the SAP-managed resources — see <a href="#what-sap-must-grant-your-service-account">What SAP must grant your service account</a>), and returns the <strong>project ID</strong> and <strong>subscription name</strong> values for the input.</li>
+<li><strong>Enable the Cloud Pub/Sub API and the Cloud Storage API</strong> in the service account&rsquo;s home project (<strong>APIs &amp; Services → Enable APIs and services</strong>). Google attributes API quota to the credential&rsquo;s <em>home</em> project, so a missing enablement fails the first connection with <code>403 SERVICE_DISABLED</code> naming <strong>your</strong> project (see <a href="#troubleshooting">Troubleshooting</a>).</li>
+<li><strong>Mint the JSON key</strong>: <strong>IAM &amp; Admin → Service Accounts → <em>(the account)</em> → Keys → Add key → Create new key → JSON</strong>, and stage the downloaded file for the input configuration. <em>(Read the org-policy warning below first.)</em></li>
+<li><strong>Configure the input</strong> on each Heavy Forwarder (<a href="#configure-the-input">Configure the input</a>) once SAP confirms the grants are in place.</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Organization policy can block key creation entirely</p>
+<p>Many enterprises enforce the <code>iam.disableServiceAccountKeyCreation</code> organization policy as a security guardrail. If it applies to the service account&rsquo;s home project, minting a JSON key fails <strong>regardless of IAM roles</strong> — your admin needs <code>roles/iam.serviceAccountKeyAdmin</code> on the account <em>and</em> a policy exemption for it. Check this <strong>before</strong> install day; it is the most common last-minute blocker.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Onboarded earlier with an SAP-issued key?</p>
+<p>Deployments onboarded before this flow — where SAP issued a key for a service account homed in the SAP-managed LogServ project — continue to work unchanged. New onboarding uses the customer-homed sequence above.</p>
+</div>
+<h3 id="what-sap-must-grant-your-service-account">What SAP must grant your service account<a class="headerlink" href="#what-sap-must-grant-your-service-account" title="Permanent link">&para;</a></h3>
+<p>The input pulls/acks subscription messages <strong>and</strong> fetches objects with the single service account you provide, so SAP must bind <strong>both</strong> grants to its email. Confirm with your SAP support contact that your account holds:</p>
+<table>
+<thead>
+<tr>
+<th>IAM role</th>
+<th>Scope</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>roles/pubsub.subscriber</code></td>
+<td>the LogServ subscription</td>
+<td>pull + acknowledge notification messages</td>
+</tr>
+<tr>
+<td><code>roles/storage.objectViewer</code></td>
+<td>the LogServ bucket</td>
+<td>fetch the referenced objects</td>
+</tr>
+</tbody>
+</table>
+<p>These two roles are the <strong>complete</strong> runtime set — the input makes exactly four Google API calls (OAuth token mint, <code>subscriptions:pull</code>, <code>subscriptions:acknowledge</code>, and the object download), all covered by the grants above. They are the same two roles SAP documents for its own <code>sap-ecs-gcp-log-forwarder</code> consumer. Unlike the general-purpose Splunk Add-on for GCP, this input needs <strong>no</strong> extra <code>roles/pubsub.viewer</code> grant (that add-on calls <code>GetSubscription</code>; this input never does) — don&rsquo;t ask SAP to over-grant.</p>
+<div class="admonition warning">
+<p class="admonition-title">If the grant is subscription-only</p>
+<p>If your service account lacks <code>roles/storage.objectViewer</code> on the bucket, object fetches fail with HTTP 403 and the input logs it explicitly: <em>&ldquo;object read forbidden … the service account likely lacks storage.objectViewer on the bucket; leaving message for retry.&rdquo;</em> The decisive question for your SAP support contact is <strong>&ldquo;has my service account been granted read on the bucket&rsquo;s objects, or only the subscription?&rdquo;</strong> If it is subscription-only, ask SAP to add the bucket-read grant (a second credential is not supported — the input uses one account for both).</p>
+</div>
+<h2 id="install-the-gcp-add-on"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Install the GCP add-on<a class="headerlink" href="#install-the-gcp-add-on" title="Permanent link">&para;</a></h2>
+<p>Install <code>splunk_ta_sap_logserv_gcp-0.1.1.tar.gz</code> <strong>directly on each Heavy Forwarder</strong> that will ingest GCP data — exactly the tier where <code>Splunk_TA_aws</code> (AWS) and the LogServ Azure add-on (Azure) are installed for their paths.</p>
+<ul>
+<li>Splunk Web → <strong>Manage Apps → Install app from file</strong> → upload the tarball, <strong>or</strong></li>
+<li><code>/opt/splunk/bin/splunk install app /path/splunk_ta_sap_logserv_gcp-0.1.1.tar.gz</code>, <strong>or</strong></li>
+<li>configuration management (Ansible / Puppet / Chef) drops the app into <code>etc/apps/</code>, then <code>chown -R splunk:splunk</code> and restart.</li>
+</ul>
+<div class="admonition danger">
+<p class="admonition-title">Do NOT distribute the GCP add-on via the Deployment Server</p>
+<p>Install it <strong>directly on each Heavy Forwarder — never as a deployment-app.</strong> The input&rsquo;s service-account key is stored, encrypted, in the add-on&rsquo;s own <code>local/passwords.conf</code>; a Deployment Server push <strong>replaces the app&rsquo;s <code>local/</code> directory</strong>, which would wipe the per-HF credential. (This is the same reason <code>Splunk_TA_aws</code> and the LogServ Azure add-on are configured per-HF rather than DS-distributed.) The <strong>Data TA</strong> stays DS-managed as before — only the cloud-ingest add-ons are per-HF.</p>
+</div>
+<p>After installing + restarting, the <code>sap_logserv_gcp_pubsub</code> input kind is registered and the add-on&rsquo;s <strong>Inputs</strong> page is available under <strong>Apps → Splunk TA for SAP LogServ on GCP</strong>.</p>
+<h2 id="configure-the-input"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Configure the input<a class="headerlink" href="#configure-the-input" title="Permanent link">&para;</a></h2>
+<p>On <strong>each</strong> Heavy Forwarder, create one input instance for your GCP landscape. The service-account key is encrypted into the <strong>add-on&rsquo;s own</strong> <code>local/passwords.conf</code> and is <strong>not</strong> Deployment-Server-managed — it survives restarts and Data-TA pushes.</p>
+<h3 id="via-splunk-web-per-heavy-forwarder">Via Splunk Web (per Heavy Forwarder)<a class="headerlink" href="#via-splunk-web-per-heavy-forwarder" title="Permanent link">&para;</a></h3>
+<p>Splunk Web → <strong>Apps → Splunk TA for SAP LogServ on GCP → Inputs → Create New Input</strong>, and fill in the fields below with the project ID + subscription name from SAP — and paste the <strong>entire JSON key file of your own service account</strong> into the key field. (For a second landscape on the same HF, use the Inputs table&rsquo;s <strong>Clone</strong> action and give it a new name — the key is not carried on clone, so re-paste it. On <strong>Edit</strong>, the key field shows <code>******</code>; saving without changing it preserves the existing key.)</p>
+<div class="admonition warning">
+<p class="admonition-title"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> Paste the <em>whole file</em> — not just the private key</p>
+<p>The key field takes the <strong>complete downloaded <code>.json</code> file, verbatim</strong> — everything from the
+opening <code>{</code> to the closing <code>}</code> (<code>"type": "service_account"</code>, <code>"project_id"</code>, <code>"private_key"</code>,
+<code>"client_email"</code>, and the rest). Open the file in a text editor, <strong>Select All, copy, paste</strong>.</p>
+<ul>
+<li><strong>Keep the <code>-----BEGIN PRIVATE KEY-----</code> and <code>-----END PRIVATE KEY-----</code> lines.</strong> They are part
+  of the <code>private_key</code> <em>value inside the JSON</em> — do not remove them, and do not un-escape the
+  <code>\n</code> sequences around them.</li>
+<li><strong>Do not extract the private key out of the JSON.</strong> The add-on parses the pasted text <em>as JSON</em>
+  (it reads <code>client_email</code>, <code>private_key</code>, and <code>token_uri</code> from it); a bare key — with or
+  without the BEGIN/END lines — is not valid JSON and is rejected at the first poll with
+  <code>service-account key unusable</code>.</li>
+</ul>
+</div>
+<h3 id="via-rest-scriptable-per-heavy-forwarder">Via REST (scriptable, per Heavy Forwarder)<a class="headerlink" href="#via-rest-scriptable-per-heavy-forwarder" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Stage the service-account JSON key file, then create the input:</span>
+curl<span class="w"> </span>-sk<span class="w"> </span>-u<span class="w"> </span>admin:&lt;pwd&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://localhost:8089/servicesNS/nobody/splunk_ta_sap_logserv_gcp/splunk_ta_sap_logserv_gcp_sap_logserv_gcp_pubsub<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">name</span><span class="o">=</span>logserv_gcp<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">project_id</span><span class="o">=</span>&lt;sap-logserv-project-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">subscription_name</span><span class="o">=</span>&lt;subscription-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">index</span><span class="o">=</span>sap_logserv_logs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">event_sourcetype</span><span class="o">=</span>sap_logserv_logs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">interval</span><span class="o">=</span><span class="m">60</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span>service_account_key@/tmp/logserv-sa-key.json
+rm<span class="w"> </span>-f<span class="w"> </span>/tmp/logserv-sa-key.json
+</code></pre></div>
+<p>The resulting stanza in the add-on&rsquo;s <code>local/inputs.conf</code> looks like:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[sap_logserv_gcp_pubsub://logserv_gcp]</span>
+<span class="na">project_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&lt;sap-logserv-project-id&gt;</span>
+<span class="na">subscription_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&lt;subscription-name&gt;</span>
+<span class="na">service_account_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">******</span>
+<span class="na">index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sap_logserv_logs</span>
+<span class="na">event_sourcetype</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sap_logserv_logs</span>
+<span class="na">interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">60</span>
+<span class="na">disabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0</span>
+</code></pre></div>
+<p>(Only the masked placeholder <code>service_account_key = ******</code> is written to <code>inputs.conf</code> — the real key is stored encrypted in the add-on&rsquo;s own <code>local/passwords.conf</code>.)</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>project_id</code></td>
+<td>—</td>
+<td>The SAP LogServ GCP project ID from SAP (6–30 chars: lowercase letters, digits, hyphens; must start with a letter and end with a letter or digit).</td>
+</tr>
+<tr>
+<td><code>subscription_name</code></td>
+<td>—</td>
+<td>The Pub/Sub PULL subscription name from SAP (receives the <code>OBJECT_FINALIZE</code> notifications).</td>
+</tr>
+<tr>
+<td><code>service_account_key</code></td>
+<td>—</td>
+<td>The <strong>complete JSON key file</strong> of the service account you created in your own GCP account (<a href="#the-onboarding-sequence">The onboarding sequence</a>), pasted <strong>verbatim</strong> — including the <code>-----BEGIN PRIVATE KEY-----</code> / <code>-----END PRIVATE KEY-----</code> lines inside the <code>private_key</code> value. Encrypted credential: the value lives in the add-on&rsquo;s <code>local/passwords.conf</code>; <code>inputs.conf</code> carries only the masked <code>******</code> placeholder.</td>
+</tr>
+<tr>
+<td><code>index</code></td>
+<td><code>sap_logserv_logs</code></td>
+<td>Target index. Does <strong>not</strong> affect parsing — the Data TA&rsquo;s index-time pipeline keys on the sourcetype, not the index. You may point it at a custom index, but the dashboards query through the <code>sap_logserv_idx_macro</code> macro, so update that macro to match (see caveat below).</td>
+</tr>
+<tr>
+<td><code>event_sourcetype</code> (UI label <strong>Sourcetype</strong>)</td>
+<td><code>sap_logserv_logs</code></td>
+<td><strong>Fixed at <code>sap_logserv_logs</code>.</strong> The add-on hard-codes this sourcetype (it is not read from the stanza), and the field is shown read-only when editing the input. Leave it at the default.</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>60</code></td>
+<td>Seconds between firings (10–3600). Each firing drains the subscription within a per-firing time budget (currently 90% of <code>interval</code>, capped at 240 s) and the <code>max_objects_per_fire</code> cap.</td>
+</tr>
+<tr>
+<td><code>batch_size</code></td>
+<td><code>10</code></td>
+<td>Pub/Sub messages requested per pull call (<code>maxMessages</code>, 1–1000).</td>
+</tr>
+<tr>
+<td><code>max_objects_per_fire</code></td>
+<td><code>500</code></td>
+<td>Cap on objects ingested per firing (backlog safety valve).</td>
+</tr>
+<tr>
+<td><code>poison_threshold</code></td>
+<td><code>5</code></td>
+<td>A message redelivered more than this many times (Pub/Sub <code>deliveryAttempt</code>) is acked and dropped. See <a href="#reliability-behavior">Reliability behavior</a>.</td>
+</tr>
+<tr>
+<td><code>include_filters</code> / <code>exclude_filters</code></td>
+<td><em>(empty)</em></td>
+<td>Optional comma-separated substrings applied to the GCS object path as a cheap pre-filter (beyond the built-in <code>logserv</code> match). The canonical allow/deny policy lives in the Data TA&rsquo;s Filters tab.</td>
+</tr>
+<tr>
+<td><code>verify_ssl</code></td>
+<td><code>1</code></td>
+<td>TLS verification for the Google API endpoints. Leave enabled for production.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Sourcetype is fixed; the Index is yours to change</p>
+<p>The <strong>Sourcetype</strong> is effectively fixed at <strong><code>sap_logserv_logs</code></strong> — the add-on always emits it (the value is hard-coded in the input, not read from the stanza), and the field is shown read-only (disabled) when editing an existing input. This is deliberate: the Data TA&rsquo;s index-time routing, Filters <code>nullQueue</code>, <code>_time</code> drop, and <code>splunk_solution</code> / <code>cloud_provider</code> stamping all key on <code>sourcetype = sap_logserv_logs</code> (<code>props.conf</code> stanzas match on sourcetype, <strong>not</strong> index), so it must never vary.</p>
+<p>The <strong><code>index</code></strong>, by contrast, may be changed safely — parsing is unaffected (events are routed, filtered, and stamped identically no matter which index they land in). You may point it at a custom index (for example a per-customer index such as <code>sap_logserv_logs_con01</code>). The only follow-up is dashboard visibility: the dashboards and rollups search through the <code>sap_logserv_idx_macro</code> macro (default <code>index="sap_logserv_logs"</code>), so override that macro in the App&rsquo;s <code>local/macros.conf</code> to match your index, or the dashboards won&rsquo;t find the data.</p>
+</div>
+<h3 id="cloud_provider-attribution"><code>cloud_provider</code> attribution<a class="headerlink" href="#cloud_provider-attribution" title="Permanent link">&para;</a></h3>
+<p>The input stamps every event it emits with the indexed field <code>cloud_provider=gcp</code> (via <code>_meta = cloud_provider::gcp</code> on the generated stanza), so search-time queries and the <strong>Multi-Cloud Overview</strong> dashboard can distinguish GCP-sourced from AWS- and Azure-sourced data.</p>
+<div class="admonition warning">
+<p class="admonition-title">On a Heavy Forwarder that ingests from MORE THAN ONE cloud</p>
+<p>The Data TA&rsquo;s <strong>Configuration → Cloud Provider</strong> dropdown stamps <code>cloud_provider</code> TA-wide at index time. If it is set to <code>aws</code> (or any provider) on a forwarder that also runs this GCP input, that index-time stamp co-fires with the input&rsquo;s per-event <code>_meta=gcp</code>, leaving <code>cloud_provider</code> <strong>multivalued</strong> on the GCP events. For correct per-channel attribution on a mixed forwarder, set the <strong>Cloud Provider dropdown to &ldquo;Not set&rdquo;</strong> and attribute per input: this GCP input and the LogServ Azure add-on&rsquo;s input already self-attribute via <code>_meta</code>; add <code>_meta = cloud_provider::aws</code> to the <code>Splunk_TA_aws</code> SQS-S3 input. On a single-cloud forwarder, the dropdown alone is simplest. See <a href="../configure-filters/#cloud-provider-attribution">Configuring Filters → Cloud Provider Attribution</a>.</p>
+</div>
+<h3 id="multiple-landscapes-fleets">Multiple landscapes / fleets<a class="headerlink" href="#multiple-landscapes-fleets" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Multiple GCP landscapes on one HF:</strong> create one input instance per landscape (different <code>project_id</code> / <code>subscription_name</code>), using the Inputs table&rsquo;s <strong>Clone</strong> action. The per-instance credential is keyed by the input name; re-paste the key on each (clone never carries secrets).</li>
+<li><strong>A fleet of Heavy Forwarders:</strong> repeat the install + input creation on each HF. For zero-touch fleets, config management can drop the add-on into <code>etc/apps/</code> and seed the key via the REST call above (it encrypts under each HF&rsquo;s own <code>splunk.secret</code>). <strong>Do not</strong> add the add-on to the Deployment Server&rsquo;s <code>deployment-apps/</code>.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Scaling one subscription across inputs — Pub/Sub is natively competing-consumer</p>
+<p>Separate input <em>instances</em> are normally for <strong>different</strong> subscriptions. You <em>can</em> also point several identical inputs at the <strong>same</strong> subscription to raise throughput — competing consumers are Pub/Sub&rsquo;s native delivery model: the subscription&rsquo;s ack deadline hands each message to one consumer at a time, so N inputs (across one HF or several) pull and ingest N batches of objects in parallel with no duplicate-message handout. Understand the trade-off first:</p>
+<ul>
+<li>A <strong>single</strong> input is <strong>effectively duplicate-free across the subscription&rsquo;s redelivery window</strong> — its per-input dedup checkpoint (keyed <code>bucket/object#generation</code>; entries are retained for about 7 days, up to 50,000 objects) skips an already-ingested object if a message reappears.</li>
+<li><strong>Same-subscription inputs don&rsquo;t share that checkpoint</strong>, so they fall back to <strong>at-least-once</strong> (the same guarantee as the AWS SQS-S3 input). If a message&rsquo;s fetch + ingest exceeds the subscription&rsquo;s <strong>ack deadline</strong> (SAP-managed; 300 s recommended), the message redelivers and another input may re-ingest it → <strong>duplicate events</strong>. The guard: keep per-message processing comfortably under the ack deadline (defaults do — each message is one object). <code>deliveryAttempt</code> is Pub/Sub&rsquo;s server-side, shared counter, so the <code>poison_threshold</code> decision stays coordinated across the consumers, and a subscription-level <strong>dead-letter policy</strong> (SAP-managed) handles poison messages natively.</li>
+</ul>
+<p>For typical LogServ volumes a <strong>single input already keeps up</strong> (it drains up to <code>max_objects_per_fire</code> objects per firing). Prefer raising <code>batch_size</code> / <code>max_objects_per_fire</code> or lowering <code>interval</code> on one input before adding consumers.</p>
+</div>
+<h2 id="reliability-behavior"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Reliability behavior<a class="headerlink" href="#reliability-behavior" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>At-least-once + dedup.</strong> A subscription message carrying a LogServ object is acknowledged <strong>only after</strong> that object ingests successfully (unparseable / non-<code>OBJECT_FINALIZE</code> notifications and paths your filters reject are acknowledged without ingest and counted as <code>noise=</code> in the done log line; poison messages likewise — see below); each object is deduplicated by <code>bucket/object#generation</code> in a checkpoint sidecar, so a redelivered message re-ingests nothing.</li>
+<li><strong>Transient failures leave the message.</strong> A 5xx / network error on an object fetch leaves the message unacknowledged (it redelivers after the ack deadline); already-ingested objects in that message are no-ops on retry.</li>
+<li><strong>Object-read denied (HTTP 403) leaves the message</strong> and logs loudly — this is the missing-<code>storage.objectViewer</code> signal (get the bucket-read grant from SAP; the message reprocesses).</li>
+<li><strong>Pull denied (HTTP 403) aborts the firing</strong> — the service account lacks <code>roles/pubsub.subscriber</code> (or the project/subscription values are wrong); nothing is consumed until the credential is fixed.</li>
+<li><strong>Deleted objects (HTTP 404) are acked and skipped</strong> — an object that vanished between notification and fetch can&rsquo;t loop.</li>
+<li><strong>Poison messages</strong> (redelivered more than <code>poison_threshold</code> times, per Pub/Sub&rsquo;s <code>deliveryAttempt</code> counter) are acked and dropped so one permanently-bad object can&rsquo;t loop forever. <code>deliveryAttempt</code> is populated only when the subscription has a <strong>dead-letter policy</strong> — with one attached, Pub/Sub also dead-letters natively (the primary mechanism; the TA&rsquo;s threshold is a local backstop).</li>
+</ul>
+<h2 id="historical-backfill"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Historical backfill<a class="headerlink" href="#historical-backfill" title="Permanent link">&para;</a></h2>
+<p>Notification-driven ingest is <strong>forward-only by nature</strong> — the bucket notification fires only on <em>new</em> <code>OBJECT_FINALIZE</code> events, so once SAP&rsquo;s notification is live the input ingests everything written from that point on, but does <strong>not</strong> replay objects that already existed. There is no queue-native historical backfill yet; a one-time bulk load of pre-existing objects is a roadmap item. If you need to seed history, contact your Splunk team. The index-time <code>days_in_past</code> / <code>_time</code> filter applies to any backfilled events the same way it does to live ingest.</p>
+<h2 id="validation"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
+<p>Confirm the input is registered and firing (run on the Heavy Forwarder):</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-sk<span class="w"> </span>-u<span class="w"> </span>admin:&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"https://localhost:8089/servicesNS/nobody/splunk_ta_sap_logserv_gcp/splunk_ta_sap_logserv_gcp_sap_logserv_gcp_pubsub?output_mode=json"</span>
+</code></pre></div>
+<p>Watch the input log on the HF:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>tail<span class="w"> </span>-f<span class="w"> </span>/opt/splunk/var/log/splunk/splunk_ta_sap_logserv_gcp_pubsub.log
+<span class="c1"># look for:  Input 'logserv_gcp' done: messages=N objects=N events=N dups=N acked=N ...</span>
+</code></pre></div>
+<p>Search the indexer (events route to per-source sourcetypes just like AWS and Azure):</p>
+<div class="highlight"><pre><span></span><code>index=sap_logserv_logs cloud_provider=gcp _index_earliest=-1h | stats count by sourcetype
+</code></pre></div>
+<h3 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom (in the input log)</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>service-account key not found in passwords.conf; skipping</code></td>
+<td>No credential for this input name on this host</td>
+<td>Re-enter the key on this HF (Inputs tab → Edit, or the REST call above). The key lives in the add-on&rsquo;s own <code>local/passwords.conf</code>; it is <strong>not</strong> affected by Deployment-Server pushes.</td>
+</tr>
+<tr>
+<td><code>service-account key unusable (...)</code></td>
+<td>The pasted key is not a valid service-account JSON key (truncated paste, wrong file, or only the bare private key was pasted instead of the whole JSON file)</td>
+<td>Re-paste the <strong>entire</strong> JSON key file verbatim — the full <code>{...}</code> document, with the <code>-----BEGIN/END PRIVATE KEY-----</code> lines left intact inside the <code>private_key</code> value.</td>
+</tr>
+<tr>
+<td><code>token minting failed (...)</code></td>
+<td>The key is revoked/expired, the HF can&rsquo;t reach <code>oauth2.googleapis.com</code>, or the system clock is skewed (JWTs are time-signed)</td>
+<td>Verify egress to <code>oauth2.googleapis.com:443</code> and NTP sync; check in <strong>your</strong> GCP console whether the key is still active (<strong>IAM &amp; Admin → Service Accounts → Keys</strong>) and mint a new one if needed.</td>
+</tr>
+<tr>
+<td><code>subscription pull failed (... 403 ...)</code></td>
+<td>SAP&rsquo;s <code>roles/pubsub.subscriber</code> grant for your service account is missing or not yet applied, or <code>project_id</code>/<code>subscription_name</code> are wrong</td>
+<td>Confirm the values with your SAP support contact and that the grant for your service account&rsquo;s <strong>email</strong> is in place on <strong>this</strong> subscription (<a href="#the-onboarding-sequence">The onboarding sequence</a>).</td>
+</tr>
+<tr>
+<td><code>subscription pull failed (HTTP 403: … SERVICE_DISABLED …)</code> naming the service account&rsquo;s <strong>home</strong> project (&ldquo;…API has not been used in project…&rdquo;)</td>
+<td>The account is homed in <strong>your</strong> GCP account — a different project than the LogServ resources — and the Pub/Sub or Cloud Storage API isn&rsquo;t enabled there (Google attributes API quota to the credential&rsquo;s home project)</td>
+<td>Enable the <strong>Cloud Pub/Sub API</strong> and <strong>Cloud Storage API</strong> in the account&rsquo;s home project and retry (step 4 of <a href="#the-onboarding-sequence">The onboarding sequence</a>).</td>
+</tr>
+<tr>
+<td><code>object read forbidden (HTTP 403)</code></td>
+<td>The service account lacks <code>roles/storage.objectViewer</code> on the bucket</td>
+<td>Ask SAP to add the bucket-read grant for your service account&rsquo;s email; the message is left for retry and reprocesses once fixed.</td>
+</tr>
+<tr>
+<td><code>done: messages=0</code> every firing, but objects exist</td>
+<td>The bucket notification (SAP-managed) isn&rsquo;t publishing, or the subscription name is wrong</td>
+<td>Confirm with your SAP support contact that the <code>OBJECT_FINALIZE</code> notification and subscription are active; verify egress to <code>pubsub.googleapis.com</code>.</td>
+</tr>
+<tr>
+<td>Input kind <code>sap_logserv_gcp_pubsub</code> not listed / Inputs page missing</td>
+<td>The GCP add-on isn&rsquo;t installed (or Splunkd wasn&rsquo;t restarted) on this HF</td>
+<td>Install <code>splunk_ta_sap_logserv_gcp</code> on the HF and restart (see <a href="#install-the-gcp-add-on">Install the GCP add-on</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="next-steps"><span class="twemoji cboxmove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Confirm the <a href="../../logserv-app/installation/">LogServ App is installed</a> on your Search Head</li>
+<li>Review the <a href="../../getting-started/supported-log-types/">supported log types</a> reference</li>
+<li>For Splunk Cloud Victoria considerations, see <a href="../splunk-cloud-victoria-notes/">Splunk Cloud Victoria Notes</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>

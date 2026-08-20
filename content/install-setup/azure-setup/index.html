@@ -1,0 +1,3112 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/install-setup/azure-setup/">
+      
+      
+        <link rel="prev" href="../aws-remote-s3-copy-guide/">
+      
+      
+        <link rel="next" href="../gcp-setup/">
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Azure Setup Guide - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#sap-logserv-on-azure-setup-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Azure Setup Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-to-obtain-from-sap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters to obtain from SAP
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parameters to obtain from SAP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-sap-provided-sas-must-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the SAP-provided SAS must cover
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-the-azure-add-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the Azure add-on
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-the-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the input
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configure the input">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#via-splunk-web-per-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Via Splunk Web (per Heavy Forwarder)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#via-rest-scriptable-per-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Via REST (scriptable, per Heavy Forwarder)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud_provider-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      cloud_provider attribution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-landscapes-fleets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple landscapes / fleets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reliability-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reliability behavior
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-backfill" class="md-nav__link">
+    <span class="md-ellipsis">
+      Historical backfill
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Full-LLM Variant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Full-LLM Variant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      Prerequisites
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters-to-obtain-from-sap" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parameters to obtain from SAP
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parameters to obtain from SAP">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-sap-provided-sas-must-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the SAP-provided SAS must cover
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-the-azure-add-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      Install the Azure add-on
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configure-the-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the input
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configure the input">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#via-splunk-web-per-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Via Splunk Web (per Heavy Forwarder)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#via-rest-scriptable-per-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Via REST (scriptable, per Heavy Forwarder)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cloud_provider-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      cloud_provider attribution
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-landscapes-fleets" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multiple landscapes / fleets
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reliability-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reliability behavior
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-backfill" class="md-nav__link">
+    <span class="md-ellipsis">
+      Historical backfill
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="sap-logserv-on-azure-setup-guide">SAP LogServ on Azure — Setup Guide<a class="headerlink" href="#sap-logserv-on-azure-setup-guide" title="Permanent link">&para;</a></h1>
+<p>This page covers ingesting LogServ data from <strong>Microsoft Azure Blob Storage</strong> using the standalone <strong>Splunk TA for SAP LogServ on Azure</strong> add-on (<code>splunk_ta_sap_logserv_azure</code>) and its <strong><code>sap_logserv_azure_queue</code></strong> modular input — the Azure twin of <code>Splunk_TA_aws</code>&rsquo;s <strong>SQS-Based S3</strong> input. An Azure <strong>Event Grid</strong> subscription drops a <code>BlobCreated</code> notification onto a <strong>Storage Queue</strong>; this input consumes the queue, fetches each named blob over a SAS, and emits its NDJSON. This is the model SAP&rsquo;s LogServ-on-Azure collector uses (Storage Queue notifications). You install this small, first-party add-on <strong>on each Heavy Forwarder</strong> — the same deployment model as the Splunk Add-on for AWS — and the LogServ <strong>Data TA</strong> on the same HF provides the downstream sourcetype routing, filtering, and stamping. The downstream pipeline (sourcetype routing, filtering, dashboards, ES integration) is identical to the AWS S3 path.</p>
+<div class="admonition info">
+<p class="admonition-title">The Azure infrastructure is provided by SAP — you only install the add-on and configure the input</p>
+<p>In a RISE / SAP ECS deployment the <strong>storage account, blob container, Storage Queue, Event Grid subscription, and SAS are all provisioned and managed by SAP in the SAP ECS Azure account.</strong> You do <strong>not</strong> create or configure anything in Azure. Your only tasks are to <strong>install the <code>splunk_ta_sap_logserv_azure</code> add-on on each Heavy Forwarder</strong> and create a <strong>Splunk input</strong> on it — one per Azure landscape (most deployments have a single landscape, hence one input; you can define several on the same HF if you ingest from more than one — see <a href="#multiple-landscapes-fleets">Multiple landscapes / fleets</a>), using a small set of parameter values that you obtain from your <strong>SAP support contact</strong> — see <a href="#parameters-to-obtain-from-sap">Parameters to obtain from SAP</a>.</p>
+</div>
+<h2 id="architecture-overview"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Architecture overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h2>
+<p><img alt="Azure queue-driven ingest architecture" src="../../../images/azure-queue-architecture.png" /></p>
+<div class="highlight"><pre><span></span><code>SAP LogServ RISE-ECS
+  └─&gt; writes NDJSON.gz blobs to Azure Blob Storage under the logserv/ prefix
+        └─&gt; Azure Event Grid subscription (Microsoft.Storage.BlobCreated)
+              └─&gt; Azure Storage Queue (one message per new blob)
+                    └─&gt; [Azure TA: sap_logserv_azure_queue]  (runs on the Heavy Forwarder)
+                          ├─ reads the queue, fetches each blob over a SAS, gunzips, splits NDJSON
+                          └─&gt; emits via EventWriter, sourcetype=sap_logserv_logs
+                                └─&gt; [LogServ Data TA pipeline]  (same Heavy Forwarder):
+                                      transforms.conf routes by clz_dir/clz_subdir,
+                                      Configuration -&gt; Filters nullQueue, _time drop,
+                                      splunk_solution / cloud_provider stamping
+                                        └─&gt; forwarded to the Indexer
+                                              └─&gt; dashboards + ES integration
+</code></pre></div>
+<p>Everything from the LogServ blob writer down through the <strong>Storage Queue lives in the SAP ECS Azure account and is managed by SAP.</strong> The <strong>Azure TA&rsquo;s <code>sap_logserv_azure_queue</code> input</strong> — the only component you install and configure — runs on <strong>your Heavy Forwarder</strong>, consumes the queue SAP exposes to you, and hands its events to the <strong>LogServ Data TA</strong> (also on that HF) for routing/filtering/stamping. This is exactly how <code>Splunk_TA_aws</code> and the Data TA cooperate for the AWS S3 path.</p>
+<p><strong>Why EventWriter, not HEC:</strong> the input runs on the Heavy Forwarder and emits through the HF&rsquo;s native index-time pipeline, so every existing LogServ Data TA feature — <code>clz_dir</code>/<code>clz_subdir</code> sourcetype routing, the Configuration → Filters <code>nullQueue</code> filtering, the <code>days_in_past</code> / <code>_time</code> drop, and the <code>splunk_solution</code> / <code>cloud_provider</code> stamping — applies to Azure events <strong>unchanged</strong>, exactly as it does to AWS S3 events. The input is <strong>stdlib-only</strong> (Azure Storage REST over <code>urllib</code> — no Azure SDK), so it adds no AArch64 / native-binary burden and is Splunk Cloud-clean.</p>
+<h2 id="prerequisites"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<p><strong>Provided by SAP</strong> (in the SAP ECS Azure account — you obtain the <em>values</em>, you do not build the resources):</p>
+<ul>
+<li>An <strong>Azure Storage Account</strong> holding the LogServ container (blobs under the <code>logserv/</code> prefix — same path convention as AWS S3: <code>&lt;container&gt;/logserv/&lt;clz_dir&gt;/&lt;clz_subdir&gt;/&lt;YYYY&gt;/&lt;MM&gt;/&lt;DD&gt;/&lt;file&gt;.json.gz</code>).</li>
+<li>A <strong>Storage Queue</strong> in that account, fed by an <strong>Event Grid subscription</strong> that routes <code>Microsoft.Storage.BlobCreated</code> events to it.</li>
+<li>A <strong>SAS</strong> that is <strong>both blob-readable and queue-processable</strong> (see <a href="#what-the-sap-provided-sas-must-cover">What the SAP-provided SAS must cover</a>).</li>
+</ul>
+<p>Obtain the storage account name, the queue name, and the SAS from your <strong>SAP support contact</strong> — see <a href="#parameters-to-obtain-from-sap">Parameters to obtain from SAP</a>.</p>
+<p><strong>On your side (each Heavy Forwarder that will ingest Azure data):</strong></p>
+<ul>
+<li><strong>LogServ Data TA <code>0.1.1</code>+</strong> installed on the Heavy Forwarder (it provides the index-time routing/filtering/stamping; see <a href="../install-ta/">Installing the Data TA</a>). The Data TA is normally distributed by the Deployment Server.</li>
+<li><strong>Splunk TA for SAP LogServ on Azure (<code>splunk_ta_sap_logserv_azure</code>) <code>0.1.1</code>+</strong> installed on the <strong>same Heavy Forwarder</strong> (see <a href="#install-the-azure-add-on">Install the Azure add-on</a>). It registers the <code>sap_logserv_azure_queue</code> input kind. The input is inert until you create an input instance.</li>
+<li>Network egress from the Heavy Forwarder to <code>&lt;account&gt;.blob.core.windows.net</code> <strong>and</strong> <code>&lt;account&gt;.queue.core.windows.net</code> (port 443 / HTTPS).</li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Compact JSON format required</p>
+<p>Each blob is gzipped NDJSON (one event per line). The index-time routing transforms assume <strong>compact JSON</strong> (no whitespace after <code>:</code>). The SAP LogServ collector emits compact JSON natively, so no action is required on your side. (For reference: pretty-printed JSON would bypass the transforms and land as <code>sourcetype=sap_logserv_logs</code>, breaking dashboards.)</p>
+</div>
+<h2 id="parameters-to-obtain-from-sap"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Parameters to obtain from SAP<a class="headerlink" href="#parameters-to-obtain-from-sap" title="Permanent link">&para;</a></h2>
+<p>You do <strong>not</strong> create any Azure resources. SAP has already provisioned the storage account, container, queue, and Event Grid subscription in the SAP ECS Azure account. <strong>Contact your SAP support contact</strong> to obtain the following values for your environment, then plug them into the Splunk input (<a href="#configure-the-input">Configure the input</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Input field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Storage account name</td>
+<td><code>account_name</code></td>
+<td>The Azure Storage account holding the LogServ container (<code>^[a-z0-9]{3,24}$</code>).</td>
+</tr>
+<tr>
+<td>Storage Queue name</td>
+<td><code>queue_name</code></td>
+<td>The queue receiving the Event Grid <code>BlobCreated</code> notifications.</td>
+</tr>
+<tr>
+<td>SAS token</td>
+<td><code>sas_token</code></td>
+<td>An account SAS scoped for <strong>both</strong> blob read/list <strong>and</strong> queue process/delete (see below). Treat it as a secret.</td>
+</tr>
+</tbody>
+</table>
+<p>The blob container name and <code>logserv/</code> prefix are already covered by the SAS and the queue — they are not separate input fields. The account name also determines the two endpoints your Heavy Forwarder must reach (<code>&lt;account&gt;.blob.core.windows.net</code> and <code>&lt;account&gt;.queue.core.windows.net</code>).</p>
+<h3 id="what-the-sap-provided-sas-must-cover">What the SAP-provided SAS must cover<a class="headerlink" href="#what-the-sap-provided-sas-must-cover" title="Permanent link">&para;</a></h3>
+<p>The input fetches blobs <strong>and</strong> reads/deletes queue messages with the single SAS SAP gives you, so that SAS must cover <strong>both</strong> services. Confirm with your SAP support contact that the SAS includes:</p>
+<table>
+<thead>
+<tr>
+<th>SAS field</th>
+<th>Must include</th>
+<th>For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ss</code> (services)</td>
+<td><code>b</code> (blob) <strong>and</strong> <code>q</code> (queue)</td>
+<td>blob fetch + queue ops</td>
+</tr>
+<tr>
+<td><code>srt</code> (resource types)</td>
+<td><code>o</code> (object) is what the add-on actually needs; <code>sco</code> is fine if that is what SAP issues</td>
+<td>account-SAS resource scope</td>
+</tr>
+<tr>
+<td><code>sp</code> (permissions)</td>
+<td><code>r</code> (blob read) <strong>and</strong> <code>p</code> (queue process — covers Get + Delete Messages); add <code>a</code> (add) only if you configure a <code>dead_letter_queue</code> (poison messages are written to it)</td>
+<td>fetch blobs + consume queue</td>
+</tr>
+</tbody>
+</table>
+<p>You can decode a SAS string to check its scope before configuring the input:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">echo</span><span class="w"> </span><span class="s2">"</span><span class="nv">$SAS</span><span class="s2">"</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>tr<span class="w"> </span><span class="s1">'&amp;'</span><span class="w"> </span><span class="s1">'\n'</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^(ss|srt|sp|se)='</span>
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">If the SAS is queue-only</p>
+<p>If <code>ss</code> lacks <code>b</code>, blob fetches fail with HTTP 401/403 and the input logs it explicitly: <em>&ldquo;blob read forbidden … the SAS likely lacks Blob-read permission or has expired.&rdquo;</em> The decisive question for your SAP support contact is <strong>&ldquo;is the LogServ SAS Blob-readable, or queue-only?&rdquo;</strong> If it is queue-only, you will need a second, blob-read credential from SAP.</p>
+</div>
+<h2 id="install-the-azure-add-on"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Install the Azure add-on<a class="headerlink" href="#install-the-azure-add-on" title="Permanent link">&para;</a></h2>
+<p>Install <code>splunk_ta_sap_logserv_azure-0.1.1.tar.gz</code> <strong>directly on each Heavy Forwarder</strong> that will ingest Azure data — exactly the tier where <code>Splunk_TA_aws</code> is installed for the AWS path.</p>
+<ul>
+<li>Splunk Web → <strong>Manage Apps → Install app from file</strong> → upload the tarball, <strong>or</strong></li>
+<li><code>/opt/splunk/bin/splunk install app /path/splunk_ta_sap_logserv_azure-0.1.1.tar.gz</code>, <strong>or</strong></li>
+<li>configuration management (Ansible / Puppet / Chef) drops the app into <code>etc/apps/</code>, then <code>chown -R splunk:splunk</code> and restart.</li>
+</ul>
+<div class="admonition danger">
+<p class="admonition-title">Do NOT distribute the Azure add-on via the Deployment Server</p>
+<p>Install it <strong>directly on each Heavy Forwarder — never as a deployment-app.</strong> The input&rsquo;s SAS is stored, encrypted, in the add-on&rsquo;s own <code>local/passwords.conf</code>; a Deployment Server push <strong>replaces the app&rsquo;s <code>local/</code> directory</strong>, which would wipe the per-HF SAS. (This is the same reason <code>Splunk_TA_aws</code> is configured per-HF rather than DS-distributed. It is a deliberate change from earlier LogServ builds that bundled this input inside the DS-managed Data TA.) The <strong>Data TA</strong> stays DS-managed as before — only the Azure add-on is per-HF.</p>
+</div>
+<p>After installing + restarting, the <code>sap_logserv_azure_queue</code> input kind is registered and the add-on&rsquo;s <strong>Inputs</strong> page is available under <strong>Apps → Splunk TA for SAP LogServ on Azure</strong>.</p>
+<h2 id="configure-the-input"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Configure the input<a class="headerlink" href="#configure-the-input" title="Permanent link">&para;</a></h2>
+<p>On <strong>each</strong> Heavy Forwarder, create one input instance for your Azure landscape. The SAS is encrypted into the <strong>add-on&rsquo;s own</strong> <code>local/passwords.conf</code> and is <strong>not</strong> Deployment-Server-managed — it survives restarts and Data-TA pushes with no <code>system/local</code> relocation.</p>
+<h3 id="via-splunk-web-per-heavy-forwarder">Via Splunk Web (per Heavy Forwarder)<a class="headerlink" href="#via-splunk-web-per-heavy-forwarder" title="Permanent link">&para;</a></h3>
+<p>Splunk Web → <strong>Apps → Splunk TA for SAP LogServ on Azure → Inputs → Create New Input → Azure Storage Queue</strong>, and fill in the fields below with the values you obtained from SAP. (For a second landscape on the same HF, use the Inputs table&rsquo;s <strong>Clone</strong> action and give it a new name — the SAS is not carried on clone, so re-enter it.)</p>
+<p><img alt="Azure Inputs" src="../../../images/azure-ta-inputs-tab.png" /></p>
+<h3 id="via-rest-scriptable-per-heavy-forwarder">Via REST (scriptable, per Heavy Forwarder)<a class="headerlink" href="#via-rest-scriptable-per-heavy-forwarder" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Write the SAS to a single-line temp file (no trailing newline), then create the input:</span>
+curl<span class="w"> </span>-sk<span class="w"> </span>-u<span class="w"> </span>admin:&lt;pwd&gt;<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://localhost:8089/servicesNS/nobody/splunk_ta_sap_logserv_azure/splunk_ta_sap_logserv_azure_sap_logserv_azure_queue<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">name</span><span class="o">=</span>logserv_azure<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">account_name</span><span class="o">=</span>&lt;storage-account&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">queue_name</span><span class="o">=</span>logservqueue<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">index</span><span class="o">=</span>sap_logserv_logs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">event_sourcetype</span><span class="o">=</span>sap_logserv_logs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">interval</span><span class="o">=</span><span class="m">60</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span>sas_token@/tmp/azure_sas.txt
+rm<span class="w"> </span>-f<span class="w"> </span>/tmp/azure_sas.txt
+</code></pre></div>
+<p>The resulting stanza in the add-on&rsquo;s <code>local/inputs.conf</code> looks like:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[sap_logserv_azure_queue://logserv_azure]</span>
+<span class="na">account_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&lt;storage-account&gt;</span>
+<span class="na">queue_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">logservqueue</span>
+<span class="na">index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sap_logserv_logs</span>
+<span class="na">event_sourcetype</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sap_logserv_logs</span>
+<span class="na">interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">60</span>
+<span class="na">disabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">0</span>
+</code></pre></div>
+<p>(The <code>sas_token</code> is <strong>not</strong> written to <code>inputs.conf</code> — it is stored encrypted in the add-on&rsquo;s own <code>local/passwords.conf</code>.)</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>account_name</code></td>
+<td>—</td>
+<td>Storage account name from SAP (<code>^[a-z0-9]{3,24}$</code>).</td>
+</tr>
+<tr>
+<td><code>queue_name</code></td>
+<td>—</td>
+<td>The Storage Queue name from SAP (receives Event Grid notifications).</td>
+</tr>
+<tr>
+<td><code>sas_token</code></td>
+<td>—</td>
+<td>The SAS from SAP (blob + queue scoped). Encrypted credential, stored in the add-on&rsquo;s <code>local/passwords.conf</code>, never in <code>inputs.conf</code>.</td>
+</tr>
+<tr>
+<td><code>index</code></td>
+<td><code>sap_logserv_logs</code></td>
+<td>Target index. Does <strong>not</strong> affect parsing — the Data TA&rsquo;s index-time pipeline keys on the sourcetype, not the index. You may point it at a custom index, but the dashboards query through the <code>sap_logserv_idx_macro</code> macro, so update that macro to match (see caveat below).</td>
+</tr>
+<tr>
+<td><code>event_sourcetype</code> (UI label <strong>Sourcetype</strong>)</td>
+<td><code>sap_logserv_logs</code></td>
+<td><strong>Fixed at <code>sap_logserv_logs</code>.</strong> The add-on hard-codes this sourcetype (it is not read from the stanza), and the field is shown read-only when editing the input. Leave it at the default.</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>60</code></td>
+<td>Seconds between firings (10–3600). Each firing drains the queue within a per-firing time budget (currently <code>min(240 s, interval × 0.9)</code>).</td>
+</tr>
+<tr>
+<td><code>batch_size</code></td>
+<td><code>32</code></td>
+<td>Queue messages dequeued per request (1–32, the Azure max).</td>
+</tr>
+<tr>
+<td><code>visibility_timeout</code></td>
+<td><code>300</code></td>
+<td>Seconds a dequeued message is hidden while processing (30–604800).</td>
+</tr>
+<tr>
+<td><code>max_blobs_per_fire</code></td>
+<td><code>500</code></td>
+<td>Cap on blobs ingested per firing (1–100000; backlog safety valve).</td>
+</tr>
+<tr>
+<td><code>poison_threshold</code></td>
+<td><code>5</code></td>
+<td>A message redelivered more than this many times (1–100) is dead-lettered / dropped.</td>
+</tr>
+<tr>
+<td><code>dead_letter_queue</code></td>
+<td><em>(empty)</em></td>
+<td>Optional queue name for poison messages (Storage Queue has no native DLQ).</td>
+</tr>
+<tr>
+<td><code>include_filters</code> / <code>exclude_filters</code></td>
+<td><em>(empty)</em></td>
+<td>Optional <strong>comma-separated</strong>, case-insensitive substrings matched against the blob path (the Event Grid subject), applied on top of the built-in <code>logserv</code> requirement. Subjects containing <code>azure-webjobs-hosts</code> are always skipped.</td>
+</tr>
+<tr>
+<td><code>verify_ssl</code></td>
+<td><code>1</code></td>
+<td>TLS verification for Azure REST calls.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Sourcetype is fixed; the Index is yours to change</p>
+<p>The <strong>Sourcetype</strong> is effectively fixed at <strong><code>sap_logserv_logs</code></strong> — the add-on always emits it (the value is hard-coded in the input, not read from the stanza), and the field is shown read-only (disabled) when editing an existing input. This is deliberate: the Data TA&rsquo;s index-time routing, Filters <code>nullQueue</code>, <code>_time</code> drop, and <code>splunk_solution</code> / <code>cloud_provider</code> stamping all key on <code>sourcetype = sap_logserv_logs</code> (<code>props.conf</code> stanzas match on sourcetype, <strong>not</strong> index), so it must never vary.</p>
+<p>The <strong><code>index</code></strong>, by contrast, may be changed safely — parsing is unaffected (events are routed, filtered, and stamped identically no matter which index they land in). You may point it at a custom index (for example a per-customer index such as <code>sap_logserv_logs_con01</code>). The only follow-up is dashboard visibility: the dashboards and rollups search through the <code>sap_logserv_idx_macro</code> macro (default <code>index="sap_logserv_logs"</code>), so override that macro in the App&rsquo;s <code>local/macros.conf</code> to match your index, or the dashboards won&rsquo;t find the data.</p>
+</div>
+<h3 id="cloud_provider-attribution"><code>cloud_provider</code> attribution<a class="headerlink" href="#cloud_provider-attribution" title="Permanent link">&para;</a></h3>
+<p>The input stamps every event it emits with the indexed field <code>cloud_provider=azure</code> (via <code>_meta = cloud_provider::azure</code> on the generated stanza), so search-time queries and the <strong>Multi-Cloud Overview</strong> dashboard can distinguish Azure-sourced from AWS-sourced data.</p>
+<div class="admonition warning">
+<p class="admonition-title">On a Heavy Forwarder that ingests BOTH AWS and Azure</p>
+<p>The Data TA&rsquo;s <strong>Configuration → Cloud Provider</strong> dropdown stamps <code>cloud_provider</code> TA-wide at index time. If it is set to <code>aws</code> on a forwarder that also runs this Azure input, that index-time stamp co-fires with the input&rsquo;s per-event <code>_meta=azure</code>, leaving <code>cloud_provider</code> <strong>multivalued (<code>azure</code> + <code>aws</code>)</strong> on the Azure events. For correct per-channel attribution on a mixed forwarder, set the <strong>Cloud Provider dropdown to &ldquo;Not set&rdquo;</strong> and add <code>_meta = cloud_provider::aws</code> to the <code>Splunk_TA_aws</code> SQS-S3 input — then each input self-attributes. On a single-cloud forwarder, the dropdown alone is simplest. See <a href="../configure-filters/#cloud-provider-attribution">Configuring Filters → Cloud Provider Attribution</a>.</p>
+</div>
+<h3 id="multiple-landscapes-fleets">Multiple landscapes / fleets<a class="headerlink" href="#multiple-landscapes-fleets" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Multiple Azure landscapes on one HF:</strong> create one input instance per landscape (different <code>account_name</code> / <code>queue_name</code>), using the Inputs table&rsquo;s <strong>Clone</strong> action. The per-instance credential is keyed by the input name; re-enter the SAS on each (clone never carries secrets).</li>
+<li><strong>A fleet of Heavy Forwarders:</strong> repeat the install + input creation on each HF. For zero-touch fleets, config management can drop the add-on into <code>etc/apps/</code> and seed the SAS via the REST call above (it encrypts under each HF&rsquo;s own <code>splunk.secret</code>). <strong>Do not</strong> add the add-on to the Deployment Server&rsquo;s <code>deployment-apps/</code>.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Scaling one queue by cloning — supported (like the AWS add-on), but at-least-once</p>
+<p>Separate input <em>instances</em> are normally for <strong>different</strong> queues (different <code>queue_name</code>). You <em>can</em> also point several identical inputs at the <strong>same</strong> queue to raise throughput — this is the same competing-consumer pattern Splunk&rsquo;s AWS add-on uses to scale its <strong>SQS-Based S3</strong> input: the queue&rsquo;s visibility lease hands each message to one consumer at a time, so N inputs fetch and ingest N batches of blobs in parallel (across one HF, since the input is not single-instance, or across several HFs). Understand the trade-off first:</p>
+<ul>
+<li>A <strong>single</strong> input is <strong>effectively duplicate-free across the queue&rsquo;s redelivery window</strong> — its per-input dedup checkpoint (<code>&lt;input_name&gt;.dedup.json</code>; entries are retained for about 7 days, up to 50,000 blobs) skips an already-ingested blob if a message reappears.</li>
+<li><strong>Cloned same-queue inputs don&rsquo;t share that checkpoint</strong>, so they fall back to <strong>at-least-once</strong> (the same guarantee as the AWS SQS-S3 input). If a blob&rsquo;s fetch + ingest exceeds the message&rsquo;s <code>visibility_timeout</code> (default 300 s), the message reappears and another input re-ingests it → <strong>duplicate events</strong>. The guard is identical to the AWS pattern: <strong>set <code>visibility_timeout</code> comfortably above your worst-case per-message processing time.</strong> (<code>dequeue_count</code> is the queue&rsquo;s server-side, shared counter, so the <code>poison_threshold</code> decision stays coordinated across the clones — but unlike SQS, Azure Storage Queue has no native dead-letter/redrive, so poison handling is the TA&rsquo;s client-side <code>poison_threshold</code> + optional <code>dead_letter_queue</code>.)</li>
+</ul>
+<p>For typical LogServ volumes a <strong>single input already keeps up</strong> (it drains up to <code>max_blobs_per_fire</code> blobs per firing). Prefer raising <code>batch_size</code> / <code>max_blobs_per_fire</code> or lowering <code>interval</code> on one input before cloning; clone same-queue inputs only when one input genuinely can&rsquo;t keep up, and raise <code>visibility_timeout</code> when you do.</p>
+</div>
+<h2 id="reliability-behavior"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Reliability behavior<a class="headerlink" href="#reliability-behavior" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>At-least-once + dedup.</strong> A queue message carrying LogServ blobs is deleted <strong>only after</strong> those blobs ingest successfully (poison messages and irrelevant / unparseable notifications are removed without ingest — see below); each blob is deduplicated by <code>url|etag</code> in a checkpoint sidecar, so a redelivered message re-ingests nothing.</li>
+<li><strong>Transient failures leave the message.</strong> A 5xx / network error on a blob fetch leaves the message on the queue (it redelivers after the visibility timeout); already-ingested blobs in that message are no-ops on retry.</li>
+<li><strong>Blob-read denied (401/403) leaves the message</strong> and logs loudly — this is the queue-only-SAS signal (get a blob-readable credential from SAP, the message reprocesses).</li>
+<li><strong>Poison messages</strong> (redelivered more than <code>poison_threshold</code> times) are moved to <code>dead_letter_queue</code> if configured, else dropped, so one permanently-bad blob can&rsquo;t loop forever.</li>
+</ul>
+<h2 id="historical-backfill"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Historical backfill<a class="headerlink" href="#historical-backfill" title="Permanent link">&para;</a></h2>
+<p>Queue-driven ingest is <strong>forward-only by nature</strong> — Event Grid fires only on <em>new</em> <code>BlobCreated</code> events, so once SAP&rsquo;s subscription is live the input ingests everything written from that point on, but does <strong>not</strong> replay blobs that already existed. There is no queue-native historical backfill yet; a one-time bulk load of pre-existing blobs is a roadmap item. If you need to seed history, contact your Splunk team. The index-time <code>days_in_past</code> / <code>_time</code> filter applies to any backfilled events the same way it does to live ingest.</p>
+<h2 id="validation"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Validation<a class="headerlink" href="#validation" title="Permanent link">&para;</a></h2>
+<p>Confirm the input is registered and firing (run on the Heavy Forwarder):</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-sk<span class="w"> </span>-u<span class="w"> </span>admin:&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"https://localhost:8089/servicesNS/nobody/splunk_ta_sap_logserv_azure/splunk_ta_sap_logserv_azure_sap_logserv_azure_queue?output_mode=json"</span>
+</code></pre></div>
+<p>Watch the input log on the HF:</p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>tail<span class="w"> </span>-f<span class="w"> </span>/opt/splunk/var/log/splunk/splunk_ta_sap_logserv_azure_queue.log
+<span class="c1"># look for:  Input 'logserv_azure' done: messages=N blobs=N events=N dups=N deleted=N ...</span>
+</code></pre></div>
+<p>Search the indexer (events route to per-source sourcetypes just like AWS):</p>
+<div class="highlight"><pre><span></span><code>index=sap_logserv_logs cloud_provider=azure _index_earliest=-1h | stats count by sourcetype
+</code></pre></div>
+<h3 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom (in the input log)</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SAS token not found in passwords.conf; skipping</code></td>
+<td>No credential for this input name on this host</td>
+<td>Re-enter the SAS on this HF (Inputs tab → Edit, or the REST call above). The SAS lives in the add-on&rsquo;s own <code>local/passwords.conf</code>; it is <strong>not</strong> affected by Deployment-Server pushes.</td>
+</tr>
+<tr>
+<td><code>queue read failed (... 403 ...)</code></td>
+<td>SAS lacks queue process/delete, or expired</td>
+<td>Ask SAP for a SAS with <code>sp</code> ⊇ <code>p</code>/<code>d</code> and a future <code>se=</code>.</td>
+</tr>
+<tr>
+<td><code>blob read forbidden (HTTP 401/403)</code></td>
+<td>SAS is queue-only (no blob read) or expired</td>
+<td>Ask SAP for a blob-readable SAS (<code>ss</code> ⊇ <code>b</code>, <code>sp</code> ⊇ <code>r</code>); the message is left for retry.</td>
+</tr>
+<tr>
+<td><code>done: messages=0</code> every firing, but blobs exist</td>
+<td>The Event Grid subscription (SAP-managed) isn&rsquo;t enqueuing, or the queue name is wrong</td>
+<td>Confirm with your SAP support contact that the Event Grid subscription is active and the queue name is correct; verify network egress to <code>&lt;account&gt;.queue.core.windows.net</code>.</td>
+</tr>
+<tr>
+<td>Input kind <code>sap_logserv_azure_queue</code> not listed / Inputs page missing</td>
+<td>The Azure add-on isn&rsquo;t installed (or Splunkd wasn&rsquo;t restarted) on this HF</td>
+<td>Install <code>splunk_ta_sap_logserv_azure</code> on the HF and restart (see <a href="#install-the-azure-add-on">Install the Azure add-on</a>).</td>
+</tr>
+</tbody>
+</table>
+<h2 id="next-steps"><span class="twemoji cboxmove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Confirm the <a href="../../logserv-app/installation/">LogServ App is installed</a> on your Search Head</li>
+<li>Review the <a href="../../getting-started/supported-log-types/">supported log types</a> reference</li>
+<li>For Splunk Cloud Victoria considerations, see <a href="../splunk-cloud-victoria-notes/">Splunk Cloud Victoria Notes</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>

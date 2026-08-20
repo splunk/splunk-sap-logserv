@@ -1,0 +1,78 @@
+.md-typeset table:not([class]),
+.md-typeset table:not([class]) td,
+.md-typeset table:not([class]) th {
+  border: 0.01rem solid rgba(0,0,0,.12);
+  border-collapse: collapse;
+}
+
+.md-typeset__table {
+    width: 100%;
+  }
+.md-typeset__table table:not([class]) {
+    display: table
+  }
+
+.required-asterisk {
+  color: red
+}
+
+.md-grid {
+  max-width: 65rem;
+}
+
+
+iframe {
+    width: 100%;
+    min-height: 36rem;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: hsla(var(--md-hue), 15%, 14%, 1);
+}
+
+@keyframes material-circle-box {
+  20%, 40%, 60%, 80% {
+    transform: rotate(1.0turn);
+  }
+}
+
+/* Section-header / callout icons + the rotating circle-box motif.
+ * 2026-07-07 brand refresh: orange #ff9100 -> the LogServ blue-gradient
+ * family (app icon gradient #2276CE -> #0F55A3). Inline SVG icons take a
+ * single currentColor, so the LIGHT scheme uses the gradient midpoint
+ * (#1966b9) and the dark ("slate") scheme the brighter top stop
+ * (#2276ce) for legibility on the dark background. */
+.taiconcolor {
+  color: #1966b9;
+}
+.cboxmove {
+  animation: material-circle-box 12000ms infinite;
+  color: #1966b9;
+}
+[data-md-color-scheme="slate"] .taiconcolor,
+[data-md-color-scheme="slate"] .cboxmove {
+  color: #2276ce;
+}
+
+/* Create an indented-note subclass that matches the default note styling */
+.md-typeset .admonition.indented-note,
+.md-typeset details.indented-note {
+    /* Use the same border color as note */
+    border-color: #448aff;
+    margin-left: 1.5rem; /* Add your desired indentation */
+}
+
+.md-typeset .indented-note > .admonition-title,
+.md-typeset .indented-note > summary {
+    /* Use the same background as note */
+    background-color: rgba(68, 138, 255, 0.1);
+    border-color: #448aff;
+}
+
+.md-typeset .indented-note > .admonition-title::before,
+.md-typeset .indented-note > summary::before {
+    /* Use the same icon and color as note */
+    background-color: #448aff;
+    -webkit-mask-image: var(--md-admonition-icon--note);
+    mask-image: var(--md-admonition-icon--note);
+}

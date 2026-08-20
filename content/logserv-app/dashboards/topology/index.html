@@ -1,0 +1,2904 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/topology/">
+      
+      
+        <link rel="prev" href="../environment-health/">
+      
+      
+        <link rel="next" href="../applications/">
+      
+      
+      <link rel="icon" href="../../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Environment Topology - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#environment-topology" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Environment Topology
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-view-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why This View Matters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-on-screen" class="md-nav__link">
+    <span class="md-ellipsis">
+      What&rsquo;s on Screen
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#group-select-and-move" class="md-nav__link">
+    <span class="md-ellipsis">
+      Group select and move
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-data-comes-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      Where the Data Comes From
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-derived-ipsid-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      Self-Derived IP→SID Inventory
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layout-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Layout Modes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saved-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Saved Layouts
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-refresh-cadence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Refresh Cadence
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-look-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      What to Look For
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Full-LLM Variant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Full-LLM Variant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-this-view-matters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why This View Matters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-on-screen" class="md-nav__link">
+    <span class="md-ellipsis">
+      What&rsquo;s on Screen
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#group-select-and-move" class="md-nav__link">
+    <span class="md-ellipsis">
+      Group select and move
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-data-comes-from" class="md-nav__link">
+    <span class="md-ellipsis">
+      Where the Data Comes From
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-derived-ipsid-inventory" class="md-nav__link">
+    <span class="md-ellipsis">
+      Self-Derived IP→SID Inventory
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#layout-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Layout Modes
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saved-layouts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Saved Layouts
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-refresh-cadence" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Refresh Cadence
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-look-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      What to Look For
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notes
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="environment-topology">Environment Topology<a class="headerlink" href="#environment-topology" title="Permanent link">&para;</a></h1>
+<p><img alt="Environment Topology" src="../../../../images/dashboard-environment-topology.png" /></p>
+<h3 id="why-this-view-matters"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Why This View Matters<a class="headerlink" href="#why-this-view-matters" title="Permanent link">&para;</a></h3>
+<p>The Environment Topology view answers a question every SAP administrator has: <em>&ldquo;what&rsquo;s actually talking to what?&rdquo;</em> Traditional dashboards show events, errors, and aggregates per source — but the <strong>shape</strong> of how SAP systems integrate with each other (RFC partners, HANA tenant relationships, web traffic boundaries, cross-zone connections) is hidden in those tabular surfaces. This view materializes that shape as an interactive graph drawn from your existing log data — no new ingest, no CMDB integration, no tagging effort required.</p>
+<p>Use it to:</p>
+<ul>
+<li>Validate that your topology matches the as-designed architecture (every system shows up; no rogue partners are talking inbound).</li>
+<li>Investigate a single SID&rsquo;s call surface — who calls it, what does it call, where are the errors concentrated?</li>
+<li>Drill from an edge (a single integration relationship) into the raw events with one click — every edge carries a denormalized SPL filter expression so you can pivot to Splunk&rsquo;s universal search instantly.</li>
+<li>Onboard a new analyst by giving them a one-page picture of the SAP landscape before they start digging into individual dashboards.</li>
+<li>Spot orphaned IPs / hosts that don&rsquo;t belong to any known SID — these are typically misconfigured load balancers, scanners, or unauthorized integration partners.</li>
+</ul>
+<p>This view replaces the manual hand-drawn architecture diagrams that SAP admin teams typically maintain in slides or wikis. Because it&rsquo;s data-driven, it stays current as systems are added or retired.</p>
+<h3 id="whats-on-screen"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> What&rsquo;s on Screen<a class="headerlink" href="#whats-on-screen" title="Permanent link">&para;</a></h3>
+<p>The view is laid out in four regions:</p>
+<p><strong>Top toolbar</strong> — the layout-mode dropdown (Force / Layered / Tree), Refresh button (re-runs the KV Store fetch while preserving saved positions), Save Layout, Load Layout dropdown with the ⚙ Manage Layouts entry, Snap mode toggle, the saved-layout name chip showing what&rsquo;s currently loaded, a Saved/Unsaved-changes indicator next to it, and a legend row of colour swatches — one per integration type, matching the edge colours on the canvas.</p>
+<p><strong>Left sidebar</strong> — two stacked panels. The <strong>Systems · Integration</strong> panel rolls up the inventory (systems, total calls, partner count) and lists each SAP system with a per-system call-volume bar; <strong>High Traffic</strong> systems (see below) render highlighted. The <strong>Integration types</strong> panel is a checkbox list of the eight tracked integration types (RFC sync, iDoc async, qRFC, tRFC, bgRFC, Web service / SOAP, OData / Gateway, BTP iFlow / CPI) — un-ticking a type dims its edges in the canvas without removing them.</p>
+<p><strong>Center canvas</strong> — the interactive graph itself, rendered with <a href="https://reactflow.dev/" rel="noopener noreferrer" target="_blank"><code>@xyflow/react</code></a>. Nodes:</p>
+<ul>
+<li><strong>High Traffic SIDs</strong> — the five SAP systems with the most total calls touching them (inbound + outbound + bidirectional) in the visible window, ranked at render time. There is no configured focus list — the ranking is purely data-derived, and only SAP systems compete for the five slots (a high-volume client IP cannot occupy one). On an estate with five or fewer systems, every SID is High Traffic.</li>
+<li><strong>Regular Traffic SIDs</strong> — every other internal SAP system. Same large circle and health halo as High Traffic; the kinds differ only in the panel&rsquo;s Kind row and the Systems-panel highlight.</li>
+<li>Every SAP system circle carries an <strong>interior icon</strong>: an app-server rack for application systems, a database cylinder for database systems.</li>
+<li><strong>HANA tenant databases</strong> — full-size circles with a combined app-servers + database icon, tagged &ldquo;APP SERVERS - HANA TENANT&rdquo; (chip: &ldquo;HANA TENANT&rdquo;). A tenant is a logical database inside a HANA system, named after the application SID it backs — its circle deliberately shares that name.</li>
+<li><strong>DB-tagged partners</strong> — circular discs with a cylinder icon when the partner is a database vendor (HANA, Oracle, MSSQL, Postgres, DB2). HANA systems specifically are tagged when their SID appears as a <code>sap_sid</code> clause on a <code>hana_tenant</code>-type edge — distinct from HANA tenants (which are logical databases inside a HANA system, named after the application SID they back).</li>
+<li><strong>Other partners</strong> — rounded squares for non-DB external endpoints (web partners, gateways, generic IPs).</li>
+</ul>
+<p><strong>IP-labeled squares can carry name lines.</strong> When the logs themselves identify the machine or the people behind an IP endpoint, the square renders up to two extra lines directly under the IP: the <strong>hostname</strong>, and a <strong>user line</strong> (the user name when exactly one distinct user was seen; a count like &ldquo;7 users&rdquo; otherwise — hover the line for the full list). The evidence comes from four same-event sources, refreshed daily into the <code>logserv_topology_ip_enrichment</code> KV Store collection: HANA audit client registrations (<code>client_ip</code> + client host name + <code>executing_user</code>), Windows successful-logon events (4624 — <code>IpAddress</code> + <code>WorkstationName</code> + <code>TargetUserName</code>), SAP start service authentication lines (<code>auth_user</code> + remote address) and Linux <code>sshd</code> session lines. Two honesty rules govern what renders: a hostname shows <strong>only when it is unambiguous</strong> — the IP must map to exactly one machine name (a short name and its FQDN count as one), and that name must not be claimed by a crowd of IPs — and nothing is ever guessed (gateway logs, for example, record partner hostnames and peer IPs on <em>different</em> lines, so they are deliberately not correlated). The names are <strong>&ldquo;latest known&rdquo;</strong> rather than time-range-scoped: they do not blink out when you narrow the picker, and the Details panel&rsquo;s &ldquo;Names as of&rdquo; row tells you how fresh the mapping is.</p>
+<p>Each SID and DB partner carries a <strong>3-segment health ring</strong> painted around its perimeter, showing the proportion of normal (green) / warning (orange) / error (red) calls in the visible time window. Non-DB partners (the rounded squares) carry an equivalent rounded-square perimeter outline. Nodes with no calls or with all calls in a single bucket render as a <strong>solid full ring</strong> in the dominant color (a healthy node with all-normal calls shows a solid green ring; an idle node still shows green so you can tell the canvas painting succeeded). The classification: edges with errorRate &lt; 10% route their errors to the warning bucket; edges with errorRate ≥ 10% route to the error bucket; everything else is normal. HANA-tagged nodes additionally route <code>WARNING</code>-severity events and slow tenant SQL queries (<code>hana_op_duration_ms &gt; 1000</code>) into the warning bucket as a vendor-specific health signal — these counts are first-class fields on the edge bucket rows, computed at hourly aggregation time from <code>sap:hana:tracelogs</code>.</p>
+<p><strong>Edges</strong> render as gently bowed curves drawn center-to-center between nodes and clipped at each node&rsquo;s visible boundary — arrowheads land on the health ring / outline outer edge rather than inside the node. When two systems call each other in both directions, the two edges bow apart so each direction stays separately visible and clickable. Edge labels sit at the curve&rsquo;s apex.</p>
+<p><strong>Right sidebar (selection-driven)</strong> — what shows here depends on whether you&rsquo;ve selected a node or an edge.</p>
+<p>When a <strong>node</strong> is selected, four tabs surface that node&rsquo;s per-selection context:</p>
+<ul>
+<li>
+<p><strong>Overview</strong> — a facts table, an hourly call-volume chart, and the partner breakdown. The facts table splits the node&rsquo;s calls three ways — <strong>inbound</strong>, <strong>outbound</strong> and <strong>bidirectional</strong> — alongside the total, using exact figures so they reconcile against everything below them. On SAP system and tenant nodes it also shows <strong>&ldquo;Hosts (in range)&rdquo;</strong> — the distinct hosts that logged the node&rsquo;s events in the window, the same figure the Hosts tab&rsquo;s caption reports (both read the same hourly rollup; on a tenant node the count is scoped by the shared name and the panel says so inline). The same number appears as a <strong>Hosts</strong> row in the hover tooltip on SAP system circles. On IP-labeled partner squares with name evidence (see <em>IP-labeled squares can carry name lines</em> above), the facts table adds <strong>Hostname</strong> (with its evidence source), <strong>Users</strong> (every user seen from that address, grouped by source) and <strong>Names as of</strong> rows directly under the Tag row. The call chart is hardcoded to the last 24 hours regardless of the global time-range picker (its purpose is &ldquo;what&rsquo;s happening RIGHT NOW on this node,&rdquo; not &ldquo;what happened over the picker&rsquo;s window&rdquo;). For HANA-tagged nodes, an additional roll-up section shows tenants list, tenant SQL ops, p95/max SQL duration, and auth success/fail counts — derived from incident edges in JS, no extra SPL.</p>
+<p>Beneath those sit <strong>two partner donuts</strong>: partners that call this system, and partners this system calls. Each lists <strong>every</strong> partner — there is no &ldquo;other&rdquo; bucket and the legend is not capped, so a system with a wide fan-out makes the panel taller rather than the list shorter. Edges the data records as <em>bidirectional</em> (HANA Tenant traffic) are counted on their own line instead of being assigned a direction the stored row denies. Legend rows show the endpoint and its call count. (Inventory <em>ownership</em> badges render where ownership can actually vary — the Hosts tab rows and the Edge Details &ldquo;By app server&rdquo; table; see <a href="#self-derived-ipsid-inventory">Self-Derived IP→SID Inventory</a>.)</p>
+<p><strong>Hover any slice</strong> (or its legend row) for that endpoint, its exact call count, and its share of the chart&rsquo;s total. Reach for it whenever a slice is small: a slice too small to survive its own outline is drawn slightly larger so it stays visible, so the <em>angle</em> of the smallest slices is approximate while the number in the tooltip is exact. The panel says so inline whenever that widening has actually been applied.</p>
+</li>
+<li>
+<p><strong>Top Programs</strong> — the top ABAP programs seen on this node, from <code>sap:abap:icm</code>&rsquo;s <code>icm_program</code> field (top 8). RFC functions, HANA actions, and web URIs are not in this tab — they surface per-edge on the Edge Details <strong>Operations</strong> tab.</p>
+</li>
+<li><strong>Errors</strong> — categorized error breakdown for the node (HTTP 4xx/5xx, severity ERROR / CRITICAL / FATAL, gateway <code>gw_error_detail</code> and <code>error_function</code>). Aggregated by sourcetype + error_kind.</li>
+<li>
+<p><strong>Hosts</strong> — two tables. The first lists the hosts that logged events for this system, with first-seen / last-seen / <code>dc(sourcetype)</code> per host — and, where the events carry them, the SAP <strong>instance numbers</strong> seen on that host (<code>inst 00, 01</code>) — and — on a SAP system node — an ownership verdict per row. The read returns the 100 busiest hosts; if a system has more, the panel says so rather than presenting the cap as the count.</p>
+<p>The second, <strong>Calls by host and edge type</strong>, breaks the node&rsquo;s traffic down per receiving host. A row names a host only where the data supports one: a hostname is only ever the <em>receiving</em> end of a call, so per-host rows are always inbound, and everything else — calls this node makes, and traffic recorded against a system as a whole — appears as an edge-type row. Because every incident edge lands in exactly one row, the column sums to the <strong>Total calls</strong> figure on the Overview tab, which makes it checkable. Note that its <code>Calls</code> column counts edge calls while the <code>Events</code> column in the table above counts log events, from a different rollup — the two are not the same measure.</p>
+</li>
+</ul>
+<p>When an <strong>edge</strong> is selected, five tabs surface that edge&rsquo;s per-call context:</p>
+<ul>
+<li><strong>Overview</strong> — endpoint cards (source / direction / target), pre-computed aggregates (call count, error count, error rate, sourcetype), and an inline activity trend chart. <strong>RFC edges add a &ldquo;By app server&rdquo; table</strong> splitting the edge&rsquo;s calls and errors by the SID-side gateway listening address each call was recorded against, with inventory owner badges — the app servers as the gateway log names them, not a full instance inventory. The rows partition the edge&rsquo;s calls, so they sum to the <em>Calls in window</em> fact above them.</li>
+<li><strong>Activity</strong> — full-width stacked-area chart of successful calls + errors over the visible time window. Computed in the browser from the same hourly rows that produce the Overview totals, so the two always agree.</li>
+<li><strong>Operations</strong> — donut chart of the top 10 entities for this edge type (HTTP URIs, RFC programs, HANA actions, HANA trace components).</li>
+<li><strong>Performance</strong> — for HTTP edges, latency percentiles (P50 / P95 / Max) and bytes-out plus a per-status-class call-count histogram. For HANA Audit, cached auth success / auth fail headline counts plus a dispatched action-status mix. For HANA Tenant, a cached p95 + max SQL-duration headline (the p95 is a call-weighted blend of the per-hour p95s stored on the edge rows — an approximation), and below it a dispatched <strong>avg + max</strong> chart: true percentiles cannot be merged across hourly buckets, so the chart reads mean and maximum and says so inline. RFC edges have no performance histogram: ICM task counts are not present on gateway events.</li>
+<li><strong>Errors</strong> — the top 15 failure modes with <code>error_kind</code>, <code>error_detail</code>, count, and last-seen timestamp. For HANA Audit this covers <strong>all</strong> unsuccessful operations, which is broader than the Overview row (labelled &ldquo;Auth failures (CONNECT)&rdquo;) directly above it.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Tabs that are legitimately empty</p>
+<p>Not every tab has content for every edge type — an empty tab is not necessarily a fault. <strong>RFC</strong> edges have no Operations or Performance rows at all (<code>icm_program</code> and <code>icm_tasks</code> are absent from <code>sap:abap:gateway</code> events), and any edge type can have an empty Errors tab simply because nothing failed. The pane distinguishes the two cases: when a tab was queried and came back empty it says so, and when nothing could be queried at all it says <em>that</em> instead.</p>
+</div>
+<p>Selection is <strong>mutex</strong> — clicking a node clears any selected edge and vice versa, so the right pane never shows mixed context. Clicking empty canvas (the pane) clears both. Each side preserves its own preferred tab independently when you swap between selections. (This <em>inspection</em> selection — the cyan glow plus the Details panel — is separate from <em>group membership</em> below, which uses a dashed outline: a node can be inspected, in a group, both, or neither.)</p>
+<h3 id="group-select-and-move"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Group select and move<a class="headerlink" href="#group-select-and-move" title="Permanent link">&para;</a></h3>
+<p>Hold <strong>Shift and drag</strong> on empty canvas to draw a selection box: every node the box touches joins the group and gains a <strong>dashed outline</strong>, and a status chip at the canvas top-right shows the count. Then <strong>drag any highlighted node</strong> to move the whole group rigidly — relative positions are preserved, and the edges follow their nodes (an edge has no position of its own, so moving the nodes <em>is</em> moving the edges; edges are not independently selectable). The gesture set:</p>
+<ul>
+<li><strong>Shift + drag</strong> on empty canvas — draw the selection box (plain drag still pans).</li>
+<li><strong>Shift / Ctrl / Cmd + click</strong> a node — add it to or remove it from the group (these clicks never open the Details panel).</li>
+<li><strong>Plain click</strong> any node — inspect it in the Details panel and release the group.</li>
+<li><strong>Escape</strong> or a click on empty canvas — clear the group.</li>
+<li><strong>Drag a highlighted node</strong> — move the whole group. Dragging a node <em>outside</em> the group releases the group and moves only that node.</li>
+<li><strong>Arrow keys</strong> (with a focused, selected node) — nudge the whole group.</li>
+</ul>
+<p>With <strong>Snap mode</strong> on, releasing a group drag applies <em>one shared</em> grid offset to every member, so the group&rsquo;s shape is preserved — members are not rounded to the grid independently. Group moves mark the layout <strong>Unsaved</strong> and are captured by <strong>Save Layout</strong> exactly like single-node drags. The group survives data refreshes and time-range changes; it clears when the node set itself changes (a layout-mode switch or loading a saved layout).</p>
+<p><strong>Bottom panel</strong> — Live Activity table showing the eight busiest integration edges (any type) by call count for the current time range. The panel fills its allotted height exactly — the partners table scrolls internally under a sticky header when it outgrows the panel, so the panel frame always closes cleanly. Drag the divider above the panel to resize it (120–640 px, persisted with saved layouts); expanding the collapsed panel restores at least the 300 px default height. Collapsing or expanding the panel automatically re-fits the graph so it claims (or yields) the freed vertical space.</p>
+<p><strong>MiniMap</strong> (bottom-right of the canvas) — drag the cursor inside the minimap to pan the main canvas. Direction follows the cursor: dragging right → main canvas shows more right-side content; dragging down → shows more bottom content. Magnitude is proportional to your cursor delta scaled by the minimap&rsquo;s viewBox-to-pixel ratio. Single-click does nothing — drag-to-pan is the only minimap interaction.</p>
+<h3 id="where-the-data-comes-from"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Where the Data Comes From<a class="headerlink" href="#where-the-data-comes-from" title="Permanent link">&para;</a></h3>
+<p>The view reads from a <strong>time-bucketed KV Store</strong> fed by hourly scheduled saved searches. (An earlier design ran six SPL searches on demand every time the view opened, which produced a 5–15 second page load on busy Splunk instances; the data layer was rewritten to the KV Store design described here.)</p>
+<table>
+<thead>
+<tr>
+<th>KV Store collection</th>
+<th>Schema</th>
+<th>Populated by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>logserv_topology_nodes</code></td>
+<td>one row per (canonical entity, hourly bucket); 10 fields including <code>event_count</code>, <code>last_seen</code></td>
+<td><code>logserv_topology_aggregate_nodes</code> (hourly cron <code>5 * * * *</code>)</td>
+</tr>
+<tr>
+<td><code>logserv_topology_detail_rollup</code></td>
+<td>one row per (metric, scope, hourly bucket); powers the right pane&rsquo;s per-node and per-edge tabs. Edge metrics (<code>edge_op</code> / <code>edge_perf</code> / <code>edge_err</code>) are keyed by the same stored edge id as <code>logserv_topology_edges.id</code></td>
+<td><code>logserv_topology_detail_aggregate</code> (hourly cron <code>8 * * * *</code>)</td>
+</tr>
+<tr>
+<td><code>logserv_topology_edges</code></td>
+<td>one row per (edge, hourly bucket) — RFC edges one row per (edge, app-server <code>local_ip</code>, hourly bucket), so multi-app-server call counts stay exact; 22 fields including pre-computed <code>response_time_p50</code> / <code>_p95</code> / <code>_max</code>, <code>hana_op_p95_ms</code> / <code>hana_op_max_ms</code>, <code>auth_success_count</code> / <code>auth_fail_count</code>, <code>error_count</code>, <code>warning_count</code> (<code>icm_tasks_max</code> / <code>icm_tasks_avg</code> are declared but not currently populated), plus canonical <code>spl_sourcetype</code> + <code>spl_filter_clauses</code> for right-pane drilldowns</td>
+<td><code>logserv_topology_aggregate_edges</code> (hourly cron <code>6 * * * *</code>)</td>
+</tr>
+<tr>
+<td><code>logserv_topology_inventory</code></td>
+<td>flat (no bucket dimension), keyed by canonical_value; IP / host → SID mapping for retargeting raw IPs to their owning SID node</td>
+<td><code>logserv_topology_aggregate_inventory</code> (hourly cron <code>7 * * * *</code>)</td>
+</tr>
+<tr>
+<td><code>logserv_topology_ip_enrichment</code></td>
+<td>flat (no bucket dimension), keyed by <code>&lt;ip&gt;:&lt;evidence_source&gt;</code>; hostname + user names behind IP endpoints</td>
+<td><code>logserv_topology_enrichment_aggregate</code> (daily cron <code>32 2 * * *</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Retention searches keep the KV Store sized: <code>logserv_topology_retention</code> (daily, <code>34 0 * * *</code>) and <code>logserv_topology_detail_retention</code> (daily, <code>50 1 * * *</code>) each trim to 365 days of bucket history, and <code>logserv_topology_enrichment_retention</code> (daily, <code>34 2 * * *</code>) trims enrichment rows unseen for 365 days. The <code>logserv_topology_backfill_*</code> searches (disabled by default) let an admin re-populate the 30-day window after a fresh install via Settings → Dashboard Data.</p>
+<p>The aggregation searches read from these SPL sources:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>What it contributes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sap:abap:gateway</code></td>
+<td>RFC peer/local IPs (<code>P=&lt;peer&gt;</code> / <code>L=&lt;local&gt;</code> fields). The local IP is canonical for IP→SID inventory because it always belongs to <strong>this</strong> host&rsquo;s SID.</td>
+</tr>
+<tr>
+<td><code>sap:abap:icm</code></td>
+<td>ICM peer/local IPs for HTTP-side traffic.</td>
+</tr>
+<tr>
+<td><code>sap:hana:tracelogs</code></td>
+<td>HANA host + tenant SID extracted from the source path (<code>/usr/sap/&lt;HANA_SID&gt;/HDB&lt;inst&gt;/&lt;host&gt;/trace/DB_&lt;TENANT_SID&gt;/</code>). Yields the rich HANA-side topology including multi-tenant relationships.</td>
+</tr>
+<tr>
+<td><code>sap:webdispatcher:access</code></td>
+<td>HTTP client IP → web-server host edges (<code>clientip</code> / <code>host</code> / <code>uri</code> / <code>status</code>). The source of every HTTP edge and its status-class distribution.</td>
+</tr>
+<tr>
+<td><code>sap:hana:audit</code></td>
+<td>HANA authentication edges (<code>client_ip</code> → HANA host) with auth success/fail counts; also feeds the IP-node name enrichment (client hostname + executing user).</td>
+</tr>
+<tr>
+<td><code>XmlWinEventLog</code> / <code>sap:sapstartsrv</code> / sshd session lines</td>
+<td>IP-node <strong>name enrichment</strong> only — the daily pass that puts a hostname / user line under unresolved IP squares.</td>
+</tr>
+<tr>
+<td>Default Splunk <code>host</code> field (cross-source fallback)</td>
+<td>Picks up hosts that aren&rsquo;t surfaced in the above.</td>
+</tr>
+</tbody>
+</table>
+<p>When you open the view, the React app fetches a time-window slice of these collections via the Splunk Web REST proxy (<code>/en-US/splunkd/__raw/servicesNS/nobody/&lt;APP&gt;/storage/collections/data/&lt;NAME&gt;?query={"bucket_ts":{"$gte":...,"$lte":...}}</code>). The fetch returns in well under a second on production-scale data — orders of magnitude faster than the legacy on-demand path. Clicking an edge dispatches three small searches against the hourly <code>logserv_topology_detail_rollup</code> — Operations, Performance and Errors — scoped by the stored edge id(s) behind the edge you clicked. Overview and Activity need no search at all: both are derived from the rows already in the browser. Because inventory retargeting can collapse several stored edges into one you see on the canvas, those three reads cover the whole set, and say so if an edge ever spans more than one.</p>
+<h3 id="self-derived-ipsid-inventory"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Self-Derived IP→SID Inventory<a class="headerlink" href="#self-derived-ipsid-inventory" title="Permanent link">&para;</a></h3>
+<p>The &ldquo;which IP belongs to which SID&rdquo; mapping isn&rsquo;t read from a CMDB or an admin-maintained lookup — it&rsquo;s <strong>self-derived from the same logs you&rsquo;re already ingesting</strong>. The mechanism is a multi-source <code>union</code> SPL with a <code>mvcount(sids)=1</code> filter: a host whose multiple sourcetypes all agree on a single SAP SID is unambiguously attributed. An endpoint that fails that test simply gets <strong>no inventory row</strong> — nothing is written to record the ambiguity.</p>
+<p>Coverage depends on what your data exposes — unique hostname/IP appearances across multiple SAP sourcetypes attribute cleanly, while shared NAT IPs and external partners typically have no row at all (their SAP affiliation isn&rsquo;t observable from logs alone, or they legitimately don&rsquo;t belong to any single SID).</p>
+<div class="admonition note">
+<p class="admonition-title">Reading the ownership badges — and why an address on a system&rsquo;s panel is never one of its own</p>
+<p>An address the inventory has attributed to a system is <strong>drawn inside that system&rsquo;s node</strong>: the view folds it in before the graph is laid out. So an address you can still see as a separate endpoint is one no system has claimed — which makes <strong><code>owner not established</code> the expected verdict on the partner donuts</strong>, not a data-quality alarm. On the Hosts tab, where hosts are listed by name rather than folded away, both verdicts occur.</p>
+<p>&ldquo;Owner not established&rdquo; means the inventory has not yet seen that host or address carrying exactly one SAP system identifier. There are several reasons it might not have: the host may serve more than one system, it may emit no system identifier at all, two attribution sources may disagree, or it may simply not have been observed since the collection was populated. The panel deliberately does not guess between them.</p>
+<p>One scope caveat the panel states inline: <strong>ownership is not limited to the selected time range.</strong> The inventory accumulates across all observed history, so a badge on a 24-hour view can reflect an attribution learned earlier.</p>
+</div>
+<p>In addition to the inventory, the node-aggregation SPL captures every distinct edge endpoint as a node row in its own right — webdispatcher <code>clientip</code>, ABAP gateway <code>peer_ip</code>, and HANA Audit <code>client_ip</code> (excluding loopback). This means external partners that appear only on the receiving side of integration edges still carry real event counts, not zero, even when they don&rsquo;t have a SID resolution in the inventory.</p>
+<p>The inventory itself is extensible per-customer without new ingest: appending another <code>union</code> arm to the inventory aggregation SPL adds a new attribution source. Future arms could include ICM <code>icm_peer_ip</code>, additional CMDB-style lookup tables, or any other field that uniquely associates an IP / host with a SAP SID.</p>
+<h3 id="layout-modes"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Layout Modes<a class="headerlink" href="#layout-modes" title="Permanent link">&para;</a></h3>
+<p>The LAYOUT dropdown switches between three layout algorithms:</p>
+<ul>
+<li><strong>Force</strong> — a d3-force <strong>star-system</strong> arrangement: every high-traffic hub (focused SIDs, plus any secondary SID with enough leaf partners of its own) gets a proportional horizontal slot, its partners ring around it at a radius scaled to partner count, and smaller secondary systems anchor as satellites fanned around their nearest hub. The layout is deterministic — the same data renders the same picture on every load — and the graph world sizes itself to the canvas aspect ratio. Best for hub-and-spoke SAP landscapes; the default for first-time viewers.</li>
+<li><strong>Layered</strong> — ELK Sugiyama-layered top-to-bottom flow with orthogonal edges and near-zero edge crossings. Best for traffic-flow analysis where you want to see &ldquo;what flows into what&rdquo; structurally.</li>
+<li><strong>Tree</strong> — ELK mrtree classic top-down tree with hubs at top and spokes radiating downward. Best when the topology is approximately hub-and-spoke shaped.</li>
+</ul>
+<p>Both ELK-based modes (Layered + Tree) share the same lazy-loaded elkjs chunk, fetched only when you first pick a Layered or Tree layout, so adding Tree mode after Layered shipped was a near-zero-cost extension. Force mode remains synchronous (no bundle hit on initial load).</p>
+<p>Each layout mode has its own <strong>saved-layout slot</strong> — saving a layout in Force doesn&rsquo;t bleed into Layered or Tree. Switching layouts via the LAYOUT dropdown drops the current saved-positions cache so each mode renders fresh from its own algorithm. The Manage Layouts modal (⚙ entry at the top of the Load Layout dropdown) lets you set a per-mode default layout that auto-loads on mount.</p>
+<h3 id="saved-layouts"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Saved Layouts<a class="headerlink" href="#saved-layouts" title="Permanent link">&para;</a></h3>
+<p>User-arranged graph layouts are persisted in Splunk KV Store collection <code>logserv_topology_layouts</code>. Each saved layout carries:</p>
+<ul>
+<li><strong>Layout mode</strong> — Force / Layered / Tree (so a Force-saved arrangement loads back in Force mode, not Layered)</li>
+<li><strong>Node positions</strong> — where you&rsquo;ve manually placed each node on the canvas</li>
+<li><strong>Panel state</strong> — sidebar tab + width</li>
+<li><strong>Viewport</strong> — zoom level + pan offset (x, y)</li>
+<li><strong>Enabled integration types</strong> — which checkboxes are ticked on the leftbar</li>
+<li><strong>Selected node / edge</strong> — what was selected when you saved</li>
+<li><strong>Active right-sidebar tab</strong> — Overview / Top Programs / Errors / Hosts (node mode) or Overview / Activity / Operations / Performance / Errors (edge mode)</li>
+<li><strong>Snap mode</strong> — whether new nodes snap to a grid</li>
+</ul>
+<p>Layouts are saved per-user-named — you can save your own variants (&ldquo;focus on XCQ&rdquo;, &ldquo;all DBs&rdquo;, &ldquo;external partners only&rdquo;) and switch between them from the Load Layout dropdown.</p>
+<p>The <strong>Manage Layouts modal</strong> (⚙ entry at the top of the Load Layout dropdown) is where two cross-browser preferences live:</p>
+<ul>
+<li><strong>Per-mode default layout</strong> — pick one saved layout per mode (Force / Layered / Tree) to auto-load on mount when you&rsquo;re using that mode. Each mode section in the modal has its own radio list of mode-matching layouts plus a &ldquo;(no default)&rdquo; option.</li>
+<li><strong>Default layout mode</strong> — tick the <em>Open in this mode by default</em> checkbox on one of the three sections to declare which mode the dashboard should open in on next login. The checkbox is mutex across the three sections (or none — &ldquo;no explicit default&rdquo; leaves the dashboard opening in Force mode). Ticking the checkbox also switches the active mode immediately so you can see what the default-on-next-login experience will look like.</li>
+</ul>
+<p>Both preferences are persisted to Splunk KV Store keyed by Splunk username (collections <code>logserv_topology_layout_defaults</code> and <code>logserv_topology_active_mode</code>). Browser <code>localStorage</code> is used as a fast-mount cache mirror, so on a fresh browser the choices hydrate from KV Store on first paint. If you pick defaults in Chrome and open the topology in Firefox, you&rsquo;ll see the same defaults the next time you log in to the same Splunk instance. When no defaults are stored, the dashboard opens in Force mode with no auto-loaded layout.</p>
+<h3 id="data-refresh-cadence"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Data Refresh Cadence<a class="headerlink" href="#data-refresh-cadence" title="Permanent link">&para;</a></h3>
+<p>The topology data layer is <strong>populated by four hourly scheduled saved searches plus one daily enrichment pass</strong>, all writing to the KV Store:</p>
+<ul>
+<li><code>logserv_topology_aggregate_nodes</code> — cron <code>5 * * * *</code>, rolls up event activity per (canonical entity, hour bucket)</li>
+<li><code>logserv_topology_aggregate_edges</code> — cron <code>6 * * * *</code>, rolls up call counts + per-type aggregates (HTTP latency, RFC saturation, HANA SQL latency, etc.)</li>
+<li><code>logserv_topology_aggregate_inventory</code> — cron <code>7 * * * *</code>, rebuilds the unambiguous IP/host → SID mapping</li>
+<li><code>logserv_topology_detail_aggregate</code> — cron <code>8 * * * *</code>, precomputes the per-node / per-edge detail-tab rows</li>
+<li><code>logserv_topology_enrichment_aggregate</code> — cron <code>32 2 * * *</code> (daily), recomputes the IP-node hostname/user name lines over the last 30 days</li>
+</ul>
+<p>So the KV Store gets a new hourly bucket in the first minutes of each hour. The view re-reads the KV Store:</p>
+<ul>
+<li>On initial page load</li>
+<li>On global TimeRange picker change</li>
+<li>When the user clicks the toolbar&rsquo;s <strong>Refresh</strong> button (useful right after dispatching a backfill saved search)</li>
+<li>When the user selects a different node (dispatches on-demand reads against the hourly <code>logserv_topology_detail_rollup</code> KV Store collection — same data layer, dispatched per selection rather than at page load)</li>
+</ul>
+<p>There is <strong>no client-side auto-polling</strong>. An earlier Live | Lookup mode toggle polled every 30 seconds — a leftover from the original on-demand SPL data layer; it was removed once the data layer moved to hourly KV Store aggregation, because ~119 of every 120 ticks returned byte-identical data. The hourly cron is what governs data freshness now; tightening the cron schedule (e.g., to <code>*/15 * * * *</code>) is the right lever if a customer needs sub-hour data freshness, at the cost of more search-job dispatches.</p>
+<h3 id="what-to-look-for"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> What to Look For<a class="headerlink" href="#what-to-look-for" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Health rings with prominent orange or red segments</strong> — a SID showing &gt;25% red (error bucket) is a system whose external integrations are systematically failing. Click into the node and the Errors tab to see which specific edges are degraded.</li>
+<li><strong>Unattributed endpoints with high edge weight</strong> — an IP or hostname square carrying hundreds of calls but no inventory owner. Open it and check the Hostname / Users rows: a machine with no SAP identifier and heavy inbound traffic is either a shared NAT / load-balancer address or an integration partner nobody documented. Both warrant investigation.</li>
+<li><strong>Asymmetric edge counts</strong> — an edge showing many calls one direction but very few the other usually means one side is the caller (RFC client) and the other is the callee (RFC server). Use the Operations tab to confirm which.</li>
+<li><strong>Orphan SIDs</strong> — a node with no edges is a system that&rsquo;s running but not integrated with anything else. May be a quiet test system, or a system whose integration partners aren&rsquo;t monitored.</li>
+<li><strong>HANA tenants drifting from their HANA system</strong> — multi-tenant HANA produces edges from the parent system to each tenant. Missing tenant edges indicate either tenant outage or audit-log gap. The HANA-tagged DB partners specifically use slow tenant SQL queries (&gt;1000 ms) as a warning signal; a tenant lighting up with orange in its ring after a deploy points at slow-query regressions.</li>
+<li><strong>Unexpected external partners</strong> — IP-labeled squares with no inventory owner and inbound edges into a production SID are the strongest signal of an undocumented external integration. Use the name lines under the square (hostname / user, where the logs carry them) and the Details panel&rsquo;s endpoint facts to identify the caller.</li>
+<li><strong>Edge errors clustered on one sourcetype</strong> — clicking an edge and reading the Errors tab can reveal that 90% of failures are 4xx (client-side, not your problem) vs 5xx (server-side, your problem). The status-class breakdown is pre-aggregated hourly into the detail rollup, so clicking through to the Performance tab is a small keyed lookup rather than a scan of raw web-server events.</li>
+<li><strong>Host counts on the Hosts tab</strong> — a SID showing 3 hosts when you expected 2 may indicate a stale forwarder / VM that should have been decommissioned. A row badged with a <em>different</em> system&rsquo;s name is worth a look on its own: it usually means a shared forwarder, or a management host running commands against this system from elsewhere.</li>
+<li><strong>A lopsided pair of partner donuts</strong> — a system that receives heavily but calls almost nothing (or the reverse) is a useful shape to notice: it separates the integration hubs from the leaf consumers, and a system that has quietly stopped calling out shows up here before it shows up in an error count.</li>
+</ul>
+<h3 id="notes"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The view&rsquo;s route is <code>#/topology/integration-topology</code> — the slug stayed <code>integration-topology</code> when the user-visible label changed from &ldquo;Integration Topology&rdquo; to &ldquo;Environment Topology&rdquo;, so existing bookmarks and saved-layout records remain valid.</li>
+<li>Layout persistence works across browser tabs and across Splunk Web sessions — your KV Store records survive Splunkd restarts.</li>
+<li>Layouts are saved <strong>per Splunk user</strong> — every KV Store record is keyed by <code>&lt;username&gt;::&lt;slug&gt;</code>, so different users have completely separate records and can&rsquo;t overwrite each other&rsquo;s layouts. If the same user edits the topology in two browser tabs concurrently, the tabs race each other and last-tab-save wins (multi-tab edit-collision protection is planned for a future release).</li>
+<li>The minimap supports drag-only panning. Single-click and scroll-zoom inside the minimap rectangle are intentionally inert — drag is the one interaction.</li>
+<li>RFC rollup rows are keyed per SID-side app server (<code>local_ip</code>) since the per-app-server upgrade. Installs upgrading from an earlier release need a one-time <strong>Clear + Backfill</strong> of the &ldquo;Environment Topology (graph)&rdquo; rollup (Settings → Dashboard Data) — see the <a href="../../../overview/release-notes/">release notes</a> for why, and for the RFC-only migration that preserves graph history older than the 30-day backfill window.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>

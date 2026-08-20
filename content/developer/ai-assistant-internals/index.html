@@ -1,0 +1,3376 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/developer/ai-assistant-internals/">
+      
+      
+        <link rel="prev" href="../developer-reference/">
+      
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>AI Assistant Implementation Reference - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ai-assistant-implementation-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AI Assistant Implementation Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Full-LLM Variant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Full-LLM Variant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file-path-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Path Map
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hiddent-visiblet-brand-type-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Hidden&lt;T&gt; / Visible&lt;T&gt; Brand Type Pattern
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-build-flag-pattern-templates_only-and-future-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Build Flag Pattern (TEMPLATES_ONLY and Future Flags)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Build Flag Pattern (TEMPLATES_ONLY and Future Flags)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-flag-disables-the-llm-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      How the flag disables the LLM path
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#single-source-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      Single source of truth
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-chat-citation-parser" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Chat Citation Parser
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-mcp-tool-definitions-sent-on-every-free-form-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      The MCP Tool Definitions Sent on Every Free-Form Request
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The MCP Tool Definitions Sent on Every Free-Form Request">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#splunk_run_saved_search" class="md-nav__link">
+    <span class="md-ellipsis">
+      splunk_run_saved_search
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#splunk_run_query" class="md-nav__link">
+    <span class="md-ellipsis">
+      splunk_run_query
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-spl-static-analysis-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      The SPL Static-Analysis Guard
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-event-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      Audit Event Schemas
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Audit Event Schemas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#splunk-reserved-field-gotcha" class="md-nav__link">
+    <span class="md-ellipsis">
+      Splunk reserved-field gotcha
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-predefined-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding a New Predefined Prompt
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding a New Predefined Prompt">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intent-map-json-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      Intent map JSON schema
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#splunk-risky-command-safeguard" class="md-nav__link">
+    <span class="md-ellipsis">
+      Splunk risky-command safeguard
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-audit-event-category" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding a New Audit Event Category
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-primer-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      System Primer Architecture
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-resolving-drill-down-urls-at-the-orchestrator-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-Resolving Drill-Down URLs at the Orchestrator Layer
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#legal-acknowledgement-modal-trigger-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Legal Acknowledgement Modal Trigger Logic
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-primer-rules-beat-other-fixes-time-window-reasoning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Primer Rules Beat Other Fixes (TIME-WINDOW REASONING)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splunk-static-asset-cache-busting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Splunk Static-Asset Cache Busting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-ui-refresh-on-settings-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      Live UI Refresh on Settings Save
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file-path-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      File Path Map
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-hiddent-visiblet-brand-type-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Hidden&lt;T&gt; / Visible&lt;T&gt; Brand Type Pattern
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-build-flag-pattern-templates_only-and-future-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Build Flag Pattern (TEMPLATES_ONLY and Future Flags)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Build Flag Pattern (TEMPLATES_ONLY and Future Flags)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-the-flag-disables-the-llm-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      How the flag disables the LLM path
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#single-source-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      Single source of truth
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-chat-citation-parser" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Chat Citation Parser
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-mcp-tool-definitions-sent-on-every-free-form-request" class="md-nav__link">
+    <span class="md-ellipsis">
+      The MCP Tool Definitions Sent on Every Free-Form Request
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The MCP Tool Definitions Sent on Every Free-Form Request">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#splunk_run_saved_search" class="md-nav__link">
+    <span class="md-ellipsis">
+      splunk_run_saved_search
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#splunk_run_query" class="md-nav__link">
+    <span class="md-ellipsis">
+      splunk_run_query
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-spl-static-analysis-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      The SPL Static-Analysis Guard
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-event-schemas" class="md-nav__link">
+    <span class="md-ellipsis">
+      Audit Event Schemas
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Audit Event Schemas">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#splunk-reserved-field-gotcha" class="md-nav__link">
+    <span class="md-ellipsis">
+      Splunk reserved-field gotcha
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-predefined-prompt" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding a New Predefined Prompt
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding a New Predefined Prompt">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#intent-map-json-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      Intent map JSON schema
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#splunk-risky-command-safeguard" class="md-nav__link">
+    <span class="md-ellipsis">
+      Splunk risky-command safeguard
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-audit-event-category" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding a New Audit Event Category
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-primer-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      System Primer Architecture
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-resolving-drill-down-urls-at-the-orchestrator-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      Pre-Resolving Drill-Down URLs at the Orchestrator Layer
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#legal-acknowledgement-modal-trigger-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Legal Acknowledgement Modal Trigger Logic
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-primer-rules-beat-other-fixes-time-window-reasoning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why Primer Rules Beat Other Fixes (TIME-WINDOW REASONING)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splunk-static-asset-cache-busting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Splunk Static-Asset Cache Busting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-ui-refresh-on-settings-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      Live UI Refresh on Settings Save
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="ai-assistant-implementation-reference">AI Assistant — Implementation Reference<a class="headerlink" href="#ai-assistant-implementation-reference" title="Permanent link">&para;</a></h1>
+<p>This document covers the implementation details of the LogServ App&rsquo;s AI Assistant subsystem — file paths, type-system patterns, build mechanics, audit-event schemas, and extension recipes. Intended for engineers who need to maintain or extend the AI Assistant code.</p>
+<p>For the customer-facing documentation, see the <a href="../../ai-assistant/overview/">AI Assistant section</a>. The customer-facing pages cover what users see and how to use the feature; this page covers how it&rsquo;s built.</p>
+<div class="admonition note">
+<p class="admonition-title">Build variant</p>
+<p>The published v0.1.1 App artifact is the <strong>templates-only build</strong>, in which the free-form LLM path is disabled (see <strong>The Build Flag Pattern</strong> below). Everything here describing free-form dispatch — tool definitions, primers, Power Mode, tier sanitization on vendor calls — describes code that is present but inert in that artifact, and active only in a locally built full-LLM variant (<code>yarn build</code>). The predefined-prompt path, MCP dispatch, tier sanitization of tool results, and the audit log are fully active in both.</p>
+</div>
+<hr />
+<h2 id="file-path-map"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> File Path Map<a class="headerlink" href="#file-path-map" title="Permanent link">&para;</a></h2>
+<p>The AI Assistant subsystem lives in the LogServ App&rsquo;s React workspace at <code>packages/log-serv-app/src/main/webapp/pages/home/</code>. Key files:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hooks/useAIAssistant.ts</code></td>
+<td>The orchestrator hook. Contains <code>runCannedPrompt</code>, <code>sendUserMessage</code>, <code>tier1Summary</code>, <code>tier2Summary</code>, <code>SYSTEM_PRIMER_TIER1</code>, <code>SYSTEM_PRIMER_TIER2</code>, <code>POWER_MODE_RULE_SUFFIX</code>, <code>SAVED_SEARCH_SPL</code>, <code>SAVED_SEARCH_DASHBOARDS</code>, <code>SAVED_SEARCH_CHART_HINTS</code>, <code>resolveNextSteps</code>, <code>wrapAsToolResultData</code>, <code>sanitizeAggregateValue</code>.</td>
+</tr>
+<tr>
+<td><code>state/AIAssistantProvider.tsx</code></td>
+<td>React context + reducer. <code>DisplayMessage</code> shape including <code>toolResult.spl</code> / <code>earliest</code> / <code>latest</code> for drill-down chip URL pre-resolution.</td>
+</tr>
+<tr>
+<td><code>components/ai/types/Hidden.ts</code></td>
+<td>The <code>Hidden&lt;T&gt;</code> brand type: <code>markHidden</code>, <code>unwrapHidden</code>, <code>IsHidden&lt;T&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>components/ai/types/Visible.ts</code></td>
+<td>The <code>Visible&lt;T&gt;</code> brand type: <code>markVisible</code>, <code>unwrapVisible</code>, and the <code>sanitize</code> chokepoint.</td>
+</tr>
+<tr>
+<td><code>components/ai/mcp/MCPClient.ts</code></td>
+<td>MCP client wrapper. Constructs requests, handles cookie + bearer auth, parses responses into <code>MCPToolResult</code>.</td>
+</tr>
+<tr>
+<td><code>components/ai/providers/</code></td>
+<td>Per-vendor provider implementations: <code>AnthropicProvider.ts</code>, <code>OpenAIProvider.ts</code>, <code>AzureOpenAIProvider.ts</code>, <code>BedrockProvider.ts</code>, plus shared <code>credentials.ts</code>, <code>sseUtils.ts</code>, <code>anthropicEventTranslator.ts</code>, and <code>outboundGuard.ts</code> (the runtime forbidden-key scan enforced on every outbound payload).</td>
+</tr>
+<tr>
+<td><code>components/ai/modelDiscovery.ts</code></td>
+<td>Vendor model discovery — merges the curated static baseline with vendor-listed models, caches in the <code>logserv_ai_models</code> KV Store collection, sanitizes on read and write.</td>
+</tr>
+<tr>
+<td><code>components/ai/chat/AIAssistant.tsx</code></td>
+<td>Top-level chat panel. Builds the <code>citationLookup: Map&lt;string, { toolUseId; splUrl? }&gt;</code> from <code>toolResultsInOrder</code>.</td>
+</tr>
+<tr>
+<td><code>components/ai/chat/ChatMessage.tsx</code></td>
+<td>Renders user / assistant_text / tool_call / tool_result / system_notice / guidance messages. Contains <code>TEXT_PATTERN</code> regex for citation + severity + bold parsing.</td>
+</tr>
+<tr>
+<td><code>components/ai/chat/ToolResultPanel.tsx</code></td>
+<td>Renders a single tool result as table / chart / KPI / pie. Contains the actions-slot rendering for <code>↗ Dashboard</code> / <code>↗ Run SPL</code> / Clear chips.</td>
+</tr>
+<tr>
+<td><code>components/ai/chat/ChatInput.tsx</code></td>
+<td>Chat input toolbar. <code>✦ Power</code> toggle visibility gating + Templates-only gating.</td>
+</tr>
+<tr>
+<td><code>components/ai/chat/PrivacyBanner.tsx</code></td>
+<td>Tier banner + model picker. Templates-only hides the picker.</td>
+</tr>
+<tr>
+<td><code>components/ai/audit/auditWriter.ts</code></td>
+<td>Browser-side audit batch + flush. Dual-writes to local <code>logserv_ai_assistant_audit</code> index AND optional HEC forwarder.</td>
+</tr>
+<tr>
+<td><code>components/ai/audit/auditTypes.ts</code></td>
+<td>Every audit-event TypeScript type (the per-category table below is the inventory).</td>
+</tr>
+<tr>
+<td><code>dashboards/AIAssistantSettings.tsx</code></td>
+<td>The Settings page (<code>#/settings</code>, H1 &ldquo;Application Settings&rdquo;): two top-level <code>TabLayout</code> panels — <strong>AI Assistant</strong> and <strong>Dashboard Data</strong> — with lightweight secondary sub-tabs (General / Provider Credentials / Splunk MCP / Audit Log) under AI Assistant. Templates-only hides the Provider Credentials sub-tab.</td>
+</tr>
+<tr>
+<td><code>components/RollupBackfillPanel.tsx</code></td>
+<td>The Dashboard Data panel — per-rollup aggregation toggles, one-click backfill, retention display, Clear.</td>
+</tr>
+<tr>
+<td><code>utils/splGuard.ts</code></td>
+<td>SPL static-analysis guard. Blocks <code>collect</code>/<code>outputlookup</code>/<code>outputcsv</code>/<code>delete</code>/<code>sendalert</code>/<code>sendemail</code>/<code>script</code>/<code>run</code>/<code>tscollect</code> for AI-authored ad-hoc SPL.</td>
+</tr>
+<tr>
+<td><code>utils/jailbreakPatterns.ts</code></td>
+<td>User-prompt jailbreak-pattern detection. FNV-1a hash + matched-groups + char-class fingerprint capture.</td>
+</tr>
+<tr>
+<td><code>utils/piiRedaction.ts</code></td>
+<td>Tier 2 PII redaction. FNV-1a 32-bit hash → 7-char hex tag, sync. Stable per-value across the run.</td>
+</tr>
+<tr>
+<td><code>utils/rateLimit.ts</code></td>
+<td>Per-user rolling-1-hour rate limit. Records <code>rate_limited_prompt</code> audit event on hit.</td>
+</tr>
+<tr>
+<td><code>utils/dailySpend.ts</code></td>
+<td>Cumulative-cost daily spend cap. Records <code>daily_spend_cap_hit</code> on overflow.</td>
+</tr>
+<tr>
+<td><code>utils/vendorCost.ts</code></td>
+<td>Per-vendor pricing table for USD cost estimate.</td>
+</tr>
+<tr>
+<td><code>utils/drilldownUrls.ts</code></td>
+<td>Drill-down and panel-action URL builders (dashboard / Host Details / Splunk Search / Open-in-Search / Job Inspector / results export), plus <code>openInNewTab</code> (centralises the <code>noopener,noreferrer</code> flags), <code>splQuote</code>, and <code>sourcetypeToDashboardSlug</code>.</td>
+</tr>
+<tr>
+<td><code>buildFlags.ts</code></td>
+<td>Build-time values baked in by webpack DefinePlugin: the <code>TEMPLATES_ONLY</code> feature flag plus the <code>app.conf</code>-derived version / build / build-date values rendered in the About dialog.</td>
+</tr>
+<tr>
+<td><code>utils/aiConfigApi.ts</code></td>
+<td>Read / write AI Assistant config. PRIMARY store is the KV Store collection <code>logserv_ai_assistant_settings</code> (single row <code>defaults</code>); <code>default/ai_assistant_settings.conf</code> is the fresh-install fallback + one-shot migration source. Resolution order: KV Store → conf → defaults.</td>
+</tr>
+<tr>
+<td><code>utils/passwordsApi.ts</code></td>
+<td>Read / write credentials from Splunk&rsquo;s encrypted password store via <code>services/storage/passwords</code>.</td>
+</tr>
+<tr>
+<td><code>utils/telemetryConfApi.ts</code></td>
+<td>Legal-acknowledgement opt-in tracking. Operator-managed <code>optInVersion</code> is read from <code>default/ai_assistant_acks.conf</code>; user acknowledgement state is written to the KV Store collection <code>logserv_ai_assistant_acks</code> (one row per stanza).</td>
+</tr>
+<tr>
+<td><code>state/dashboardRefreshPersistence.ts</code></td>
+<td>KV Store CRUD for the per-dashboard auto-refresh picker.</td>
+</tr>
+<tr>
+<td><code>default/data/mcp/logserv_intent_map.json</code></td>
+<td>The predefined-prompt catalog.</td>
+</tr>
+<tr>
+<td><code>default/savedsearches.conf</code></td>
+<td>The saved searches that intent-map prompts dispatch.</td>
+</tr>
+<tr>
+<td><code>default/ai_assistant_settings.conf</code></td>
+<td>Org-wide AI Assistant config defaults.</td>
+</tr>
+<tr>
+<td><code>default/ai_assistant_acks.conf</code></td>
+<td>Splunk-pattern legal-acknowledgement opt-in version + acknowledgement timestamps.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="the-hiddent-visiblet-brand-type-pattern"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The <code>Hidden&lt;T&gt;</code> / <code>Visible&lt;T&gt;</code> Brand Type Pattern<a class="headerlink" href="#the-hiddent-visiblet-brand-type-pattern" title="Permanent link">&para;</a></h2>
+<p>The privacy invariant — <em>&ldquo;no event data from your Splunk instance is ever transmitted to any AI vendor&rdquo;</em> — is mechanically enforced via TypeScript brand types split across <code>components/ai/types/Hidden.ts</code> and <code>components/ai/types/Visible.ts</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// components/ai/types/Hidden.ts</span>
+<span class="kr">declare</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">HIDDEN_BRAND</span><span class="o">:</span><span class="w"> </span><span class="kt">unique</span><span class="w"> </span><span class="nx">symbol</span><span class="p">;</span>
+<span class="k">export</span><span class="w"> </span><span class="kr">type</span><span class="w"> </span><span class="nx">Hidden</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">T</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="p">[</span><span class="nx">HIDDEN_BRAND</span><span class="p">]</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">};</span>
+<span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">markHidden</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">v</span><span class="o">:</span><span class="w"> </span><span class="kt">T</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">Hidden</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">v</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">Hidden</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">unwrapHidden</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">v</span><span class="o">:</span><span class="w"> </span><span class="kt">Hidden</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">T</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">v</span><span class="p">;</span>
+
+<span class="c1">// components/ai/types/Visible.ts</span>
+<span class="kr">declare</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">VISIBLE_BRAND</span><span class="o">:</span><span class="w"> </span><span class="kt">unique</span><span class="w"> </span><span class="nx">symbol</span><span class="p">;</span>
+<span class="k">export</span><span class="w"> </span><span class="kr">type</span><span class="w"> </span><span class="nx">Visible</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">T</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">readonly</span><span class="w"> </span><span class="p">[</span><span class="nx">VISIBLE_BRAND</span><span class="p">]</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="w"> </span><span class="p">};</span>
+<span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">markVisible</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">v</span><span class="o">:</span><span class="w"> </span><span class="kt">T</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">Visible</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">v</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">Visible</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">unwrapVisible</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">(</span><span class="nx">v</span><span class="o">:</span><span class="w"> </span><span class="kt">Visible</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">T</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">v</span><span class="p">;</span>
+
+<span class="k">export</span><span class="w"> </span><span class="kd">const</span><span class="w"> </span><span class="nx">sanitize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">    </span><span class="nx">hidden</span><span class="o">:</span><span class="w"> </span><span class="kt">Hidden</span><span class="o">&lt;</span><span class="nx">T</span><span class="o">&gt;</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">summarizer</span><span class="o">:</span><span class="w"> </span><span class="p">(</span><span class="nx">value</span><span class="o">:</span><span class="w"> </span><span class="kt">T</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="kt">string</span><span class="p">,</span>
+<span class="p">)</span><span class="o">:</span><span class="w"> </span><span class="nx">Visible</span><span class="o">&lt;</span><span class="kt">string</span><span class="o">&gt;</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">inner</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">unwrapHidden</span><span class="p">(</span><span class="nx">hidden</span><span class="p">);</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">summary</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">summarizer</span><span class="p">(</span><span class="nx">inner</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">markVisible</span><span class="p">(</span><span class="nx">summary</span><span class="p">);</span>
+<span class="p">};</span>
+</code></pre></div>
+<p><strong>Invariant:</strong> the only way to obtain a <code>Visible&lt;string&gt;</code> from a <code>Hidden&lt;T&gt;</code> is via <code>sanitize(hidden, summarizer)</code>, whose return type is locked to <code>string</code> so a summarizer cannot pass the underlying data through. The compiler refuses any other coercion path. The summarizer receives the unwrapped data and returns a non-data summary string; the orchestrator&rsquo;s call site picks the summarizer based on the active privacy tier (<code>tier1Summary</code> for Tier 1, <code>tier2Summary</code> for Tier 2).</p>
+<p><strong>Where the chokepoint runs:</strong> <code>useAIAssistant.ts</code> <code>sendUserMessage</code> → tool dispatch → <code>MCPClient</code> returns <code>Hidden&lt;MCPToolResult&gt;</code> → <code>sanitize(toolResult, tier === 2 ? tier2Summary : tier1Summary)</code> → resulting <code>Visible&lt;string&gt;</code> is appended to the outbound vendor message buffer.</p>
+<p><strong>Where the type system enforces:</strong> every outbound vendor message is built from <code>Visible&lt;Message&gt;[]</code>. Anywhere code constructs an outbound message, the types refuse a <code>Hidden&lt;T&gt;</code> value. There is no <code>as any</code> cast; bypassing requires modifying the brand-type code itself, which is reviewed.</p>
+<p><strong>Augmenting a <code>Visible&lt;T&gt;</code>-branded string:</strong> direct concatenation produces a TS error since the brand type can&rsquo;t widen back automatically. The pattern is <code>unwrapVisible() + new string + markVisible()</code>. The Power Mode primer augmentation uses this pattern.</p>
+<hr />
+<h2 id="the-build-flag-pattern-templates_only-and-future-flags"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The Build Flag Pattern (<code>TEMPLATES_ONLY</code> and Future Flags)<a class="headerlink" href="#the-build-flag-pattern-templates_only-and-future-flags" title="Permanent link">&para;</a></h2>
+<h3 id="how-the-flag-disables-the-llm-path">How the flag disables the LLM path<a class="headerlink" href="#how-the-flag-disables-the-llm-path" title="Permanent link">&para;</a></h3>
+<p><code>TEMPLATES_ONLY</code> is baked into the bundle at build time (webpack DefinePlugin) and cannot be changed post-deploy. Rather than duplicating a guard at every consumer, the flag <strong>forces the runtime <code>templates_only_mode</code> value on</strong> at the config-read chokepoint:</p>
+<ol>
+<li><strong><code>utils/aiConfigApi.ts</code></strong> — the enforcement point. The flag is OR-ed into <code>templates_only_mode</code> inside <code>parseRawContent</code> (the single normalizer for BOTH the KV Store row and the conf stanza) and into <code>DEFAULT_AI_CONFIG</code> (the both-reads-failed fallback), so EVERY read path reports <code>templates_only_mode: true</code> regardless of what is stored. This is what defeats a stored KV row of <code>0</code> carried over from a full-LLM install.</li>
+<li><strong><code>hooks/useAIAssistant.ts</code></strong> — ORs the flag into the <code>sendUserMessage</code> guard as prop-chain-independent defense in depth; a dispatch attempt short-circuits with a system notice directing the user to the prompt browser.</li>
+<li><strong><code>state/AIAssistantConfig.ts</code></strong> — forces the pre-load default, so the UI never renders an LLM-enabled state while config is still loading.</li>
+<li><strong><code>bin/build.js</code></strong> — patches the STAGED conf default to <code>true</code> so the artifact is self-describing (cosmetic; the webapp force is the gate).</li>
+</ol>
+<p><strong>What the flag does NOT do:</strong> the vendor provider modules (<code>AnthropicProvider.ts</code>, <code>OpenAIProvider.ts</code>, <code>AzureOpenAIProvider.ts</code>, <code>BedrockProvider.ts</code>) remain in the bundle, and their endpoint strings remain visible in <code>home.js</code>. Bundle-level stripping was explicitly declined — this is a <strong>functional disable</strong>, not a code strip. For policy-driven deployments where the LLM code must be physically absent from the artifact, use the frozen v0.0.6 line, which deletes the provider implementations from source instead.</p>
+<h3 id="single-source-of-truth">Single source of truth<a class="headerlink" href="#single-source-of-truth" title="Permanent link">&para;</a></h3>
+<p><code>buildFlags.ts</code> is the canonical module for compile-time values — it exports each flag as a typed boolean derived from a build-time substitution. Use sites import the flag from <code>buildFlags.ts</code> rather than reading the underlying env var directly. The two build variants of the same build number differ in exactly two bundle regions — the compiled flag module and styled-components&rsquo; per-build salt — and that byte-diff is the proof the full-LLM build is otherwise unchanged.</p>
+<hr />
+<h2 id="the-chat-citation-parser"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The Chat Citation Parser<a class="headerlink" href="#the-chat-citation-parser" title="Permanent link">&para;</a></h2>
+<p><code>components/ai/chat/ChatMessage.tsx</code> parses inline markers in assistant_text + guidance messages. The regex:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">TEXT_PATTERN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="sr">/\[(?:→|-&gt;)\s*([a-zA-Z0-9_:.\-]+)\]|\[severity:(critical|high|medium|low)\]|\*\*([^*]+)\*\*/g</span><span class="p">;</span>
+</code></pre></div>
+<p>Three numbered capture groups disambiguate which alternative fired:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Pattern</th>
+<th>Renders as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>[→ logserv_xxx]</code> or <code>[-&gt; logserv_xxx]</code></td>
+<td>Clickable scroll-to-tile span via <code>onJumpToResult(toolUseId)</code>; auto-appends sibling <code>↗ Dashboard</code> chip(s) + <code>↗ Run SPL</code> chip</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>[severity:critical|high|medium|low]</code></td>
+<td>Glossy colored dot via <code>&lt;SeverityDot $level={level} /&gt;</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>**bold text**</code></td>
+<td>Bold-stripped: the <code>**</code> markers are dropped and the inner text is re-parsed recursively for nested citation / severity markers (build 174 fix)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The recursive-parse fix</strong> (build 174): when the AI drifts and emits <code>**[severity:medium]**</code> (markdown bold wrapping the severity marker), the bold alternative matches first and would render the inner text as plain string, losing the severity dot. The fix recursively calls <code>renderTextWithCitations()</code> on the bold inner content. Save/restore of <code>TEXT_PATTERN.lastIndex</code> around the recursive call is required because the regex is module-scoped + <code>/g</code>-stateful — not saving would corrupt the outer iteration.</p>
+<p><strong>Why module-scoped state:</strong> <code>lastIndex</code> reset at function entry handles the common case. For recursive parses, save/restore around the call is required.</p>
+<p><strong>Alternatives considered for the bold-wrapped severity marker:</strong> re-ordering the regex alternatives so severity matches first doesn&rsquo;t help — bold wraps around the severity, so even if severity tries first, it can&rsquo;t match inside an unmatched bold span. Updating the primer to forbid bold around severity markers helps future prompts but doesn&rsquo;t repair existing UI; the parser must be tolerant either way.</p>
+<hr />
+<h2 id="the-mcp-tool-definitions-sent-on-every-free-form-request"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The MCP Tool Definitions Sent on Every Free-Form Request<a class="headerlink" href="#the-mcp-tool-definitions-sent-on-every-free-form-request" title="Permanent link">&para;</a></h2>
+<p>The AI sees these two tool definitions on every free-form request. The source of truth is <code>DEFAULT_TOOLS</code> in <code>hooks/useAIAssistant.ts</code> (TypeScript field <code>inputSchema</code>); the definitions are sent as the request&rsquo;s top-level <code>tools</code> array — the primer separately teaches the AI when to use each. The block below shows the <strong>Anthropic wire form</strong> (<code>input_schema</code>; the OpenAI/Azure path maps the same schema to <code>function.parameters</code>):</p>
+<h3 id="splunk_run_saved_search"><code>splunk_run_saved_search</code><a class="headerlink" href="#splunk_run_saved_search" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"splunk_run_saved_search"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Dispatch a saved search from the LogServ App's catalog."</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"input_schema"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"object"</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">,</span><span class="w"> </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Saved-search name from the catalog (e.g., logserv_hana_failed_auth_24h)"</span><span class="p">},</span>
+<span class="w">            </span><span class="nt">"earliest_time"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">,</span><span class="w"> </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Splunk earliest token (-24h, -7d, etc.)"</span><span class="p">},</span>
+<span class="w">            </span><span class="nt">"latest_time"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">,</span><span class="w"> </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Splunk latest token (now, etc.)"</span><span class="p">},</span>
+<span class="w">            </span><span class="nt">"render_hint"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"string"</span><span class="p">,</span><span class="w"> </span><span class="nt">"enum"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"table"</span><span class="p">,</span><span class="w"> </span><span class="s2">"timechart"</span><span class="p">,</span><span class="w"> </span><span class="s2">"kpi"</span><span class="p">,</span><span class="w"> </span><span class="s2">"pie"</span><span class="p">]},</span>
+<span class="w">            </span><span class="nt">"top_n"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"integer"</span><span class="p">,</span><span class="w"> </span><span class="nt">"minimum"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="nt">"maximum"</span><span class="p">:</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span><span class="w"> </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Width of categorical aggregates the AI receives in Tier 2 summary. Default 10."</span><span class="p">}</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="nt">"required"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="splunk_run_query"><code>splunk_run_query</code><a class="headerlink" href="#splunk_run_query" title="Permanent link">&para;</a></h3>
+<p>Same schema shape but accepts a <code>query</code> (SPL string) instead of <code>name</code>. SPL is run through <code>utils/splGuard.ts</code> before dispatch to block write/delete/alert operators.</p>
+<hr />
+<h2 id="the-spl-static-analysis-guard"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The SPL Static-Analysis Guard<a class="headerlink" href="#the-spl-static-analysis-guard" title="Permanent link">&para;</a></h2>
+<p><code>utils/splGuard.ts</code> exposes <code>analyzeSpl(spl: string): { blocked: boolean; reason?: string; operator?: string }</code>. Blocked commands:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">FORBIDDEN_SPL_COMMANDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="s1">'collect'</span><span class="p">,</span><span class="w"> </span><span class="s1">'outputlookup'</span><span class="p">,</span><span class="w"> </span><span class="s1">'outputcsv'</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">'delete'</span><span class="p">,</span><span class="w"> </span><span class="s1">'sendalert'</span><span class="p">,</span><span class="w"> </span><span class="s1">'sendemail'</span><span class="p">,</span>
+<span class="w">    </span><span class="s1">'script'</span><span class="p">,</span><span class="w"> </span><span class="s1">'run'</span><span class="p">,</span><span class="w"> </span><span class="s1">'tscollect'</span><span class="p">,</span>
+<span class="p">];</span>
+</code></pre></div>
+<p>Detection is a single case-insensitive regex, <code>\|\s*(&lt;command&gt;)\b</code>, matched against the raw query — it fires on any pipe-prefixed occurrence, including inside subsearch brackets. It does NOT strip quoted strings, so a forbidden command name appearing after a pipe inside a string literal is a known (deliberately conservative) false positive.</p>
+<p><strong>Audit on block:</strong> <code>security_blocked_spl</code> event with <code>spl</code> (truncated to 1000 chars) + <code>operator</code> field. The synthetic error tool_result lets the AI see the failure and recover by writing a different query.</p>
+<p><strong>Scope:</strong> only AI-authored <code>splunk_run_query</code> SPL. Pre-authored saved searches dispatched via <code>splunk_run_saved_search</code> are NOT subject to the guard — their SPL is reviewed at build time.</p>
+<hr />
+<h2 id="audit-event-schemas"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Audit Event Schemas<a class="headerlink" href="#audit-event-schemas" title="Permanent link">&para;</a></h2>
+<p>All audit events extend the <code>AuditEventBase</code> shape:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">AuditEventBase</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">category</span><span class="o">:</span><span class="w"> </span><span class="kt">AuditCategory</span><span class="p">;</span><span class="w"> </span><span class="c1">// discriminator — the string-literal union</span>
+<span class="w">                             </span><span class="c1">// that must be extended when adding a category</span>
+<span class="w">    </span><span class="nx">timestamp</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w">       </span><span class="c1">// ISO-8601 UTC</span>
+<span class="w">    </span><span class="nx">user</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w">            </span><span class="c1">// Splunk username</span>
+<span class="w">    </span><span class="nx">sessionId</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w">       </span><span class="c1">// Per-tab session UUID</span>
+<span class="w">    </span><span class="nx">seq</span><span class="o">:</span><span class="w"> </span><span class="kt">number</span><span class="p">;</span><span class="w">             </span><span class="c1">// Monotonic per-session sequence</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Per-category extras:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Extra fields</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>local_only</code> (<code>LocalOnlyEvent</code>)</td>
+<td><code>promptId: string</code>, <code>spl: string</code>, <code>rowCount: number</code>, <code>executionMs: number</code>, <code>ok: boolean</code></td>
+</tr>
+<tr>
+<td><code>vendor_tier1</code> (<code>VendorTier1Event</code>)</td>
+<td><code>provider</code>, <code>model</code>, <code>inputTokens</code>, <code>outputTokens</code>, <code>vendorCostEstimateUsd</code>, <code>outboundBytes</code>, <code>promptLength</code>, <code>turnCount</code>, <code>powerMode?: boolean</code></td>
+</tr>
+<tr>
+<td><code>vendor_tier2</code> (<code>VendorTier2Event</code> — declared but never emitted; every vendor call records <code>vendor_tier1</code>)</td>
+<td><code>provider</code>, <code>model</code>, <code>outboundBytes</code>, <code>outboundSha256</code>, <code>aggregateKind</code>, <code>userApproved</code>, <code>distinctValueCount</code></td>
+</tr>
+<tr>
+<td><code>vendor_tier2_elevation</code></td>
+<td><code>previousTier</code>, <code>newTier</code></td>
+</tr>
+<tr>
+<td><code>security_blocked_spl</code> (<code>SecurityBlockedSplEvent</code>)</td>
+<td><code>spl</code> (truncated to 1000 chars), <code>operator: string</code></td>
+</tr>
+<tr>
+<td><code>rate_limited_prompt</code> (<code>RateLimitedPromptEvent</code>)</td>
+<td><code>threshold</code>, <code>countInWindow</code>, <code>promptLength</code>, <code>secondsUntilNextSlot</code></td>
+</tr>
+<tr>
+<td><code>user_prompt_jailbreak_flag</code> (<code>UserPromptJailbreakFlagEvent</code>)</td>
+<td><code>promptHash</code> (FNV-1a 32-bit hex), <code>promptLength</code>, <code>matchedGroups: string[]</code>, <code>charClassFingerprint: string</code></td>
+</tr>
+<tr>
+<td><code>session_tool_cap_hit</code> (<code>SessionToolCapHitEvent</code>)</td>
+<td><code>cap</code>, <code>attemptedCount</code>, <code>toolName</code></td>
+</tr>
+<tr>
+<td><code>daily_spend_cap_hit</code> (<code>DailySpendCapHitEvent</code>)</td>
+<td><code>capUsd</code>, <code>spentTodayUsd</code>, <code>promptLength</code>, <code>secondsUntilMidnight</code></td>
+</tr>
+<tr>
+<td><code>audit_forwarder_failure</code></td>
+<td><code>destinationUrl</code> (sanitized — query strings stripped), <code>reason</code>, <code>batchSize</code></td>
+</tr>
+<tr>
+<td><code>forwarder_disabled_acceptance</code> / <code>ai_assistant_enable_acceptance</code></td>
+<td><code>host</code> (Splunk-stamped IP), <code>tcVersion</code>, <code>optInChoice</code>, <code>disclaimerHash</code></td>
+</tr>
+<tr>
+<td><code>model_discovery</code> (<code>ModelDiscoveryEvent</code>)</td>
+<td><code>provider</code>, <code>trigger</code> (<code>credential_save</code> / <code>settings_refresh</code> / <code>ttl</code>), <code>ok</code>, <code>modelCount</code>, <code>durationMs</code>, <code>error</code></td>
+</tr>
+</tbody>
+</table>
+<p>All schemas live at <code>components/ai/audit/auditTypes.ts</code>.</p>
+<h3 id="splunk-reserved-field-gotcha">Splunk reserved-field gotcha<a class="headerlink" href="#splunk-reserved-field-gotcha" title="Permanent link">&para;</a></h3>
+<p>The <code>category</code> field on these events is a Splunk reserved name. The viewer&rsquo;s SPL uses <code>| eval category=json_extract(_raw, "category")</code> after <code>spath</code> because <code>spath</code> does NOT overwrite reserved fields. Replicate this pattern in custom queries.</p>
+<hr />
+<h2 id="adding-a-new-predefined-prompt"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Adding a New Predefined Prompt<a class="headerlink" href="#adding-a-new-predefined-prompt" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Edit <code>default/data/mcp/logserv_intent_map.json</code> — add a new entry to the <code>prompts</code> array. Required fields: <code>id</code>, <code>pack</code> (<code>sap_basis</code> | <code>security</code> | <code>operations</code> — drives which prompt-browser tab the prompt appears under), <code>savedSearch</code>, <code>label</code>, <code>description</code>, <code>spl</code>, <code>renderHint</code>. Type-optional but present on every shipped prompt (omitting them silently degrades the guidance card, the deep-dive links, and the Dashboard-Focused tab): <code>interpretation</code>, <code>nextSteps</code>, <code>dashboard</code>. Truly optional: <code>chartHint</code>, <code>chartPalette</code>.</li>
+<li>Edit <code>default/savedsearches.conf</code> — add a stanza with the same name as the prompt&rsquo;s <code>savedSearch</code> field. The SPL must match byte-for-byte.</li>
+<li>Bump the intent map&rsquo;s top-level <code>version</code> field.</li>
+<li>Run <code>yarn check:intent-map</code> — it also runs automatically as the FIRST step of <code>yarn build</code> / <code>yarn build:templates-only</code>, so drift fails in seconds, before webpack. It asserts byte-equality between each prompt&rsquo;s <code>spl</code> and its <code>savedsearches.conf</code> stanza, and that every prompt-shaped stanza has a prompt (scheduled rollup jobs are exempt). The sibling gate <code>yarn check:diagnostics</code> runs the other consistency-test suites plus live conf-drift checks and must also pass for any build.</li>
+<li><strong>Pre-deploy SPL dry-run.</strong> Dispatch the new prompt&rsquo;s SPL via <code>services/search/jobs/oneshot</code> against live data:
+   <div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-sk<span class="w"> </span>-u<span class="w"> </span>admin:&lt;pw&gt;<span class="w"> </span>--data-urlencode<span class="w"> </span><span class="s2">"search=&lt;your spl&gt;"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-d<span class="w"> </span><span class="nv">output_mode</span><span class="o">=</span>json<span class="w"> </span>-d<span class="w"> </span><span class="nv">earliest_time</span><span class="o">=</span>-30d<span class="w"> </span>-d<span class="w"> </span><span class="nv">latest_time</span><span class="o">=</span>now<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>https://localhost:8089/services/search/jobs/oneshot
+</code></pre></div>
+   Confirm the result has rows with the expected fields. ~50% of new prompts fail static review with field-extraction issues that only surface against live data.</li>
+<li>Bump UI App <code>[install] build</code> in <code>app.conf</code> to bust Splunk Web&rsquo;s static-asset cache.</li>
+</ol>
+<h3 id="intent-map-json-schema">Intent map JSON schema<a class="headerlink" href="#intent-map-json-schema" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="kd">interface</span><span class="w"> </span><span class="nx">IntentMapPrompt</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">pack</span><span class="o">:</span><span class="w"> </span><span class="s1">'sap_basis'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'security'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'operations'</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">savedSearch</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">label</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">description</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">spl</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">renderHint</span><span class="o">:</span><span class="w"> </span><span class="s1">'table'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'timechart'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'kpi'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'pie'</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">chartHint</span><span class="o">?:</span><span class="w"> </span><span class="s1">'timechart'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'kpi'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'pie'</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">chartPalette</span><span class="o">?:</span><span class="w"> </span><span class="s1">'volume'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'errors'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'errors-2'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'errors-3'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'auth'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'status'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'categorical'</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="s1">'neutral'</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">dashboard?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="kt">string</span><span class="p">[];</span>
+<span class="w">    </span><span class="nx">interpretation?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span>
+<span class="w">    </span><span class="nx">nextSteps?</span><span class="o">:</span><span class="w"> </span><span class="kt">Array</span><span class="o">&lt;</span><span class="kt">string</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">text</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w"> </span><span class="nx">savedSearch?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w"> </span><span class="nx">spl?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">}</span><span class="o">&gt;</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="splunk-risky-command-safeguard">Splunk risky-command safeguard<a class="headerlink" href="#splunk-risky-command-safeguard" title="Permanent link">&para;</a></h3>
+<p>Splunk Web&rsquo;s Search app has a safety modal on these commands: <code>map</code>, <code>runshell</code>, <code>script</code>, <code>delete</code>, <code>crawl</code>, <code>tscollect</code>, <code>loadjob</code>, <code>outputlookup</code>, <code>outputcsv</code>, <code>sendalert</code>, <code>sendemail</code>. URLs to <code>/app/search/search?q=...</code> containing one of these triggers the modal.</p>
+<p>Scan all SPL — including <code>nextSteps.spl</code> deep-dive strings — for risky commands before shipping. Rewrite <code>map</code>-style cross-row dispatches to first-class subsearch syntax: <code>[ search ... | top 1 X | fields X ]</code>.</p>
+<hr />
+<h2 id="adding-a-new-audit-event-category"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Adding a New Audit Event Category<a class="headerlink" href="#adding-a-new-audit-event-category" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Edit <code>components/ai/audit/auditTypes.ts</code> — add a new TypeScript interface extending <code>AuditEventBase</code> with the category-specific fields. Add the type to the <code>AuditEvent</code> union.</li>
+<li>Add the new category id to the discriminator string-literal type.</li>
+<li>Find the call site that should emit the event. Construct the event object and call <code>ctx.actions.recordAudit(event)</code>.</li>
+<li>Edit <code>utils/auditQuery.ts</code> — add the category id to <code>AUDIT_CATEGORIES</code> (keep it alphabetical; this drives the viewer&rsquo;s filter chips and the category union).</li>
+<li>Edit <code>components/AuditLogViewer.tsx</code> — add a <code>case</code> to <code>renderHighlight</code> so the row shows its most actionable fields. Do NOT append to <code>CATEGORY_ACCENT_ORDER</code> unless <code>ACCENT_PALETTE</code> grows in lockstep — it maps positionally onto the 11-colour palette; an unlisted category deliberately falls back to the dormant grey via <code>chipColorForCategory</code>.</li>
+<li>Bump the UI App build.</li>
+</ol>
+<p>The audit writer (<code>components/ai/audit/auditWriter.ts</code>) sends events to BOTH the local <code>logserv_ai_assistant_audit</code> index AND the optional HEC forwarder. No code change needed at the writer layer for new categories.</p>
+<hr />
+<h2 id="system-primer-architecture"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> System Primer Architecture<a class="headerlink" href="#system-primer-architecture" title="Permanent link">&para;</a></h2>
+<p>Two primer variants ship: <code>SYSTEM_PRIMER_TIER1</code> and <code>SYSTEM_PRIMER_TIER2</code>. Both live in <code>hooks/useAIAssistant.ts</code> as module-private constants (only <code>SAVED_SEARCH_DASHBOARDS</code> and the hook itself are exported — a consumer needing primer text must export it first). They share most of their content; the differences:</p>
+<ul>
+<li><strong>Tier 1</strong> primer instructs the AI that summaries it receives are count + execution-time only, and to write SHAPE-aware narrative (&ldquo;X rows returned for the search&rsquo;s rolling window&rdquo;) rather than inventing concrete values.</li>
+<li><strong>Tier 2</strong> primer informs the AI that summaries include aggregated metadata (per-column cardinality, top-N values + counts, numeric stats, time range), and instructs it to ground every claim in the actual values from the aggregates. PII redaction tagging is also explained.</li>
+</ul>
+<p>Both primers include:</p>
+<ul>
+<li>The TOOL_RESULT_DATA boundary block (<code>&lt;TOOL_RESULT_DATA&gt;...&lt;/TOOL_RESULT_DATA&gt;</code> sentinels)</li>
+<li>The TIME-WINDOW REASONING block (build 171)</li>
+<li>The canonical saved-search catalog</li>
+<li>The LogServ data model (sourcetypes + key fields, for ad-hoc SPL)</li>
+<li>The decision rule for <code>splunk_run_saved_search</code> vs <code>splunk_run_query</code></li>
+<li>The SYNTHESIS RULES section: lettered finding format, severity-dot rendering, citation format, etc.</li>
+</ul>
+<p><strong>Power Mode augmentation:</strong> when the user has Power Mode on, <code>POWER_MODE_RULE_SUFFIX</code> is appended to the primer at dispatch time via <code>unwrapVisible(content) + suffix</code> then <code>markVisible()</code> (the brand type can&rsquo;t widen back automatically).</p>
+<hr />
+<h2 id="pre-resolving-drill-down-urls-at-the-orchestrator-layer"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Pre-Resolving Drill-Down URLs at the Orchestrator Layer<a class="headerlink" href="#pre-resolving-drill-down-urls-at-the-orchestrator-layer" title="Permanent link">&para;</a></h2>
+<p>The drill-down chip URLs (<code>↗ Dashboard</code>, <code>↗ Run SPL</code>) are pre-resolved at the AIAssistant.tsx layer, where each tool result&rsquo;s exact dispatch window is known. The resolved URLs are stored on the <code>citationLookup</code> Map for the chat parser to consume:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">citationLookup</span><span class="o">:</span><span class="w"> </span><span class="kt">Map</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">toolUseId</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="p">;</span><span class="w"> </span><span class="nx">splUrl?</span><span class="o">:</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="p">}</span><span class="o">&gt;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Map</span><span class="p">();</span>
+<span class="nx">toolResultsInOrder</span><span class="p">.</span><span class="nx">forEach</span><span class="p">((</span><span class="nx">tr</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="nx">tr</span><span class="p">.</span><span class="nx">displayName</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kd">const</span><span class="w"> </span><span class="nx">splUrl</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">tr</span><span class="p">.</span><span class="nx">spl</span>
+<span class="w">            </span><span class="o">?</span><span class="w"> </span><span class="nx">buildSplunkSearchUrl</span><span class="p">(</span><span class="nx">tr</span><span class="p">.</span><span class="nx">spl</span><span class="p">,</span><span class="w"> </span><span class="nx">tr</span><span class="p">.</span><span class="nx">earliest</span><span class="p">,</span><span class="w"> </span><span class="nx">tr</span><span class="p">.</span><span class="nx">latest</span><span class="p">)</span>
+<span class="w">            </span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">;</span>
+<span class="w">        </span><span class="nx">citationLookup</span><span class="p">.</span><span class="nx">set</span><span class="p">(</span><span class="nx">tr</span><span class="p">.</span><span class="nx">displayName</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">toolUseId</span><span class="o">:</span><span class="w"> </span><span class="kt">tr.toolUseId</span><span class="p">,</span><span class="w"> </span><span class="nx">splUrl</span><span class="w"> </span><span class="p">});</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">});</span>
+</code></pre></div>
+<p>The chat-side renderer (<code>ChatMessage.tsx</code>) is dumb — it just renders <code>&lt;a href={entry.splUrl}&gt;</code> when the lookup carries a URL. This avoids duplicating SPL-lookup logic at every consumer.</p>
+<p>Same pattern applies to the dashboard chips (build 156): the <code>dashboardLinks</code> are resolved once via <code>resolveDashboardLinks(slugs)</code> at the orchestrator and consumed as <code>{slug, name, url}</code> triples.</p>
+<hr />
+<h2 id="legal-acknowledgement-modal-trigger-logic"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Legal Acknowledgement Modal Trigger Logic<a class="headerlink" href="#legal-acknowledgement-modal-trigger-logic" title="Permanent link">&para;</a></h2>
+<p>Two legal acknowledgement modals gate Settings save flows:</p>
+<ul>
+<li><strong>Enable Acceptance Modal</strong> — gates <code>enabled = true</code> saves.</li>
+<li><strong>Forwarder Disabled Acceptance Modal</strong> — gates <code>audit_forwarder_enabled = false</code> saves.</li>
+</ul>
+<p>Both follow Splunk&rsquo;s <code>splunk_instrumentation</code> <code>optInVersion</code> framework with one extension. The trigger logic is:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">isEnableTcPending</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="p">(</span><span class="nx">saved</span><span class="p">.</span><span class="nx">enabled</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="kc">false</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nx">draft</span><span class="p">.</span><span class="nx">enabled</span><span class="w"> </span><span class="o">===</span><span class="w"> </span><span class="kc">true</span><span class="p">)</span><span class="w">  </span><span class="c1">// deliberate toggle-on</span>
+<span class="w">    </span><span class="nx">OR</span>
+<span class="w">    </span><span class="p">(</span><span class="nx">currentOptInVersion</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="nx">userAcknowledgedVersion</span><span class="p">)</span><span class="w">       </span><span class="c1">// version bumped</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>The pure <code>optInVersion</code>-only path is what Splunk&rsquo;s stock telemetry uses (acknowledge once per version, durable until bump). We added the deliberate-toggle-transition trigger because re-enabling AI Assistant after a disable is a deliberate user action that warrants re-acknowledgement of the legal posture each time.</p>
+<p><code>telemetryConfApi.ts</code> exposes <code>readTcAcknowledgement(stanza)</code> / <code>writeTcAcknowledgement(stanza, choice, version)</code> parameterized by stanza name. The two modal stanzas are constants: <code>STANZA_FORWARDER_TC</code> and <code>STANZA_ENABLE_TC</code>.</p>
+<p>The legacy conf-writer path coerces <code>yes</code>/<code>no</code> to <code>'1'</code>/<code>'0'</code>; the KV Store path stores the strings as-is. The audit event preserves the literal string in <code>_raw</code>, so the audit event is the canonical record while the stored acknowledgement is the state marker.</p>
+<hr />
+<h2 id="why-primer-rules-beat-other-fixes-time-window-reasoning"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Why Primer Rules Beat Other Fixes (TIME-WINDOW REASONING)<a class="headerlink" href="#why-primer-rules-beat-other-fixes-time-window-reasoning" title="Permanent link">&para;</a></h2>
+<p>One alternative fix was considered before settling on primer rules for the time-window reasoning behavior: <strong>surfacing the dispatch window in Tier 2 metadata even for non-<code>_time</code> results</strong>, which would let the AI see the window directly without reasoning about it. Higher engineering effort than primer rules; deferred unless rules alone don&rsquo;t move the needle.</p>
+<p>Primer rules were the cheapest test of &ldquo;is this a primer-rules issue?&rdquo; and it worked: same prompt, same data, dramatically better self-correction behavior in one turn instead of needing a follow-up prompt to re-rank cumulative-noise findings.</p>
+<p>This is the canonical pattern: when the AI has the data but isn&rsquo;t using it correctly, primer rules are the cheapest first attempt. When the AI doesn&rsquo;t have the data, metadata expansion is the next step.</p>
+<hr />
+<h2 id="splunk-static-asset-cache-busting"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Splunk Static-Asset Cache Busting<a class="headerlink" href="#splunk-static-asset-cache-busting" title="Permanent link">&para;</a></h2>
+<p>Splunk Web caches the React bundle&rsquo;s asset URL under a hash that includes the <code>[install] build</code> integer in <code>app.conf</code>. <strong>Re-deploying the same build number with new bytes serves stale assets even after Splunkd restart.</strong> Always bump the build number for any meaningful code change.</p>
+<p>The 3-part SemVer in <code>[id] version</code> is independent and only changes on user-facing version bumps. AppInspect&rsquo;s pretrained / Splunkbase precert rules require 3-part SemVer, so directory naming uses a 4-part <code>vMAJOR.MINOR.PATCH.SNAPSHOT</code> form for snapshot-tracking purposes only — the <code>app.conf</code> <code>[id] version</code> stays 3-part.</p>
+<hr />
+<h2 id="live-ui-refresh-on-settings-save"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Live UI Refresh on Settings Save<a class="headerlink" href="#live-ui-refresh-on-settings-save" title="Permanent link">&para;</a></h2>
+<p>When the admin saves a config change in the General tab that affects what users see (master <code>enabled</code> toggle, <code>mcp_required</code>, <code>power_user_roles</code>, etc.), the React app re-runs <code>loadAIAssistantConfig()</code> immediately and re-applies the new config to the running session. No page reload required.</p>
+<p>Implementation: <code>App.tsx</code> accepts an <code>onConfigSaved</code> callback that re-loads config from the storage REST API. The callback is threaded <code>App → AppShell → AIAssistantSettings → GeneralPanel</code>, called after <code>writeAIConfig</code> succeeds. Affected props are recomputed on the next React render and the dependent UI re-renders accordingly (e.g., the <code>✦ AI Assistant</code> button in the top-right nav appears / disappears).</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>

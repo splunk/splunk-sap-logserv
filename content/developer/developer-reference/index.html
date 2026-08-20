@@ -1,0 +1,3812 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/developer/developer-reference/">
+      
+      
+        <link rel="prev" href="../testing-guide/">
+      
+      
+        <link rel="next" href="../ai-assistant-internals/">
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Architecture and Internals - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#developer-reference-architecture-and-internals" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture and Internals
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Full-LLM Variant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Full-LLM Variant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source-file-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      Source File Map
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Components
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Library
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Library">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constants
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-rest-handler-filters-cloud-provider-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration REST Handler (Filters + Cloud Provider tabs)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-button-rest-handler" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy Button REST Handler
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ucc-hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      UCC Hook
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#daily-time-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      Daily Time Refresh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upgrade-coverage-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      Upgrade Coverage Check
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-filtering-works-technically" class="md-nav__link">
+    <span class="md-ellipsis">
+      How Filtering Works Technically
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Filtering Works Technically">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filter-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filter Chain
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#includeexclude-regex-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Include/Exclude Regex Generation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-filter-regex" class="md-nav__link">
+    <span class="md-ellipsis">
+      Time Filter Regex
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-transforms-instead-of-ingest_eval" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why TRANSFORMS Instead of INGEST_EVAL
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-server-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Server Automation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Server Automation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ds-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      DS Detection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-class-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Server Class Creation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-client-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Client Guard
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-support-for-new-sourcetypes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding Support for New Sourcetypes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding Support for New Sourcetypes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-add-a-routing-transform" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Add a Routing Transform
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-add-to-transforms-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Add to TRANSFORMS Chain
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-add-sourcetype-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Add Sourcetype Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-bump-the-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Bump the Version
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing Environments
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing Environments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-1-single-instance-standalone" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment 1: Single Instance (Standalone)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-2-deployment-server-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment 2: Deployment Server + Heavy Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-3-splunk-cloud-on-premises-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment 3: Splunk Cloud + On-Premises Heavy Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-4-fresh-ds-with-no-prior-server-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment 4: Fresh DS with No Prior Server Classes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-gotchas-and-technical-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known Gotchas and Technical Notes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Known Gotchas and Technical Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-imports-in-utility-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Imports in Utility Functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persistent-handler-syspath" class="md-nav__link">
+    <span class="md-ellipsis">
+      Persistent Handler sys.path
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#webconf-expose-stanza" class="md-nav__link">
+    <span class="md-ellipsis">
+      web.conf Expose Stanza
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-class-rest-api-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Server Class REST API Limitations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-client-config-overwrite" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Client Config Overwrite
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transforms-00-filter-ordering" class="md-nav__link">
+    <span class="md-ellipsis">
+      TRANSFORMS-00-filter Ordering
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#marker-comments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Marker Comments
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ds-role-disappears-without-server-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      DS Role Disappears Without Server Classes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      Architecture Summary
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#source-file-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      Source File Map
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Components
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Key Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#core-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      Core Library
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Core Library">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#key-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key Functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#constants" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constants
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-rest-handler-filters-cloud-provider-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration REST Handler (Filters + Cloud Provider tabs)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-button-rest-handler" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy Button REST Handler
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ucc-hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      UCC Hook
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#daily-time-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      Daily Time Refresh
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upgrade-coverage-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      Upgrade Coverage Check
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-filtering-works-technically" class="md-nav__link">
+    <span class="md-ellipsis">
+      How Filtering Works Technically
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How Filtering Works Technically">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filter-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filter Chain
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#includeexclude-regex-generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Include/Exclude Regex Generation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-filter-regex" class="md-nav__link">
+    <span class="md-ellipsis">
+      Time Filter Regex
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-transforms-instead-of-ingest_eval" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why TRANSFORMS Instead of INGEST_EVAL
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deployment-server-automation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Server Automation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Server Automation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ds-detection" class="md-nav__link">
+    <span class="md-ellipsis">
+      DS Detection
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-class-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Server Class Creation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-client-guard" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Client Guard
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-support-for-new-sourcetypes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding Support for New Sourcetypes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding Support for New Sourcetypes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-add-a-routing-transform" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 1: Add a Routing Transform
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-add-to-transforms-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 2: Add to TRANSFORMS Chain
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-add-sourcetype-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 3: Add Sourcetype Configuration
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-bump-the-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step 4: Bump the Version
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#testing-environments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Testing Environments
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Testing Environments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#environment-1-single-instance-standalone" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment 1: Single Instance (Standalone)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-2-deployment-server-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment 2: Deployment Server + Heavy Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-3-splunk-cloud-on-premises-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment 3: Splunk Cloud + On-Premises Heavy Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#environment-4-fresh-ds-with-no-prior-server-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment 4: Fresh DS with No Prior Server Classes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-gotchas-and-technical-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Known Gotchas and Technical Notes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Known Gotchas and Technical Notes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#local-imports-in-utility-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Imports in Utility Functions
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#persistent-handler-syspath" class="md-nav__link">
+    <span class="md-ellipsis">
+      Persistent Handler sys.path
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#webconf-expose-stanza" class="md-nav__link">
+    <span class="md-ellipsis">
+      web.conf Expose Stanza
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#server-class-rest-api-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Server Class REST API Limitations
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-client-config-overwrite" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Client Config Overwrite
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transforms-00-filter-ordering" class="md-nav__link">
+    <span class="md-ellipsis">
+      TRANSFORMS-00-filter Ordering
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#marker-comments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Marker Comments
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ds-role-disappears-without-server-classes" class="md-nav__link">
+    <span class="md-ellipsis">
+      DS Role Disappears Without Server Classes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="developer-reference-architecture-and-internals">Developer Reference: Architecture and Internals<a class="headerlink" href="#developer-reference-architecture-and-internals" title="Permanent link">&para;</a></h1>
+<h3 id="overview"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h3>
+<p>This document covers the internal architecture of the SAP LogServ TA&rsquo;s filtering and deployment automation system. It is intended for developers who need to maintain, extend, or test the TA.</p>
+<p>The filtering system provides index-time event filtering via TRANSFORMS-based queue routing. It includes a UI built on UCC (Splunk Universal Configuration Console), custom REST handlers, deployment server automation, and background scripted inputs for daily maintenance and upgrade detection.</p>
+<p><br></p>
+<h3 id="architecture-summary"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Architecture Summary<a class="headerlink" href="#architecture-summary" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>+-------------------------------------------------------+
+|  Splunk Web (UCC Configuration UI)                    |
+|  Configuration -&gt; Filters + Cloud Provider tabs       |
+|  + filter_settings_hook.js (Deploy button, banners)   |
++---------------------------+---------------------------+
+                            | Save
+                            v
++-------------------------------------------------------------+
+|  splunk_ta_sap_logserv_rh_filter_settings.py (REST Handler) |
+|  - Validates patterns                                       |
+|  - Saves settings to settings conf                          |
+|  - Generates local/transforms.conf + local/props.conf       |
+|  - Mirrors to deployment-apps/ (if DS)                      |
+|  - Creates server class (if DS, first time)                 |
+|  - Reloads confs via REST API                               |
++---------------------------+---------------------------------+
+                            |
+              +-------------+-------------+
+              v                           v
+    +------------+          +--------------------+
+    | Single     |          | Deployment Server  |
+    | Instance   |          |                    |
+    | (done)     |          | deployment-apps/   |
+    +------------+          | + serverclass.conf |
+                            | + Deploy button    |
+                            +---------+----------+
+                                      | Phone home
+                                      v
+                            +------------------+
+                            | Heavy Forwarders |
+                            | (receive TA +    |
+                            |  filter configs) |
+                            +------------------+
+</code></pre></div>
+<p><br></p>
+<h3 id="source-file-map"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Source File Map<a class="headerlink" href="#source-file-map" title="Permanent link">&para;</a></h3>
+<p>All source files live under the UCC package directory:</p>
+<div class="highlight"><pre><span></span><code>sap_logserv_package/splunk_ta_sap_logserv/
+├── globalConfig.json                          # UCC UI definition (Filters + Cloud Provider tabs)
+├── additional_packaging.py                    # UCC post-build patcher (see note below)
+├── run_appinspect.sh                          # Dev tool — MUST stay outside package/ (an
+│                                              #   executable in package/ trips check_for_bin_files)
+└── package/
+    ├── app.manifest                                # TA version and metadata
+    ├── bin/
+    │   ├── splunk_ta_sap_logserv_filter_utils.py        # Core library
+    │   ├── splunk_ta_sap_logserv_rh_filter_settings.py  # REST handler: Filters + Cloud Provider tabs
+    │   ├── splunk_ta_sap_logserv_rh_deployment_push.py  # REST handler: Deploy button
+    │   ├── logserv_filter_time_refresh.py               # Daily epoch cutoff refresh
+    │   └── logserv_filter_upgrade_check.py              # Upgrade coverage check
+    ├── default/
+    │   ├── transforms.conf    # Sourcetype routing + @logserv_filter annotations
+    │   ├── props.conf         # Sourcetype configs, TRANSFORMS chains
+    │   ├── inputs.conf        # Scripted input schedules
+    │   ├── macros.conf        # Index name redirect macro
+    │   ├── indexes.conf       # Index definitions (folded in from the retired Index App)
+    │   └── data/ui/nav/default.xml   # Nav (Configuration + search only)
+    ├── metadata/
+    │   └── default.meta       # Default permissions and export settings
+    ├── static/                # App icons (appIcon*.png)
+    ├── LICENSES/              # Absorbed-add-on license texts
+    └── appserver/static/js/build/custom/
+        ├── filter_settings_hook.js   # UCC hook (DS detection, Deploy button)
+        └── cloud_provider_hook.js    # UCC hook (Cloud Provider tab)
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">additional_packaging.py is load-bearing for AppInspect posture</p>
+<p>The post-build patcher performs several jobs after <code>ucc-gen</code> runs: patching every <code>[admin_external:*]</code> restmap stanza (<code>handlertype</code>, <code>python.version</code>, <code>python.required = 3.13</code>, <code>passSystemAuth = true</code>), appending the <code>deployment_push</code> restmap + <code>web.conf</code> expose stanzas, patching <code>inputs.conf</code> <code>[script://...]</code> stanzas with <code>python.required = 3.13</code>, restoring <code>sc_subadmin</code> to the write ACL in the UCC-generated <code>metadata/default.meta</code>, and swapping the generated settings handler import to <code>FilterSettingsHandler</code>. Several of these are AppInspect Cloud gating fixes — deleting or truncating the file silently regresses AppInspect posture and locks out <code>sc_subadmin</code> admins.</p>
+</div>
+<p><br></p>
+<hr />
+<h2 id="key-components">Key Components<a class="headerlink" href="#key-components" title="Permanent link">&para;</a></h2>
+<h3 id="core-library"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Core Library<a class="headerlink" href="#core-library" title="Permanent link">&para;</a></h3>
+<p><strong style="font-size: 1.2em;">splunk_ta_sap_logserv_filter_utils.py</strong></p>
+<p>This is the central module. All other components import from it.</p>
+<h4 id="key-functions"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Key Functions<a class="headerlink" href="#key-functions" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_app_path()</code></td>
+<td>Determines the app installation path (checks <code>SPLUNK_HOME</code>, falls back to relative path)</td>
+</tr>
+<tr>
+<td><code>discover_supported_types(app_path)</code></td>
+<td>Scans <code>default/transforms.conf</code> for <code>@logserv_filter</code> annotations</td>
+</tr>
+<tr>
+<td><code>find_uncovered_types(supported, patterns)</code></td>
+<td>Compares supported types against user include patterns</td>
+</tr>
+<tr>
+<td><code>parse_comma_patterns(string)</code></td>
+<td>Splits comma-separated pattern string into list</td>
+</tr>
+<tr>
+<td><code>validate_patterns(patterns, field_name)</code></td>
+<td>Validates pattern syntax (dir/subdir format, valid characters)</td>
+</tr>
+<tr>
+<td><code>validate_single_pattern(pattern)</code></td>
+<td>Validates one pattern against rules</td>
+</tr>
+<tr>
+<td><code>fnmatch_patterns_to_combined_regex(patterns)</code></td>
+<td>Converts a list of fnmatch patterns into a single combined regex using alternation</td>
+</tr>
+<tr>
+<td><code>epoch_cutoff_from_days(days_in_past)</code></td>
+<td>Computes the epoch timestamp for midnight N days ago (UTC)</td>
+</tr>
+<tr>
+<td><code>generate_epoch_less_than_regex(cutoff_epoch)</code></td>
+<td>Generates a digit-by-digit regex matching epoch values less than the cutoff</td>
+</tr>
+<tr>
+<td><code>generate_transforms_stanzas(include, exclude, days)</code></td>
+<td>Generates filter transform stanzas with regex</td>
+</tr>
+<tr>
+<td><code>generate_props_filter_lines(include, exclude, days, enabled)</code></td>
+<td>Generates the <code>TRANSFORMS-00-filter</code> line</td>
+</tr>
+<tr>
+<td><code>write_local_conf(app_path, conf_name, content)</code></td>
+<td>Writes between marker comments in local conf files</td>
+</tr>
+<tr>
+<td><code>write_local_conf_section(app_path, conf_name, content, marker_start, marker_end)</code></td>
+<td>Generalised marker-block writer — lets two independent marker blocks (filter + cloud provider) coexist in one local conf</td>
+</tr>
+<tr>
+<td><code>update_local_stanza(app_path, conf_name, stanza, kv)</code></td>
+<td>Direct filesystem stanza write — the <code>RestError[403]</code> fallback used when the caller lacks <code>admin_all_objects</code></td>
+</tr>
+<tr>
+<td><code>get_ta_version(app_path)</code></td>
+<td>Reads version from <code>default/app.conf</code> (falls back to <code>app.manifest</code> if not present)</td>
+</tr>
+<tr>
+<td><code>get_server_roles(session_key)</code></td>
+<td>Queries /services/server/info for roles</td>
+</tr>
+<tr>
+<td><code>is_deployment_server(session_key)</code></td>
+<td>Two-step DS detection (roles + client probe)</td>
+</tr>
+<tr>
+<td><code>get_deployment_apps_path()</code></td>
+<td>Returns the <code>etc/deployment-apps/</code> path for the TA</td>
+</tr>
+<tr>
+<td><code>ensure_deployment_app_synced(app_path)</code></td>
+<td>Full app copy/upgrade to deployment-apps/</td>
+</tr>
+<tr>
+<td><code>mirror_to_deployment_apps(app_path)</code></td>
+<td>Copies local/transforms.conf and local/props.conf</td>
+</tr>
+<tr>
+<td><code>ensure_serverclass(session_key)</code></td>
+<td>Creates server class + app mapping via REST + file</td>
+</tr>
+</tbody>
+</table>
+<h4 id="constants"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Constants<a class="headerlink" href="#constants" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>APP_NAME</code></td>
+<td><code>splunk_ta_sap_logserv</code></td>
+<td>App directory name</td>
+</tr>
+<tr>
+<td><code>SERVERCLASS_NAME</code></td>
+<td><code>SAP_LogServ_HeavyForwarders</code></td>
+<td>Auto-created server class name</td>
+</tr>
+<tr>
+<td><code>SETTINGS_CONF</code></td>
+<td><code>splunk_ta_sap_logserv_settings</code></td>
+<td>UCC settings conf file</td>
+</tr>
+<tr>
+<td><code>FILTER_STANZA</code></td>
+<td><code>filter_settings</code></td>
+<td>Stanza name in settings conf</td>
+</tr>
+<tr>
+<td><code>SYSTEM_MESSAGE_NAME</code></td>
+<td><code>logserv_filter_upgrade_warning</code></td>
+<td>System message banner name for upgrade warnings</td>
+</tr>
+<tr>
+<td><code>ANNOTATION_PATTERN</code></td>
+<td>Compiled regex</td>
+<td>Matches <code>@logserv_filter:</code> annotation comment lines</td>
+</tr>
+<tr>
+<td><code>VALID_SEGMENT_PATTERN</code></td>
+<td>Compiled regex</td>
+<td>Validates characters in dir/subdir pattern segments</td>
+</tr>
+<tr>
+<td><code>FILTER_MARKER_START</code> / <code>FILTER_MARKER_END</code></td>
+<td>Marker comments</td>
+<td>Delimit generated filter content in local conf files</td>
+</tr>
+<tr>
+<td><code>CLOUD_PROVIDER_MARKER_START</code> / <code>CLOUD_PROVIDER_MARKER_END</code></td>
+<td>Marker comments</td>
+<td>Delimit the generated <code>[logserv_set_cloud_provider]</code> block — separate from the filter block so the daily time-refresh preserves it</td>
+</tr>
+</tbody>
+</table>
+<p><br></p>
+<h3 id="configuration-rest-handler-filters-cloud-provider-tabs"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Configuration REST Handler (Filters + Cloud Provider tabs)<a class="headerlink" href="#configuration-rest-handler-filters-cloud-provider-tabs" title="Permanent link">&para;</a></h3>
+<p><strong style="font-size: 1.2em;">splunk_ta_sap_logserv_rh_filter_settings.py</strong></p>
+<p>UCC REST handler (extends <code>AdminExternalHandler</code>) registered in <code>globalConfig.json</code>. UCC generates ONE <code>MultipleModel</code> settings endpoint shared by all Configuration tabs, so this single handler class serves both the <strong>Filters</strong> and the <strong>Cloud Provider</strong> tab — it dispatches on the payload (<code>if 'cloud_provider' in self.callerArgs.data</code>), validating against <code>VALID_CLOUD_PROVIDERS</code> and writing/clearing the <code>[logserv_set_cloud_provider]</code> override inside its own <code>### BEGIN/END LOGSERV CLOUD_PROVIDER CONFIG ###</code> marker block. For a Filters save it handles the Save action:</p>
+<ol>
+<li><strong>Validates</strong> patterns server-side (blocks save on failure via <code>admin.ArgValidationException</code>)</li>
+<li><strong>Saves</strong> settings to <code>splunk_ta_sap_logserv_settings.conf</code> (default UCC behavior — the happy path). <strong>Falls back to a direct filesystem write</strong> when the UCC REST write raises <code>RestError[403]</code> (&ldquo;This operation is forbidden&rdquo;): splunkd gates <code>/configs/conf-*</code> writes on <code>admin_all_objects</code> independently of the object metadata ACL, so Splunk Cloud <code>sc_subadmin</code> and hardened on-prem <code>admin</code> roles fail the REST path. <code>update_local_stanza()</code> writes the stanza to <code>local/&lt;settings&gt;.conf</code> directly, bypassing that gate (<code>passSystemAuth</code> is NOT honoured for UCC <code>[admin_external:*]</code> handlers)</li>
+<li><strong>Generates</strong> <code>local/transforms.conf</code> and <code>local/props.conf</code> with filter stanzas</li>
+<li><strong>Syncs and mirrors</strong> to deployment-apps if on a DS (full app copy/upgrade + filter configs)</li>
+<li><strong>Creates</strong> server class if on a DS (first time only)</li>
+<li><strong>Reloads</strong> confs via REST API (<code>/configs/conf-transforms/_reload</code>, <code>/configs/conf-props/_reload</code>)</li>
+<li><strong>Checks</strong> for uncovered types and manages system message banner</li>
+</ol>
+<p><br></p>
+<h3 id="deploy-button-rest-handler"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deploy Button REST Handler<a class="headerlink" href="#deploy-button-rest-handler" title="Permanent link">&para;</a></h3>
+<p><strong style="font-size: 1.2em;">splunk_ta_sap_logserv_rh_deployment_push.py</strong></p>
+<p>Persistent REST handler (<code>PersistentServerConnectionApplication</code>) registered in <code>restmap.conf</code>. Provides two endpoints:</p>
+<ul>
+<li><strong>GET</strong> <code>/services/splunk_ta_sap_logserv/deployment_push</code> — Returns <code>is_deployment_server</code> boolean and server class status (used by the JS hook to render the UI)</li>
+<li><strong>POST</strong> — Triggers deployment reload via <code>/services/deployment/server/config/_reload</code></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Persistent handlers do NOT get <code>import_declare_test</code>. They require explicit <code>sys.path</code> setup for the app&rsquo;s <code>bin/</code> and <code>lib/</code> directories at the top of the file.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Custom persistent endpoints require an <code>[expose:]</code> stanza in <code>web.conf</code> to be accessible through the Splunk Web proxy (port 8000). This is handled by <code>additional_packaging.py</code> during the UCC build.</p>
+</div>
+<p><br></p>
+<h3 id="ucc-hook"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> UCC Hook<a class="headerlink" href="#ucc-hook" title="Permanent link">&para;</a></h3>
+<p><strong style="font-size: 1.2em;">filter_settings_hook.js</strong></p>
+<p>JavaScript hook loaded by UCC on the Filters tab. Lifecycle methods:</p>
+<ul>
+<li><code>onCreate</code> / <code>onRender</code> / <code>onEditLoad</code> — Calls <code>checkDeploymentServer()</code> to GET the deployment push endpoint. If DS detected, injects the deploy banner, server class guidance notices, and Deploy button into the DOM</li>
+<li><code>onSaveSuccess</code> — Triggers <code>window.location.reload()</code> after 500ms to reflect server-side changes</li>
+</ul>
+<p><br></p>
+<h3 id="daily-time-refresh"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Daily Time Refresh<a class="headerlink" href="#daily-time-refresh" title="Permanent link">&para;</a></h3>
+<p><strong style="font-size: 1.2em;">logserv_filter_time_refresh.py</strong></p>
+<p>Scripted input (runs every 86400 seconds / once per day):</p>
+<ol>
+<li>Reads filter settings from the settings conf via REST</li>
+<li>Regenerates <code>local/transforms.conf</code> and <code>local/props.conf</code> with updated epoch cutoff regex</li>
+<li>Mirrors to deployment-apps if on a DS</li>
+<li>Reloads confs</li>
+</ol>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong>Deployment client guard:</strong> If the instance is a deployment client (HF) but NOT a deployment server, the script skips execution entirely. This prevents HFs from overwriting filter configs pushed by the DS.</p>
+<p><br></p>
+<h3 id="upgrade-coverage-check"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Upgrade Coverage Check<a class="headerlink" href="#upgrade-coverage-check" title="Permanent link">&para;</a></h3>
+<p><strong style="font-size: 1.2em;">logserv_filter_upgrade_check.py</strong></p>
+<p>Scripted input (runs every 600 seconds / 10 minutes):</p>
+<ol>
+<li>Compares current TA version against last-checked version (persisted in state file)</li>
+<li>On version change, discovers supported types from <code>@logserv_filter</code> annotations</li>
+<li>Compares against user&rsquo;s include patterns</li>
+<li>Creates a Splunk system message banner if uncovered types are found</li>
+</ol>
+<details class="tip">
+<summary>Performance</summary>
+<p>The version check is ~2ms on unchanged runs. Full comparison only runs once per version change.</p>
+</details>
+<p><br></p>
+<hr />
+<h2 id="how-filtering-works-technically">How Filtering Works Technically<a class="headerlink" href="#how-filtering-works-technically" title="Permanent link">&para;</a></h2>
+<h3 id="filter-chain"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Filter Chain<a class="headerlink" href="#filter-chain" title="Permanent link">&para;</a></h3>
+<p>All filtering happens via a single <code>TRANSFORMS-00-filter</code> line in <code>local/props.conf</code> under the <code>[sap_logserv_logs]</code> stanza. The <code>00</code> prefix ensures filters run before any sourcetype routing transforms (<code>01</code>–<code>99</code>).</p>
+<p>The filter chain is evaluated left to right:</p>
+<ol>
+<li><strong><code>logserv_filter_include_drop</code></strong> — Drops ALL events (sends to <code>nullQueue</code>)</li>
+<li><strong><code>logserv_filter_include_allow</code></strong> — Rescues events matching include patterns (sends back to <code>indexQueue</code>)</li>
+<li><strong><code>logserv_filter_time_drop</code></strong> — Drops events with old timestamps (sends to <code>nullQueue</code>)</li>
+<li><strong><code>logserv_filter_exclude</code></strong> — Drops events matching exclude patterns (sends to <code>nullQueue</code>)</li>
+</ol>
+<p>This &ldquo;deny-all, then allow&rdquo; approach ensures only explicitly included events pass through.</p>
+<p><br></p>
+<h3 id="includeexclude-regex-generation"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Include/Exclude Regex Generation<a class="headerlink" href="#includeexclude-regex-generation" title="Permanent link">&para;</a></h3>
+<p>User-facing fnmatch patterns (e.g., <code>linux/*</code>) are converted to Splunk-compatible regex that matches against the raw NDJSON event data. The include_allow regex uses lookahead assertions to match <code>clz_dir</code> and <code>clz_subdir</code> fields:</p>
+<div class="highlight"><pre><span></span><code>^(?=.*"clz_dir"\s*:\s*"linux")(?=.*"clz_subdir"\s*:\s*".*")
+</code></pre></div>
+<p>Multiple include patterns are OR&rsquo;d together with <code>|</code>.</p>
+<p><br></p>
+<h3 id="time-filter-regex"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Time Filter Regex<a class="headerlink" href="#time-filter-regex" title="Permanent link">&para;</a></h3>
+<p>The time filter matches epoch timestamps in the raw JSON <code>"_time"</code> field. Since TRANSFORMS cannot use dynamic expressions (unlike INGEST_EVAL which is unavailable on Splunk Cloud), the cutoff is a pre-computed regex that matches epoch values less than the cutoff. This regex must be refreshed daily to maintain accuracy.</p>
+<details class="tip">
+<summary>Failure mode</summary>
+<p>If the daily refresh doesn&rsquo;t run, the cutoff becomes one day older, filtering slightly more data. This is the safer direction.</p>
+</details>
+<p><br></p>
+<h3 id="why-transforms-instead-of-ingest_eval"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Why TRANSFORMS Instead of INGEST_EVAL<a class="headerlink" href="#why-transforms-instead-of-ingest_eval" title="Permanent link">&para;</a></h3>
+<p><code>INGEST_EVAL</code> is the preferred modern approach for index-time filtering, but it is <strong>unavailable on Splunk Cloud</strong> (heavy forwarders managed by Splunk Cloud don&rsquo;t support it). TRANSFORMS-based filtering works on all deployment architectures including Splunk Cloud with on-premises Heavy Forwarders.</p>
+<p><br></p>
+<hr />
+<h2 id="deployment-server-automation">Deployment Server Automation<a class="headerlink" href="#deployment-server-automation" title="Permanent link">&para;</a></h2>
+<h3 id="ds-detection"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> DS Detection<a class="headerlink" href="#ds-detection" title="Permanent link">&para;</a></h3>
+<p>Two-step detection in <code>is_deployment_server()</code>:</p>
+<ol>
+<li><strong>Fast path</strong> — Check <code>server_roles</code> from <code>/services/server/info</code> for <code>deployment_server</code></li>
+<li><strong>Fallback</strong> — If role is absent, query <code>/services/deployment/server/clients</code> to check for connected deployment clients. Returns true only if at least one client is connected</li>
+</ol>
+<details class="tip">
+<summary>Why the fallback exists</summary>
+<p>Splunk drops the <code>deployment_server</code> role when no <code>serverclass.conf</code> exists. The <code>/services/deployment/server/config</code> endpoint cannot be used as a fallback because it returns HTTP 200 on ALL Splunk Enterprise instances (including HFs), causing false positives.</p>
+</details>
+<p><br></p>
+<h3 id="server-class-creation"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Server Class Creation<a class="headerlink" href="#server-class-creation" title="Permanent link">&para;</a></h3>
+<p><code>ensure_serverclass()</code> creates <code>SAP_LogServ_HeavyForwarders</code> in three steps:</p>
+<ol>
+<li>
+<p><strong>REST API create</strong> — POST to <code>/services/deployment/server/serverclasses</code> with <code>name</code> parameter to create the server class</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> The <code>disabled</code> parameter is NOT supported during creation (Splunk returns an error).</p>
+</li>
+<li>
+<p><strong>REST API disable</strong> — Separate POST to <code>/services/deployment/server/serverclasses/SAP_LogServ_HeavyForwarders</code> with <code>disabled=true</code> to disable the server class. This ensures no deployment occurs until the admin configures client targeting and enables the server class in Forwarder Management.</p>
+</li>
+<li>
+<p><strong>File-based app mapping</strong> — After REST creates and disables the server class, the function locates the resulting <code>serverclass.conf</code> (which Splunk may write to <code>system/local/</code> or <code>apps/search/local/</code>) and appends the app mapping stanza:</p>
+</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="k">[serverClass:SAP_LogServ_HeavyForwarders:app:splunk_ta_sap_logserv]</span>
+<span class="na">restartSplunkd</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">true</span>
+<span class="na">stateOnClient</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">enabled</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The app mapping cannot be created via REST API — the URL path format <code>serverclasses/{name}/app:{appname}</code> returns HTTP 404.</p>
+</div>
+<p><br></p>
+<h3 id="deployment-client-guard"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deployment Client Guard<a class="headerlink" href="#deployment-client-guard" title="Permanent link">&para;</a></h3>
+<p>The <code>logserv_filter_time_refresh.py</code> scripted input checks whether the instance is a deployment client (but not a DS). If so, it skips execution to prevent overwriting filter configs that were pushed by the DS. Without this guard, the time refresh script would read the HF&rsquo;s empty local settings, regenerate configs with only a time filter, and overwrite the complete filter chain.</p>
+<p><br></p>
+<hr />
+<h2 id="adding-support-for-new-sourcetypes">Adding Support for New Sourcetypes<a class="headerlink" href="#adding-support-for-new-sourcetypes" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-add-a-routing-transform"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Step 1: Add a Routing Transform<a class="headerlink" href="#step-1-add-a-routing-transform" title="Permanent link">&para;</a></h3>
+<p>Add the <code>@logserv_filter</code> annotation on the line immediately above the stanza header in <code>default/transforms.conf</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># @logserv_filter: newdir/newsubdir</span>
+<span class="k">[set_srctype_for_new_logtype]</span>
+<span class="na">REGEX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"clz_subdir"</span><span class="o">:</span><span class="s">"newsubdir"</span>
+<span class="na">FORMAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sourcetype::sap:newlogtype</span>
+<span class="na">DEST_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">MetaData:Sourcetype</span>
+</code></pre></div>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong>The annotation is critical.</strong> It declares which <code>clz_dir/clz_subdir</code> values the transform handles. Without it, the upgrade check cannot detect that a new log type is supported, and users won&rsquo;t be notified.</p>
+<p>Multiple values can be comma-separated:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># @logserv_filter: newdir/type_a, newdir/type_b, newdir/type_c</span>
+<span class="k">[set_srctype_for_new_dir]</span>
+<span class="na">REGEX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"clz_subdir"</span><span class="o">:</span><span class="s">"(type_a|type_b|type_c)"</span>
+<span class="na">FORMAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sourcetype::sap:newdir:logs</span>
+<span class="na">DEST_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">MetaData:Sourcetype</span>
+</code></pre></div>
+<p>When the same <code>clz_subdir</code> value exists under multiple <code>clz_dir</code> paths (e.g., <code>audit</code> appears under both <code>abap/</code> and <code>scc/</code>), use a <strong>compound lookahead</strong> regex to match both fields and avoid routing collisions:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># @logserv_filter: scc/audit</span>
+<span class="k">[set_srctype_scc_audit]</span>
+<span class="na">REGEX = (?=.*"clz_dir"</span><span class="o">:</span><span class="s">"scc"</span><span class="na">)(?=.*"clz_subdir"</span><span class="o">:</span><span class="s">"audit"</span><span class="na">)</span>
+<span class="na">FORMAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sourcetype::sap:scc:audit</span>
+<span class="na">DEST_KEY</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">MetaData:Sourcetype</span>
+</code></pre></div>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong>When to use compound lookahead:</strong> Check if the <code>clz_subdir</code> you are adding already exists in another <code>clz_dir</code> path. If it does, both the existing and new transforms must use compound lookahead. Current collision-prone values include <code>audit</code> (abap, scc), <code>sapstartsrv</code> (abap, sap), and <code>tracelogs</code> (hana, scc).</p>
+<p><br></p>
+<h3 id="step-2-add-to-transforms-chain"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Step 2: Add to TRANSFORMS Chain<a class="headerlink" href="#step-2-add-to-transforms-chain" title="Permanent link">&para;</a></h3>
+<p>Add your new transform to the appropriate <code>TRANSFORMS-*</code> line in the <code>[sap_logserv_logs]</code> stanza of <code>default/props.conf</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[sap_logserv_logs]</span>
+<span class="na">...</span>
+<span class="na">TRANSFORMS-10-srctype_for_newdir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">set_srctype_for_new_logtype</span>
+</code></pre></div>
+<p>Pick the next free number in <code>10</code>–<code>49</code> for the TRANSFORMS prefix. Current allocation: <code>00</code> = filters, <code>01</code>–<code>09</code> = sourcetype routing (all in use), <code>50</code>–<code>51</code> = indexed-field stamps (<code>splunk_solution</code>, <code>cloud_provider</code>), <code>99</code> = <code>set_raw_only</code>.</p>
+<p><br></p>
+<h3 id="step-3-add-sourcetype-configuration"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Step 3: Add Sourcetype Configuration<a class="headerlink" href="#step-3-add-sourcetype-configuration" title="Permanent link">&para;</a></h3>
+<p>If the new sourcetype needs field extractions, calculated fields, or CIM field aliases, add a <code>[sap:newlogtype]</code> stanza to <code>default/props.conf</code>.</p>
+<p><br></p>
+<h3 id="step-4-bump-the-version"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Step 4: Bump the Version<a class="headerlink" href="#step-4-bump-the-version" title="Permanent link">&para;</a></h3>
+<p>Bump <code>meta.version</code> in <code>globalConfig.json</code> — <code>ucc-gen</code> stamps it into the built <code>default/app.conf</code>, which is what <code>get_ta_version()</code> reads (it falls back to <code>app.manifest</code> only when <code>app.conf</code> is absent, i.e. before the UCC build). Keep <code>package/app.manifest</code> in sync so source and artifact agree. The version change triggers the upgrade check to compare the new annotations against existing user include patterns.</p>
+<details class="tip">
+<summary>What Happens on Upgrade</summary>
+<ol>
+<li>The <code>logserv_filter_upgrade_check.py</code> scripted input detects the version change within 10 minutes</li>
+<li>It scans the updated <code>default/transforms.conf</code> for <code>@logserv_filter</code> annotations</li>
+<li>If the user&rsquo;s include patterns don&rsquo;t cover the new log types, a system message banner appears across all Splunk Web pages</li>
+<li>The user updates their include patterns (or uses <code>*/*</code>) and the banner clears</li>
+</ol>
+</details>
+<p><br></p>
+<hr />
+<h2 id="testing-environments">Testing Environments<a class="headerlink" href="#testing-environments" title="Permanent link">&para;</a></h2>
+<h3 id="environment-1-single-instance-standalone"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Environment 1: Single Instance (Standalone)<a class="headerlink" href="#environment-1-single-instance-standalone" title="Permanent link">&para;</a></h3>
+<p><strong>Setup:</strong> One Splunk Enterprise instance acting as Search Head, Indexer, and data receiver.</p>
+<details class="tip">
+<summary>What to test</summary>
+<ul>
+<li>Filter save generates correct <code>local/transforms.conf</code> and <code>local/props.conf</code></li>
+<li>Conf reload works without restart</li>
+<li>Include, exclude, and time filters work correctly in search results</li>
+<li>Disabling filtering clears the generated conf files</li>
+<li>Pattern validation blocks invalid input</li>
+<li>No deployment server UI elements appear (no banner, no deploy button)</li>
+</ul>
+</details>
+<p><br></p>
+<h3 id="environment-2-deployment-server-heavy-forwarders"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Environment 2: Deployment Server + Heavy Forwarders<a class="headerlink" href="#environment-2-deployment-server-heavy-forwarders" title="Permanent link">&para;</a></h3>
+<p><strong>Setup:</strong> Three instances minimum: DS (can be combined with SH/Indexer), HF-01 (deployment client), HF-02 (deployment client).</p>
+<details class="tip">
+<summary>What to test</summary>
+<ul>
+<li>DS detection works (banner and deploy button appear)</li>
+<li>Filter save triggers full app copy to <code>deployment-apps/</code></li>
+<li>Filter configs are mirrored to <code>deployment-apps/local/</code></li>
+<li>Server class <code>SAP_LogServ_HeavyForwarders</code> is auto-created with app mapping</li>
+<li>Client targeting (IP-based) matches HFs correctly</li>
+<li>Deploy button triggers reload and HFs receive the TA</li>
+<li>Filter update round-trip: change on DS → deploy → verify on HFs</li>
+<li>Time refresh script skips on HFs (deployment client guard)</li>
+<li>Time refresh script runs correctly on DS and mirrors updated configs</li>
+</ul>
+</details>
+<p><br></p>
+<h3 id="environment-3-splunk-cloud-on-premises-heavy-forwarders"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Environment 3: Splunk Cloud + On-Premises Heavy Forwarders<a class="headerlink" href="#environment-3-splunk-cloud-on-premises-heavy-forwarders" title="Permanent link">&para;</a></h3>
+<p><strong>Setup:</strong> Splunk Cloud instance (Search Head / Indexer), separate on-premises DS, on-premises HFs configured as deployment clients.</p>
+<details class="tip">
+<summary>What to test</summary>
+<ul>
+<li>Same as Environment 2, but additionally verify:</li>
+<li>The <strong>LogServ App</strong> is installed on the Splunk Cloud search head for dashboards and search-time knowledge objects. The <strong>Data TA</strong> is installed on the on-prem DS and HFs; the Splunk Cloud admin separately installs it on the indexer tier so the bundled <code>indexes.conf</code> provisions storage. Filtering is NOT configured on the Cloud side</li>
+<li>Filter configuration and TA distribution to HFs are managed entirely from the on-premises DS</li>
+<li>Filtering works at the HF level before data reaches Splunk Cloud</li>
+<li>No INGEST_EVAL dependency (TRANSFORMS-only filtering)</li>
+</ul>
+</details>
+<p><br></p>
+<h3 id="environment-4-fresh-ds-with-no-prior-server-classes"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Environment 4: Fresh DS with No Prior Server Classes<a class="headerlink" href="#environment-4-fresh-ds-with-no-prior-server-classes" title="Permanent link">&para;</a></h3>
+<p><strong>Setup:</strong> DS with deployment clients connected but no <code>serverclass.conf</code> exists.</p>
+<details class="tip">
+<summary>What to test</summary>
+<ul>
+<li>DS detection works via the fallback (connected clients check)</li>
+<li><code>ensure_serverclass()</code> creates <code>serverclass.conf</code> from scratch</li>
+<li>The <code>deployment_server</code> role activates after server class creation</li>
+<li>Full deployment workflow completes successfully</li>
+</ul>
+</details>
+<p><br></p>
+<hr />
+<h2 id="known-gotchas-and-technical-notes">Known Gotchas and Technical Notes<a class="headerlink" href="#known-gotchas-and-technical-notes" title="Permanent link">&para;</a></h2>
+<h3 id="local-imports-in-utility-functions"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Local Imports in Utility Functions<a class="headerlink" href="#local-imports-in-utility-functions" title="Permanent link">&para;</a></h3>
+<p>Functions in <code>splunk_ta_sap_logserv_filter_utils.py</code> use <strong>local imports</strong> (inside the function body) for Splunk-specific modules like <code>splunk.rest</code> and <code>json</code>. This is intentional — these modules are unavailable during the UCC build step, so importing them at the module level would break the build.</p>
+<p>The critical detail is that <strong>local imports are scoped to the function they are declared in</strong>. They do NOT carry into sibling functions. Each function that needs <code>splunk.rest</code> or <code>json</code> must import them independently. For example, both <code>get_server_roles()</code> and <code>is_deployment_server()</code> need their own local <code>import splunk.rest as rest</code> and <code>import json</code> statements — the imports inside <code>get_server_roles()</code> are not visible to <code>is_deployment_server()</code> even though one calls the other.</p>
+<p>Forgetting a local import inside a function that has a bare <code>except Exception: pass</code> block is particularly dangerous because the resulting <code>NameError</code> is silently swallowed, causing the function to return a default value without any log output.</p>
+<p><br></p>
+<h3 id="persistent-handler-syspath"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Persistent Handler sys.path<a class="headerlink" href="#persistent-handler-syspath" title="Permanent link">&para;</a></h3>
+<p>Persistent REST handlers (<code>splunk_ta_sap_logserv_rh_deployment_push.py</code>) do NOT get <code>import_declare_test</code> from UCC. They require explicit <code>sys.path</code> setup at the top of the file to import from the app&rsquo;s <code>bin/</code> and <code>lib/</code> directories. Without this, the handler returns 500 errors from splunkd.</p>
+<p><br></p>
+<h3 id="webconf-expose-stanza"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> web.conf Expose Stanza<a class="headerlink" href="#webconf-expose-stanza" title="Permanent link">&para;</a></h3>
+<p>Custom persistent endpoints are not accessible through the Splunk Web proxy (port 8000) by default. They require an <code>[expose:]</code> stanza in <code>web.conf</code>. This is injected by <code>additional_packaging.py</code> during the UCC build:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[expose:splunk_ta_sap_logserv_deployment_push]</span>
+<span class="na">pattern</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">splunk_ta_sap_logserv/deployment_push</span>
+<span class="na">methods</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">POST, GET</span>
+</code></pre></div>
+<p><br></p>
+<h3 id="server-class-rest-api-limitations"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Server Class REST API Limitations<a class="headerlink" href="#server-class-rest-api-limitations" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The <code>disabled</code> parameter is NOT accepted during server class creation. Create first, then POST to the specific server class URL to disable</li>
+<li>App mappings (<code>:app:appname</code> stanzas) CANNOT be created via REST API. The URL format returns 404. Use file-based append instead</li>
+<li>Splunk may write <code>serverclass.conf</code> to different locations (<code>system/local/</code> or <code>apps/search/local/</code>). The code searches multiple locations</li>
+</ul>
+<p><br></p>
+<h3 id="deployment-client-config-overwrite"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deployment Client Config Overwrite<a class="headerlink" href="#deployment-client-config-overwrite" title="Permanent link">&para;</a></h3>
+<p>Without the deployment client guard in <code>logserv_filter_time_refresh.py</code>, HFs would regenerate filter configs from their own (empty) local settings on the daily time refresh run. This overwrites the complete filter chain pushed by the DS with only a time filter. The guard checks for the <code>deployment_client</code> role and skips execution if found.</p>
+<p><br></p>
+<h3 id="transforms-00-filter-ordering"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> TRANSFORMS-00-filter Ordering<a class="headerlink" href="#transforms-00-filter-ordering" title="Permanent link">&para;</a></h3>
+<p>The filter TRANSFORMS line MUST use prefix <code>00</code> to ensure it runs before sourcetype routing (<code>01</code>–<code>99</code>). If filters ran after routing, events would already have their sourcetype set but would then be dropped, wasting processing.</p>
+<p><br></p>
+<h3 id="marker-comments"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Marker Comments<a class="headerlink" href="#marker-comments" title="Permanent link">&para;</a></h3>
+<p>Generated filter content in <code>local/transforms.conf</code> and <code>local/props.conf</code> is wrapped in marker comments:</p>
+<div class="highlight"><pre><span></span><code>### BEGIN LOGSERV FILTER CONFIG - DO NOT EDIT MANUALLY ###
+...
+### END LOGSERV FILTER CONFIG ###
+</code></pre></div>
+<p>The <code>write_local_conf()</code> function replaces content between these markers (or appends them if not present). Manual customizations outside the markers are preserved. The Cloud Provider tab writes its own independent block between <code>### BEGIN LOGSERV CLOUD_PROVIDER CONFIG ###</code> / <code>### END LOGSERV CLOUD_PROVIDER CONFIG ###</code> markers (via <code>write_local_conf_section()</code>), so the daily filter time-refresh regenerating the filter block leaves the cloud-provider block untouched.</p>
+<p><br></p>
+<h3 id="ds-role-disappears-without-server-classes"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> DS Role Disappears Without Server Classes<a class="headerlink" href="#ds-role-disappears-without-server-classes" title="Permanent link">&para;</a></h3>
+<p>Splunk removes the <code>deployment_server</code> role from <code>server_roles</code> when no server class is defined in any <code>serverclass.conf</code>. The <code>is_deployment_server()</code> fallback handles this by checking for connected deployment clients via the <code>/services/deployment/server/clients</code> endpoint. This endpoint returns 0 clients on HFs (no false positives) and returns connected clients on a real DS even without any server classes.</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> The <code>/services/deployment/server/config</code> endpoint CANNOT be used as a fallback because it returns HTTP 200 on ALL Splunk Enterprise instances, including HFs.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>

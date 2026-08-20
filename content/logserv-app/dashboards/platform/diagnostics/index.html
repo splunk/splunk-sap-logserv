@@ -1,0 +1,3030 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboards/platform/diagnostics/">
+      
+      
+        <link rel="prev" href="../../performance/">
+      
+      
+        <link rel="next" href="../../">
+      
+      
+      <link rel="icon" href="../../../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Data Doctor (Diagnostics) - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#data-doctor-diagnostics" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Data Doctor (Diagnostics)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#empty-panel-hints-automatic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Empty-panel hints (automatic)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-panel-diagnosis-drawer" class="md-nav__link">
+    <span class="md-ellipsis">
+      The panel diagnosis drawer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The panel diagnosis drawer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deep-evidence-drawer-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deep evidence (drawer-only)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnosing-a-panel-that-has-data-partial-data-diagnosis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Diagnosing a panel that HAS data (partial-data diagnosis)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-reports-pdf-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Doctor reports (PDF + JSON)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-diagnostics-page-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Diagnostics page (#/diagnostics)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-health-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      Platform health (snapshot)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#raw-event-samples-opt-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raw event samples (opt-in)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supplying-the-ingest-filter-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supplying the ingest-filter configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saved-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Saved reports
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-look-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      What to Look For
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Full-LLM Variant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Full-LLM Variant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../developer/developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#empty-panel-hints-automatic" class="md-nav__link">
+    <span class="md-ellipsis">
+      Empty-panel hints (automatic)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-panel-diagnosis-drawer" class="md-nav__link">
+    <span class="md-ellipsis">
+      The panel diagnosis drawer
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The panel diagnosis drawer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#deep-evidence-drawer-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deep evidence (drawer-only)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#diagnosing-a-panel-that-has-data-partial-data-diagnosis" class="md-nav__link">
+    <span class="md-ellipsis">
+      Diagnosing a panel that HAS data (partial-data diagnosis)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-reports-pdf-json" class="md-nav__link">
+    <span class="md-ellipsis">
+      Data Doctor reports (PDF + JSON)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-diagnostics-page-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      The Diagnostics page (#/diagnostics)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-health-snapshot" class="md-nav__link">
+    <span class="md-ellipsis">
+      Platform health (snapshot)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#raw-event-samples-opt-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      Raw event samples (opt-in)
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supplying-the-ingest-filter-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supplying the ingest-filter configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saved-reports" class="md-nav__link">
+    <span class="md-ellipsis">
+      Saved reports
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-look-for" class="md-nav__link">
+    <span class="md-ellipsis">
+      What to Look For
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="data-doctor-diagnostics">Data Doctor (Diagnostics)<a class="headerlink" href="#data-doctor-diagnostics" title="Permanent link">&para;</a></h1>
+<p>The <strong>LogServ Data Doctor</strong> is the app&rsquo;s built-in missing-data diagnostic. When a panel is empty
+and you don&rsquo;t know why, it answers the question a support ticket would otherwise ask — <em>&ldquo;is
+something broken, or is there genuinely no data?&rdquo;</em> — in plain language, with the evidence, and
+without needing a Splunk administrator to run it. Every check it performs is readable by a
+normal, non-admin user.</p>
+<p>It has four surfaces, from smallest to widest scope:</p>
+<div class="highlight"><pre><span></span><code> empty panel hint  -&gt;  panel diagnosis drawer  -&gt;  dashboard sweep  -&gt;  Diagnostics page
+ (automatic, free)     ("Run full diagnosis")     (Actions menu)       (#/diagnostics)
+</code></pre></div>
+<h2 id="empty-panel-hints-automatic"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Empty-panel hints (automatic)<a class="headerlink" href="#empty-panel-hints-automatic" title="Permanent link">&para;</a></h2>
+<p>Every chart, table and KPI card that comes back empty explains itself. Without running any
+extra search, the app checks the facts it already has — did the search actually run, did it
+error, is a global filter narrowing it (the Cloud picker, a host selection), is the selected
+range shorter than the panel&rsquo;s data granularity, does the query contain a clause that can never
+match — and corrects the panel&rsquo;s own empty message when one of those is the reason. On KPI
+cards, which sit in a height-equalised row, the hint renders in a compact 2–5-word form with
+the full sentence in the tooltip.</p>
+<p>These free checks are deliberately forbidden from claiming a system fault: without dispatched
+evidence, the most they assert is what the panel itself proves. When they can&rsquo;t explain the
+emptiness, a chart or table panel offers <strong>&ldquo;Why is this empty?&rdquo;</strong> instead. (A KPI card has no
+room for that link — its entry point is the small corner diagnose affordance, revealed on
+hover or keyboard focus.)</p>
+<h2 id="the-panel-diagnosis-drawer"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The panel diagnosis drawer<a class="headerlink" href="#the-panel-diagnosis-drawer" title="Permanent link">&para;</a></h2>
+<p>Clicking <strong>Why is this empty? / Run full diagnosis</strong> opens a side drawer that dispatches a
+short, budgeted series of probes (90-second wall-clock budget, at most two concurrent, every
+probe carries server-side <code>max_time</code>/<code>auto_cancel</code> bounds) and walks a gated cascade of
+verdicts — the panel&rsquo;s own error first, then index visibility and presence, the ingest-cutoff
+boundary, sourcetype presence/staleness, and finally the summarised-data (rollup) layer. The result is one plain-language headline
+(&ldquo;Most likely: …&rdquo;) with a confidence level, <strong>who can act on it</strong> (you / a Splunk administrator /
+whoever sends the logs), and a <em>&ldquo;What was checked&rdquo;</em> ledger showing every probe&rsquo;s outcome —
+including the ones that were skipped, and why.</p>
+<p>Three properties matter more than the checks themselves:</p>
+<ul>
+<li><strong>It can say &ldquo;nothing is broken.&rdquo;</strong> If the data genuinely does not exist for the selected
+  range, that is the verdict — stated as working-as-intended, not as a fault.</li>
+<li><strong>It never concludes from unknown.</strong> A probe that failed or ran out of budget renders NOT
+  CHECKED, never OK and never a fault.</li>
+<li><strong>Panels that read summarised data are traced back to their source events.</strong> A rollup-backed
+  panel names no sourcetype, so the diagnostic reads the aggregation search that populates its
+  collection, extracts what that search consumes, and probes those sourcetypes — distinguishing
+  &ldquo;the events exist but were never summarised (run the backfill)&rdquo; from &ldquo;there genuinely are no
+  such events&rdquo;.</li>
+</ul>
+<p>The drawer&rsquo;s footer offers <strong>Copy technical summary</strong> and <strong>Download PDF</strong>.</p>
+<p>For a rollup-backed panel, the drawer&rsquo;s <em>Show technical detail</em> section (and the technical
+summary, and both the panel and dashboard PDFs) also prints the <strong>full SPL of the saved
+search(es) currently configured to populate the panel&rsquo;s summary collection</strong> — each labelled
+with its parsed <code>outputlookup</code> target, its cron schedule verbatim, and its last-modified
+timestamp. The section states explicitly that this SPL is <em>configuration read at diagnosis
+time</em> (including any <code>local/</code> override), was <strong>not</strong> run by the diagnosis, and that rows
+already stored in the summary may predate it. Each aggregate is accompanied by a note naming
+its install-backfill stanza, which as shipped carries the identical search text (a build-time
+check derives that identity from the shipped configuration on every release). The dashboard
+PDF carries one de-duplicated section covering every rollup the dashboard&rsquo;s panels read —
+healthy panels included.</p>
+<p>In the drawer, each printed definition carries two corner actions: <strong>copy to clipboard</strong>
+(copies the definition verbatim) and <strong>open in the Search app</strong> in a new browser tab, scoped
+to the diagnosed time window. The opened search has the terminal <code>| outputlookup</code> write
+removed first, so running it cannot modify the summary collection — the drawer never offers
+a control that can change data.</p>
+<h3 id="deep-evidence-drawer-only"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deep evidence (drawer-only)<a class="headerlink" href="#deep-evidence-drawer-only" title="Permanent link">&para;</a></h3>
+<p>Several further checks run <strong>only</strong> in the drawer — they are the only probes permitted to scan raw
+events, so a dashboard-wide sweep never fires them:</p>
+<ul>
+<li><strong>Summarised-vs-raw reconciliation.</strong> An empty summarised panel is re-run as its exact
+  raw-query equivalent over the already-summarised period. Raw rows the summary lacks produce
+  the confirmed <em>&ldquo;the summary appears to be missing data it should have&rdquo;</em> (a Splunk
+  administrator re-runs the backfill from Settings → Dashboard Data); agreement produces the
+  health-certifying <em>&ldquo;the raw equivalent returns nothing for this range either — there is
+  genuinely nothing to show.&rdquo;</em> Panels whose raw equivalent is a scalar count carry no
+  row-count signal and are skipped with an honest ledger note.</li>
+<li><strong>Field presence probe.</strong> A raw panel filtering on a field is checked against a sample of its
+  sourcetype&rsquo;s own events (up to 2,000, without the panel&rsquo;s host/provider/breakdown filters):
+  a field present on zero sampled events reads as a search-time-extraction gap — graded <em>likely</em>
+  when the whole available sample was examined, <em>possible</em> when the 2,000-event sample cap was
+  reached; a
+  populated field whose expected value never appears reads as possible vocabulary or casing
+  drift. The ledger row is <em>&ldquo;Field presence probe (sampled)&rdquo;</em>.</li>
+<li><strong>Clause relaxation.</strong> For an empty raw panel, a control probe first confirms the emptiness
+  comes from the base search; each filter clause is then removed in turn, and the verdict names
+  <strong>which clause excludes every event</strong> and how many events removing it would match. The ledger
+  row is <em>&ldquo;Clause relaxation&rdquo;</em>.</li>
+<li><strong>Lookup registration.</strong> A panel that uses a non-summarised lookup verifies the lookup is
+  registered on this search head (a CSV placed under <code>default/lookups/</code> does not register —
+  Splunk auto-registers only the app-root <code>lookups/</code> directory).</li>
+</ul>
+<p>Two smaller additions ride along: a summarised verdict under a Cloud Provider filter states
+whether <strong>any</strong> summarised rows carry that provider in the range, and the environment
+<strong>report</strong>&rsquo;s rollup table gains a &ldquo;Recent buckets&rdquo; continuity column (context only — the live
+Diagnostics page deliberately omits it, since it re-gathers on every picker change).</p>
+<h2 id="diagnosing-a-panel-that-has-data-partial-data-diagnosis"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Diagnosing a panel that HAS data (partial-data diagnosis)<a class="headerlink" href="#diagnosing-a-panel-that-has-data-partial-data-diagnosis" title="Permanent link">&para;</a></h2>
+<p>Missing data is not always an empty panel: a table can have rows with one column blank, and a
+KPI can display a zero you believe should not be zero. The Data Doctor covers both, with two
+entry points that work on <strong>populated</strong> panels:</p>
+<ul>
+<li><strong>The Diagnose toolbar icon.</strong> Every chart and table panel&rsquo;s toolbar gained a fifth icon,
+  <strong>Diagnose this panel</strong> — it sits first, ahead of Open-in-Search / Download CSV / Inspect /
+  Refresh. On a populated
+  panel it opens the drawer under the header <strong>&ldquo;Panel diagnosis&rdquo;</strong> (rather than <em>&ldquo;Why is this
+  empty?&rdquo;</em>) and runs the partial-data checks below.</li>
+<li><strong>The KPI corner affordance.</strong> Each KPI card carries a small diagnose control in its corner,
+  revealed on hover or keyboard focus. On a card showing a zero (including formatted zeros like
+  &ldquo;0 ms&rdquo; or &ldquo;0%&rdquo;) it routes the diagnosis into the zero-value resolution.</li>
+</ul>
+<p>What a partial-data diagnosis does:</p>
+<ul>
+<li><strong>Column coverage.</strong> The table itself reports which displayed columns are blank — as counts
+  only, never values (nothing from your rows leaves the panel). Each fully-blank column is
+  traced to the raw-event field it displays (through any renames in the query) and corroborated
+  against a sample of the source events, yielding one of three findings: the field is <strong>not
+  populated on the source events at all</strong> (a search-time-extraction gap), the source events
+  carry it but <strong>the summarised rows do not</strong> (a summarisation gap — the backfill settles it),
+  or the aggregation <strong>provably does not store that column</strong> — in which case the diagnosis says
+  plainly that <em>a backfill cannot add it</em>. Columns computed inside the query, or drawn by a
+  custom renderer, are honestly set aside rather than probed.</li>
+<li><strong>Zero-value resolution.</strong> A zero KPI is reconciled against the summarised layer and — when
+  the panel&rsquo;s raw-equivalent query emits a single comparable value — against a live raw
+  computation. Summarised rows that genuinely sum to zero, or a raw equivalent that also
+  computes zero, certify <em>&ldquo;the value genuinely is zero&rdquo;</em> (never a backfill prescription); a raw
+  equivalent that disagrees is reported as a <strong>possible</strong> summarisation gap, never a confirmed
+  fault (the two computations are independent implementations).</li>
+<li><strong>The honest floor.</strong> When every displayed column is populated and accounted for, the
+  diagnosis says so: <em>&ldquo;This panel has data, and the columns it displays are populated — no
+  defect found.&rdquo;</em> The floor is unreachable while any column could not be checked — those are
+  named instead.</li>
+</ul>
+<p>A populated panel&rsquo;s rows are living proof the index, sourcetype and summary read path work, so
+the emptiness battery is skipped (each check listed in the ledger as <em>&ldquo;Not applicable — this
+panel returned data&rdquo;</em>), and a panel that has not finished loading is refused with a plain
+explanation rather than diagnosed on unknown facts.</p>
+<h2 id="data-doctor-reports-pdf-json"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Data Doctor reports (PDF + JSON)<a class="headerlink" href="#data-doctor-reports-pdf-json" title="Permanent link">&para;</a></h2>
+<p>Reports exist at all three scopes, each downloading a branded <strong>LogServ Data Doctor Report</strong>
+PDF plus a machine-readable <code>.json</code> twin (schema <code>logserv.diag/1</code> — greppable, and diffable
+against a report from a week earlier):</p>
+<table>
+<thead>
+<tr>
+<th>Scope</th>
+<th>Where</th>
+<th>What it contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Panel</td>
+<td>the diagnosis drawer → <strong>Download PDF</strong></td>
+<td>the verdicts, the exact dispatched SPL + window, the evidence ledger</td>
+</tr>
+<tr>
+<td>Dashboard</td>
+<td>Actions menu → <strong>Diagnose dashboard (PDF)</strong></td>
+<td>every panel on the open dashboard classified, with the full cascade run on the empty ones</td>
+</tr>
+<tr>
+<td>Environment</td>
+<td>Actions menu → <strong>Environment report (PDF)</strong>, or the Diagnostics page</td>
+<td>index, sourcetype and rollup health for the whole install</td>
+</tr>
+</tbody>
+</table>
+<p>Every report carries a data-exposure banner: it contains search strings, index/host names,
+sourcetypes and SAP system identifiers, scheduled-search names and scheduler messages from
+apps on this instance, the full text of the saved searches that populate this app&rsquo;s summary
+collections, and any ingest-filter configuration supplied to the diagnostic by your
+administrator — but <strong>no raw log events</strong> — and it is generated entirely in your browser;
+nothing is sent outside your Splunk instance. Note that every report you download (except one
+carrying raw samples) is also saved to the app&rsquo;s KV Store, where all app users can read it —
+see Saved reports below. It is designed to be attached to a Splunk support ticket.</p>
+<h2 id="the-diagnostics-page-diagnostics"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The Diagnostics page (<code>#/diagnostics</code>)<a class="headerlink" href="#the-diagnostics-page-diagnostics" title="Permanent link">&para;</a></h2>
+<p><img alt="Data Doctor (Diagnostics)" src="../../../../../images/dashboard-diagnostics.png" /></p>
+<p><strong>Platform → Diagnostics</strong> is the environment-wide surface, visible to every user (it is
+deliberately <em>not</em> admin-gated). On open — and on every time-range change, or the nav-bar
+Refresh button — it runs the environment checks (120-second budget) and renders them live:</p>
+<ul>
+<li><strong>Summary</strong> — events in the selected window, sourcetypes present, the index the app macro
+  resolves to, a search-head canary round-trip, Splunk version + search-head clock, and
+  whether the companion apps (<code>Splunk_SA_CIM</code>, <code>Splunk_TA_windows</code>, <code>Splunk_TA_nix</code>, <code>splunk_ta_sap_logserv</code> — whose absence is expected on a dedicated search head, as the row itself notes —
+  <code>Splunk_MCP_Server</code>) are installed.</li>
+<li><strong>Summarised data (rollup collections)</strong> — one row per rollup collection, grouped by the
+  dashboard it powers, with TWO independent verdicts: <strong>Freshness</strong> (how recently the hourly or
+  daily aggregation last wrote — a healthy hourly collection lags 1–2.5 h and is flagged STALE only above 3 h; daily collections are flagged above 50 h) and
+  <strong>History</strong> (whether ~30 days of backfilled history exists — the same completeness convention
+  Settings → Dashboard Data uses, computed from the same threshold). When rollups lack history
+  the page says so and names the fix — <em>a Splunk administrator can run the backfill in
+  Settings → Dashboard Data</em> — as text, not a button: the page intentionally carries <strong>no
+  destructive or admin controls</strong>.</li>
+<li><strong>Sourcetypes</strong> — per-sourcetype events in the window plus all-time last-seen.</li>
+<li><strong>What was checked</strong> — the same honest ledger as the drawer, including anything skipped.</li>
+<li><strong>What cannot be checked from here</strong> — the explicit list of things a browser session on the
+  search head can never see for itself (the Data TA&rsquo;s ingest filters on the Heavy Forwarders —
+  unless an operator supplies them, see below — the upstream
+  LogServ feed, <code>index=_internal</code> for a restricted role), each with who to ask.</li>
+<li><strong>Saved Data Doctor reports</strong> — see below.</li>
+</ul>
+<p>The page&rsquo;s evidence is always labeled with the window it was <strong>gathered</strong> under (&ldquo;Evidence as
+of …&rdquo;), the checks can be cancelled mid-run (partial results stay visible and say they are
+partial), and <strong>Download report (PDF)</strong> produces the environment report from exactly the
+evidence on screen.</p>
+<div class="admonition tip">
+<p class="admonition-title">Why the page has no auto-refresh picker</p>
+<p>The per-dashboard auto-refresh interval picker is suppressed here: the page dispatches
+roughly one probe per rollup collection plus a set of environment checks — dozens per run — which should happen when <em>you</em> ask (open, time-range change, Re-run,
+or the nav-bar Refresh), not on a 30-second timer.</p>
+</div>
+<h2 id="platform-health-snapshot"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Platform health (snapshot)<a class="headerlink" href="#platform-health-snapshot" title="Permanent link">&para;</a></h2>
+<p>An hourly scheduled search (<code>logserv_diag_platform_aggregate</code>, two minutes past each hour) copies platform signals from <code>index=_internal</code> — scheduler outcomes and skip/deferral reasons, search-concurrency warnings, per-index throughput, pipeline-queue depth and PCRE-limit events — into a world-readable collection, so this page (and the environment report) can show platform health to <strong>any</strong> role, not just admins.</p>
+<ul>
+<li>When the snapshot is <strong>stale, empty or unreadable</strong>, the panel says <em>NOT AVAILABLE</em> with the verified reason (the producing search is disabled / has not run yet / has run but written nothing) — it never renders stale numbers as current facts.</li>
+<li>All snapshot figures are <strong>context, never a cause</strong>: the scheduler tables include this app&rsquo;s own hourly summarisation jobs, and the queue-depth gauge does not measure ingest-filter drops (the operator-supplied ingest-filter configuration below is the drop evidence).</li>
+<li>A stale dashboard summary&rsquo;s diagnosis can cite matching scheduler skips from the snapshot as an evidence line — always badged as <em>recorded by the hourly platform snapshot, a collection any authenticated Splunk user can write</em>, and never able to raise a verdict&rsquo;s confidence.</li>
+</ul>
+<p>The snapshot keeps 30 days (daily retention at 01:58). It needs no backfill — it warms within the hour of install.</p>
+<h2 id="raw-event-samples-opt-in"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Raw event samples (opt-in)<a class="headerlink" href="#raw-event-samples-opt-in" title="Permanent link">&para;</a></h2>
+<p>The panel diagnosis drawer&rsquo;s <strong>Download PDF</strong> offers an <em>Include raw event samples</em> checkbox (default off, reset every time the drawer opens). When ticked, the report appends up to <strong>5 recent events</strong> of the sourcetype(s) the panel reads — credential-scrubbed, email- and username-redacted, each included <strong>in full</strong> (a 20,000-character safety ceiling applies, disclosed on the event if ever reached — twice Splunk&rsquo;s default per-event truncation, so real events are never cut), and clearly labelled as <strong>not</strong> filtered by the panel&rsquo;s own host/provider selections (they show what the raw data looks like, not what the panel would have matched). The PDF renders events in a Latin-1 font, so characters outside that range may not display correctly there — the <code>.json</code> twin that downloads alongside every report carries the exact text. The report&rsquo;s cover banner states the samples&rsquo; presence, and a sample-bearing report is <strong>download-only</strong>: it is never saved to the Saved-reports list, because storing raw events in a world-readable collection would bypass index access controls.</p>
+<h2 id="supplying-the-ingest-filter-configuration"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Supplying the ingest-filter configuration<a class="headerlink" href="#supplying-the-ingest-filter-configuration" title="Permanent link">&para;</a></h2>
+<p>The one thing the Data Doctor cannot see for itself is the Data TA&rsquo;s ingest-tier filtering —
+the include/exclude rules and the days-in-past cutoff run on the Heavy Forwarder / indexer
+tier and silently discard events <strong>before they are indexed</strong>. Historically this is the single
+most common cause of &ldquo;I see zero events&rdquo;.</p>
+<p>The Diagnostics page closes that gap with the <strong>Ingest-tier filters (operator-supplied)</strong>
+panel: it prints the exact command to run, an operator pastes the output, and the diagnosis
+gains two more checks that can turn that class of emptiness into a named, plain-language
+verdict:</p>
+<ul>
+<li><em>&ldquo;Events this old are discarded at ingest by design — your selected range ends before the
+  configured cutoff&rdquo;</em> (the days-in-past reconciliation), and</li>
+<li><em>&ldquo;<code>&lt;log type&gt;</code> events are excluded by the configured filter rule <code>&lt;rule&gt;</code> — they are dropped
+  before they reach the index&rdquo;</em> — or, when an include list is the cause, <em>&ldquo;not covered by the
+  configured include list <code>&lt;list&gt;</code>&ldquo;</em> (the include/exclude reconciliation), with the reminder
+  that an intentional exclusion means nothing is broken.</li>
+</ul>
+<p>Four paste formats are accepted: the REST response as JSON or XML, the generated
+<code>local/transforms.conf</code>, and the settings conf. Practical notes:</p>
+<ul>
+<li><strong>Where to run the command matters.</strong> On a distributed install the deployment server&rsquo;s
+  REST endpoint is authoritative; on a single instance, this host&rsquo;s. On a <strong>Heavy
+  Forwarder</strong> the REST endpoint reports shipped defaults regardless of the pushed
+  configuration — paste the HF&rsquo;s <code>local/transforms.conf</code> file instead. If a paste exactly
+  matches the shipped defaults, the diagnosis says so and keeps asking rather than treating
+  filtering as ruled out.</li>
+<li><strong>The paste is credential-scrubbed before it is stored</strong> (curl <code>-u</code> credentials,
+  Authorization headers, passwords, tokens, session cookies), and for a fully parsed paste
+  the raw text is not retained at all — only the parsed settings.</li>
+<li><strong>Everything derived from a paste is labelled</strong> — <em>&ldquo;Recorded as supplied by \&lt;user&gt;,
+  \&lt;date&gt;&ldquo;</em> — in the drawer&rsquo;s evidence, on this page, and in every report; it is never
+  presented as something the app observed. After seven days the page asks for a re-supply,
+  and verdicts built on older facts are hedged accordingly. If newer events contradict a
+  supplied configuration (for example, events of a supposedly excluded type keep arriving),
+  the diagnosis says the configuration appears out of date instead of trusting it.</li>
+<li>Saving re-runs the checks, so the page, the boundary text and any report you download move
+  together. Re-pasting overwrites the previous supply; there is no delete.</li>
+</ul>
+<p>Several refinements sharpen how the supplied configuration is used as evidence:</p>
+<ul>
+<li><strong>Replayed or backdated arrivals no longer evade the out-of-date check.</strong> The diagnosis
+  compares the supply time against both the newest <em>event timestamp</em> and the newest <em>index
+  time</em> (from bucket metadata) of a supposedly excluded type. Events <em>recorded as indexed</em>
+  after the supply — even when their event timestamps are old — soften the exclusion verdict
+  and add a note asking for a re-supply, with a five-minute grace so ordinary clock skew
+  cannot manufacture a contradiction.</li>
+<li><strong>The days-in-past verdict corroborates against the index&rsquo;s own oldest event</strong> where that
+  was probed: either <em>&ldquo;events older than the cutoff do exist&rdquo;</em> (indexed while they were still
+  within the then-current cutoff) or an explicitly non-committal <em>&ldquo;an always-active ingest
+  filter, a young index, and ordinary retention all look identical here&rdquo;</em>. Context only —
+  it never changes the verdict&rsquo;s confidence.</li>
+<li><strong>A window that ends before the cutoff gets a context line even when the index is not
+  empty</strong> — when one log type has nothing in such a window, the <em>&ldquo;events of this age arriving
+  now would be dropped at ingest; the cutoff slides forward daily&rdquo;</em> aside is attached to the
+  verdict, so the sliding cutoff is considered without over-claiming it as the cause.</li>
+<li><strong>The Data TA&rsquo;s Cloud Provider stamp rides the paste.</strong> A <code>local/transforms.conf</code> paste (or
+  a settings-conf paste, which can also carry the explicit <em>Not set</em>) now records the
+  configured <code>cloud_provider</code> stamp; on provider-filtered panels the diagnosis explains how
+  the stamp interacts with the panel&rsquo;s filter — including that an <code>aws</code> filter also matches
+  events with no provider at all, so a stamp mismatch never by itself explains an empty AWS
+  panel. Absence of the stamp block in a paste is never read as &ldquo;Not set&rdquo; (the paste may be
+  truncated).</li>
+<li><strong>The drawer points back here.</strong> When a panel diagnosis lands on an ingest-ambiguous
+  verdict and no usable configuration has been supplied, the &ldquo;Why is this empty?&rdquo; drawer (and
+  its <em>Copy technical summary</em> text) adds: <em>&ldquo;If a Splunk administrator supplies the Data TA&rsquo;s
+  ingest-filter configuration on the Diagnostics page, this diagnosis can take those filters
+  into account.&rdquo;</em> The pointer is suppressed when the stored supply merely could not be read.</li>
+</ul>
+<p>Like every <code>logserv_*</code> collection, the stored configuration is world-writable by
+authenticated users and is validated on read; treat it as a shared, unauthenticated-integrity
+artifact. The supplied values steer <em>wording and attribution</em>, but the strong verdicts still
+require the diagnostic&rsquo;s own first-hand observations (an actually-empty window, an
+actually-absent sourcetype) to fire.</p>
+<h2 id="saved-reports"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Saved reports<a class="headerlink" href="#saved-reports" title="Permanent link">&para;</a></h2>
+<p>Every downloaded Data Doctor report — panel, dashboard or environment, from any surface — is
+also saved automatically into the app&rsquo;s KV Store (<code>logserv_diag_reports</code>), and the Diagnostics
+page lists them: when it was generated, its scope, a one-line verdict summary, who generated
+it, and the app build it came from. Any listed report can be re-downloaded as the identical
+PDF or its JSON twin — useful for comparing a report from before and after a fix, or for
+retrieving a report a colleague generated.</p>
+<p>Housekeeping and integrity:</p>
+<ul>
+<li>Reports are kept for <strong>365 days</strong>, capped at the <strong>newest 100</strong> (a nightly retention search
+  at 01:56 search-head local time enforces both).</li>
+<li>Very large reports (over ~200 KB of model data) are listed but not stored for re-download —
+  the row says so; the copy downloaded at generation time is the complete one.</li>
+<li>Saved reports are visible to <strong>all</strong> users of the app and, like every app KV collection,
+  writable by them. Treat them as shared, unauthenticated-integrity artifacts — the
+  authoritative copy of any report is the one downloaded when it was generated. Stored rows
+  are validated before re-rendering; anything malformed is skipped.</li>
+</ul>
+<h2 id="what-to-look-for"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> What to Look For<a class="headerlink" href="#what-to-look-for" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>&ldquo;NEVER BUILT&rdquo; in the History column on a fresh install</strong> — expected until the one-time
+  backfill is run (Settings → Dashboard Data → Run backfill). Dashboards show only the last
+  hour or two of data until then.</li>
+<li><strong>&ldquo;STALE&rdquo; Freshness on one collection while its neighbours are OK</strong> — that rollup&rsquo;s hourly
+  aggregation has stopped writing. An administrator should check its saved search (Settings →
+  Dashboard Data shows the per-rollup schedule and enable state).</li>
+<li><strong>A sourcetype with recent &ldquo;Last seen&rdquo; but zero events in your window</strong> — the feed is alive;
+  your window simply predates or postdates its activity. The panel-level diagnosis states this
+  explicitly (&ldquo;the most recent one is from <date>, after this range … Nothing is stopped&rdquo;).</li>
+<li><strong>A sourcetype whose &ldquo;Last seen&rdquo; is days old</strong> — the upstream feed for that log type may have
+  stopped. That is an ingest-side question (Heavy Forwarder inputs, the LogServ feed itself) —
+  the &ldquo;What cannot be checked from here&rdquo; section names the exact owner to ask — and once an
+  operator supplies the ingest-filter configuration, the days-in-past / include-exclude class
+  of emptiness gets a named verdict instead of a boundary note.</li>
+<li><strong>NOT CHECKED rows after a run</strong> — the budget ran out or the run was cancelled/superseded.
+  Re-run checks; the page never guesses about what it did not probe.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>

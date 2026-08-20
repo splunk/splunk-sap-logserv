@@ -1,0 +1,4251 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/install-setup/configure-filters/">
+      
+      
+        <link rel="prev" href="../install-ta/">
+      
+      
+        <link rel="next" href="../splunk-cloud-victoria-notes/">
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Configuring Filters - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configuring-filters" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuring Filters
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#which-approach-should-i-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      Which Approach Should I Use?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-ta-index-time-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Native TA Index-Time Filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Native TA Index-Time Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      What It Does
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-architectures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Architectures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Architectures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-instance-search-head" class="md-nav__link">
+    <span class="md-ellipsis">
+      Single Instance / Search Head
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-server-with-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Server with Heavy Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open-the-configuration-filters-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      Open the Configuration &gt; Filters Tab
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set-your-filter-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set Your Filter Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Set Your Filter Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enable-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enable Filtering
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#include-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Include Filters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exclude-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exclude Filters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#days-in-the-past" class="md-nav__link">
+    <span class="md-ellipsis">
+      Days in the Past
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#save" class="md-nav__link">
+    <span class="md-ellipsis">
+      Save
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-server-additional-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Server: Additional Steps
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happens-automatically-on-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Happens Automatically on Save
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-the-server-class-first-time-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the Server Class (First Time Only)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-to-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy to Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updating-filters-on-a-deployment-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updating Filters on a Deployment Server
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verifying-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verifying Filters
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verifying Filters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#check-included-data-is-arriving" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check Included Data Is Arriving
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-excluded-data-is-not-present" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check Excluded Data Is Not Present
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-time-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check Time Filtering
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-the-active-filter-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading the Active Filter Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-log-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Log Types
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported Log Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#log-type-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Log Type Reference
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrade-notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      Upgrade Notifications
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrade Notifications">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-upgrade-notifications-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      How Upgrade Notifications Work
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filters-not-taking-effect-single-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filters Not Taking Effect (Single Instance)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filters-not-reaching-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filters Not Reaching Heavy Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-server-not-detected" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Server Not Detected
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-error-on-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation Error on Save
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-filter-seems-off-by-a-day" class="md-nav__link">
+    <span class="md-ellipsis">
+      Time Filter Seems Off by a Day
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloud-provider-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cloud Provider Attribution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cloud Provider Attribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      What It Does
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-splunk_solution-field-always-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      The splunk_solution Field (always-on)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-cloud_provider-field-dropdown-driven" class="md-nav__link">
+    <span class="md-ellipsis">
+      The cloud_provider Field (dropdown-driven)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The cloud_provider Field (dropdown-driven)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#relationship-to-the-search-time-default-macro" class="md-nav__link">
+    <span class="md-ellipsis">
+      Relationship to the search-time default macro
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relationship-to-the-per-input-_meta" class="md-nav__link">
+    <span class="md-ellipsis">
+      Relationship to the per-input _meta
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-to-forwarders-deployment-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy to Forwarders (Deployment Server)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aws-lambda-based-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      AWS Lambda-Based Filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AWS Lambda-Based Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overview_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How It Works
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-deployment-s3-filter-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      New Deployment (S3 Filter Setup)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration-from-existing-s3-connect-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Migration from Existing S3 Connect Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lambda-filter-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lambda Filter Settings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#comparing-the-two-approaches-side-by-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      Comparing the Two Approaches Side by Side
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Full-LLM Variant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Full-LLM Variant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#which-approach-should-i-use" class="md-nav__link">
+    <span class="md-ellipsis">
+      Which Approach Should I Use?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-ta-index-time-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Native TA Index-Time Filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Native TA Index-Time Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      What It Does
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-architectures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Architectures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deployment Architectures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#single-instance-search-head" class="md-nav__link">
+    <span class="md-ellipsis">
+      Single Instance / Search Head
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-server-with-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Server with Heavy Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#open-the-configuration-filters-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      Open the Configuration &gt; Filters Tab
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#set-your-filter-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set Your Filter Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Set Your Filter Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enable-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Enable Filtering
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#include-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Include Filters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#exclude-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Exclude Filters
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#days-in-the-past" class="md-nav__link">
+    <span class="md-ellipsis">
+      Days in the Past
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#save" class="md-nav__link">
+    <span class="md-ellipsis">
+      Save
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-server-additional-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Server: Additional Steps
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happens-automatically-on-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Happens Automatically on Save
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configure-the-server-class-first-time-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure the Server Class (First Time Only)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-to-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy to Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updating-filters-on-a-deployment-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      Updating Filters on a Deployment Server
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verifying-filters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Verifying Filters
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verifying Filters">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#check-included-data-is-arriving" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check Included Data Is Arriving
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-excluded-data-is-not-present" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check Excluded Data Is Not Present
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-time-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      Check Time Filtering
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-the-active-filter-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Reading the Active Filter Configuration
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#supported-log-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Supported Log Types
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported Log Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#log-type-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      Log Type Reference
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrade-notifications" class="md-nav__link">
+    <span class="md-ellipsis">
+      Upgrade Notifications
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Upgrade Notifications">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-upgrade-notifications-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      How Upgrade Notifications Work
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#filters-not-taking-effect-single-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filters Not Taking Effect (Single Instance)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#filters-not-reaching-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      Filters Not Reaching Heavy Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deployment-server-not-detected" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deployment Server Not Detected
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-error-on-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      Validation Error on Save
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-filter-seems-off-by-a-day" class="md-nav__link">
+    <span class="md-ellipsis">
+      Time Filter Seems Off by a Day
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cloud-provider-attribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      Cloud Provider Attribution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Cloud Provider Attribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-it-does_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      What It Does
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-splunk_solution-field-always-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      The splunk_solution Field (always-on)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-cloud_provider-field-dropdown-driven" class="md-nav__link">
+    <span class="md-ellipsis">
+      The cloud_provider Field (dropdown-driven)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The cloud_provider Field (dropdown-driven)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#relationship-to-the-search-time-default-macro" class="md-nav__link">
+    <span class="md-ellipsis">
+      Relationship to the search-time default macro
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relationship-to-the-per-input-_meta" class="md-nav__link">
+    <span class="md-ellipsis">
+      Relationship to the per-input _meta
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deploy-to-forwarders-deployment-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      Deploy to Forwarders (Deployment Server)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#aws-lambda-based-filtering" class="md-nav__link">
+    <span class="md-ellipsis">
+      AWS Lambda-Based Filtering
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="AWS Lambda-Based Filtering">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#overview_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      How It Works
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setup-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Setup Options
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#new-deployment-s3-filter-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      New Deployment (S3 Filter Setup)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration-from-existing-s3-connect-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Migration from Existing S3 Connect Deployment
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lambda-filter-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lambda Filter Settings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#comparing-the-two-approaches-side-by-side" class="md-nav__link">
+    <span class="md-ellipsis">
+      Comparing the Two Approaches Side by Side
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="configuring-filters">Configuring Filters<a class="headerlink" href="#configuring-filters" title="Permanent link">&para;</a></h1>
+<h3 id="overview"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h3>
+<p>The Splunk TA for SAP LogServ provides two complementary approaches to filtering LogServ data — you can use either one independently or combine them for defense-in-depth filtering. (A third, lighter layer exists on the Azure and GCP ingest add-ons: their inputs accept optional <code>include_filters</code> / <code>exclude_filters</code> substring patterns applied to the object path <em>before download</em>, a cheap pre-filter — the canonical allow/deny policy still lives on this page&rsquo;s Filters tab.)</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Native TA Index-Time Filtering</th>
+<th>AWS Lambda-Based Filtering</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Where it runs</strong></td>
+<td>Inside Splunk at index time</td>
+<td>In AWS Lambda, before data reaches Splunk</td>
+</tr>
+<tr>
+<td><strong>Configured via</strong></td>
+<td>Splunk Web UI (Configuration → Filters)</td>
+<td>Lambda environment variables or migration config</td>
+</tr>
+<tr>
+<td><strong>Works with</strong></td>
+<td>All deployment scenarios (Connect, Filter, Copy)</td>
+<td>S3 Filter and Connect-to-Filter migration only</td>
+</tr>
+<tr>
+<td><strong>What it filters</strong></td>
+<td>Raw NDJSON events via TRANSFORMS queue routing</td>
+<td>S3 event notifications via Lambda function</td>
+</tr>
+<tr>
+<td><strong>License impact</strong></td>
+<td>Filtered events consume zero Splunk license</td>
+<td>Filtered notifications never reach Splunk</td>
+</tr>
+<tr>
+<td><strong>Pattern syntax</strong></td>
+<td><code>clz_dir/clz_subdir</code> fnmatch patterns</td>
+<td><code>clz_dir/clz_subdir</code> fnmatch patterns (same)</td>
+</tr>
+<tr>
+<td><strong>Time filtering</strong></td>
+<td>Days in the Past (epoch regex, refreshed daily)</td>
+<td>Days in the Past (Lambda evaluation)</td>
+</tr>
+<tr>
+<td><strong>AWS resources needed</strong></td>
+<td>None</td>
+<td>Lambda function, local SQS queue, DLQ</td>
+</tr>
+<tr>
+<td><strong>Deployment Server support</strong></td>
+<td>✅ Auto-distributes to Heavy Forwarders</td>
+<td>N/A (AWS-side only)</td>
+</tr>
+<tr>
+<td><strong>Upgrade notifications</strong></td>
+<td>✅ Alerts when new log types aren&rsquo;t covered</td>
+<td>❌ Not available</td>
+</tr>
+</tbody>
+</table>
+<p><br></p>
+<h3 id="which-approach-should-i-use"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Which Approach Should I Use?<a class="headerlink" href="#which-approach-should-i-use" title="Permanent link">&para;</a></h3>
+<details class="tip">
+<summary>Choosing a filtering approach</summary>
+<p><strong>Use Native TA filtering (recommended for most users)</strong> if you want the simplest setup — it works with every deployment scenario, requires no AWS resources beyond what you already have, and is managed entirely from Splunk Web. It also provides upgrade notifications when new log types are added to the TA.</p>
+<p><strong>Use Lambda-based filtering</strong> if you want to reduce the volume of SQS messages that Splunk processes. Because the Lambda filters S3 event notifications <em>before</em> they reach Splunk, unwanted objects are never downloaded from S3 at all. This can reduce S3 GET request costs and Splunk ingestion overhead in very high-volume environments.</p>
+<p><strong>Use both together</strong> for defense-in-depth. The Lambda filters at the AWS pipeline level, and the native TA filters catch anything that slips through at the Splunk level. Since both use the same <code>clz_dir/clz_subdir</code> pattern syntax, you can keep the configurations aligned.</p>
+</details>
+<p>The remainder of this page covers <strong>Native TA Index-Time Filtering</strong> in detail. For Lambda-based filtering setup, see the <a href="#aws-lambda-based-filtering">AWS Lambda-Based Filtering</a> section at the bottom of this page or the <a href="../aws-remote-s3-filter-guide/">AWS Remote S3 Filter Setup Guide</a>.</p>
+<p><br></p>
+<hr />
+<h2 id="native-ta-index-time-filtering">Native TA Index-Time Filtering<a class="headerlink" href="#native-ta-index-time-filtering" title="Permanent link">&para;</a></h2>
+<h3 id="what-it-does"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> What It Does<a class="headerlink" href="#what-it-does" title="Permanent link">&para;</a></h3>
+<p>The TA includes built-in <strong>index-time filtering</strong> configured entirely through the Splunk Web UI — no manual editing of configuration files is required.</p>
+<details class="tip">
+<summary>How It Works</summary>
+<ul>
+<li><strong>Include Filters</strong> — Only events matching at least one include pattern are eligible for indexing. Everything else is dropped before indexing (zero license cost).</li>
+<li><strong>Exclude Filters</strong> — Events matching any exclude pattern are dropped, even if they also match an include pattern. Excludes override includes.</li>
+<li><strong>Time Filter (Days in the Past)</strong> — Events with a <code>_time</code> older than the configured number of days are dropped. This prevents backfill of very old log data during initial setup or recovery scenarios.</li>
+</ul>
+<p>All filtering happens at index time via TRANSFORMS-based queue routing, so filtered events never consume Splunk license.</p>
+</details>
+<p><br></p>
+<h3 id="deployment-architectures"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deployment Architectures<a class="headerlink" href="#deployment-architectures" title="Permanent link">&para;</a></h3>
+<p>The TA supports two deployment models. The steps differ slightly depending on which one you use.</p>
+<h4 id="single-instance-search-head"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Single Instance / Search Head<a class="headerlink" href="#single-instance-search-head" title="Permanent link">&para;</a></h4>
+<p>The TA is installed directly on the Splunk instance that indexes data. Filter changes take effect immediately after clicking Save (no restart required).</p>
+<h4 id="deployment-server-with-heavy-forwarders"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Deployment Server with Heavy Forwarders<a class="headerlink" href="#deployment-server-with-heavy-forwarders" title="Permanent link">&para;</a></h4>
+<p>The TA is installed on the Deployment Server (DS). The DS distributes the TA and its filter configurations to Heavy Forwarders (HFs) that perform the actual data ingestion. This is the recommended architecture for production environments.</p>
+<p>In this model:</p>
+<ul>
+<li>You install and configure the TA on the DS only</li>
+<li>The DS automatically stages configurations for distribution</li>
+<li>You use the built-in <strong>Deploy to Forwarders</strong> button to push changes to HFs</li>
+<li>HFs receive the TA and filter configs on their next phone-home interval</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Splunk Cloud cannot act as a Deployment Server. If you are using Splunk Cloud, you will need a separate on-premises Deployment Server to manage your Heavy Forwarders.</p>
+</div>
+<p><br></p>
+<h3 id="open-the-configuration-filters-tab"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Open the Configuration &gt; Filters Tab<a class="headerlink" href="#open-the-configuration-filters-tab" title="Permanent link">&para;</a></h3>
+<ol>
+<li>In Splunk Web, open the <strong>Splunk TA for SAP LogServ</strong> app</li>
+<li>Go to <strong>Configuration &gt; Filters</strong></li>
+</ol>
+<details class="note">
+<summary>Example</summary>
+<p><img alt="image" src="../../../images/filter-tab-overview.png" title="Filters Tab Overview" /></p>
+</details>
+<h3 id="set-your-filter-options"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Set Your Filter Options<a class="headerlink" href="#set-your-filter-options" title="Permanent link">&para;</a></h3>
+<h4 id="enable-filtering"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Enable Filtering<a class="headerlink" href="#enable-filtering" title="Permanent link">&para;</a></h4>
+<p>Check the <strong>Enable Filtering</strong> checkbox to activate index-time filtering. <strong>Default: unchecked</strong> — out of the box no index-time filtering is applied, and the Include / Exclude / Days-in-the-Past values below take effect only once this box is checked. When disabled, all events are indexed without any filtering.</p>
+<h4 id="include-filters"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Include Filters<a class="headerlink" href="#include-filters" title="Permanent link">&para;</a></h4>
+<p>Comma-separated patterns specifying which log types to include. Patterns use the format <code>clz_dir/clz_subdir</code> with <code>fnmatch</code>-style wildcards:</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>*/*</code></td>
+<td>Include all log types (default)</td>
+</tr>
+<tr>
+<td><code>hana/hanaaudit</code></td>
+<td>Include only HANA audit logs</td>
+</tr>
+<tr>
+<td><code>linux/*</code></td>
+<td>Include all Linux log types</td>
+</tr>
+<tr>
+<td><code>linux/messages, hana/*</code></td>
+<td>Include Linux messages and all HANA logs</td>
+</tr>
+<tr>
+<td><code>dns/*</code></td>
+<td>Include all DNS log types</td>
+</tr>
+</tbody>
+</table>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong>Rules:</strong></p>
+<ul>
+<li>Each pattern must be in <code>dir/subdir</code> format or a standalone <code>*</code></li>
+<li>A standalone <code>*</code> is equivalent to <code>*/*</code> (include everything)</li>
+<li>Valid characters: letters, numbers, <code>*</code>, <code>?</code>, <code>.</code>, <code>-</code>, <code>:</code>, <code>_</code></li>
+<li>This field cannot be empty when filtering is enabled — use <code>*/*</code> to include everything</li>
+</ul>
+<details class="tip">
+<summary>Supported Log Types Reference</summary>
+<p>See the <a href="#supported-log-types">Supported Log Types</a> section below for a complete list of <code>clz_dir/clz_subdir</code> values you can use in your filter patterns.</p>
+</details>
+<h4 id="exclude-filters"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Exclude Filters<a class="headerlink" href="#exclude-filters" title="Permanent link">&para;</a></h4>
+<p>Comma-separated patterns for log types to exclude. Same pattern format as includes. Events matching any exclude pattern are dropped even if they also match an include pattern.</p>
+<p><strong>Example:</strong> To include all Linux logs except cron and slapd:</p>
+<ul>
+<li>Include: <code>linux/*</code></li>
+<li>Exclude: <code>linux/cron, linux/slapd</code></li>
+</ul>
+<p>Leave this field empty to exclude nothing.</p>
+<h4 id="days-in-the-past"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Days in the Past<a class="headerlink" href="#days-in-the-past" title="Permanent link">&para;</a></h4>
+<p>Whole number (0–3650) specifying the maximum age of events to index. Events with a <code>_time</code> older than this many days from today are dropped before indexing.</p>
+<ul>
+<li>Set to <code>7</code> to only index events from the last 7 days</li>
+<li>Set to <code>0</code> to disable time-based filtering</li>
+<li>Default: <code>7</code></li>
+</ul>
+<details class="tip">
+<summary>How the time filter works</summary>
+<p>The time filter uses a pre-computed epoch-based regex that is refreshed automatically once per day by a built-in scripted input. If the refresh fails to run for a day, the filter becomes slightly more restrictive (one extra day filtered) — the safer failure mode.</p>
+</details>
+<p><br></p>
+<h3 id="save"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Save<a class="headerlink" href="#save" title="Permanent link">&para;</a></h3>
+<p>Click <strong>Save</strong>. The TA validates your patterns and generates the necessary configuration files. If there are any validation errors (invalid characters, empty include field, etc.), the save is blocked and an error message is displayed.</p>
+<p><br></p>
+<hr />
+<h3 id="deployment-server-additional-steps"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deployment Server: Additional Steps<a class="headerlink" href="#deployment-server-additional-steps" title="Permanent link">&para;</a></h3>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> If you are running on a <strong>single instance</strong>, you can skip this section — filter changes take effect immediately after Save.</p>
+<p><br></p>
+<h3 id="what-happens-automatically-on-save"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> What Happens Automatically on Save<a class="headerlink" href="#what-happens-automatically-on-save" title="Permanent link">&para;</a></h3>
+<p>When you save filter settings on a Deployment Server, the TA automatically:</p>
+<ol>
+<li>Copies the full TA package to <code>/opt/splunk/etc/deployment-apps/splunk_ta_sap_logserv/</code></li>
+<li>Mirrors the generated filter configurations (<code>transforms.conf</code>, <code>props.conf</code>) to the deployment-apps copy</li>
+<li>Creates a server class named <code>SAP_LogServ_HeavyForwarders</code> in a disabled state (if it doesn&rsquo;t already exist). The server class remains disabled until you configure client targeting in the next step.</li>
+</ol>
+<p>After saving, the Filters tab displays:</p>
+<ul>
+<li>A <strong>&ldquo;⚠ Deployment Server Detected&rdquo;</strong> banner</li>
+<li>A <strong>&ldquo;⚙ Server Class Setup Required&rdquo;</strong> or <strong>&ldquo;Client Targeting Needed&rdquo;</strong> notice (first time only)</li>
+<li>A <strong>&ldquo;Deploy to Forwarders&rdquo;</strong> button</li>
+</ul>
+<details class="note">
+<summary>Example</summary>
+<p><img alt="image" src="../../../images/filter-ds-detected-banner.png" title="Deployment Server Detected Banner" /></p>
+</details>
+<p><br></p>
+<h3 id="configure-the-server-class-first-time-only"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Configure the Server Class (First Time Only)<a class="headerlink" href="#configure-the-server-class-first-time-only" title="Permanent link">&para;</a></h3>
+<p>The auto-created server class needs client targeting to know which Heavy Forwarders should receive the TA:</p>
+<ol>
+<li>Go to <strong>Settings → Forwarder Management</strong></li>
+<li>Find the <code>SAP_LogServ_HeavyForwarders</code> server class</li>
+<li>Click the three-dot menu → <strong>Edit agent assignment</strong></li>
+<li>Add your Heavy Forwarder IP addresses, hostnames, or use <code>*</code> for all connected forwarders</li>
+<li>Save the agent assignment — this also enables the server class</li>
+</ol>
+<details class="note">
+<summary>Example</summary>
+<p><img alt="image" src="../../../images/filter-forwarder-mgmt.png" title="Forwarder Management Server Class" /></p>
+</details>
+<details class="tip">
+<summary>Client Targeting</summary>
+<p>Use IP addresses for client targeting, as Splunk matches against the client&rsquo;s IP, hostname, DNS name, or GUID — not the instance name.</p>
+</details>
+<p>Return to the Filters tab — the setup notice should be gone (refresh the page in the browser if needed to see the change in the setup notice).</p>
+<details class="note">
+<summary>Example</summary>
+<p><img alt="image" src="../../../images/filter-setup-notice-gone.png" title="Filters After Agent Assignment" /></p>
+</details>
+<p><br></p>
+<h3 id="deploy-to-forwarders"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deploy to Forwarders<a class="headerlink" href="#deploy-to-forwarders" title="Permanent link">&para;</a></h3>
+<ol>
+<li>On the Filters tab, click <strong>&ldquo;Deploy to Forwarders&rdquo;</strong> and confirm</li>
+<li>You should see the new updated banner on the filters screen confirming the deployment reload has been initiated</li>
+</ol>
+<details class="note">
+<summary>Example</summary>
+<p><img alt="image" src="../../../images/filter-deploy-initiated.png" title="Deploy Reload Initiated" /></p>
+</details>
+<ol start="3">
+<li>Wait for your Heavy Forwarders to phone home (typically 30–60 seconds depending on configuration)</li>
+<li>Verify deployment status in <strong>Settings → Forwarder Management</strong> — HFs should show as &ldquo;Ok&rdquo; under the server class, however it may take 5+ minutes to see the status on the forwarders change from <code>Pending</code> to <code>Ok</code></li>
+</ol>
+<details class="note">
+<summary>Example</summary>
+<p><img alt="image" src="../../../images/filter-deploy-success.png" title="Deploy Success" /></p>
+</details>
+<p><br></p>
+<h3 id="updating-filters-on-a-deployment-server"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Updating Filters on a Deployment Server<a class="headerlink" href="#updating-filters-on-a-deployment-server" title="Permanent link">&para;</a></h3>
+<p>Whenever you change filter settings:</p>
+<ol>
+<li>Make your changes on the Filters tab and click <strong>Save</strong></li>
+<li>Click <strong>&ldquo;Deploy to Forwarders&rdquo;</strong> to distribute the updated configurations</li>
+<li>HFs will pick up the changes on their next phone-home interval</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Do not install the TA directly on Heavy Forwarders when using a Deployment Server. The DS manages the TA distribution. Installing locally on an HF can cause configuration conflicts.</p>
+</div>
+<p><br></p>
+<hr />
+<h2 id="verifying-filters">Verifying Filters<a class="headerlink" href="#verifying-filters" title="Permanent link">&para;</a></h2>
+<h3 id="check-included-data-is-arriving"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Check Included Data Is Arriving<a class="headerlink" href="#check-included-data-is-arriving" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>`sap_logserv_idx_macro` | stats count by clz_dir, clz_subdir
+</code></pre></div>
+<p>You should see data only for log types matching your include patterns.</p>
+<details class="tip">
+<summary>Index macro</summary>
+<p>The <code>sap_logserv_idx_macro</code> macro expands to <code>index="sap_logserv_logs"</code> by default. If you changed the index name in your environment, update the macro definition under <strong>Settings → Advanced Search → Search Macros</strong> or substitute your index name directly in the search.</p>
+</details>
+<p><br></p>
+<h3 id="check-excluded-data-is-not-present"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Check Excluded Data Is Not Present<a class="headerlink" href="#check-excluded-data-is-not-present" title="Permanent link">&para;</a></h3>
+<p>If you configured exclude patterns, verify those log types are absent from search results.</p>
+<p><br></p>
+<h3 id="check-time-filtering"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Check Time Filtering<a class="headerlink" href="#check-time-filtering" title="Permanent link">&para;</a></h3>
+<p>Search for events older than your configured cutoff:</p>
+<div class="highlight"><pre><span></span><code>`sap_logserv_idx_macro` earliest=-30d latest=-10d
+</code></pre></div>
+<p>If your Days in Past is less than 10, this search should return no results.</p>
+<p><br></p>
+<hr />
+<h2 id="reading-the-active-filter-configuration">Reading the Active Filter Configuration<a class="headerlink" href="#reading-the-active-filter-configuration" title="Permanent link">&para;</a></h2>
+<p>Support workflows (and the LogServ App&rsquo;s <a href="../../logserv-app/dashboards/platform/diagnostics/">Data Doctor</a>)
+sometimes need the ACTIVE filter configuration as text. Two ways to read it:</p>
+<p><strong>REST — authoritative on the deployment server (distributed) or the single instance:</strong></p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-k<span class="w"> </span>-u<span class="w"> </span>&lt;splunk-admin&gt;<span class="w"> </span><span class="s2">"https://&lt;deployment-server&gt;:8089/servicesNS/nobody/splunk_ta_sap_logserv/splunk_ta_sap_logserv_settings/filter_settings?output_mode=json"</span>
+</code></pre></div>
+<p>Omit <code>?output_mode=json</code> for the XML form. The response carries <code>filter_enabled</code>,
+<code>include_filters</code>, <code>exclude_filters</code> and <code>days_in_past</code> exactly as configured.</p>
+<p><strong>File — the only reliable artifact on a DS-managed Heavy Forwarder:</strong></p>
+<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>cat<span class="w"> </span>/opt/splunk/etc/apps/splunk_ta_sap_logserv/local/transforms.conf
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title">The HF&rsquo;s REST endpoint is misleading</p>
+<p>On a deployment-server-managed Heavy Forwarder the <code>filter_settings</code> REST endpoint
+returns the shipped defaults — the pushed configuration lives only in the generated
+<code>local/transforms.conf</code>. Always use the file on an HF.</p>
+</div>
+<p>The LogServ App&rsquo;s <strong>Platform → Diagnostics</strong> page prints these same commands and accepts the
+pasted output, turning the ingest filters into evidence its missing-data diagnosis can reason
+about — see <a href="../../logserv-app/dashboards/platform/diagnostics/#supplying-the-ingest-filter-configuration">Supplying the ingest-filter configuration</a>.</p>
+<div class="admonition tip">
+<p class="admonition-title">The transforms paste also carries the Cloud Provider stamp</p>
+<p>A pasted <code>local/transforms.conf</code> includes the generated <code>[logserv_set_cloud_provider]</code>
+stanza when the <a href="#cloud-provider-attribution">Cloud Provider Attribution</a> dropdown is set,
+so the Data Doctor also records the configured stamp and can explain how it interacts
+with a dashboard&rsquo;s Cloud filter. A missing stanza is <em>not</em> read as &ldquo;Not set&rdquo; — the paste
+may be truncated; only a settings-conf paste can supply the explicit <code>not_set</code> value.</p>
+</div>
+<h2 id="supported-log-types">Supported Log Types<a class="headerlink" href="#supported-log-types" title="Permanent link">&para;</a></h2>
+<h3 id="log-type-reference"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Log Type Reference<a class="headerlink" href="#log-type-reference" title="Permanent link">&para;</a></h3>
+<p>The table below lists the <strong>Primary</strong> log types — those with dedicated sourcetype routing. The <code>clz_dir</code> and <code>clz_subdir</code> columns show the values used in filter patterns; use these values when configuring your include and exclude filters. The canonical, complete reference (including the <strong>Secondary</strong> log types, which have no dedicated routing but can still be filtered by their own <code>clz_dir/clz_subdir</code> paths) is <a href="../../getting-started/supported-log-types/">Supported Log Types</a>.</p>
+<table>
+<thead>
+<tr>
+<th>clz_dir</th>
+<th>clz_subdir</th>
+<th>Splunk Sourcetype</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>abap</td>
+<td>audit</td>
+<td><code>sap:abap:audit</code></td>
+</tr>
+<tr>
+<td>abap</td>
+<td>dispatcher †</td>
+<td><code>sap:abap:dispatcher</code></td>
+</tr>
+<tr>
+<td>abap</td>
+<td>enqueueserver</td>
+<td><code>sap:abap:enqueueserver</code></td>
+</tr>
+<tr>
+<td>abap</td>
+<td>event †</td>
+<td><code>sap:abap:event</code></td>
+</tr>
+<tr>
+<td>abap</td>
+<td>gateway</td>
+<td><code>sap:abap:gateway</code></td>
+</tr>
+<tr>
+<td>abap</td>
+<td>icm</td>
+<td><code>sap:abap:icm</code></td>
+</tr>
+<tr>
+<td>abap</td>
+<td>messageserver</td>
+<td><code>sap:abap:messageserver</code></td>
+</tr>
+<tr>
+<td>abap</td>
+<td>sapstartsrv</td>
+<td><code>sap:abap:sapstartsrv</code></td>
+</tr>
+<tr>
+<td>abap</td>
+<td>workprocess †</td>
+<td><code>sap:abap:workprocess</code></td>
+</tr>
+<tr>
+<td>dns</td>
+<td>binddns</td>
+<td><code>isc:bind:query</code>, <code>isc:bind:lameserver</code>, <code>isc:bind:network</code>, <code>isc:bind:transfer</code></td>
+</tr>
+<tr>
+<td>hana</td>
+<td>hanaaudit</td>
+<td><code>sap:hana:audit</code></td>
+</tr>
+<tr>
+<td>hana</td>
+<td>tracelogs</td>
+<td><code>sap:hana:tracelogs</code></td>
+</tr>
+<tr>
+<td>linux</td>
+<td>cron</td>
+<td><code>linux:cron</code></td>
+</tr>
+<tr>
+<td>linux</td>
+<td>localmessages</td>
+<td><code>linux_messages_syslog</code></td>
+</tr>
+<tr>
+<td>linux</td>
+<td>messages</td>
+<td><code>linux_messages_syslog</code></td>
+</tr>
+<tr>
+<td>linux</td>
+<td>linux_secure</td>
+<td><code>linux_secure</code>, <code>lastlog</code>, <code>who</code></td>
+</tr>
+<tr>
+<td>linux</td>
+<td>slapd</td>
+<td><code>linux:slapd</code></td>
+</tr>
+<tr>
+<td>linux</td>
+<td>sudolog</td>
+<td><code>linux:sudolog</code></td>
+</tr>
+<tr>
+<td>linux</td>
+<td>warn</td>
+<td><code>linux:warn</code></td>
+</tr>
+<tr>
+<td>proxy</td>
+<td>squid</td>
+<td><code>squid:access</code></td>
+</tr>
+<tr>
+<td>sap</td>
+<td>saphostexec</td>
+<td><code>sap:saphostexec</code></td>
+</tr>
+<tr>
+<td>sap</td>
+<td>saprouter</td>
+<td><code>sap:saprouter</code></td>
+</tr>
+<tr>
+<td>sap</td>
+<td>sapstartsrv</td>
+<td><code>sap:sapstartsrv</code></td>
+</tr>
+<tr>
+<td>scc</td>
+<td>audit</td>
+<td><code>sap:scc:audit</code></td>
+</tr>
+<tr>
+<td>scc</td>
+<td>tracelogs</td>
+<td><code>sap:scc:http_access</code></td>
+</tr>
+<tr>
+<td>webdispatcher</td>
+<td>accesslog</td>
+<td><code>sap:webdispatcher:access</code></td>
+</tr>
+<tr>
+<td>windows</td>
+<td>WinEventLog:Application</td>
+<td><code>XmlWinEventLog</code></td>
+</tr>
+<tr>
+<td>windows</td>
+<td>WinEventLog:Powershell</td>
+<td><code>XmlWinEventLog</code></td>
+</tr>
+<tr>
+<td>windows</td>
+<td>WinEventLog:Security</td>
+<td><code>XmlWinEventLog</code></td>
+</tr>
+<tr>
+<td>windows</td>
+<td>WinEventLog:System</td>
+<td><code>XmlWinEventLog</code></td>
+</tr>
+</tbody>
+</table>
+<p>† <code>abap/dispatcher</code>, <code>abap/event</code>, and <code>abap/workprocess</code> were discontinued by SAP from LogServ delivery effective April 2026 — filters on them affect historical data only. Contact SAP about continued collection.</p>
+<details class="tip">
+<summary>Filter pattern examples using this table</summary>
+<ul>
+<li>To include all DNS logs: <code>dns/*</code> or <code>dns/binddns</code></li>
+<li>To include all Linux logs except cron: Include <code>linux/*</code>, Exclude <code>linux/cron</code></li>
+<li>To include only HANA audit and web dispatcher logs: <code>hana/hanaaudit, webdispatcher/accesslog</code></li>
+<li>To include all Windows event logs: <code>windows/*</code></li>
+<li>To include all ABAP application logs: <code>abap/*</code></li>
+<li>To include specific ABAP types: <code>abap/icm, abap/gateway</code></li>
+<li>To include all SAP Cloud Connector logs: <code>scc/*</code></li>
+<li>To include all SAP service logs: <code>sap/*</code></li>
+</ul>
+</details>
+<p><br></p>
+<hr />
+<h2 id="upgrade-notifications">Upgrade Notifications<a class="headerlink" href="#upgrade-notifications" title="Permanent link">&para;</a></h2>
+<h3 id="how-upgrade-notifications-work"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> How Upgrade Notifications Work<a class="headerlink" href="#how-upgrade-notifications-work" title="Permanent link">&para;</a></h3>
+<p>When the TA is upgraded to a new version that supports additional log types, a system message banner appears across all Splunk Web pages if your include filter patterns do not cover the newly supported types. This prevents new log types from being silently dropped.</p>
+<details class="note">
+<summary>Example</summary>
+<p><img alt="image" src="../../../images/filter-upgrade-banner.png" title="Upgrade Notification Banner" /></p>
+</details>
+<p>To resolve the notification:</p>
+<ol>
+<li>Open <strong>Configuration → Filters</strong> in the TA</li>
+<li>Review and update your include patterns to cover the new log types (or use <code>*/*</code> to include everything)</li>
+<li>Save</li>
+</ol>
+<p>The banner clears automatically once all supported types are covered.</p>
+<p><br></p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="filters-not-taking-effect-single-instance"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Filters Not Taking Effect (Single Instance)<a class="headerlink" href="#filters-not-taking-effect-single-instance" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Verify filtering is enabled: Check the <strong>Enable Filtering</strong> checkbox</li>
+<li>Check <code>local/transforms.conf</code> in the app directory for the generated filter stanzas</li>
+<li>Check <code>_internal</code> for errors:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>index=_internal sourcetype=splunkd component=PersistentScript splunk_ta_sap_logserv
+</code></pre></div>
+<p><br></p>
+<h3 id="filters-not-reaching-heavy-forwarders"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Filters Not Reaching Heavy Forwarders<a class="headerlink" href="#filters-not-reaching-heavy-forwarders" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Verify the server class exists and has client targeting configured in <strong>Settings → Forwarder Management</strong></li>
+<li>Verify deployment-apps has the filter configs:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>/opt/splunk/etc/deployment-apps/splunk_ta_sap_logserv/local/transforms.conf
+</code></pre></div>
+<ul>
+<li>Click <strong>Deploy to Forwarders</strong> and wait for phone-home</li>
+<li>Check HF configs:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>cat<span class="w"> </span>/opt/splunk/etc/apps/splunk_ta_sap_logserv/local/transforms.conf
+</code></pre></div>
+<p><br></p>
+<h3 id="deployment-server-not-detected"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deployment Server Not Detected<a class="headerlink" href="#deployment-server-not-detected" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The TA detects deployment servers by checking server roles and for connected deployment clients</li>
+<li>Verify your Heavy Forwarders are configured as deployment clients pointing to the DS</li>
+<li>Check with:</li>
+</ul>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-sk<span class="w"> </span>-u<span class="w"> </span>admin:&lt;password&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"https://localhost:8089/services/deployment/server/clients?output_mode=json&amp;count=1"</span>
+</code></pre></div>
+<p><br></p>
+<h3 id="validation-error-on-save"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Validation Error on Save<a class="headerlink" href="#validation-error-on-save" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Include patterns must not be empty when filtering is enabled — use <code>*/*</code> to include all</li>
+<li>Patterns must use <code>dir/subdir</code> format with only valid characters (letters, numbers, <code>*</code>, <code>?</code>, <code>.</code>, <code>-</code>, <code>:</code>, <code>_</code>)</li>
+<li>Days in the Past must be a whole number between 0 and 3650</li>
+</ul>
+<p><br></p>
+<h3 id="time-filter-seems-off-by-a-day"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Time Filter Seems Off by a Day<a class="headerlink" href="#time-filter-seems-off-by-a-day" title="Permanent link">&para;</a></h3>
+<p>The time filter epoch cutoff is refreshed once per day by a scripted input. After changing the Days in Past value, the cutoff regex is regenerated immediately on Save. If the daily refresh fails, the filter becomes slightly more restrictive (safer failure mode).</p>
+<p><br></p>
+<hr />
+<h2 id="cloud-provider-attribution">Cloud Provider Attribution<a class="headerlink" href="#cloud-provider-attribution" title="Permanent link">&para;</a></h2>
+<h3 id="what-it-does_1"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> What It Does<a class="headerlink" href="#what-it-does_1" title="Permanent link">&para;</a></h3>
+<p>The <strong>Configuration</strong> page has two tabs: <strong>Filters</strong> (covered above) and <strong>Cloud Provider</strong>. The Cloud Provider tab controls how the Data TA attributes each event to the cloud it was ingested from.</p>
+<p>The Data TA stamps two indexed fields at index time on the bootstrap <code>sap_logserv_logs</code> sourcetype — the same <code>WRITE_META</code> mechanism it uses to preserve <code>clz_dir</code> and <code>clz_subdir</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Indexed field</th>
+<th>Value</th>
+<th>How it&rsquo;s set</th>
+<th>Configurable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>splunk_solution</code></td>
+<td><code>splunk_for_sap_logserv</code></td>
+<td>Always stamped on every event</td>
+<td>No — ships active, no UI control</td>
+</tr>
+<tr>
+<td><code>cloud_provider</code></td>
+<td><code>aws</code> / <code>azure</code> / <code>gcp</code> / <em>(none)</em></td>
+<td>Stamped per the Cloud Provider dropdown</td>
+<td>Yes — <strong>Configuration → Cloud Provider</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Both fields are written at index time on the Heavy Forwarder (or the indexer in single-instance mode), so they are available as indexed fields for <code>tstats</code>, accelerated searches, and raw-event filtering.</p>
+<p><br></p>
+<h3 id="the-splunk_solution-field-always-on"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The splunk_solution Field (always-on)<a class="headerlink" href="#the-splunk_solution-field-always-on" title="Permanent link">&para;</a></h3>
+<p>Every event indexed through the Data TA carries <code>splunk_solution = splunk_for_sap_logserv</code>. This is a static attribution stamp — there is no UI control and nothing to configure. It identifies events that flowed through the Splunk for SAP LogServ pipeline, which is useful when the same index or Splunk instance also receives data from other solutions.</p>
+<div class="admonition note">
+<p class="admonition-title"><code>splunk_solution</code> is distinct from <code>vendor_product</code></p>
+<p>The LogServ App also defines a per-sourcetype <code>vendor_product</code> search-time field (e.g., <code>SAP HANA</code>, <code>SAP NetWeaver ABAP</code>, <code>SAP Web Dispatcher</code>, <code>ISC:Bind</code>) that dashboards and CIM mapping rely on. That field describes <em>which product</em> produced a given event. <code>splunk_solution</code> is a separate, coarser stamp identifying the <em>solution</em> — this TA — that ingested it. The two coexist and do not collide.</p>
+</div>
+<p><br></p>
+<h3 id="the-cloud_provider-field-dropdown-driven"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The cloud_provider Field (dropdown-driven)<a class="headerlink" href="#the-cloud_provider-field-dropdown-driven" title="Permanent link">&para;</a></h3>
+<p>On the <strong>Cloud Provider</strong> tab, the <strong>Cloud Provider</strong> dropdown has four choices:</p>
+<table>
+<thead>
+<tr>
+<th>Selection</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Not set</strong> (default)</td>
+<td>No <code>cloud_provider</code> value is stamped at index time.</td>
+</tr>
+<tr>
+<td><strong>AWS</strong></td>
+<td>Every event this TA processes is stamped <code>cloud_provider = aws</code>.</td>
+</tr>
+<tr>
+<td><strong>Microsoft Azure</strong></td>
+<td>Every event this TA processes is stamped <code>cloud_provider = azure</code>.</td>
+</tr>
+<tr>
+<td><strong>Google Cloud Platform</strong></td>
+<td>Every event this TA processes is stamped <code>cloud_provider = gcp</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Click <strong>Save</strong> to apply. On a single instance the change takes effect immediately. On a Deployment Server, click <strong>Deploy to Forwarders</strong> (see below) to push it to the Heavy Forwarders.</p>
+<h4 id="relationship-to-the-search-time-default-macro"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Relationship to the search-time default macro<a class="headerlink" href="#relationship-to-the-search-time-default-macro" title="Permanent link">&para;</a></h4>
+<p>The LogServ App ships a search-time macro, <code>sap_logserv_cloud_provider_default_macro</code>, defined as:</p>
+<div class="highlight"><pre><span></span><code>eval cloud_provider=coalesce(cloud_provider, "aws")
+</code></pre></div>
+<p>This macro defaults any event WITHOUT an indexed <code>cloud_provider</code> value to <code>aws</code> at search time, so legacy events that pre-date this feature (or events from a TA left at <strong>Not set</strong>) still report a provider in dashboards such as <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/">Multi-Cloud Overview</a>. Setting the dropdown to <strong>AWS</strong> makes that attribution explicit at index time — preferable for any new Heavy Forwarder rollout, because the indexed field can then be used directly in raw-event searches, not only in macro-wrapped dashboard panels.</p>
+<h4 id="relationship-to-the-per-input-_meta"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Relationship to the per-input <code>_meta</code><a class="headerlink" href="#relationship-to-the-per-input-_meta" title="Permanent link">&para;</a></h4>
+<p>The LogServ Azure add-on&rsquo;s <strong><code>sap_logserv_azure_queue</code></strong> input carries <code>_meta = cloud_provider::azure</code> on its stanza automatically (the add-on injects it), and the LogServ GCP add-on&rsquo;s <strong><code>sap_logserv_gcp_pubsub</code></strong> input likewise carries <code>_meta = cloud_provider::gcp</code> — so Azure and GCP events self-attribute regardless of the dropdown; see the <a href="../azure-setup/">Azure Setup Guide</a> and the <a href="../gcp-setup/">GCP Setup Guide</a>. The Cloud Provider dropdown is the simpler, Data-TA-managed way to stamp the same value on every event a Heavy Forwarder&rsquo;s Data TA processes (useful for the AWS side, or as a single-cloud override). For a Heavy Forwarder that ingests from a single cloud, the dropdown is the recommended mechanism.</p>
+<div class="admonition warning">
+<p class="admonition-title">Mixed-cloud single Heavy Forwarder</p>
+<p>The Cloud Provider dropdown is a TA-wide (per-HF) setting — it stamps the same value on every event that HF&rsquo;s Data TA processes. If a <strong>single</strong> Heavy Forwarder ingests from MORE THAN ONE cloud channel (any mix of AWS S3, Azure Blob Storage, and Google Cloud Storage), the dropdown cannot tell the channels apart — and because the <code>sap_logserv_azure_queue</code> and <code>sap_logserv_gcp_pubsub</code> input stanzas already carry their own <code>_meta</code> values, setting the dropdown to a provider would tag those inputs&rsquo; events with BOTH values. In that case, leave the dropdown at <strong>Not set</strong> and attribute per input instead: set <code>_meta = cloud_provider::aws</code> on the <code>Splunk_TA_aws</code> SQS-based S3 input(s); the Azure and GCP inputs already self-attribute. With the dropdown at <strong>Not set</strong> the TA adds no <code>cloud_provider</code> stamp of its own, so each input&rsquo;s <code>_meta</code> value is the only one written.</p>
+</div>
+<p><br></p>
+<h3 id="deploy-to-forwarders-deployment-server"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Deploy to Forwarders (Deployment Server)<a class="headerlink" href="#deploy-to-forwarders-deployment-server" title="Permanent link">&para;</a></h3>
+<p>The Cloud Provider tab uses the same deployment flow as the Filters tab. When you Save on a Deployment Server, the TA writes the selection into its <code>local/transforms.conf</code> and mirrors it to the <code>deployment-apps/</code> copy. Click <strong>Deploy to Forwarders</strong> to trigger a deployment-server configuration reload; the Heavy Forwarders in the <code>SAP_LogServ_HeavyForwarders</code> server class pick up the change on their next phone-home (typically within one phone-home interval — 30–60 seconds by default). This is identical to the Filters-tab deploy procedure described earlier on this page — same server class, same button.</p>
+<p><br></p>
+<hr />
+<h2 id="aws-lambda-based-filtering">AWS Lambda-Based Filtering<a class="headerlink" href="#aws-lambda-based-filtering" title="Permanent link">&para;</a></h2>
+<h3 id="overview_1"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Overview<a class="headerlink" href="#overview_1" title="Permanent link">&para;</a></h3>
+<p>The Lambda-based filtering approach filters S3 event notifications in AWS <em>before</em> they reach Splunk. A Lambda function sits between the cross-account SQS queue (in the SAP ECS account) and a local SQS queue (in your Secondary account). It evaluates each S3 event notification against include/exclude path patterns and a time-based cutoff, forwarding only matching notifications to the local queue that Splunk polls.</p>
+<details class="tip">
+<summary>When to use Lambda-based filtering</summary>
+<ul>
+<li>You want to reduce the number of S3 GET requests Splunk makes (cost savings in high-volume environments)</li>
+<li>You want to reduce SQS message volume before it reaches Splunk</li>
+<li>You want filtering to happen at the AWS pipeline level as an additional layer</li>
+</ul>
+</details>
+<p><br></p>
+<h3 id="how-it-works"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>SAP ECS Account                    Your Secondary Account
++--------------+    +-----------+    +------------+    +-----------+
+| S3 Bucket    |---&gt;| SQS Queue |---&gt;|   Lambda   |---&gt;| Local SQS |---&gt;  Splunk HF
+| (LogServ)    |    | (cross)   |    |  (filter)  |    |  Queue    |
++--------------+    +-----------+    +------------+    +-----------+
+                                       | Drops non-
+                                       | matching
+                                       v notifications
+</code></pre></div>
+<p>The Lambda function evaluates the S3 object key in each notification to extract <code>clz_dir</code> and <code>clz_subdir</code> values, then applies the same fnmatch pattern syntax used by the native TA filtering.</p>
+<p><br></p>
+<h3 id="setup-options"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Setup Options<a class="headerlink" href="#setup-options" title="Permanent link">&para;</a></h3>
+<p>There are two ways to deploy Lambda-based filtering:</p>
+<h4 id="new-deployment-s3-filter-setup"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> New Deployment (S3 Filter Setup)<a class="headerlink" href="#new-deployment-s3-filter-setup" title="Permanent link">&para;</a></h4>
+<p>If you are setting up from scratch, follow the <a href="../aws-remote-s3-filter-guide/">AWS Remote S3 Filter Setup Guide</a>. The CloudFormation template creates all required AWS resources (Lambda, local SQS queue, DLQ, IAM permissions) in a single deployment.</p>
+<h4 id="migration-from-existing-s3-connect-deployment"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Migration from Existing S3 Connect Deployment<a class="headerlink" href="#migration-from-existing-s3-connect-deployment" title="Permanent link">&para;</a></h4>
+<p>If you already have a working <strong>S3 Connect</strong> deployment and want to add Lambda-based filtering, follow the <a href="../aws-remote-s3-connect-to-filter-migration-guide/">AWS Remote S3 Connect to Filter Migration</a> (a legacy reference kept outside the site navigation). The Python migration script adds the Lambda resources to your existing IAM infrastructure without recreating it. For most deployments the native index-time filtering above is the simpler path.</p>
+<p><br></p>
+<h3 id="lambda-filter-settings"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Lambda Filter Settings<a class="headerlink" href="#lambda-filter-settings" title="Permanent link">&para;</a></h3>
+<p>The Lambda function uses three environment variables for its filter configuration:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DAYS_IN_THE_PAST</code></td>
+<td>Drop notifications for objects older than this many days</td>
+<td><code>7</code></td>
+</tr>
+<tr>
+<td><code>INCLUDE_FILTERS</code></td>
+<td>Comma-separated fnmatch patterns for paths to include</td>
+<td><code>linux/*,hana/*</code></td>
+</tr>
+<tr>
+<td><code>EXCLUDE_FILTERS</code></td>
+<td>Comma-separated fnmatch patterns for paths to exclude</td>
+<td><code>linux/cron,linux/slapd</code></td>
+</tr>
+</tbody>
+</table>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> These use the same <code>clz_dir/clz_subdir</code> pattern format as the native TA filters. If you are using both approaches, keep the patterns aligned for consistent behavior.</p>
+<p><br></p>
+<h3 id="comparing-the-two-approaches-side-by-side"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Comparing the Two Approaches Side by Side<a class="headerlink" href="#comparing-the-two-approaches-side-by-side" title="Permanent link">&para;</a></h3>
+<p>Consider a scenario where you want to ingest only <code>hana/*</code> and <code>linux/messages</code> logs from the last 7 days:</p>
+<details class="tip">
+<summary>Native TA filtering only (simplest)</summary>
+<ul>
+<li><strong>Setup:</strong> Configure the Filters tab with include <code>hana/*, linux/messages</code> and days in past <code>7</code></li>
+<li><strong>What happens:</strong> All S3 objects are downloaded by Splunk, but unwanted events are dropped at index time via TRANSFORMS before consuming license</li>
+<li><strong>Pros:</strong> No extra AWS resources, managed from Splunk Web, upgrade notifications, works with any deployment scenario</li>
+<li><strong>Cons:</strong> Splunk still downloads and parses all S3 objects before filtering</li>
+</ul>
+</details>
+<details class="tip">
+<summary>Lambda filtering only</summary>
+<ul>
+<li><strong>Setup:</strong> Configure Lambda with the same include/exclude/days patterns</li>
+<li><strong>What happens:</strong> The Lambda drops S3 event notifications for unwanted objects before Splunk ever sees them. Splunk only downloads matching objects from S3</li>
+<li><strong>Pros:</strong> Reduces S3 GET request costs, lower Splunk ingestion overhead</li>
+<li><strong>Cons:</strong> Requires Lambda + local SQS + DLQ in AWS, no upgrade notifications, filter changes require updating Lambda environment variables</li>
+</ul>
+</details>
+<details class="tip">
+<summary>Both together (defense-in-depth)</summary>
+<ul>
+<li><strong>Setup:</strong> Same patterns configured in both Lambda and the Filters tab</li>
+<li><strong>What happens:</strong> Lambda filters at the AWS level first, then native TA filtering catches anything that slips through at the Splunk level</li>
+<li><strong>Pros:</strong> Maximum coverage, safety net if either filter is misconfigured</li>
+<li><strong>Cons:</strong> Two places to maintain filter configurations</li>
+</ul>
+</details>
+<p><br></p>
+<h2 id="next-steps"><span class="twemoji cboxmove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<p>Return to the <a href="../setup-guides/">Setup Guides Overview</a> for AWS data pipeline configuration, or see the <a href="../../developer/developer-reference/">Developer Reference</a> for technical internals.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>

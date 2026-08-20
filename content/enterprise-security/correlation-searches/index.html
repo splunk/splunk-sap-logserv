@@ -1,0 +1,3422 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/enterprise-security/correlation-searches/">
+      
+      
+        <link rel="prev" href="../cim-compliance/">
+      
+      
+        <link rel="next" href="../asset-identity-feed/">
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Correlation Searches & RBA - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#correlation-searches-rba" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Correlation Searches & RBA
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-6-base-correlation-searches" class="md-nav__link">
+    <span class="md-ellipsis">
+      The 6 base correlation searches
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The 6 base correlation searches">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-6-starter-well-vetted-instead-of-15-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why &ldquo;6 starter, well-vetted&rdquo; instead of 15-20
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-search-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-search detail
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-search detail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-hana-privilege-escalation" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. HANA Privilege Escalation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-cross-stack-authentication-failure-burst" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Cross-Stack Authentication Failure Burst
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-abap-gateway-anomalous-peer" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. ABAP Gateway Anomalous Peer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-scc-access_denied-burst" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. SCC ACCESS_DENIED Burst
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-hana-failed-connect-spike-per-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. HANA Failed CONNECT Spike Per User
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-linux-oom-killer-burst" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Linux OOM-Killer Burst
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extended-cross-stack-pack-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extended cross-stack pack (v2)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extended cross-stack pack (v2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-search-detail-extended-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-search detail (extended pack)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-search detail (extended pack)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#e1-lateral-movement" class="md-nav__link">
+    <span class="md-ellipsis">
+      E1. Lateral Movement
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2-privilege-chain-credential-stuffing-escalation" class="md-nav__link">
+    <span class="md-ellipsis">
+      E2. Privilege Chain (Credential Stuffing → Escalation)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e3-after-hours-admin-data-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      E3. After-Hours Admin Data Access
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e4-service-account-interactive-hana-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      E4. Service-Account Interactive HANA Login
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e5-hana-user-creation-outside-business-hours" class="md-nav__link">
+    <span class="md-ellipsis">
+      E5. HANA User Creation Outside Business Hours
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e6-hana-mass-dropdelete" class="md-nav__link">
+    <span class="md-ellipsis">
+      E6. HANA Mass DROP/DELETE
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rba-risk-based-alerting" class="md-nav__link">
+    <span class="md-ellipsis">
+      RBA — Risk-Based Alerting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RBA — Risk-Based Alerting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-search-risk-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-search risk table
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-object-risk-per-event" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-object risk per event
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-2-risk-notable" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tier-2 Risk Notable
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-notables-appear-in-es-incident-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      How notables appear in ES Incident Review
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customer-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customer tuning
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disabling-individual-correlation-searches" class="md-nav__link">
+    <span class="md-ellipsis">
+      Disabling individual correlation searches
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Full-LLM Variant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Full-LLM Variant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-6-base-correlation-searches" class="md-nav__link">
+    <span class="md-ellipsis">
+      The 6 base correlation searches
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The 6 base correlation searches">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-6-starter-well-vetted-instead-of-15-20" class="md-nav__link">
+    <span class="md-ellipsis">
+      Why &ldquo;6 starter, well-vetted&rdquo; instead of 15-20
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-search-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-search detail
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-search detail">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-hana-privilege-escalation" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. HANA Privilege Escalation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-cross-stack-authentication-failure-burst" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Cross-Stack Authentication Failure Burst
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-abap-gateway-anomalous-peer" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. ABAP Gateway Anomalous Peer
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-scc-access_denied-burst" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. SCC ACCESS_DENIED Burst
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-hana-failed-connect-spike-per-user" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. HANA Failed CONNECT Spike Per User
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-linux-oom-killer-burst" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Linux OOM-Killer Burst
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extended-cross-stack-pack-v2" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extended cross-stack pack (v2)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extended cross-stack pack (v2)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-search-detail-extended-pack" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-search detail (extended pack)
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Per-search detail (extended pack)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#e1-lateral-movement" class="md-nav__link">
+    <span class="md-ellipsis">
+      E1. Lateral Movement
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e2-privilege-chain-credential-stuffing-escalation" class="md-nav__link">
+    <span class="md-ellipsis">
+      E2. Privilege Chain (Credential Stuffing → Escalation)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e3-after-hours-admin-data-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      E3. After-Hours Admin Data Access
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e4-service-account-interactive-hana-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      E4. Service-Account Interactive HANA Login
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e5-hana-user-creation-outside-business-hours" class="md-nav__link">
+    <span class="md-ellipsis">
+      E5. HANA User Creation Outside Business Hours
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#e6-hana-mass-dropdelete" class="md-nav__link">
+    <span class="md-ellipsis">
+      E6. HANA Mass DROP/DELETE
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rba-risk-based-alerting" class="md-nav__link">
+    <span class="md-ellipsis">
+      RBA — Risk-Based Alerting
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RBA — Risk-Based Alerting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#per-search-risk-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      Per-search risk table
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-object-risk-per-event" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-object risk per event
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-2-risk-notable" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tier-2 Risk Notable
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-notables-appear-in-es-incident-review" class="md-nav__link">
+    <span class="md-ellipsis">
+      How notables appear in ES Incident Review
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customer-tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customer tuning
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#disabling-individual-correlation-searches" class="md-nav__link">
+    <span class="md-ellipsis">
+      Disabling individual correlation searches
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      See also
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="correlation-searches-rba">Correlation Searches &amp; RBA<a class="headerlink" href="#correlation-searches-rba" title="Permanent link">&para;</a></h1>
+<p>The Splunk for SAP LogServ App ships <strong>19 correlation searches</strong> in three tiers:</p>
+<ul>
+<li><strong>6 base correlation searches</strong> — the starter pack, signal-heavy and FP-tuned for the SAP-specific threat patterns SOC analysts encounter most.</li>
+<li><strong>6 extended cross-stack correlation searches</strong> — added in the extended ES content pack. Detect cross-source chains that customers can&rsquo;t easily author themselves because they require SAP-specific knowledge of which sourcetype emits the auth event vs. the privilege change vs. the data event.</li>
+<li><strong>3 threat-intel correlation searches + 4 behavioral / anomaly searches</strong> — see <a href="../threat-intel/">Threat Intelligence Integration</a> and <a href="../behavioral-detections/">Behavioral &amp; Anomaly Detections</a> for those.</li>
+</ul>
+<p>Plus <strong>1 tier-2 Risk Notable</strong> that aggregates risk events from all 19 detection searches and fires when accumulated risk on a single object crosses a threshold (Risk-Based Alerting / RBA).</p>
+<p>All correlation searches are scheduled saved searches in <code>default/savedsearches.conf</code> with parallel ES Content Management metadata in <code>default/correlationsearches.conf</code>. They appear under <strong>Settings → Content Management</strong> when ES is installed.</p>
+<h2 id="the-6-base-correlation-searches"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> The 6 base correlation searches<a class="headerlink" href="#the-6-base-correlation-searches" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Search name</th>
+<th>What it detects</th>
+<th>Severity</th>
+<th>Schedule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>splunk_sap_logserv_es_hana_privilege_escalation</code></td>
+<td>HANA <code>GRANT WITH ADMIN OPTION</code> or any <code>ALTER USER</code> on the SYSTEM user</td>
+<td>high</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>splunk_sap_logserv_es_cross_stack_auth_failure</code></td>
+<td>Same user fails authentication on 2+ different SAP stacks (HANA, sapstartsrv, SCC, sudo) within the same window</td>
+<td>high</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>splunk_sap_logserv_es_abap_gateway_anomalous_peer</code></td>
+<td>New ABAP gateway peer IP not seen (or seen &lt;5 times) in the prior 30 days</td>
+<td>medium</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>splunk_sap_logserv_es_scc_access_denied_burst</code></td>
+<td>3+ SCC ACCESS_DENIED events on a single host within 1h</td>
+<td>medium</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>splunk_sap_logserv_es_hana_failed_connect_spike</code></td>
+<td>5+ failed HANA CONNECT attempts by a single user on a single host within 1h</td>
+<td>medium</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>splunk_sap_logserv_es_oom_kill_burst</code></td>
+<td>Fires on a burst of Linux OOM-killer (out-of-memory) events on a host</td>
+<td>medium</td>
+<td>hourly</td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-6-starter-well-vetted-instead-of-15-20"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Why &ldquo;6 starter, well-vetted&rdquo; instead of 15-20<a class="headerlink" href="#why-6-starter-well-vetted-instead-of-15-20" title="Permanent link">&para;</a></h3>
+<p>The starter set is intentionally small + signal-heavy:</p>
+<ul>
+<li>Each search has been dry-run on live data before shipping</li>
+<li>Most return 0 rows on healthy-environment data (low FP rate by design — they fire on real attack patterns)</li>
+<li>Easier to false-positive-tune in customer environments</li>
+<li>Easier to document for SOC analysts during onboarding</li>
+</ul>
+<p>Customers + community can layer additional ES correlation searches on top — see <a href="https://github.com/splunk/splunk-sap-logserv" rel="noopener noreferrer" target="_blank">the design doc</a> for guidance on adding searches.</p>
+<h3 id="per-search-detail"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Per-search detail<a class="headerlink" href="#per-search-detail" title="Permanent link">&para;</a></h3>
+<h4 id="1-hana-privilege-escalation"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 1. HANA Privilege Escalation<a class="headerlink" href="#1-hana-privilege-escalation" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>`sap_logserv_idx_macro` sourcetype="sap:hana:audit" tag=change
+  (action_type=GRANT OR (action_type="ALTER USER" AND target_user="SYSTEM"))
+| where (action_type="GRANT" AND match(sql_statement, "(?i)WITH ADMIN OPTION"))
+    OR (action_type="ALTER USER" AND target_user="SYSTEM")
+| stats count, latest(_time) AS last_seen, values(sql_statement) AS sql_statements
+        by executing_user, target_user, host, action_type
+| sort -count
+</code></pre></div>
+<div class="admonition warning">
+<p class="admonition-title"><code>match()</code> must not appear in a base-search clause</p>
+<p><code>match()</code> is an eval-only function — in a base-search position it silently matches nothing, so the GRANT disjunct would never fire. That is why the shipped search pre-filters broadly in the base clause and applies the <code>match()</code> predicate in <code>| where</code>. Keep that structure if you copy this search as a template.</p>
+</div>
+<p><strong>Threat model:</strong> A SAP HANA admin or compromised account uses <code>GRANT ... WITH ADMIN OPTION</code> (creating a privilege-pivot path) or runs <code>ALTER USER SYSTEM ...</code> (modifying the SYSTEM superuser). Both warrant change-ticket review.</p>
+<p><strong>FP profile:</strong> Medium. <code>ALTER USER SYSTEM RESET CONNECT ATTEMPTS</code> is operationally common after lockout recovery. SOC needs to correlate with change tickets or whitelist routine maintenance.</p>
+<h4 id="2-cross-stack-authentication-failure-burst"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 2. Cross-Stack Authentication Failure Burst<a class="headerlink" href="#2-cross-stack-authentication-failure-burst" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>| datamodel Authentication search
+| search Authentication.action="failure" sourcetype IN ("sap:hana:audit","sap:sapstartsrv","sap:scc:audit","linux:sudolog")
+| rename Authentication.user AS user
+| stats values(sourcetype) AS sourcetypes, dc(sourcetype) AS distinct_sourcetypes,
+        count, latest(_time) AS last_seen by user
+| where distinct_sourcetypes &gt;= 2
+| sort -distinct_sourcetypes -count
+</code></pre></div>
+<p><strong>Threat model:</strong> Credential stuffing or coordinated brute force. The same compromised credential is tried against multiple SAP stacks. A user appearing in failure events across 2+ sourcetypes within the same 60-minute dispatch window is the <strong>highest-signal indicator</strong> of this attack pattern.</p>
+<p><strong>FP profile:</strong> Very low. Only fires on actual cross-stack pattern; healthy environments produce 0 rows.</p>
+<h4 id="3-abap-gateway-anomalous-peer"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 3. ABAP Gateway Anomalous Peer<a class="headerlink" href="#3-abap-gateway-anomalous-peer" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>`sap_logserv_idx_macro` sourcetype="sap:abap:gateway" peer_ip=*
+   earliest=-1h@h latest=now
+| stats count by peer_ip host
+| join type=outer peer_ip [
+    search `sap_logserv_idx_macro` sourcetype="sap:abap:gateway" peer_ip=*
+       earliest=-30d@d latest=-1h@h
+    | stats count AS historical_count by peer_ip
+  ]
+| where isnull(historical_count) OR historical_count &lt; 5
+| sort -count
+</code></pre></div>
+<p><strong>Threat model:</strong> A new RFC client appears at the SAP ABAP gateway. Could be a legitimate new integration or an unauthorized scanning attempt. The 30-day baseline + 1-hour detection window catches anything new.</p>
+<p><strong>FP profile:</strong> Low. Will fire on genuine new peers; SOC reviews → either whitelists or blocks.</p>
+<h4 id="4-scc-access_denied-burst"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 4. SCC ACCESS_DENIED Burst<a class="headerlink" href="#4-scc-access_denied-burst" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>`sap_logserv_idx_macro` sourcetype="sap:scc:audit" scc_audit_type=ACCESS_DENIED
+   earliest=-1h@h latest=now
+| stats count, latest(_time) AS last_seen, values(scc_account_id) AS account_ids by host
+| where count &gt;= 3
+| sort -count
+</code></pre></div>
+<p><strong>Threat model:</strong> SAP Cloud Connector logs ACCESS_DENIED when an inbound tunnel request hits a backend that isn&rsquo;t on the SCC allowlist. 3+ events on a single host in an hour signals either misconfigured allowlist or external probing.</p>
+<p><strong>FP profile:</strong> Low. ACCESS_DENIED events are sparse under normal operations.</p>
+<h4 id="5-hana-failed-connect-spike-per-user"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 5. HANA Failed CONNECT Spike Per User<a class="headerlink" href="#5-hana-failed-connect-spike-per-user" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>`sap_logserv_idx_macro` sourcetype="sap:hana:audit" action_type=CONNECT status=UNSUCCESSFUL
+   earliest=-1h@h latest=now
+| stats count, latest(_time) AS last_seen, values(client_ip) AS client_ips
+        by executing_user host
+| where count &gt;= 5
+| sort -count
+</code></pre></div>
+<p><strong>Threat model:</strong> A user repeatedly failing HANA CONNECT (5+ in an hour) — above the noise floor of routine SCC tunnel-credential failures (~1-2/hr).</p>
+<p><strong>FP profile:</strong> Low. 5/hr threshold is above routine failure rates.</p>
+<h4 id="6-linux-oom-killer-burst"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 6. Linux OOM-Killer Burst<a class="headerlink" href="#6-linux-oom-killer-burst" title="Permanent link">&para;</a></h4>
+<p>Fires on a burst of Linux OOM-killer (out-of-memory) events on a host. Security domain <code>endpoint</code>.</p>
+<p><strong>Threat model:</strong> A spike of kernel out-of-memory kills can indicate a memory-exhaustion attack, a runaway/compromised process, or resource-starvation that takes SAP services offline. Clustered OOM kills warrant operational + security review.</p>
+<p><strong>FP profile:</strong> Low to medium. Legitimately busy hosts under memory pressure can produce bursts; correlate with known workload spikes or capacity events.</p>
+<h2 id="extended-cross-stack-pack-v2"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Extended cross-stack pack (v2)<a class="headerlink" href="#extended-cross-stack-pack-v2" title="Permanent link">&para;</a></h2>
+<p>Six additional correlation searches detect cross-source threat chains that customers can&rsquo;t easily author themselves. The patterns require SAP-specific knowledge of which sourcetype emits the authentication event vs. the privilege change vs. the data-tier event — knowledge that&rsquo;s inside the LogServ App rather than in stock Splunk content.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Search name</th>
+<th>What it detects</th>
+<th>Severity</th>
+<th>Schedule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>E1</td>
+<td><code>splunk_sap_logserv_es_lateral_movement</code></td>
+<td>Same user authenticates successfully into 3+ HANA SIDs within 60s</td>
+<td>high</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>E2</td>
+<td><code>splunk_sap_logserv_es_privilege_chain</code></td>
+<td>Same account: auth failure → success → privilege change in 1h</td>
+<td>high</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>E3</td>
+<td><code>splunk_sap_logserv_es_after_hours_admin_data_access</code></td>
+<td>Same user active in HANA audit + webdispatcher access on the same host outside business hours</td>
+<td>high</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>E4</td>
+<td><code>splunk_sap_logserv_es_service_account_interactive</code></td>
+<td>Service account (identified by username pattern) generated interactive HANA CONNECT</td>
+<td>medium</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>E5</td>
+<td><code>splunk_sap_logserv_es_hana_user_creation_off_hours</code></td>
+<td><code>CREATE USER</code> on HANA outside business hours or on weekends</td>
+<td>medium</td>
+<td>hourly</td>
+</tr>
+<tr>
+<td>E6</td>
+<td><code>splunk_sap_logserv_es_hana_mass_drop</code></td>
+<td>5+ DROP statements by a single user on a single host within 10 min</td>
+<td>high</td>
+<td>hourly</td>
+</tr>
+</tbody>
+</table>
+<h3 id="per-search-detail-extended-pack"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Per-search detail (extended pack)<a class="headerlink" href="#per-search-detail-extended-pack" title="Permanent link">&para;</a></h3>
+<h4 id="e1-lateral-movement"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> E1. Lateral Movement<a class="headerlink" href="#e1-lateral-movement" title="Permanent link">&para;</a></h4>
+<p>Same user authenticates successfully into 3+ SAP HANA SIDs within a 60-second window. The cross-SID hop pattern is the canonical lateral-movement signal across the SAP estate.</p>
+<p><strong>Threat model:</strong> An attacker with valid credentials probing the estate to find which systems the credential is authorized on. Healthy environments show this only for monitoring service accounts that legitimately poll every SID.</p>
+<p><strong>FP profile:</strong> Low — most environments have monitoring service accounts that legitimately span SIDs; tag those in the Identity feed (<code>category=service</code>) so the existing classification can be used to filter the alert downstream.</p>
+<h4 id="e2-privilege-chain-credential-stuffing-escalation"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> E2. Privilege Chain (Credential Stuffing → Escalation)<a class="headerlink" href="#e2-privilege-chain-credential-stuffing-escalation" title="Permanent link">&para;</a></h4>
+<p>Same account on a single HANA host has BOTH authentication failures AND a successful authentication AND a privilege-change event (GRANT, ALTER USER, CREATE USER/ROLE) within a 1-hour window. Highest-priority investigation pattern in the SAP-side ES content.</p>
+<p><strong>Threat model:</strong> Credential stuffing → established access → escalation chain. The textbook compromise pattern.</p>
+<p><strong>FP profile:</strong> Very low. Healthy admin operations look like (success + change), not (failure + success + change).</p>
+<h4 id="e3-after-hours-admin-data-access"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> E3. After-Hours Admin Data Access<a class="headerlink" href="#e3-after-hours-admin-data-access" title="Permanent link">&para;</a></h4>
+<p>Same user is active across BOTH HANA audit AND webdispatcher access logs outside business hours, on the same host. Cross-source signal indicating a potential off-hours data-extraction pattern.</p>
+<p><strong>Threat model:</strong> Admin-account compromise → data exfiltration via authenticated session that spans the database and HTTP tiers. Off-hours timing reduces the likelihood of being noticed in real time.</p>
+<p><strong>FP profile:</strong> Low for human admin accounts; moderate for service accounts that legitimately do this. Tag service accounts in the Identity feed to filter.</p>
+<h4 id="e4-service-account-interactive-hana-login"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> E4. Service-Account Interactive HANA Login<a class="headerlink" href="#e4-service-account-interactive-hana-login" title="Permanent link">&para;</a></h4>
+<p>Service accounts generated interactive HANA CONNECT events. Service accounts are identified inside the search itself by username pattern against <code>executing_user</code> (<code>adm$</code>, <code>^sapservice</code>, <code>_svc$</code>, <code>^svc_</code>, <code>_batch$</code>, <code>_daemon$</code>, <code>^sap_</code>). Service accounts should run programmatic workloads, never interactive sessions.</p>
+<p><strong>Threat model:</strong> Either misuse (admin using a service-account credential because it has higher privileges than their own) or compromise (attacker who obtained a service-account credential and is using it interactively from a workstation).</p>
+<p><strong>FP profile:</strong> Very low if the username patterns match your naming convention. To change coverage, override the <code>eval is_svc=...</code> clause in <code>local/savedsearches.conf</code>.</p>
+<h4 id="e5-hana-user-creation-outside-business-hours"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> E5. HANA User Creation Outside Business Hours<a class="headerlink" href="#e5-hana-user-creation-outside-business-hours" title="Permanent link">&para;</a></h4>
+<p><code>CREATE USER</code> on HANA outside business hours or on weekends. Should map to a known change ticket; off-window creation often indicates ad-hoc / unauthorized provisioning.</p>
+<p><strong>Threat model:</strong> Insider creating a backdoor account when fewer admins are watching. Less aggressive than mass DROP but still a containment-relevant signal.</p>
+<p><strong>FP profile:</strong> Low for typical environments. Higher during planned cutover weekends — operators expecting weekend CREATE USER activity should pre-disable this search for the maintenance window.</p>
+<h4 id="e6-hana-mass-dropdelete"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> E6. HANA Mass DROP/DELETE<a class="headerlink" href="#e6-hana-mass-dropdelete" title="Permanent link">&para;</a></h4>
+<p>5+ DROP statements (TABLE, SCHEMA, VIEW, PROCEDURE, USER, ROLE, INDEX) by a single user on a single host within 10 minutes. Indicates either large-scale schema cleanup (which should map to a change ticket) or destructive insider activity.</p>
+<p><strong>Threat model:</strong> Destructive insider, ransomware-style data destruction, or inadvertent operator error during cleanup.</p>
+<p><strong>FP profile:</strong> Low at this threshold (5 in 10 min is well above routine ad-hoc cleanup activity). Schema migrations for a major release will produce hits — pre-disable the search during planned migration windows or document the mapping in the change ticket.</p>
+<h2 id="rba-risk-based-alerting"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> RBA — Risk-Based Alerting<a class="headerlink" href="#rba-risk-based-alerting" title="Permanent link">&para;</a></h2>
+<p>Each of the 19 detection searches carries <code>action.risk = 1</code> annotations so events also feed ES&rsquo;s Risk Framework.</p>
+<h3 id="per-search-risk-table"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Per-search risk table<a class="headerlink" href="#per-search-risk-table" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Search</th>
+<th>risk_object_field</th>
+<th>risk_object_type</th>
+<th>risk_score</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HANA privilege escalation</td>
+<td><code>executing_user</code>, <code>target_user</code>, <code>host</code></td>
+<td>user, user, system</td>
+<td>80, 40, 30</td>
+</tr>
+<tr>
+<td>Cross-stack auth failure</td>
+<td><code>user</code></td>
+<td>user</td>
+<td>60 (per-event accumulating)</td>
+</tr>
+<tr>
+<td>ABAP gateway anomalous peer</td>
+<td><code>peer_ip</code>, <code>host</code></td>
+<td>other, system</td>
+<td>40, 20</td>
+</tr>
+<tr>
+<td>SCC ACCESS_DENIED burst</td>
+<td><code>host</code></td>
+<td>system</td>
+<td>50</td>
+</tr>
+<tr>
+<td>HANA failed CONNECT spike</td>
+<td><code>executing_user</code>, <code>host</code></td>
+<td>user, system</td>
+<td>50, 30</td>
+</tr>
+<tr>
+<td>Linux OOM-killer burst</td>
+<td><code>host</code></td>
+<td>system</td>
+<td>50</td>
+</tr>
+<tr>
+<td>Lateral movement</td>
+<td><code>auth_user</code></td>
+<td>user</td>
+<td>70</td>
+</tr>
+<tr>
+<td>Privilege chain</td>
+<td><code>auth_user</code>, <code>host</code></td>
+<td>user, system</td>
+<td>80, 40</td>
+</tr>
+<tr>
+<td>After-hours admin data access</td>
+<td><code>executing_user</code>, <code>host</code></td>
+<td>user, system</td>
+<td>70, 30</td>
+</tr>
+<tr>
+<td>Service account interactive</td>
+<td><code>executing_user</code></td>
+<td>user</td>
+<td>60</td>
+</tr>
+<tr>
+<td>HANA user creation off-hours</td>
+<td><code>executing_user</code></td>
+<td>user</td>
+<td>50</td>
+</tr>
+<tr>
+<td>HANA mass DROP</td>
+<td><code>executing_user</code>, <code>host</code></td>
+<td>user, system</td>
+<td>70, 50</td>
+</tr>
+<tr>
+<td>TI: DNS to malicious domain</td>
+<td><code>src_ips</code></td>
+<td>system</td>
+<td>80</td>
+</tr>
+<tr>
+<td>TI: proxy to malicious IP</td>
+<td><code>src_ips</code></td>
+<td>system</td>
+<td>70</td>
+</tr>
+<tr>
+<td>TI: compromised credential use</td>
+<td><code>auth_user</code></td>
+<td>user</td>
+<td>90</td>
+</tr>
+<tr>
+<td>Anomaly: user auth volume</td>
+<td><code>auth_user</code></td>
+<td>user</td>
+<td>30</td>
+</tr>
+<tr>
+<td>Anomaly: webdispatcher response</td>
+<td><code>host</code></td>
+<td>system</td>
+<td>30</td>
+</tr>
+<tr>
+<td>Anomaly: topology edge volume</td>
+<td><code>source</code></td>
+<td>system</td>
+<td>30</td>
+</tr>
+<tr>
+<td>Anomaly: after-hours admin</td>
+<td><code>auth_user</code></td>
+<td>user</td>
+<td>40</td>
+</tr>
+</tbody>
+</table>
+<h3 id="multi-object-risk-per-event"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Multi-object risk per event<a class="headerlink" href="#multi-object-risk-per-event" title="Permanent link">&para;</a></h3>
+<p>Where a single notable affects multiple objects (operator + target + host for privilege escalation), the score is split across all three so each accrues risk simultaneously. Example:</p>
+<div class="highlight"><pre><span></span><code><span class="na">action.risk.param._risk</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">[</span>
+<span class="w">  </span><span class="na">{"risk_object_field"</span><span class="o">:</span><span class="s">"executing_user"</span><span class="na">,"risk_object_type"</span><span class="o">:</span><span class="s">"user"</span><span class="na">,"risk_score"</span><span class="o">:</span><span class="s">80},</span>
+<span class="w">  </span><span class="na">{"risk_object_field"</span><span class="o">:</span><span class="s">"target_user"</span><span class="na">,"risk_object_type"</span><span class="o">:</span><span class="s">"user"</span><span class="na">,"risk_score"</span><span class="o">:</span><span class="s">40},</span>
+<span class="w">  </span><span class="na">{"risk_object_field"</span><span class="o">:</span><span class="s">"host"</span><span class="na">,"risk_object_type"</span><span class="o">:</span><span class="s">"system"</span><span class="na">,"risk_score"</span><span class="o">:</span><span class="s">30}</span>
+<span class="na">]</span>
+</code></pre></div>
+<p>ES Risk Framework correctly aggregates across the three when consumed by tier-2 RBA searches.</p>
+<h2 id="tier-2-risk-notable"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Tier-2 Risk Notable<a class="headerlink" href="#tier-2-risk-notable" title="Permanent link">&para;</a></h2>
+<p>The App also ships <code>splunk_sap_logserv_es_risk_notable_threshold</code> — a higher-tier correlation search that aggregates risk events from all 19 detection searches and creates a critical-severity Notable when a single risk_object accumulates ≥ 100 risk_score in 24h.</p>
+<div class="highlight"><pre><span></span><code>| from datamodel:Risk.All_Risk
+| search source IN (
+    "splunk_sap_logserv_es_hana_privilege_escalation",
+    "splunk_sap_logserv_es_cross_stack_auth_failure",
+    ...                     &lt;- the shipped stanza enumerates all 19 detection
+    ...                        searches: base, extended, threat-intel, anomaly
+    "splunk_sap_logserv_es_anomaly_after_hours_admin")
+| stats sum(All_Risk.risk_score) AS total_risk
+        values(All_Risk.risk_object_type) AS risk_object_type
+        values(source) AS source_searches
+        dc(source) AS distinct_searches
+        latest(_time) AS last_event by All_Risk.risk_object
+| rename All_Risk.risk_object AS risk_object
+| where total_risk &gt;= 100
+</code></pre></div>
+<p><strong>Why threshold 100?</strong> It&rsquo;s the conservative starter:
+- Two cross-stack-auth-failure events for the same user (60 + 60 = 120) → fires
+- One privilege-escalation event distributes 80/40/30 across three objects — none alone exceeds 100, but a second event compounds
+- Operations with high event volume can lower the threshold to 60; low-volume environments raise to 200. Customer-tunable.</p>
+<p><strong>ES dependency:</strong> the Risk Notable reads from <code>Risk.All_Risk</code> data model. Without ES, the Risk data model isn&rsquo;t accelerated and the search returns 0 rows silently — perfect dual-mode behavior.</p>
+<h2 id="how-notables-appear-in-es-incident-review"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> How notables appear in ES Incident Review<a class="headerlink" href="#how-notables-appear-in-es-incident-review" title="Permanent link">&para;</a></h2>
+<p>When a base correlation search fires:</p>
+<ol>
+<li><strong>Notable created</strong> with the search&rsquo;s <code>rule_title</code> template substituted with row field values
+   - Example: &ldquo;HANA Privilege Escalation: ALTER USER by xcnadm on SYSTEM&rdquo;</li>
+<li><strong>Severity badge</strong> matches <code>action.notable.param.severity</code> (high / medium)</li>
+<li><strong>Security domain</strong> badge: <code>identity</code> / <code>access</code> / <code>network</code> / <code>endpoint</code> / <code>threat</code></li>
+<li><strong>Grouping</strong> by <code>nes_fields</code> — ES groups similar notables (same operator + target + host) into one row in Incident Review</li>
+</ol>
+<p>When the tier-2 Risk Notable fires:</p>
+<ol>
+<li><strong>Critical-severity notable</strong> with title like &ldquo;High accumulated risk: xcnadm (160) across 3 SAP correlation searches&rdquo;</li>
+<li><strong>Security domain</strong> = <code>threat</code></li>
+<li><strong>Grouping</strong> by <code>risk_object</code> — one notable per high-risk object</li>
+</ol>
+<h2 id="customer-tuning"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Customer tuning<a class="headerlink" href="#customer-tuning" title="Permanent link">&para;</a></h2>
+<p>Override severity, schedule, or risk scores in <code>local/savedsearches.conf</code> (do not edit <code>default/</code>). For example, to raise the Risk Notable threshold to 150:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[splunk_sap_logserv_es_risk_notable_threshold]</span>
+<span class="na">search</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">| from datamodel:Risk.All_Risk | search source IN (...) | stats sum(All_Risk.risk_score) AS total_risk ... by All_Risk.risk_object | rename All_Risk.risk_object AS risk_object | where total_risk &gt;= 150</span>
+</code></pre></div>
+<p>Restart Splunk or reload saved searches via REST after editing.</p>
+<h2 id="disabling-individual-correlation-searches"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Disabling individual correlation searches<a class="headerlink" href="#disabling-individual-correlation-searches" title="Permanent link">&para;</a></h2>
+<p>Customers who don&rsquo;t want a particular search firing can disable it without uninstalling the App:</p>
+<ol>
+<li>Settings → Searches, reports, and alerts</li>
+<li>Filter by <code>splunk_sap_logserv_es_*</code></li>
+<li>Click the search → Edit → Disable</li>
+<li>Save</li>
+</ol>
+<p>The disabled search stops scheduling but remains in the App for re-enable later.</p>
+<h2 id="see-also"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../cim-compliance/">CIM Compliance</a> — How the underlying tagging works</li>
+<li><a href="../asset-identity-feed/">Asset &amp; Identity Feed</a> — How asset context enriches notable events</li>
+<li><a href="../threat-intel/">Threat Intelligence Integration</a> — The 3 customer-managed CSV lookups + 3 TI-driven correlation searches</li>
+<li><a href="../behavioral-detections/">Behavioral &amp; Anomaly Detections</a> — The 4 statistically-baselined anomaly searches with optional MLTK upgrade path</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>
