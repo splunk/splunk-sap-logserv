@@ -43,3 +43,4 @@ Thumbs.db
 !release_binaries/splunk_ta_sap_logserv-0.1.1.tar.gz
 !release_binaries/splunk_ta_sap_logserv_azure-0.1.1.tar.gz
 !release_binaries/splunk_ta_sap_logserv_gcp-0.1.1.tar.gz
+!release_binaries/splunk_ta_sap_logserv-0.1.2.tar.gz
