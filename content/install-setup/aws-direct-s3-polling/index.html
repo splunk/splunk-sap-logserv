@@ -1,0 +1,3350 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/install-setup/aws-direct-s3-polling/">
+      
+      
+        <link rel="prev" href="../aws-remote-s3-copy-guide/">
+      
+      
+        <link rel="next" href="../azure-setup/">
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>AWS Direct S3 Polling (Backfill & Recovery) - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#aws-direct-s3-polling-backfill-and-recovery" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              AWS Direct S3 Polling (Backfill & Recovery)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    AWS Direct S3 Polling (Backfill & Recovery)
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    AWS Direct S3 Polling (Backfill & Recovery)
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-prefix-selects-the-events-the-scan-window-does-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. The prefix selects the events — the scan window does not
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-the-add-ons-own-form-cannot-create-this-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Why the add-on&rsquo;s own form cannot create this input
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2a-the-aws-s3-direct-screen" class="md-nav__link">
+    <span class="md-ellipsis">
+      2a. The AWS S3 Direct screen
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2a. The AWS S3 Direct screen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#you-choose-dashboards-and-days-the-screen-builds-the-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      You choose dashboards and days; the screen builds the keys
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-write-time-window-is-set-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      The write-time window is set for you
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-checks-before-it-creates-anything" class="md-nav__link">
+    <span class="md-ellipsis">
+      What it checks before it creates anything
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-and-managing-backfills" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating and managing backfills
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-iam-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. IAM permissions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. IAM permissions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#set-aws_iam_role-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set aws_iam_role explicitly
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-run-once-backfill-procedure" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Run-once backfill procedure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-what-to-expect" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. What to expect
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-idempotency" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Idempotency
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scale-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scale limits
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-note-on-azure-and-gcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      A note on Azure and GCP
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Free-form LLM Features
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Free-form LLM Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Introduction
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-prefix-selects-the-events-the-scan-window-does-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. The prefix selects the events — the scan window does not
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-why-the-add-ons-own-form-cannot-create-this-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Why the add-on&rsquo;s own form cannot create this input
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2a-the-aws-s3-direct-screen" class="md-nav__link">
+    <span class="md-ellipsis">
+      2a. The AWS S3 Direct screen
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2a. The AWS S3 Direct screen">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#you-choose-dashboards-and-days-the-screen-builds-the-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      You choose dashboards and days; the screen builds the keys
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-write-time-window-is-set-for-you" class="md-nav__link">
+    <span class="md-ellipsis">
+      The write-time window is set for you
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-it-checks-before-it-creates-anything" class="md-nav__link">
+    <span class="md-ellipsis">
+      What it checks before it creates anything
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#creating-and-managing-backfills" class="md-nav__link">
+    <span class="md-ellipsis">
+      Creating and managing backfills
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-iam-permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. IAM permissions
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. IAM permissions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#set-aws_iam_role-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      Set aws_iam_role explicitly
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-run-once-backfill-procedure" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Run-once backfill procedure
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-what-to-expect" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. What to expect
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-idempotency" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Idempotency
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scale-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scale limits
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      Troubleshooting
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#a-note-on-azure-and-gcp" class="md-nav__link">
+    <span class="md-ellipsis">
+      A note on Azure and GCP
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="aws-direct-s3-polling-backfill-and-recovery">AWS Direct S3 Polling (Backfill and Recovery)<a class="headerlink" href="#aws-direct-s3-polling-backfill-and-recovery" title="Permanent link">&para;</a></h1>
+<h3 id="introduction"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h3>
+<p>The three AWS setup guides all use the <strong>SQS-Based S3</strong> input: SAP&rsquo;s S3 bucket emits a notification for every new object, the queue holds it, and the Splunk Add-on for Amazon Web Services fetches exactly that object. That is the steady-state ingest path, and nothing on this page replaces it.</p>
+<p>This page covers the <strong>Generic S3</strong> input (<code>aws_s3://</code>) that the same add-on also ships. It polls a bucket prefix directly and needs no queue at all. It exists for the cases the notification path cannot serve:</p>
+<ul>
+<li><strong>Backfilling a date range that predates your input</strong> — logs that were already in the bucket before you configured LogServ ingest.</li>
+<li><strong>Recovering from an outage</strong> — if the Heavy Forwarder is down long enough for queue messages to age out, those notifications are gone permanently, but the objects are still in the bucket.</li>
+<li><strong>A bucket with no notification wiring</strong> — for example, a copy of the logs you hold yourself.</li>
+</ul>
+<p>The quickest way to run one is the <strong>AWS S3 Direct</strong> screen in the Data TA (<a href="#2a-the-aws-s3-direct-screen">section 2a</a>): you choose dashboards and a range of days, and it builds the inputs. Sections 1 and 4 explain the input itself, for anyone configuring one by hand.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Direct S3 polling is a <strong>secondary channel</strong>, intended to be switched on for a specific job and switched off again. Splunk&rsquo;s own guidance is to use SQS-Based S3 for ongoing ingest; see <a href="#scale-limits">Scale limits</a> below.</p>
+</div>
+<p><br></p>
+<h3 id="1-the-prefix-selects-the-events-the-scan-window-does-not"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> 1. The prefix selects the events — the scan window does not<a class="headerlink" href="#1-the-prefix-selects-the-events-the-scan-window-does-not" title="Permanent link">&para;</a></h3>
+<p>This is the single most important thing to understand before configuring the input by hand, and it is easy to get backwards.</p>
+<p>A LogServ object key looks like this:</p>
+<div class="highlight"><pre><span></span><code>logserv/&lt;clz_dir&gt;/&lt;clz_subdir&gt;/&lt;YYYY&gt;/&lt;MM&gt;/&lt;DD&gt;/&lt;filename&gt;.json.gz
+</code></pre></div>
+<p>The date in that path is the <strong>event date</strong> — the day the logs inside the object were produced.</p>
+<p>The input also has two datetime fields, <code>initial_scan_datetime</code> and <code>terminal_scan_datetime</code>. <strong>Both bound the object&rsquo;s S3 <code>LastModified</code> timestamp — the moment the object was written to the bucket. Neither has any relationship to the timestamps of the events inside it.</strong> The add-on names the field <code>last_modified</code> internally, and it is <code>last_modified</code> that its resume checkpoint is keyed on.</p>
+<p>Those two clocks routinely diverge by a wide margin, because SAP writes objects into event-dated paths some time after the events occur. Objects sampled from a LogServ bucket carried 2025 event dates while every one of them had a <code>LastModified</code> in 2026.</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong>So: to ingest a particular range of log dates, express it in the key — the <code>key_name</code> prefix, and for several days a <code>whitelist</code> (section 4). Use the scan-window fields only when you genuinely want to bound by upload time</strong> — for example, &ldquo;only objects written since the outage began&rdquo;. The AWS S3 Direct screen works this way: its <strong>Scan from</strong> and <strong>Scan until</strong> are dates in the key.</p>
+<div class="admonition warning">
+<p class="admonition-title">A blank scan field does not mean “no bound”</p>
+<p>Leaving <strong><code>initial_scan_datetime</code></strong> empty does <em>not</em> mean “from the beginning of the prefix”. The add-on substitutes <strong>now minus seven days</strong> — <code>aws_s3_conf.py::_get_last_modified_time</code> treats both an empty value and the literal string <code>default</code> that way. A backfill of a historical prefix left blank therefore selects nothing, logs an ordinary <code>keys are scanned</code> line and reports success. Set it to an explicit floor instead - but <strong>not a 1970 date</strong>. Splunk&rsquo;s own <code>search/timeparser</code> rejects those (<code>HTTP 400 Invalid time.</code>), and the add-on resolves this field through that parser on <em>every poll</em> while validating only locally on create: the input saves cleanly, reports success and then fetches nothing, permanently. <code>2000-01-01T00:00:00Z</code> is below anything S3 can hold (S3 launched in 2006) and parses correctly.</p>
+<p>Leaving <strong><code>terminal_scan_datetime</code></strong> empty is the opposite problem: the add-on returns an open-ended sentinel and the input keeps polling indefinitely. Set it so a backfill run terminates on its own.</p>
+<p>The <strong>AWS S3 Direct</strong> screen (section 2a) sets both itself and never sends a blank.</p>
+</div>
+<details class="tip">
+<summary>How this was established</summary>
+<p>Objects were copied into a bucket so that their <code>LastModified</code> (2026-09-09) and their envelope event time (2025-06-11) were about fifteen months apart. Three inputs were then created over the identical prefix, differing only in their scan bounds:</p>
+<table>
+<thead>
+<tr>
+<th>test</th>
+<th><code>initial_scan_datetime</code></th>
+<th><code>terminal_scan_datetime</code></th>
+<th>keys selected</th>
+<th>events</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>T1</td>
+<td>2020-01-01</td>
+<td>2026-09-01 (after the events, before the write)</td>
+<td><strong>0</strong></td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>T2</td>
+<td>2020-01-01</td>
+<td>2026-12-31</td>
+<td>5</td>
+<td>5</td>
+</tr>
+<tr>
+<td>T3</td>
+<td>2026-09-05 (after the events, before the write)</td>
+<td>—</td>
+<td><strong>5</strong></td>
+<td><strong>5</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Bounding on <code>LastModified</code> predicts 0 and 5; bounding on event time predicts 5 and 0. The measured results match <code>LastModified</code> in both directions.</p>
+</details>
+<p><br></p>
+<h3 id="2-why-the-add-ons-own-form-cannot-create-this-input"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> 2. Why the add-on&rsquo;s own form cannot create this input<a class="headerlink" href="#2-why-the-add-ons-own-form-cannot-create-this-input" title="Permanent link">&para;</a></h3>
+<p>The add-on&rsquo;s <strong>S3 Bucket</strong> field on the Generic S3 setup page is a dropdown with no free-text entry, and the endpoint that populates it calls the AWS <code>ListBuckets</code> API. That requires the <code>s3:ListAllMyBuckets</code> permission, which <strong>cannot be scoped to a single bucket</strong> — AWS accepts only <code>Resource: "*"</code> for it.</p>
+<p>The consequence is worth stating plainly, because the symptom is confusing:</p>
+<ul>
+<li><strong>The input works perfectly at runtime on a bucket-scoped policy.</strong> Only the form that creates it is blocked.</li>
+<li>If you try to use the UI you will see <code>AccessDenied</code> on the bucket dropdown, and the form cannot be saved, because there is no way to type the bucket name instead.</li>
+</ul>
+<p>Whether granting <code>s3:ListAllMyBuckets</code> is even an option depends on which topology you deployed:</p>
+<table>
+<thead>
+<tr>
+<th>Topology</th>
+<th>Whose bucket is it?</th>
+<th><code>s3:ListAllMyBuckets</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../aws-remote-s3-connect-guide/">AWS Remote S3 Connect</a></td>
+<td>SAP ECS account</td>
+<td>Expect SAP to refuse — it would expose their entire bucket inventory</td>
+</tr>
+<tr>
+<td><a href="../aws-remote-s3-filter-guide/">AWS Remote S3 Filter</a></td>
+<td>SAP ECS account</td>
+<td>Same</td>
+</tr>
+<tr>
+<td><a href="../aws-remote-s3-copy-guide/">AWS Remote S3 Copy</a></td>
+<td>Your Secondary account</td>
+<td>Your call — but still not required, since the steps below avoid the form</td>
+</tr>
+</tbody>
+</table>
+<p>There are two ways round it, and neither needs <code>s3:ListAllMyBuckets</code>:</p>
+<ul>
+<li><strong>The AWS S3 Direct screen</strong> shipped with the Splunk TA for SAP LogServ (Splunk Web → <em>Splunk TA for SAP LogServ</em> → <strong>AWS S3 Direct</strong>). It types the bucket name rather than listing buckets, so the blocked endpoint is never called. See section 2a.</li>
+<li><strong>REST or <code>inputs.conf</code> directly</strong>, as in section 4, which likewise never touches that endpoint.</li>
+</ul>
+<p><br></p>
+<h3 id="2a-the-aws-s3-direct-screen"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> 2a. The AWS S3 Direct screen<a class="headerlink" href="#2a-the-aws-s3-direct-screen" title="Permanent link">&para;</a></h3>
+<p>The Data TA ships a screen for this job: <strong>Splunk Web → <em>Splunk TA for SAP LogServ</em> → AWS S3 Direct</strong>. It creates and manages LogServ-scoped Generic S3 inputs inside the AWS add-on from your browser, as the signed-in user, and adds no new Python, REST handler or capability of its own.</p>
+<p>Run it on the <strong>heavy forwarder that will hold the inputs</strong>. A Generic S3 input collects from the instance it is defined on, so creating one on a search head or indexer means that instance starts polling S3 — usually not what you want. The screen checks where it is running: on Splunk Cloud it will not write at all, and on an instance with no enabled AWS inputs it asks you to confirm before the first create.</p>
+<details class="note">
+<summary>Example — three rows chosen, and the plan the screen builds from them</summary>
+<p><img alt="AWS S3 Direct — the form and its plan" src="../../../images/aws-s3-direct-form.png" /></p>
+</details>
+<h4 id="you-choose-dashboards-and-days-the-screen-builds-the-keys">You choose dashboards and days; the screen builds the keys<a class="headerlink" href="#you-choose-dashboards-and-days-the-screen-builds-the-keys" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Dashboards</strong> — the same rows as the LogServ App&rsquo;s <strong>Settings → Dashboard Data</strong> list. Tick one or several. The screen reads every S3 folder (<code>&lt;clz_dir&gt;/&lt;clz_subdir&gt;</code>) those rows are built from, and a folder two rows share is read once.</li>
+<li><strong>Scan from</strong> and <strong>Scan until</strong> — two <strong>UTC dates</strong>, both included, with no time of day. They select the date in the key, <code>logserv/&lt;clz_dir&gt;/&lt;clz_subdir&gt;/YYYY/MM/DD/</code>, which is the date of the events inside. Scan until can be today at the latest, and a range covers at most 366 days.</li>
+</ul>
+<p>From those the screen creates <strong>one input per S3 folder and calendar year</strong>:</p>
+<ul>
+<li>its <strong>key prefix</strong> is the tightest one that holds the chosen days — the day itself, else its month, else its year;</li>
+<li>a <strong>whitelist</strong> names the exact days, so an input for 14 to 18 September reads those five day folders and nothing else under <code>…/2026/09/</code>;</li>
+<li>it is named <code>logserv_backfill_&lt;job&gt;_&lt;folder&gt;_&lt;year&gt;</code>, where <code>&lt;job&gt;</code> is the name you give the backfill (lower-case letters, digits and hyphens, up to 24 characters).</li>
+</ul>
+<details class="tip">
+<summary>Which S3 folders each dashboard row reads</summary>
+<p>Derived from the searches that build each rollup, and checked against the LogServ App on every build. The four rows whose searches read the whole index take all 32 folders. Squid appears under both of its real layouts, <code>proxy/squid</code> (the AWS bucket) and <code>linux/proxy</code> (Azure), and the Pacemaker cluster log under <code>linux/pacemaker</code> (GCP); a folder your bucket does not have gives an input that finds nothing.</p>
+<table>
+<thead>
+<tr>
+<th>Dashboard Data row</th>
+<th>S3 folders</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ABAP Network &amp; Security</td>
+<td><code>abap/audit</code>, <code>abap/gateway</code>, <code>abap/icm</code></td>
+</tr>
+<tr>
+<td>Beaconing detection</td>
+<td><code>dns/binddns</code>, <code>linux/proxy</code>, <code>proxy/squid</code></td>
+</tr>
+<tr>
+<td>Change &amp; Configuration Activity</td>
+<td><code>hana/hanaaudit</code>, <code>linux/cron</code>, <code>linux/linux_secure</code>, <code>linux/localmessages</code>, <code>linux/messages</code>, <code>linux/pacemaker</code>, <code>linux/proxy</code>, <code>linux/slapd</code>, <code>linux/sudolog</code>, <code>linux/warn</code>, the four <code>windows/WinEventLog:*</code> channels</td>
+</tr>
+<tr>
+<td>Cloud Connector</td>
+<td><code>scc/audit</code>, <code>scc/tracelogs</code></td>
+</tr>
+<tr>
+<td>Cross-Stack Authentication</td>
+<td><code>hana/hanaaudit</code>, <code>sap/sapstartsrv</code>, the four <code>windows/WinEventLog:*</code> channels</td>
+</tr>
+<tr>
+<td>Data Pipeline Overview</td>
+<td>all 32</td>
+</tr>
+<tr>
+<td>DNS Analytics</td>
+<td><code>dns/binddns</code></td>
+</tr>
+<tr>
+<td>Environment Health</td>
+<td><code>abap/dispatcher</code>, <code>abap/gateway</code>, <code>abap/icm</code>, <code>hana/hanaaudit</code>, <code>hana/tracelogs</code>, <code>linux/linux_secure</code>, <code>linux/proxy</code>, <code>proxy/squid</code>, <code>sap/saprouter</code>, <code>sap/sapstartsrv</code>, <code>scc/audit</code>, <code>scc/tracelogs</code>, <code>webdispatcher/accesslog</code>, the four <code>windows/WinEventLog:*</code> channels</td>
+</tr>
+<tr>
+<td>Environment Topology (detail tabs)</td>
+<td><code>abap/gateway</code>, <code>abap/icm</code>, <code>hana/hanaaudit</code>, <code>hana/tracelogs</code>, <code>webdispatcher/accesslog</code></td>
+</tr>
+<tr>
+<td>Environment Topology (graph)</td>
+<td><code>abap/gateway</code>, <code>abap/icm</code>, <code>hana/hanaaudit</code>, <code>hana/tracelogs</code>, <code>linux/linux_secure</code>, <code>linux/localmessages</code>, <code>linux/messages</code>, <code>linux/proxy</code>, <code>sap/sapstartsrv</code>, <code>webdispatcher/accesslog</code>, the four <code>windows/WinEventLog:*</code> channels</td>
+</tr>
+<tr>
+<td>HANA Audit</td>
+<td><code>hana/hanaaudit</code></td>
+</tr>
+<tr>
+<td>HANA Trace</td>
+<td><code>hana/tracelogs</code></td>
+</tr>
+<tr>
+<td>Host Details</td>
+<td>all 32</td>
+</tr>
+<tr>
+<td>Host Role Activity</td>
+<td><code>abap/workprocess</code>, <code>dns/binddns</code>, <code>hana/hanaaudit</code>, <code>linux/localmessages</code>, <code>linux/messages</code>, <code>linux/proxy</code>, <code>sap/saprouter</code>, <code>webdispatcher/accesslog</code>, the four <code>windows/WinEventLog:*</code> channels</td>
+</tr>
+<tr>
+<td>Linux System &amp; Security</td>
+<td><code>linux/cron</code>, <code>linux/linux_secure</code>, <code>linux/localmessages</code>, <code>linux/messages</code>, <code>linux/pacemaker</code>, <code>linux/proxy</code>, <code>linux/slapd</code>, <code>linux/sudolog</code>, <code>linux/warn</code></td>
+</tr>
+<tr>
+<td>Multi-Cloud Overview</td>
+<td>all 32</td>
+</tr>
+<tr>
+<td>Network Perimeter</td>
+<td><code>dns/binddns</code>, <code>linux/linux_secure</code>, <code>linux/proxy</code>, <code>proxy/squid</code></td>
+</tr>
+<tr>
+<td>Proxy Analytics</td>
+<td><code>linux/proxy</code>, <code>proxy/squid</code></td>
+</tr>
+<tr>
+<td>SAP Router</td>
+<td><code>sap/saprouter</code></td>
+</tr>
+<tr>
+<td>SAP Services</td>
+<td><code>sap/saphostexec</code>, <code>sap/sapstartsrv</code></td>
+</tr>
+<tr>
+<td>Sourcetype Mapping</td>
+<td>all 32</td>
+</tr>
+<tr>
+<td>Web &amp; API Performance / Web Dispatcher</td>
+<td><code>scc/tracelogs</code>, <code>webdispatcher/accesslog</code></td>
+</tr>
+<tr>
+<td>Web Dispatcher Slowest Traces</td>
+<td><code>webdispatcher/accesslog</code></td>
+</tr>
+<tr>
+<td>Windows</td>
+<td>the four <code>windows/WinEventLog:*</code> channels</td>
+</tr>
+<tr>
+<td>Work Process Performance / ABAP Operations</td>
+<td><code>abap/dispatcher</code>, <code>abap/enqueueserver</code>, <code>abap/event</code>, <code>abap/icm</code>, <code>abap/messageserver</code>, <code>abap/sapstartsrv</code>, <code>abap/workprocess</code></td>
+</tr>
+</tbody>
+</table>
+<p>A row is not always a whole dashboard. <strong>Environment Health</strong>, <strong>DNS Analytics</strong> and <strong>Network Perimeter</strong> also read the <strong>Beaconing detection</strong> row, <strong>ABAP Operations</strong> is built from the <em>Work Process Performance / ABAP Operations</em> row, and <strong>Web Dispatcher</strong> reads both <em>Web &amp; API Performance / Web Dispatcher</em> and <em>Web Dispatcher Slowest Traces</em> — tick all the rows a dashboard uses. The Windows event logs are one sourcetype fed by four channel folders, so a row that reads Windows events reads all four.</p>
+</details>
+<h4 id="the-write-time-window-is-set-for-you">The write-time window is set for you<a class="headerlink" href="#the-write-time-window-is-set-for-you" title="Permanent link">&para;</a></h4>
+<p>Every input the screen creates selects objects <strong>whatever their write time</strong> (<code>initial_scan_datetime = 2000-01-01T00:00:00Z</code>) and <strong>stops by itself a day after it is created</strong> (<code>terminal_scan_datetime</code> = the moment of creation plus 24 hours). The margin is deliberate: the add-on records a scan as finished once a pass that started after the terminal time completes, and a finished input no longer fetches. With no margin, a forwarder restart part-way through the first pass would strand the objects it had found but not yet read. A day out, the next run carries on from the add-on&rsquo;s own checkpoint. Until then each input re-lists its prefix every 30 minutes, which finds nothing new in a closed day.</p>
+<h4 id="what-it-checks-before-it-creates-anything">What it checks before it creates anything<a class="headerlink" href="#what-it-checks-before-it-creates-anything" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Days already covered.</strong> A folder-day that an earlier backfill from this screen already covers — enabled <em>or</em> disabled — is skipped, and the plan says which backfill covers it. Inputs made another way select by write time, so the screen cannot tell which days they read: where they overlap, it <strong>warns but does not skip</strong>.</li>
+<li><strong>The SQS window.</strong> A range that reaches today or either of the two days before it (UTC) warns that the SQS-Based S3 input is probably still delivering those days, and objects it has already delivered would be ingested a second time.</li>
+<li><strong>This forwarder&rsquo;s own filters.</strong> A folder the Configuration → Filters include or exclude patterns drop is left out, and days older than the <code>days_in_past</code> cutoff are left out of the whitelist — their events would be sent to <code>nullQueue</code> on arrival — each with a warning that names the setting to change. If nothing is left, the screen refuses.</li>
+<li><strong>The basics.</strong> A job name not already in use, an AWS account, an IAM role, a region, a valid bucket name and an index.</li>
+</ul>
+<h4 id="creating-and-managing-backfills">Creating and managing backfills<a class="headerlink" href="#creating-and-managing-backfills" title="Permanent link">&para;</a></h4>
+<p>A <strong>plan</strong> below the form lists every input to be created with its key prefix and days, and updates as you type. <strong>Create backfill (N inputs)</strong> re-lists the existing inputs first, then creates the plan&rsquo;s inputs one at a time. It stops at the first failure and reports what was and was not created, and it never retries a create. To finish a partial run, create the same selection again under a new job name: the days the created inputs cover are skipped.</p>
+<p>Each input is stamped <code>_meta = cloud_provider::aws</code>, like the SQS-Based S3 inputs, so the Multi-Cloud dashboard attributes the backfilled events the same way. The add-on&rsquo;s create cannot carry that field, so the screen writes it into the new input&rsquo;s stanza through the Data TA straight after the create and restarts the input, before its first scan. If a stamp does not complete, the confirmation names the input and the reason.</p>
+<p>After a create, the screen names the next step — rebuild the dashboard rollups in the LogServ App for the same rows and the same dates (<a href="#4-run-once-backfill-procedure">step 4f</a>).</p>
+<p>The list at the top groups backfills by job, with <strong>Enable all</strong>, <strong>Disable all</strong> and <strong>Delete all</strong>. Under each backfill are two searches to copy into Search: whether its inputs finished their scan, and how many events reached the index over its own days. Inputs made another way are listed individually. <strong>A backfill cannot be edited</strong>: to change one, delete it and create another.</p>
+<p><img alt="AWS S3 Direct — the backfill list with its two check searches" src="../../../images/aws-s3-direct-backfills.png" /></p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong>Prefer Disable to Delete once a backfill has finished.</strong> The screen knows which days are covered only while the inputs that covered them exist. Deleting a finished backfill makes its days eligible again, and a later backfill of the same rows would read them a second time.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If your Splunk account lacks <code>admin_all_objects</code> the screen cannot write the inputs for you. It does not fail silently: it renders the exact <code>inputs.conf</code> stanzas and <code>curl</code> commands to hand to an administrator, one per input. The inputs stop by themselves a day after the configuration was generated, so apply it the same day or generate it again.</p>
+</div>
+<p>Everything in sections 3 to 6 applies to an input created this way — the screen is a front end to the same <code>aws_s3://</code> input.</p>
+<p><br></p>
+<h3 id="3-iam-permissions"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> 3. IAM permissions<a class="headerlink" href="#3-iam-permissions" title="Permanent link">&para;</a></h3>
+<p>Generic S3 needs one permission more than the SQS-based path:</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Scopable to one bucket?</th>
+<th>Needed for</th>
+<th>Already in the shipped CloudFormation?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>s3:GetObject</code></td>
+<td>✅ Yes</td>
+<td>Fetching each object</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><code>s3:ListBucket</code></td>
+<td>✅ Yes</td>
+<td><strong>Discovering keys under the prefix</strong></td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><code>s3:ListAllMyBuckets</code></td>
+<td>❌ No — <code>Resource: "*"</code> only</td>
+<td>The UI dropdown only, never the runtime</td>
+<td>❌ No, and not required</td>
+</tr>
+</tbody>
+</table>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong><code>s3:ListBucket</code> is the one that catches people out.</strong> The SQS-based input never needs it — the queue message supplies the exact object key, so <code>GetObject</code> alone is enough. An environment that was provisioned narrowly for SQS-based ingest will therefore fail at the discovery step with an <code>AccessDenied</code> that mentions the bucket rather than the missing action. The CloudFormation templates shipped with this solution grant it, so a standard deployment is already correct.</p>
+<h4 id="set-aws_iam_role-explicitly">Set <code>aws_iam_role</code> explicitly<a class="headerlink" href="#set-aws_iam_role-explicitly" title="Permanent link">&para;</a></h4>
+<p>All three AWS topologies authenticate through a <strong>cross-account IAM role</strong>, and the Generic S3 input does not infer it. If you set only <code>aws_account</code> and leave <code>aws_iam_role</code> empty, the input authenticates as the bare IAM user — which holds essentially no S3 permissions — and returns an <code>AccessDenied</code> that reads exactly like a bucket or prefix problem. Always set both.</p>
+<p><br></p>
+<h3 id="4-run-once-backfill-procedure"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> 4. Run-once backfill procedure<a class="headerlink" href="#4-run-once-backfill-procedure" title="Permanent link">&para;</a></h3>
+<p>The pattern is: create the input scoped to the keys you want, let it drain, confirm, then disable it. The AWS S3 Direct screen does steps 4a and 4b for you, one input per folder and year; this is the same job by hand.</p>
+<p>4.<b class="taiconcolor">a</b> <strong>Work out the prefix.</strong> Narrow it as far as you can — ideally to a single log type and a single day, for example <code>logserv/hana/hanaaudit/2025/06/11/</code>. Prefix scope is your main control over how much work the input does; see <a href="#scale-limits">Scale limits</a>. To read several days in one input, give it the month or year as its prefix and name the days in a <code>whitelist</code> (below).</p>
+<p>4.<b class="taiconcolor">b</b> <strong>Create the input</strong> on the Heavy Forwarder, either by writing a stanza into <code>$SPLUNK_HOME/etc/apps/Splunk_TA_aws/local/inputs.conf</code> or over REST. Set both scan bounds explicitly (section 1): the floor, and a terminal time a day or so from now so the input stops by itself. The stanza form:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[aws_s3://logserv_backfill_hana_20250611]</span>
+<span class="na">aws_account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&lt;your configured AWS account name&gt;</span>
+<span class="na">aws_iam_role</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&lt;your cross-account IAM role name&gt;</span>
+<span class="na">bucket_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&lt;the LogServ bucket&gt;</span>
+<span class="na">key_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">logserv/hana/hanaaudit/2025/06/11/</span>
+<span class="na">initial_scan_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">2000-01-01T00:00:00Z</span>
+<span class="na">terminal_scan_datetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&lt;tomorrow, e.g. 2026-09-26T00:00:00Z&gt;</span>
+<span class="na">index</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sap_logserv_logs</span>
+<span class="na">sourcetype</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">sap_logserv_logs</span>
+<span class="na">parse_csv_with_delimiter</span><span class="w"> </span><span class="o">=</span>
+<span class="na">polling_interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">1800</span>
+<span class="na">_meta</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">cloud_provider::aws</span>
+</code></pre></div>
+<p>The equivalent REST call (curl prompts for the password). It cannot carry <code>_meta</code> — the add-on&rsquo;s endpoint refuses it with <code>400 Argument "_meta" is not supported by this handler</code> — so add that line to the stanza afterwards, then disable and enable the input so it starts from the stanza as written:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-sk<span class="w"> </span>-u<span class="w"> </span><span class="s1">'&lt;your-splunk-username&gt;'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://&lt;heavy-forwarder&gt;:8089/servicesNS/nobody/Splunk_TA_aws/data/inputs/aws_s3<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="nv">name</span><span class="o">=</span>logserv_backfill_hana_20250611<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="nv">aws_account</span><span class="o">=</span>&lt;account&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="nv">aws_iam_role</span><span class="o">=</span>&lt;role&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="nv">bucket_name</span><span class="o">=</span>&lt;bucket&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="nv">index</span><span class="o">=</span>sap_logserv_logs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="nv">sourcetype</span><span class="o">=</span>sap_logserv_logs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="nv">parse_csv_with_delimiter</span><span class="o">=</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">initial_scan_datetime</span><span class="o">=</span><span class="m">2000</span>-01-01T00:00:00Z<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">terminal_scan_datetime</span><span class="o">=</span>&lt;tomorrow,<span class="w"> </span>e.g.<span class="w"> </span><span class="m">2026</span>-09-26T00:00:00Z&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="nv">key_name</span><span class="o">=</span>logserv/hana/hanaaudit/2025/06/11/
+</code></pre></div>
+<details class="tip">
+<summary>Several days in one input: the whitelist</summary>
+<p>Give the input the month (or year) as its <code>key_name</code> and a <code>whitelist</code> naming the days — this is what the AWS S3 Direct screen writes:</p>
+<div class="highlight"><pre><span></span><code><span class="na">key_name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">logserv/hana/hanaaudit/2025/06/</span>
+<span class="na">whitelist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">^logserv/hana/hanaaudit/2025/(?:06/(?:10|11|12))/.+$</span>
+</code></pre></div>
+<p>The add-on matches the whitelist against the <strong>whole key</strong> with Python&rsquo;s <code>re.search</code>, and appends <code>$</code> when the pattern does not end with one — so write the pattern to run to the end of the key, as above. A whitelist overrides any <code>blacklist</code>. It filters what the listing returns; the listing itself still covers everything under <code>key_name</code>, so keep the prefix as tight as the days allow.</p>
+</details>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Creating the input starts it immediately.</strong> The add-on rejects <code>disabled</code> on create (<code>400 Argument "disabled" is not supported by this handler</code>); it is accepted only on a later update. If you need to stage a configuration without running it, create it and then disable it as two calls.</p>
+</div>
+<p>4.<b class="taiconcolor">c</b> <strong>Watch it work.</strong> The input logs to <code>$SPLUNK_HOME/var/log/splunk/splunk_ta_aws_aws_s3_&lt;input name&gt;.log</code>. A healthy run logs <code>Start processing last_modified=...</code>, then one line per key, then updates its checkpoint.</p>
+<p>4.<b class="taiconcolor">d</b> <strong>Confirm the data.</strong> Search the target index over the <strong>event</strong> dates you backfilled — not today — and check that the sourcetype resolved to the real LogServ type rather than the fallback:</p>
+<div class="highlight"><pre><span></span><code>index=sap_logserv_logs earliest=-1y | stats count by sourcetype
+</code></pre></div>
+<p>4.<b class="taiconcolor">e</b> <strong>Disable the input</strong> once the prefix is drained. An input past its terminal time stops fetching, but disabling it says so plainly — and until the terminal time it re-lists the prefix on every polling interval.</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-sk<span class="w"> </span>-u<span class="w"> </span><span class="s1">'&lt;your-splunk-username&gt;'</span><span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>https://&lt;heavy-forwarder&gt;:8089/servicesNS/nobody/Splunk_TA_aws/data/inputs/aws_s3/logserv_backfill_hana_20250611/disable
+</code></pre></div>
+<details class="tip">
+<summary>Field names and formats that differ from the add-on&rsquo;s documentation</summary>
+<ul>
+<li>The prefix field is <strong><code>key_name</code></strong>, not <code>key_prefix</code>.</li>
+<li>An update must echo the full required set — <code>aws_account</code>, <code>bucket_name</code>, <code>index</code>, <code>parse_csv_with_delimiter</code>, <code>sourcetype</code> — or the endpoint returns <code>400 The following required arguments are missing</code>. Optional fields you omit are preserved.</li>
+<li><strong>Never send <code>name</code> on an update.</strong> It does not rename the input; it creates a <em>second</em> input pointed at the same prefix, and both will ingest. Send <code>name</code> only on create.</li>
+<li>The datetime fields require a literal trailing <strong><code>Z</code></strong> (<code>2026-09-01T00:00:00Z</code>). The offset example in the add-on&rsquo;s own <code>inputs.conf.spec</code> (<code>2011-07-06T21:54:23-0700</code>) is rejected by the setup handler.</li>
+<li>When posting datetimes or a whitelist in a form-encoded body, use <code>--data-urlencode</code>; a plain <code>+</code> in a form body decodes to a space.</li>
+</ul>
+</details>
+<p>4.<b class="taiconcolor">f</b> <strong>Rebuild the dashboard rollups for the dates you backfilled.</strong> Until you do, the data is searchable but the dashboards will not show it, because every dashboard panel reads an hourly KV Store rollup rather than the index directly, and the hourly aggregation searches only ever process the hour just past. They will never reach back over events that arrived today carrying last year&rsquo;s timestamps.</p>
+<p>In the <strong>LogServ App</strong>, go to <strong>Settings -&gt; Dashboard Data</strong>, choose a <strong>Custom range</strong> covering the dates you just ingested, and backfill the rows for the dashboards you backfilled.</p>
+<div class="admonition warning">
+<p class="admonition-title">Match the dates in the key, not a write-time window</p>
+<p>The dates to enter are the dates in the keys you read — the <code>YYYY/MM/DD</code> part of <code>logserv/&lt;clz_dir&gt;/&lt;clz_subdir&gt;/YYYY/MM/DD/</code>. <strong>If you used the AWS S3 Direct screen, those are its Scan from and Scan until dates: enter the same two, for the same rows.</strong> If you created an input by hand, they are <em>not</em> its <code>initial_scan_datetime</code> / <code>terminal_scan_datetime</code>: those bound the S3 object&rsquo;s <em>upload</em> time, which for a re-staged archive can differ from the event dates by months — see section 1. Entering the scan window here rebuilds the wrong months and reports success.</p>
+</div>
+<p>The backfill is idempotent, so re-running it over a range you have already built is safe. Long windows are dispatched a month at a time, and you can leave the page while it runs.</p>
+<div class="admonition note">
+<p class="admonition-title">Two topology collections always use the last 30 days</p>
+<p>The Environment Topology <strong>inventory</strong> and <strong>IP enrichment</strong> collections describe current state rather than history — they have no time dimension — so they always refresh over the last 30 days whatever window you choose. A longer window would resolve <em>fewer</em> partner IPs to SIDs, not more, because an IP reassigned during the window stops mapping to a single SID.</p>
+</div>
+<p><br></p>
+<h3 id="5-what-to-expect"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> 5. What to expect<a class="headerlink" href="#5-what-to-expect" title="Permanent link">&para;</a></h3>
+<p>Direct polling produces the same events as the SQS-based path — the same envelope handling, the same sourcetype routing, the same index-time filtering. Measured against a LogServ bucket:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Gzipped <code>.json.gz</code> objects</td>
+<td>Decompressed natively — no decoder configuration</td>
+</tr>
+<tr>
+<td>NDJSON splitting</td>
+<td>39 objects produced <strong>1,238 events</strong></td>
+</tr>
+<tr>
+<td>Sourcetype routing</td>
+<td><strong><code>sap:hana:audit</code></strong> — the real type, not the <code>sap_logserv_logs</code> fallback</td>
+</tr>
+<tr>
+<td><code>_time</code></td>
+<td>The embedded envelope epoch (2025-06-11), not the ingest time</td>
+</tr>
+<tr>
+<td><code>host</code> / <code>source</code></td>
+<td>Taken from the envelope, overriding the S3 key</td>
+</tr>
+<tr>
+<td><code>clz_dir</code> / <code>clz_subdir</code></td>
+<td>Indexed, as usual</td>
+</tr>
+<tr>
+<td><code>_raw</code></td>
+<td>Envelope stripped to the inner log line</td>
+</tr>
+<tr>
+<td>Repeat polls</td>
+<td><strong>1,238 → 1,238</strong> across two polling cycles — no duplication</td>
+</tr>
+</tbody>
+</table>
+<p><br></p>
+<h3 id="6-idempotency"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> 6. Idempotency<a class="headerlink" href="#6-idempotency" title="Permanent link">&para;</a></h3>
+<p>The input keeps a checkpoint keyed on the highest <code>LastModified</code> it has processed, so a prefix that has already been drained is not re-ingested on the next poll. Re-running the same input is safe.</p>
+<p>If you deliberately want to ingest a prefix a second time, create an input under a <strong>new name</strong> rather than editing the old one — a fresh input starts with a fresh checkpoint. Two inputs over the same keys do not share a checkpoint, so both ingest; that is why the AWS S3 Direct screen skips days an earlier backfill from it already covers.</p>
+<p><br></p>
+<h3 id="scale-limits"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Scale limits<a class="headerlink" href="#scale-limits" title="Permanent link">&para;</a></h3>
+<p>The add-on displays this advisory on the Generic S3 setup page:</p>
+<blockquote>
+<p>Amazon S3 buckets with an excessive number of files or abundant size will result in significant performance degradation and ingestion delays. Configure an SQS-Based S3 input to achieve efficiency.</p>
+</blockquote>
+<p>Take it seriously, and note two things about it:</p>
+<ul>
+<li>It is <strong>unconditional</strong>. The equivalent message appears in the input&rsquo;s own log on every discovery run — it was emitted while scanning a prefix containing five objects. Seeing it in a log is not evidence of a problem with your bucket.</li>
+<li>The reason behind it is real. Generic S3 has to <strong>list the prefix</strong> on every polling interval, and listing cost scales with the number of keys underneath it, not with the amount of new data — a whitelist narrows what is fetched, not what is listed.</li>
+</ul>
+<p>The practical consequence for LogServ buckets is that <strong>prefix scope matters enormously</strong>, because LogServ keys are dense:</p>
+<table>
+<thead>
+<tr>
+<th>Prefix</th>
+<th>Objects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>logserv/hana/hanaaudit/2025/06/11/</code> (one type, one day)</td>
+<td>39</td>
+</tr>
+<tr>
+<td><code>logserv/proxy/squid/</code> (one type, all dates)</td>
+<td>182,565</td>
+</tr>
+</tbody>
+</table>
+<p>Nothing in the input caps the work for you. The input declares <code>max_items = 100000</code>, but the 8.1.0 add-on never reads it, so it bounds nothing.</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong>Scope every backfill input to a log type and a date range.</strong> The AWS S3 Direct screen already does — one input per folder and year, with the prefix narrowed to the month or the day when the range allows. A range that spans several months lists that folder&rsquo;s whole year on each pass, so for a very dense folder prefer one backfill per month.</p>
+<p><br></p>
+<h3 id="troubleshooting"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Cause</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AccessDenied</code> on the bucket dropdown in the UI</td>
+<td>The dropdown calls <code>ListBuckets</code>, which needs the unscopable <code>s3:ListAllMyBuckets</code></td>
+<td>Use the AWS S3 Direct screen, or create the input over REST or <code>inputs.conf</code> — sections 2a and 4</td>
+</tr>
+<tr>
+<td><code>AccessDenied</code> that looks like a bucket or prefix problem</td>
+<td><code>aws_iam_role</code> was left empty, so the input authenticated as the bare IAM user</td>
+<td>Set <code>aws_iam_role</code> on the input</td>
+</tr>
+<tr>
+<td><code>AccessDenied</code> during key discovery while <code>GetObject</code> works</td>
+<td><code>s3:ListBucket</code> missing — the SQS-based path never needed it</td>
+<td>Add <code>s3:ListBucket</code> scoped to the bucket</td>
+</tr>
+<tr>
+<td>A hand-made input runs but finds nothing</td>
+<td>The scan window is bounding <code>LastModified</code>, not event time — and a <strong>blank</strong> <code>initial_scan_datetime</code> is not “no lower bound”, it is <em>now minus seven days</em></td>
+<td>Express the date range in <code>key_name</code> (and a <code>whitelist</code>), and set <code>initial_scan_datetime</code> to an explicit floor such as <code>2000-01-01T00:00:00Z</code> (<strong>not</strong> a 1970 date - Splunk&rsquo;s time parser rejects those, and the input then polls forever without fetching anything). Never leave it blank — section 1</td>
+</tr>
+<tr>
+<td>The AWS S3 Direct screen offers no <strong>Create</strong> button</td>
+<td>Something blocks the plan; the reason is shown above it</td>
+<td>Fix what the red banners say — often a job name already in use, or every day skipped as covered or filtered</td>
+</tr>
+<tr>
+<td>The screen skips days you expected it to read</td>
+<td>An earlier backfill from this screen covers them, or this forwarder&rsquo;s filters drop them — the plan names which</td>
+<td>To read covered days again, delete the backfill that covers them first. That ingests its events a second time, so do it only if they never arrived</td>
+</tr>
+<tr>
+<td><code>400 Wrong datetime with format</code></td>
+<td>The offset form from the add-on&rsquo;s spec was used</td>
+<td>Use the literal <code>Z</code> form, <code>2026-09-01T00:00:00Z</code></td>
+</tr>
+<tr>
+<td>Two inputs ingesting the same prefix</td>
+<td><code>name</code> was sent on an update, which forks rather than renames</td>
+<td>Delete the duplicate; send <code>name</code> only on create</td>
+</tr>
+<tr>
+<td>Events land under sourcetype <code>sap_logserv_logs</code> rather than a real type</td>
+<td>The Data TA is not installed on this forwarder, or the object is not a LogServ envelope</td>
+<td>See <a href="../install-ta/">Installing the Data TA</a></td>
+</tr>
+<tr>
+<td>Backfilled events do not appear in the dashboards</td>
+<td>Dashboard panels read hourly rollups, which summarise only the hour just past</td>
+<td>Step 4f — rebuild the rollups from <strong>Settings → Dashboard Data</strong> in the LogServ App, with a Custom range matching the dates in the key (the screen&rsquo;s Scan from and Scan until)</td>
+</tr>
+</tbody>
+</table>
+<p><br></p>
+<h3 id="a-note-on-azure-and-gcp"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> A note on Azure and GCP<a class="headerlink" href="#a-note-on-azure-and-gcp" title="Permanent link">&para;</a></h3>
+<p>There is no equivalent to this on the other two clouds. The <a href="../azure-setup/">Azure</a> and <a href="../gcp-setup/">GCP</a> add-ons are notification-driven only: if a Storage Queue message or a Pub/Sub notification expires before it is consumed, the object stays in the bucket but nothing will fetch it. If you need to recover such a window, contact your Splunk team.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>
