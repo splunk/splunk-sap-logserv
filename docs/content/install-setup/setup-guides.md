@@ -81,6 +81,14 @@ The table below lists the different features supported by each deployment scenar
     
     ![image](../../images/aws-remote-s3-copy-architecture.png "Local S3 Copy Deployment Architecture")
 
+### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-crop-square:{ .cboxmove } [AWS Direct S3 Polling (Backfill & Recovery)](aws-direct-s3-polling.md)
+??? indented-note "Note"
+    Not a deployment scenario in its own right — a secondary channel that complements any of the three above. It uses the Generic S3 input to poll a bucket prefix directly, with no queue in the path.
+
+    - For backfilling a date range that predates your input, and for recovering a window whose SQS notifications aged out during an outage
+    - Configured over REST or `inputs.conf` rather than the setup form, which requires an AWS permission that cannot be scoped to one bucket
+    - Run it for a specific job, then disable it — SQS-Based S3 remains the steady-state path
+
 ### :material-circle-box:{ .taiconcolor } Microsoft Azure
 
 When your SAP ECS environment runs in **Microsoft Azure**, LogServ logs land in an Azure Blob Storage container instead of Amazon S3. Ingest is handled by the first-party **Splunk TA for SAP LogServ on Azure** add-on (`splunk_ta_sap_logserv_azure`) — the Azure counterpart to the Splunk Add-on for AWS — installed on **each Heavy Forwarder** (directly, **not** distributed by the Deployment Server, since its SAS credential lives in the add-on's own `local/`). Its `sap_logserv_azure_queue` modular input consumes Azure **Event Grid → Storage Queue** `BlobCreated` notifications and fetches each blob over a SAS, emitting `sourcetype = sap_logserv_logs` into the same downstream pipeline (routing, filtering, dashboards, ES integration) as the AWS path.

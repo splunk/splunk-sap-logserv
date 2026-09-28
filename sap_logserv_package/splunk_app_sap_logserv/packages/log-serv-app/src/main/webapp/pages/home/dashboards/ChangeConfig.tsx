@@ -13,6 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Change & Configuration Activity — honest port of v0.0.4.2 logserv_change_config.xml.
@@ -84,7 +85,8 @@ const ENRICH = `eval change_source = case(sourcetype="sap:hana:audit", "HANA", s
  * reconstruct an event-level listing; `priv` + `ah` still use CHANGE_FILTER /
  * ENRICH above.
  *
- * 4 metrics. `main` (change_source/category/operator/is_after_hours grain)
+ * 4 metrics. `main` (change_source/category/operator grain; after-hours is
+ * derived at read time - AFTER_HOURS below, session 134)
  * serves the Total/After-Hours/Operators KPIs+sparks, the Activity chart, the
  * Category pie, and the Operators table. `userchg`/`permgrant`/`password` are
  * per-bucket counts that replicate each KPI's EXACT filter — those filters are
@@ -109,6 +111,19 @@ const ENRICH = `eval change_source = case(sourcetype="sap:hana:audit", "HANA", s
 const ROLL = 'logserv_compliance_rollup';
 const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
 const MAIN = `| inputlookup ${ROLL} where metric="main" ${RANGE}`;
+/* After-hours is DERIVED here, at read time, from each hourly bucket - in the
+ * VIEWER's timezone, like the raw After-Hours table and the short-window raw
+ * twin below (ENRICH). Session 134: the rollup used to store it, classified in
+ * the timezone of whichever search wrote the row (UTC for the hourly schedule,
+ * the signed-in admin's for a Settings backfill) and keyed on it, so one hour
+ * could be stored twice - Total Changes read +23.8% over 30 days on the
+ * reference box. bucket_ts is aligned to the epoch hour in every timezone
+ * (measured, including +05:30), so in a whole-hour timezone this is exact:
+ * 252,306 = 252,306 after-hours events per-event vs per-bucket over 30 days.
+ * In a half-hour timezone an hour straddles the boundary and is judged by its
+ * start. */
+const AFTER_HOURS = '| eval hr = tonumber(strftime(bucket_ts, "%H")) | eval dw = strftime(bucket_ts, "%A") '
+    + '| where hr < 8 OR hr > 18 OR match(dw, "(?i)(saturday|sunday)")';
 const USERCHG = `| inputlookup ${ROLL} where metric="userchg" ${RANGE}`;
 const PERMGRANT = `| inputlookup ${ROLL} where metric="permgrant" ${RANGE}`;
 const PASSWORD = `| inputlookup ${ROLL} where metric="password" ${RANGE}`;
@@ -127,7 +142,7 @@ const Q_BASE = {
     kpiUserChanges: `${USERCHG} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiPermGrants: `${PERMGRANT} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiPassword: `${PASSWORD} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
-    kpiAfterHours: `${MAIN} | search is_after_hours=1 | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiAfterHours: `${MAIN} ${AFTER_HOURS} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiOperators: `${MAIN} | stats dc(eval(if(operator="(none)",null(),operator))) as operators`,
 
     // Timecharts: `eval _time=bucket_ts` then `| fillnull value=0` — raw `count`
@@ -136,10 +151,10 @@ const Q_BASE = {
     sparkUserChanges: `${USERCHG} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkPermGrants: `${PERMGRANT} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkPassword: `${PASSWORD} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
-    sparkAfterHours: `${MAIN} | search is_after_hours=1 | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkAfterHours: `${MAIN} ${AFTER_HOURS} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkOperators: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(operator="(none)",null(),operator))) as operators | fillnull value=0`,
 
-    activity: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) by change_source | fillnull value=0`,
+    activity: `${MAIN} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by change_source | fillnull value=0`,
     category: `${MAIN} | stats sum(count) as count by category | sort -count`,
     operators: `${MAIN} | search operator!="(none)" | stats sum(count) as count by operator | sort -count | rename operator as "Operator", count as "Change Events"`,
 
@@ -174,7 +189,7 @@ const QRAW_BASE = {
     kpiPassword: `${CCRAW} ( (sourcetype="sap:hana:audit" action_category IN ("Password Management","Password Reset")) OR (sourcetype="XmlWinEventLog" EventCode=4724) OR ${LINUX_ST} ) | where (sourcetype="sap:hana:audit" AND action_category IN ("Password Management","Password Reset")) OR (sourcetype="XmlWinEventLog" AND EventCode=4724) OR (${LINUX_ST} AND match(_raw, "(?i)passwd\\b")) | stats count`,
     kpiAfterHours: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | where is_after_hours=1 | stats count`,
     kpiOperators: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | stats dc(operator) as operators`,
-    activity: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | timechart span=1d count by change_source | fillnull value=0`,
+    activity: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | timechart span=__LSV_SPAN__ count by change_source | fillnull value=0`,
     category: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | stats count by category | sort -count`,
     operators: `${CCRAW} ${CHANGE_FILTER} | ${ENRICH} | stats count by operator | sort -count | rename operator as "Operator", count as "Change Events"`,
 };
@@ -248,10 +263,15 @@ const AH_COLS: ColumnDef[] = [
 ];
 
 const ChangeConfig: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 087); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const userChanges = useFirstRowFieldHybrid(Q.kpiUserChanges, QRAW.kpiUserChanges, 'count');
     const permGrants = useFirstRowFieldHybrid(Q.kpiPermGrants, QRAW.kpiPermGrants, 'count');
@@ -279,7 +299,6 @@ const ChangeConfig: React.FC = () => {
      * the reviewer's own activity. The HANA Audit / Windows / Linux tables
      * support drilldown by Operator + Target since those are not the
      * compliance trail itself but per-source detail views. */
-    const { timeRange } = useTimeRange();
     const goHanaRow = (row: Record<string, unknown>): void => {
         const op = String(row.Operator ?? '');
         const tgt = String(row.Target ?? '');

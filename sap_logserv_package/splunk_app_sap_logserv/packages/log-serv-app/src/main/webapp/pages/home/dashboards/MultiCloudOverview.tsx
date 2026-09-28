@@ -8,6 +8,8 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
+import { useTimeRange } from '../state/TimeRangeProvider';
+import { applySpanToken, chooseTimechartSpan } from '../utils/timechartSpan';
 import { logservTheme } from '../styles/logservTheme';
 import { DOCS_ROOT } from '../utils/docsLinks';
 
@@ -79,7 +81,7 @@ const Q = {
     sparkAzure: `${CNT} | search cloud_provider="azure" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkGcp: `${CNT} | search cloud_provider="gcp" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
-    volumeByProvider: `${CNT} | eval _time=bucket_ts | timechart span=1d sum(count) by cloud_provider | fillnull value=0`,
+    volumeByProvider: `${CNT} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by cloud_provider | fillnull value=0`,
 
     sourcetypeByProvider: `${CNT} | search sourcetype!="(none)" | stats sum(count) as count by sourcetype, cloud_provider | xyseries sourcetype cloud_provider count | rename sourcetype as "Sourcetype" aws as "AWS" azure as "Azure" gcp as "GCP" | fillnull value=0 "AWS" "Azure" "GCP" | eval Total = AWS + Azure + GCP | sort -Total | head 30`,
 
@@ -104,7 +106,7 @@ const QRAW = {
     kpiAws: `${MACRO} | ${CP} | where cloud_provider="aws" | stats count`,
     kpiAzure: `${MACRO} | ${CP} | where cloud_provider="azure" | stats count`,
     kpiGcp: `${MACRO} | ${CP} | where cloud_provider="gcp" | stats count`,
-    volumeByProvider: `${MACRO} | ${CP} | timechart span=1d count by cloud_provider | fillnull value=0`,
+    volumeByProvider: `${MACRO} | ${CP} | timechart span=__LSV_SPAN__ count by cloud_provider | fillnull value=0`,
     sourcetypeByProvider: `${MACRO} | ${CP} | stats count by sourcetype cloud_provider | xyseries sourcetype cloud_provider count | rename sourcetype as "Sourcetype" aws as "AWS" azure as "Azure" gcp as "GCP" | fillnull value=0 "AWS" "Azure" "GCP" | eval Total = AWS + Azure + GCP | sort -Total | head 30`,
     hostsByProvider: `${MACRO} | ${CP} | stats dc(host) as hosts by cloud_provider | rename cloud_provider as "Cloud Provider" hosts as "Distinct Hosts"`,
     sourcetypesByProvider: `${MACRO} | ${CP} | stats dc(sourcetype) as sourcetypes by cloud_provider | rename cloud_provider as "Cloud Provider" sourcetypes as "Distinct Sourcetypes"`,
@@ -157,6 +159,11 @@ const eventCountColumns: ColumnDef[] = [
 ];
 
 const MultiCloudOverview: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const aws = useFirstRowFieldHybrid(Q.kpiAws, QRAW.kpiAws, 'count');
     const azure = useFirstRowFieldHybrid(Q.kpiAzure, QRAW.kpiAzure, 'count');
@@ -169,7 +176,10 @@ const MultiCloudOverview: React.FC = () => {
     const hostSearch = useHybridSearch({ cached: Q.hostsByProvider, raw: QRAW.hostsByProvider });
     const stCountSearch = useHybridSearch({ cached: Q.sourcetypesByProvider, raw: QRAW.sourcetypesByProvider });
     const eventCountSearch = useHybridSearch({ cached: Q.eventsByProvider, raw: QRAW.eventsByProvider });
-    const qVolumeByProvider = useRoutedQuery(Q.volumeByProvider, QRAW.volumeByProvider);
+    const qVolumeByProvider = useRoutedQuery(
+        applySpanToken(Q.volumeByProvider, span),
+        applySpanToken(QRAW.volumeByProvider, span),
+    );
     const { results: sourcetypeRows, loading: stLoading, error: stError } = sourcetypeSearch;
     const { results: hostRows, loading: hostsLoading, error: hostsError } = hostSearch;
     const { results: stCountRows, loading: stcLoading, error: stcError } = stCountSearch;

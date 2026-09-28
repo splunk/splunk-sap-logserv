@@ -1,7 +1,7 @@
 # Release Notes
 
 
-## Version 0.1.1 (latest)
+## Version 0.1.2 (latest)
 
 ### :material-circle-box:{ .taiconcolor } Compatibility
 
@@ -11,10 +11,174 @@
 | CIM                              | 5.0.0 and later (per `app.manifest`) |
 | Supported OS for data collection | Platform independent         |
 | Vendor products                  | SAP LogServ for SAP ECS in Amazon Web Services (AWS), Microsoft Azure, and Google Cloud Platform (GCP) |
-| Published App artifact           | The **templates-only build variant** — predefined prompts + MCP dispatch fully active; no LLM provider credential required (see [Build Variants](../ai-assistant/templates-only-build.md)) |
-| AI Assistant prerequisite        | [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.0.3 or later (v1.1.0+ recommended), on the search head where the LogServ App is installed |
+| Published App artifact           | The **full-LLM build variant** — the free-form LLM path is present but inert until an LLM provider credential is configured; predefined prompts + MCP dispatch work with no credential (see [Build Variants](../ai-assistant/templates-only-build.md)) |
+| AI Assistant prerequisite        | [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.0.3 or later and below v3.0.0 — the 2.x major is supported as of App build 335; v1.1.0+ recommended — on the search head where the LogServ App is installed |
 | Azure ingest                     | A dedicated first-party add-on — **Splunk TA for SAP LogServ on Azure** (`splunk_ta_sap_logserv_azure`), installed per Heavy Forwarder |
 | GCP ingest                       | A dedicated first-party add-on — **Splunk TA for SAP LogServ on GCP** (`splunk_ta_sap_logserv_gcp`), installed per Heavy Forwarder |
+
+!!! note "v0.1.2 continues the v0.1.1 line"
+    v0.1.2 is the active **LLM-capable** line and carries everything listed under Version 0.1.1 below — the dashboard-performance data layer (tstats + KV-Store rollups, the backfill panel, staggered schedules), the Azure and GCP ingest add-ons, the LogServ Data Doctor, the Environment Topology work, and the full LLM-driven AI Assistant. The published App artifact is the **full-LLM build variant**, so the free-form path is present and becomes active once an [LLM provider credential](../ai-assistant/settings.md) is configured; the compile-time templates-only variant of the same source remains available for deployments where that restriction must not be reversible (see [Build Variants](../ai-assistant/templates-only-build.md)). Entries for this release are added as work lands.
+
+### :material-circle-box:{ .taiconcolor } Navigation moves to a left rail, with a two-row header and the Cisco Magnetic palette (builds 338–349)
+
+The App takes on the Cisco Magnetic "Workbench scaffold" look: in dark mode a navy page with a blue accent, in light mode higher text contrast, and chart colour ramps that follow the palette (build 338).
+
+The top-bar menus give way to a collapsible **left rail**, 244 px wide or 56 px with icons only. Each category opens its sub-menu beside its own row, and the sub-menu closes on any navigation, on Escape or on a click outside it. The current dashboard carries a check mark and its category stays lit. The rail's collapsed or expanded state is remembered per user in the browser; the Environment Topology view opens with it collapsed; and below 860 px the rail floats over the page instead of taking width. The header becomes two rows — the brand, the **App** version and **build** pills and the light/dark toggle, then the time-range preset pills (**Last 24h**, **7d**, **30d**, **90d**) beside Splunk's own time-range picker for any other range, with **Actions**, **Refresh** and **AI Assistant** at the right. Splunk Web's app bar is hidden (the Splunk bar stays), and a gradient backdrop sits behind the dashboards (builds 339–349).
+
+Panel headers wrap their controls to a second row instead of overflowing the narrower content area, and Splunk tables no longer scroll sideways (build 347).
+
+### :material-circle-box:{ .taiconcolor } Chart buckets follow the time range, and crowded charts stop repeating colours (builds 345, 350–354)
+
+Ninety-five chart time spans across 18 dashboards were fixed at one day. They now scale with the selected range: a **Last 24 hours** chart draws 12–100 points with time-of-day ticks where it drew two. Sparklines and the per-day-average KPI stay daily by design (build 345).
+
+A chart that draws more series than its palette ramp has colours now switches to the 11-colour categorical palette instead of reusing colours — seven dashboard charts had drawn two different series in the same colour. A chart with more than 11 series still cycles the 11 colours. In the AI Assistant, pies never use severity shades, and a pie whose largest slice is 85% or more of the total, with at least three slices, is drawn as a horizontal bar so the smaller categories stay readable. Windows "critical" no longer shares "high"'s red, and the HIGH / MEDIUM / LOW risk tiers read red, orange and blue (builds 350–354).
+
+### :material-circle-box:{ .taiconcolor } Dashboard Data backfills a chosen window, and waits as long as a job runs (builds 353–360)
+
+**Settings → Dashboard Data** could backfill only the last 30 days, although every rollup keeps 365. It now offers **30, 60, 90, 180 or 365 days**, or a custom **UTC** date range. A window longer than 31 days runs in monthly chunks; a start more than 365 days back is refused, because the rollups' retention would delete what it wrote; and a window over 90 days shows a cost warning first. The two flat Environment Topology collections are always refreshed from the last 30 days, whatever the window.
+
+The panel no longer gives up on a job that is still running: a row is marked failed only when Splunk reports the search failed or gone. When the panel itself stops waiting — **Cancel**, 15 minutes without contact, or 24 hours — the row reads **still running on server**, with the search IDs on hover. "Failed" and "truncated" marks survive the refresh after a run, and a finished row shows **refreshing…** until its new depth appears. The window hint now points at the matching **Scan from / Scan until** dates on the Data TA's AWS S3 Direct screen (build 360).
+
+Keep long backfills clear of the rollup retention windows — 00:34–00:58, 01:30–01:58 and 02:34 in the search head's local time — or re-run the affected rows afterwards: a retention search rewrites its whole collection and erases rows a concurrent backfill has just added. For scale, a 365-day backfill of every row took 195 minutes on the reference system.
+
+### :material-circle-box:{ .taiconcolor } Three rollups count correctly — rebuild each once after upgrading (builds 356–358)
+
+These fixes change what is stored, so rows written by earlier builds stay wrong until the rollup is rebuilt with **Clear** and then **Backfill** in **Settings → Dashboard Data**. [Upgrading](../getting-started/upgrading.md) says which builds need which rebuild. From build 361 the upgrading note on that page names all three; before, it named only the last two, although the Beaconing rebuild applies as well.
+
+- **Beaconing detection (build 356).** Each day was keyed on midnight in the time zone of the search that wrote it — the scheduled job used the search head's, a Settings backfill the signed-in admin's. Where the two differed, a day could be stored twice, and the **Beaconing Domains** KPI summed both: 1,777 against 1,103 over 30 days on the reference system. Days are now UTC calendar days.
+- **Change & Configuration Activity (build 357).** The after-hours flag was stored in the rollup, classified in the writer's time zone, which inflated **Total Change Events** and **After-Hours Changes** by about 24% over 30 days on the reference system. After-hours is now worked out when you view the dashboard, in your own time zone.
+- **Linux System & Security (build 358).** **Kernel Event Types** counted fragments of ordinary words — the first capital of a sentence-case message ("Write cache…" became `W`) — and tags cut short at a digit (`EXT4` became `EXT`). Only genuine all-caps tags of two or more characters count now.
+
+### :material-circle-box:{ .taiconcolor } Smaller fixes (builds 358–359)
+
+- The rollup retention searches' descriptions give the right time, stated in the search head's local time; 23 of 29 had named the wrong one after the schedules were re-staggered (build 358).
+- KPI sparkline tooltips stay inside their card at both ends of the line (build 358).
+- In dark mode the browser draws its own dark scrollbars and form controls (build 359).
+
+### :material-circle-box:{ .taiconcolor } The upgrading note names all three rebuilds, the AI Assistant panel opens below the header, and a narrow window keeps the full width (builds 361–363)
+
+- The upgrading note on **Settings → Dashboard Data** now names **Beaconing detection** beside Change & Configuration Activity and Linux System & Security; it had left out the Beaconing rebuild that build 356 requires (build 361).
+- The AI Assistant panel now opens directly below the two-row header and moves up with it as the page scrolls. It had kept a fixed offset sized for Splunk Web's app bar, which the App hides, so the open panel covered the right end of the header's second row — including the **AI Assistant** button that closes it (build 361).
+- The header's **Actions** button is the same height as **Refresh** and **AI Assistant** beside it; it had been 3 px taller since the header became two rows (build 362).
+- In a narrow window the App no longer shrinks to a strip. Below about 880 px Splunk Web's own top bar wraps its menus onto a second line, and the App was laid out in the space left beside that line — 118 px wide at a 720 px window; it now starts below the line at full width (build 363).
+
+### :material-circle-box:{ .taiconcolor } Real SAP LogServ data parses the way the dashboards expect (build 364)
+
+Earlier builds were validated on the generated demo data, which stores log text decoded. Real LogServ ingest keeps the JSON escapes of the source record in the event (`\"`, `\n`, `\t`, `\\`), and some real logs use formats the demo data never produced. Measured on the reference system's real Azure, GCP and AWS feeds:
+
+- **Proxy Analytics extracted nothing from real data.** SAP LogServ proxy logs use Squid's `logformat=splunk_recommended_squid` key=value form, which earlier builds did not parse: none of 7,003 real proxy events in 30 days yielded a domain, client, status or byte count, so Proxy Analytics, the Network Perimeter proxy panels and the threat-intel proxy search saw request counts only. The App now parses that form as well as Squid's native format. The proxy panels also count access-log lines only: Squid's `store.log` and `cache.log` lines share the sourcetype but are not requests (43% of the real feed's proxy events, 69% of the demo data's).
+- **HANA Audit found a status only for connect-type actions.** The action status and target principal are now read by their position in the record, for every action (before: 5.6% of the real feed, which is mostly `ALTER FUNCTION`). User and privilege statements are recognised in any letter case and when quoted, and `audit_datetime` parses the `Z` time zone real records carry (it was empty on every real event).
+- **Six more fields.** The sudo **command** keeps the whole command, with sudo's line wrapping joined and the escapes removed; **lastlog** reads user names containing `-` and console logins (4,046 of 115,627 real lines had been missed). Four more were proven on a JSON-escaped copy of the demo data, as real data for them is not on the reference system: the Cloud Connector **HTTP version**, the ABAP gateway **error detail**, the Start Service and Host Agent **error message**, and the HANA Trace slowest-operation name now end where the line does in both forms.
+
+Rollups keep the values they stored before: [Upgrading](../getting-started/upgrading.md) names the rows to rebuild once.
+
+### :material-circle-box:{ .taiconcolor } Password statements in any letter case, readable statements, and the right Start Service and cluster fields (build 365)
+
+More differences between real SAP LogServ data and the demo data, measured on the same feeds:
+
+- **HANA Audit's Password Management** recognised password statements in lower case only, so upper-case `CREATE USER … PASSWORD ***` (480 real events) and `ALTER USER … DISABLE PASSWORD LIFETIME` (432) counted as **Other**. They are now **Password Change** and **Disable Lifetime**. The HANA Audit rollup keeps the old classes until it is rebuilt; the rebuild [Upgrading](../getting-started/upgrading.md) asks for after build 364 covers it.
+- **Statements read as in the database.** A statement that quotes identifiers kept real ingest's JSON escapes (`grant \"HEC_HANA_MONITORING\" to NAGIOS`); the **SQL Statement** column and the `command` field now show `grant "HEC_HANA_MONITORING" to NAGIOS`.
+- **Start Service source location.** `source_location` now reads file names that contain a dot (`[nixxi.cpp 464]`, `[CIMPlugin.cpp 999]`), which it had missed on most real GCP events, and no longer takes the thread marker `[Thr 12]` for a location.
+- **Pacemaker cluster log.** Where the cluster runs, the `linux:slapd` sourcetype also carries `/var/log/pacemaker/pacemaker.log`. Its `os_user` field held a cluster resource or a scheduler function, never a user — and `slapd.log` lines name no user at all — so the field is gone. Pacemaker lines now carry `resource_agent` and `cluster_resource` (`SAPHanaController(rsc_SAPHanaController_A44_HDB02)`) or `pacemaker_daemon` and `pacemaker_function` (`pacemaker-schedulerd[…] (determine_op_status)`).
+- **Squid's other two files.** The App knows the Data TA's new `squid:cache` and `squid:store` sourcetypes (see the Data TA entry below): neither gets automatic key=value fields, as before, and the Data Doctor maps both to the `proxy/squid` filter path.
+- The upgrading note on **Settings → Dashboard Data** names the rebuilds that build 364 needs.
+
+### :material-circle-box:{ .taiconcolor } The Data Doctor knows both folder layouts (build 366)
+
+Real LogServ deliveries file some logs under different paths per cloud (see the Data TA entry of 2026-09-25 below). The Data Doctor's filter diagnosis now maps Squid to `proxy/squid` and `linux/proxy`, the Pacemaker cluster log to `linux/slapd` and `linux/pacemaker`, and `/var/log/messages` also to `linux/proxy`, so a rule that names only one layout is reported as dropping part of the log type, not all of it.
+
+### :material-circle-box:{ .taiconcolor } Pacemaker lines name their own product (build 367)
+
+On the Pacemaker cluster log that the `linux:slapd` sourcetype also carries, `vendor_product` and `app` said `OpenLDAP` and `slapd`. They now say `Pacemaker` and `pacemaker`; `slapd.log` lines keep `OpenLDAP` and `slapd` (on the reference system 1,932,656 Pacemaker lines and 1,462,405 `slapd.log` lines). No dashboard or saved search of the App reads the two fields; searches of your own that filter on them see the change.
+
+### :material-circle-box:{ .taiconcolor } Downloaded images show the help icon upright (build 368)
+
+**Actions → Download PNG** and **Download PDF** copy the page's styles as they are at that instant, so the help icon's square at the right of a dashboard's title row came out at whatever angle it had - tilted whenever the download was clicked while it was turning (4 seconds in every 12). The page's animations now rest at their start while the copy is taken and carry on where they were afterwards: the square is upright and spinners are still in every download.
+
+### :material-circle-box:{ .taiconcolor } Two Dashboard Data rows name the dashboard that shares them (build 369)
+
+**ABAP Operations** has no rollup of its own: it reads the one **Work Process Performance** reads. **Web Dispatcher** reads the **Web & API Performance** rollup as well as its own Slowest Traces row. **Settings → Dashboard Data** now labels those two rows *Work Process Performance / ABAP Operations* and *Web & API Performance / Web Dispatcher*, so every dashboard can be found in the list; the Data TA's AWS S3 Direct screen shows the same labels (see the Data TA entry of 2026-09-28 below). The rollups themselves are unchanged.
+
+### :material-circle-box:{ .taiconcolor } Data TA — AWS S3 Direct backfills by dashboard (2026-09-24)
+
+The AWS S3 Direct screen no longer asks for a key prefix. You pick the **Dashboard Data rows** to backfill — the same 25 rows as the App's **Settings → Dashboard Data** — and **Scan from / Scan until** as UTC dates, inclusive and at most 366 days apart. The dates select the date folders in the S3 key, not the objects' upload time. The screen creates one Generic S3 input per folder and year, limited to the chosen days and set to stop by itself 24 hours after it is created; it skips days its own earlier backfills already cover, and it leaves out folders or days the TA's filters would discard on arrival, saying why. The list groups the inputs by backfill job, with **Enable all**, **Disable all** and **Delete all**, and two searches per job: one shows whether its inputs scanned, the other counts the events they indexed. After creating a backfill, backfill the same rows and dates in the App so the dashboards pick the events up. Prefer **Disable** to **Delete**: a deleted backfill no longer counts as covering its days.
+
+Inputs created here are stamped `cloud_provider = aws` through the Data TA's own endpoint, `/services/splunk_ta_sap_logserv/s3_direct_meta` — POST only, run as the signed-in user, and limited to the inputs this screen names. Enable and Disable go through the add-on's own endpoint. The Data TA published on 2026-09-20 made both calls to the add-on's native `data/inputs/aws_s3` endpoint, which Splunk Web does not pass through, so from the browser its Enable/Disable failed and no input was stamped. Tested with the Splunk Add-on for AWS 8.1.0. See [AWS Direct S3 Polling — Backfill and Recovery](../install-setup/aws-direct-s3-polling.md).
+
+### :material-circle-box:{ .taiconcolor } Data TA — long NDJSON lines are unwrapped and kept whole (2026-09-24)
+
+Each LogServ line arrives wrapped in an NDJSON envelope, and the index-time transform `[set_raw_only]` keeps only its `_raw` string. On long lines carrying many escaped characters — from about 1.5 KB, common in some Azure-delivered logs — the transform's regex exceeded Splunk's PCRE depth limit, and the event was indexed with its envelope still on (about 400 events an hour on the affected forwarder). Lines longer than 10,000 bytes were also cut by the default `TRUNCATE`, which took their timestamp with them when `_raw` came before `_time`.
+
+`[set_raw_only]` now uses a possessive pattern that finds the same match at bounded depth; `TRUNCATE = 100000` on `[sap_logserv_logs]` lets lines up to 100,000 bytes through whole; and `LOOKAHEAD = 100000` on `[set_raw_only]` lets the transform reach the end of such a line — an index-time transform searches only the first 4,096 characters by default and misses a longer match silently. Since the fix the heavy forwarders log no regex errors and no truncations, no event arrives wrapped, and the longest line seen (about 52 KB) indexes whole. The fix applies to data parsed after the Data TA is updated on the heavy forwarders; events indexed earlier keep their envelope.
+
+### :material-circle-box:{ .taiconcolor } Data TA — the S3 Direct scan checks find the add-on's log (2026-09-25)
+
+Each backfill's **Did its inputs finish their scan?** search, and the check for all backfills below the list, grouped the Splunk Add-on for AWS's log lines by `log_level`. The add-on (8.1.0) writes `level=`, and `stats … by` drops every event whose group-by field is empty, so both searches returned no rows even for a backfill that had run. They now group by `level`, falling back to `log_level` and then to `(none)`, so a line in any log format is counted. On the first real-data backfill — HANA audit logs for 2026-01-01 and 2026-01-02, 794 events — the old search returned nothing and the new one returns the input's 187 log lines, all `INFO`.
+
+The troubleshooting search in the three AWS setup guides had the same flaw: `log_level IN (ERROR,WARN)` matched nothing, because the add-on writes `level` and names the warning level `WARNING`. It now reads `level IN (ERROR,WARNING)`; on the reference system it finds 408 errors and 126 warnings over 30 days, where the old form found none. The step-by-step lists in those guides now render as lists; they had rendered as code blocks, bold markers and all.
+
+### :material-circle-box:{ .taiconcolor } Data TA — Squid's cache and store logs get their own sourcetypes (2026-09-25)
+
+The Data TA gave all three Squid files the sourcetype `squid:access`, although only `access.log` holds requests: `cache.log` is the daemon's own log and `store.log` the object-store journal. On the reference system the two made up 43% of the real feed's proxy events, counted by any search that takes every `squid:access` event for a request, and tagged for the CIM Web data model. The Data TA now routes `cache.log` to `squid:cache` and `store.log` to `squid:store`; `access.log` stays `squid:access`. All three keep the `proxy/squid` filter path, so filter rules need no change and no upgrade warning appears. Events indexed before the update keep `squid:access`; the App's proxy dashboards count `access.log` lines only and are correct either way. Saved searches of your own that read those two files under `squid:access` need the new names. On the reference system, real `cache.log` lines from the Azure feed arrive as `squid:cache` after the update, still carrying the `splunk_solution` and `cloud_provider` stamps and no automatic fields, while `access.log` lines stay `squid:access`.
+
+### :material-circle-box:{ .taiconcolor } Data TA — the filter paths real LogServ data uses (2026-09-25)
+
+The Data TA declares which folder paths each log type arrives under; the filter's coverage warning, the App's Data Doctor and the AWS S3 Direct screen all read that list. Checked against real deliveries, two layouts differ from it: the AWS bucket files Squid under `proxy/squid`, but Azure delivers it under `linux/proxy`; and GCP delivers the Pacemaker cluster log under `linux/pacemaker` and a proxy VM's `/var/log/messages` under `linux/proxy`, where the list named only `linux/slapd` and `linux/messages`. The Data TA now declares both layouts — nothing that matched before stops matching, and routing is unchanged. With Filtering on and an include list that names only the older paths, the coverage warning now lists `linux/pacemaker` and `linux/proxy`, because events under them are dropped at the forwarder. The AWS S3 Direct screen reads both Squid folders and `linux/pacemaker`; a folder a bucket does not have gives an input that finds nothing.
+
+### :material-circle-box:{ .taiconcolor } Data TA — the AWS S3 Direct job name says what is wrong (2026-09-28)
+
+A job name the screen refuses now gets one message per rule it breaks — for example *Job name is 35 characters long; the limit is 24.* or *Job name has an underscore; use a hyphen instead.* — where one message used to list every rule. The field's help no longer shows how the screen names the inputs it creates, which read as a pattern for the job name itself. The **Dashboards** list shows the App's labels for the two shared rows (see App build 369 above).
+
+## Version 0.1.1
+
+### :material-circle-box:{ .taiconcolor } Compatibility
+
+|                                  |                              |
+|----------------------------------|------------------------------|
+| Splunk platform versions         | 9.4.3 and later              |
+| CIM                              | 5.0.0 and later (per `app.manifest`) |
+| Supported OS for data collection | Platform independent         |
+| Vendor products                  | SAP LogServ for SAP ECS in Amazon Web Services (AWS), Microsoft Azure, and Google Cloud Platform (GCP) |
+| Published App artifact           | The **full-LLM build variant** — the free-form LLM path is present but inert until an LLM provider credential is configured; predefined prompts + MCP dispatch work with no credential (see [Build Variants](../ai-assistant/templates-only-build.md)) |
+| AI Assistant prerequisite        | [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.0.3 or later and below v3.0.0 — the 2.x major is supported as of App build 335; v1.1.0+ recommended — on the search head where the LogServ App is installed |
+| Azure ingest                     | A dedicated first-party add-on — **Splunk TA for SAP LogServ on Azure** (`splunk_ta_sap_logserv_azure`), installed per Heavy Forwarder |
+| GCP ingest                       | A dedicated first-party add-on — **Splunk TA for SAP LogServ on GCP** (`splunk_ta_sap_logserv_gcp`), installed per Heavy Forwarder |
+
+### :material-circle-box:{ .taiconcolor } Data TA — the `days_in_past` guard now fires at the prefix depth the screen recommends (2026-09-18)
+
+The AWS S3 Direct screen blocks a key prefix whose events the forwarder's own `days_in_past` filter would discard on arrival — the check that stops you creating an input which ingests nothing and reports success. It reads the date partition out of the prefix, and it required all six path segments (`logserv/<clz_dir>/<clz_subdir>/<YYYY>/<MM>/<DD>/`), while the screen's own depth gate admits **four** and both its message and the field help recommend exactly four. An operator who followed the screen's advice produced a prefix the guard could never evaluate — and the same blind spot silenced the SQS double-ingest warning for any prefix coarser than a single day.
+
+The check now reads a year, month or day partition, and both callers reason about the **newest** instant the partition can contain:
+
+- a `<YYYY>/` prefix wholly behind the cutoff now blocks, where it was previously accepted unexamined;
+- a prefix for the year still being written does **not** block on account of its January — deciding on the oldest instant instead would have produced exactly that false block;
+- a year-wide prefix now raises the SQS overlap warning it could not raise before;
+- a month out of range (`2025/13/`) and a day that would roll into the next month (`2025/06/31/`) are refused rather than silently widened to a date you never wrote.
+
+The day-level message is word for word the one that already shipped, so nothing changes for a prefix that already worked. See [AWS Direct S3 Polling — Backfill and Recovery](../install-setup/aws-direct-s3-polling.md).
+
+### :material-circle-box:{ .taiconcolor } Splunk MCP Server 2.x support, and the published artifact returns to the full-LLM build (build 335)
+
+The AI Assistant refused to operate against **Splunk MCP Server (Splunkbase App 7931) v2.0.0**: a site that installed the current MCP Server saw an “uncertified version” panel in place of the Assistant. The App carries a deliberate upper bound on the MCP Server version — a supply-chain guard, because a major release is free to rename tools or reshape the request/response envelope, and the bound turns a silent degradation into a clear message. That ceiling moves from **2.0.0 to 3.0.0**, so the whole 2.x major is now accepted. Unchanged: the **v1.0.3 floor** (CVE-2026-20205) and the fail-closed handling of an absent or unparseable version string. **3.x** becomes the new ceiling.
+
+What the change rests on is worth stating plainly. The connection handshake is verified against 2.0.0 in the field — the health probe reads the server version only after the connection succeeds, so seeing the “uncertified” panel at all proves that the transport, the authentication and the protocol handshake were accepted. The tool-listing and tool-call shapes have since been verified too, by a manual check against a live 2.0.0 server: the tool names the Assistant dispatches and the result envelope it reads were both unchanged by that major. Two bounds on that — it is a spot-check of **2.0.0**, not an automated regression suite, and it says nothing about later 2.x minors. On a 2.x minor you are the first to run, run one predefined prompt and confirm the result tile carries data.
+
+This build is also the point at which the published App artifact returns to the **full-LLM build variant** — see [Build Variants](../ai-assistant/templates-only-build.md) and the upgrade note in [Upgrading](../getting-started/upgrading.md).
+
+### :material-circle-box:{ .taiconcolor } Data TA — the AWS S3 Direct screen, for backfill and recovery (2026-09-11)
+
+The Data TA gains a screen — **Splunk Web → *Splunk TA for SAP LogServ* → AWS S3 Direct** — that creates and manages LogServ-scoped **Generic S3** inputs inside the Splunk Add-on for AWS from the browser, as the signed-in user. It adds no Python, no REST handler and no capability of its own.
+
+Generic S3 polls a bucket prefix directly, with no queue. It is a **secondary** channel — backfill, a bucket with no SQS notifications configured, and recovery after an outage — and SQS-Based S3 remains the steady-state path. The screen exists because the add-on's own input form is effectively closed to most operators: its bucket dropdown is populated by `list_buckets()`, which requires the unscopable `s3:ListAllMyBuckets`. The screen asks for the bucket name instead, so the input can be created with only the scoped actions a run actually needs — and **`s3:ListBucket` is the one people miss**, because the SQS-Based S3 path never requires it.
+
+Two things about this input surprise people, and the screen guards both:
+
+- **The key prefix selects the events; the scan-window dates bound the S3 object's `LastModified` — its upload time, never the event time.** A re-staged archive can hold 2025 events in objects written in 2026, so a scan window narrowed to the event dates selects nothing and the run reports success having fetched none. Scan-from therefore defaults to a floor of `2000-01-01T00:00:00Z` and the prefix does the selecting.
+- **A blank scan bound is not rejected by the add-on** — an empty scan-until means *unbounded*, and an empty scan-from means *the last seven days*. The screen requires both, offers them as UTC calendar controls, validates as you type, and re-checks before writing.
+
+The scan floor is `2000-01-01T00:00:00Z` rather than the Unix epoch for a concrete reason: **Splunk's own `search/timeparser` rejects every 1970 date.** The add-on validates these dates locally when the input is created but resolves them through that parser on every poll, so a 1970 floor saved cleanly and then failed on every subsequent poll — a silent input that never collected anything and could not be repaired from the form. The screen refuses any date before 1971.
+
+See [AWS Direct S3 Polling — Backfill and Recovery](../install-setup/aws-direct-s3-polling.md).
 
 ### :material-circle-box:{ .taiconcolor } String-accuracy pass from the zero-trust docs audit (build 334)
 
@@ -26,7 +190,10 @@ The Environment Topology layout engine `elkjs` (EPL-2.0) has been bundled since 
 
 ### :material-circle-box:{ .taiconcolor } Release packaging — templates-only canonical App; all four artifacts at version 0.1.1 (2026-08-18)
 
-The published v0.1.1 App tarball is now the **templates-only build variant** of the current build: the AI Assistant's full predefined-prompt catalog (via the Splunk MCP Server) is fully functional, and the free-form LLM path is **disabled at compile time** — no runtime setting, including a stored `templates_only_mode = 0` from a previous LLM-enabled install, can re-enable it (see [Templates-only Build Variant](../ai-assistant/templates-only-build.md)). The regular, LLM-enabled build of the same source and build number remains available as an archived variant for approved deployments. In the same release pass, the **Data TA was rebuilt** as a canonical 0.1.1 artifact (functionally identical to its predecessor), and the **Azure and GCP ingest add-ons moved from their independent `0.0.6` versioning to `0.1.1`** — their tarball filenames change accordingly (`splunk_ta_sap_logserv_azure-0.1.1.tar.gz`, `splunk_ta_sap_logserv_gcp-0.1.1.tar.gz`) with no functional change. All four artifacts pass AppInspect Cloud-mode precert with 0 errors / 0 failures at their historical baselines.
+!!! note "Superseded on 2026-09-14"
+    The templates-only packaging decision recorded here was reversed in build 335 — the published App artifact is the **full-LLM build variant** again. The version alignment of all four artifacts at 0.1.1 still stands. See the build 335 entry above.
+
+At the time of this release the published v0.1.1 App tarball was the **templates-only build variant** of the current build: the AI Assistant's full predefined-prompt catalog (via the Splunk MCP Server) is fully functional, and the free-form LLM path is **disabled at compile time** — no runtime setting, including a stored `templates_only_mode = 0` from a previous LLM-enabled install, can re-enable it (see [Templates-only Build Variant](../ai-assistant/templates-only-build.md)). The regular, LLM-enabled build of the same source and build number remains available as an archived variant for approved deployments. In the same release pass, the **Data TA was rebuilt** as a canonical 0.1.1 artifact (functionally identical to its predecessor), and the **Azure and GCP ingest add-ons moved from their independent `0.0.6` versioning to `0.1.1`** — their tarball filenames change accordingly (`splunk_ta_sap_logserv_azure-0.1.1.tar.gz`, `splunk_ta_sap_logserv_gcp-0.1.1.tar.gz`) with no functional change. All four artifacts pass AppInspect Cloud-mode precert with 0 errors / 0 failures at their historical baselines.
 
 ### :material-circle-box:{ .taiconcolor } Topology top-5 High Traffic SIDs + legend declutter; Data Doctor copy + open-in-search on the rollup SPL (builds 331–332)
 
@@ -467,8 +634,8 @@ description states that window.
 
 The AI Assistant's browser-side MCP request timeout is now an admin setting instead of a hardcoded 30 seconds. **Settings → AI Assistant → General** gains an **MCP request timeout (seconds)** field (default `60`, range `5`–`600`) that bounds how long the browser waits for each MCP request — tool dispatch, saved-search run, health probe — before aborting it with the `signal is aborted without reason` error. Raise it if a legitimately-slow prompt aborts on a high-ingest instance. It reads per-request from the same KV-Store settings row as the rest of the AI config (`mcp_timeout_seconds`); MCPClient resolves it exactly like `mcp_server_url`. Note this is the browser-side abort — the MCP server (App 7931) has its own separate `mcp.conf [server] timeout` (60s default), so the effective ceiling for any one request is the lower of the two. Build 288/263 adds a **read-only display** of the MCP server's own timeout (App 7931's `mcp.conf [server] timeout`, read cross-app) right beside the client field, so an admin sees both numbers and their relationship at a glance; it degrades to "Not detected" when App 7931 isn't installed. The server timeout stays edited the normal way (that app's `mcp.conf` + a Splunk restart) — it's a different, persistent-process app, so it can't be changed live from our UI.
 
-!!! note "v0.1.1 = the LLM-capable source line — but the published tarball is the templates-only build"
-    v0.1.1 is the **LLM-capable** source line, at full feature parity with v0.0.6 — the entire dashboard-performance data-layer rewrite (tstats + KV-Store rollups, backfill panel, staggered schedules), the Azure and GCP ingest add-ons, the three-way Multi-Cloud Overview, the Enterprise Security enable + re-stagger, and every AI Assistant fix (prompt repairs, the MCP time-range fix, rollup-backed host prompts). The source additionally carries the full LLM-driven AI Assistant (four vendor providers, free-form chat, Power Mode, privacy tiers, Provider Credentials). **The published v0.1.1 App artifact, however, is the templates-only build variant** (see the packaging entry above): the LLM path is compile-time disabled in it, and only the separately-built full-LLM variant activates those features. Everything listed under Version 0.0.6 below is included in v0.1.1.
+!!! note "v0.1.1 = the LLM-capable source line, and the published tarball is the full-LLM build again"
+    v0.1.1 is the **LLM-capable** source line, at full feature parity with v0.0.6 — the entire dashboard-performance data-layer rewrite (tstats + KV-Store rollups, backfill panel, staggered schedules), the Azure and GCP ingest add-ons, the three-way Multi-Cloud Overview, the Enterprise Security enable + re-stagger, and every AI Assistant fix (prompt repairs, the MCP time-range fix, rollup-backed host prompts). The source additionally carries the full LLM-driven AI Assistant (four vendor providers, free-form chat, Power Mode, privacy tiers, Provider Credentials). **As of App build 335 the published v0.1.1 App artifact is the full-LLM build variant** (see the entry above), so those features are active once an LLM provider credential is configured; a compile-time templates-only variant of the same source remains available for restricted deployments. Everything listed under Version 0.0.6 below is included in v0.1.1.
 
 ### :material-circle-box:{ .taiconcolor } Cisco Magnetic re-theme — light + dark mode (builds 246–259)
 
@@ -503,7 +670,7 @@ Each LLM provider's model picker (the chat panel's per-user picker and the Setti
 4. **Refreshed baselines + honest pricing** — the curated model ids and the vendor cost table used for spend tracking were refreshed to the current model generations. Cost estimates remain **exact-id keyed**: a discovered model with no known price reports $0 rather than a guessed figure.
 5. **Azure credential-name fix** — the Azure OpenAI provider now accepts the field names the Settings page actually stores (`endpoint` / `deployment`) in addition to the legacy names (`resource_url` / `deployments`). This also fixes free-form **streaming** for Azure configurations entered through the Settings page.
 
-In the published v0.1.1 artifact — the templates-only build — model discovery is inert and these controls are hidden; the feature applies to the LLM-enabled build variant.
+Model discovery queries the active provider, so it does nothing until a provider credential is configured; in a compile-time templates-only build it is inert and these controls are hidden.
 
 ### :material-circle-box:{ .taiconcolor } Blue-gradient icon set (build 278)
 

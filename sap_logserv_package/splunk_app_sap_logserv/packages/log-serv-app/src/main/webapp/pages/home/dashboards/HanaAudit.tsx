@@ -18,6 +18,7 @@ import {
     splQuote,
 } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * HANA Audit — honest port of v0.0.4.2 logserv_hana_audit.xml.
@@ -78,10 +79,10 @@ const Q_BASE = {
     sparkFailures: `${MAIN} | search ${FAIL} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkUsers: `${MAIN} | eval _time=bucket_ts | timechart span=1d ${DCU} as users | fillnull value=0`,
 
-    userAdminTimeline: `${UA} | eval _time=bucket_ts | timechart span=1d sum(count) by admin_action | fillnull value=0`,
-    securityEventsTimeline: `${SEC} | eval _time=bucket_ts | timechart span=1d sum(count) by event_type | fillnull value=0`,
+    userAdminTimeline: `${UA} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by admin_action | fillnull value=0`,
+    securityEventsTimeline: `${SEC} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by event_type | fillnull value=0`,
     auditCategoryBreakdown: `${MAIN} | stats sum(count) as count by action_category | sort -count`,
-    riskTimeline: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) by risk_level | fillnull value=0`,
+    riskTimeline: `${MAIN} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by risk_level | fillnull value=0`,
     afterHours: `${MAIN} | eval hour=strftime(bucket_ts, "%H") | eval result=if(status="SUCCESSFUL", "Successes", "Failures") | chart sum(count) over hour by result | fillnull value=0`,
 
     healthScore: `${MAIN} | eval day = strftime(bucket_ts, "%Y-%m-%d") | stats sum(count) as daily_events, ${DCU} as active_users, sum(eval(if(status!="SUCCESSFUL" AND status!="(none)", count, 0))) as daily_failures by day | eval success_rate = round(((daily_events - daily_failures)/daily_events)*100, 1) | sort day | table day, daily_events, active_users, daily_failures, success_rate`,
@@ -130,15 +131,15 @@ const Q_BASE = {
 const RAW_HANA = '`sap_logserv_idx_macro` sourcetype=sap:hana:audit';
 const UA_CLASS = 'eval admin_action=case(match(sql_statement,"(?i)reset connect"),"Password Reset", match(sql_statement,"(?i)activate user"),"User Activation", match(sql_statement,"(?i)deactivate user"),"User Deactivation", match(sql_statement,"(?i)disable password"),"Policy Change", 1=1,"Other Admin")';
 const SEC_CLASS = 'eval event_type=case(status!="SUCCESSFUL","Failed Operation", match(action_type,"(?i)grant"),"Permission Grant", match(action_type,"(?i)revoke"),"Permission Revoke", match(action_type,"(?i)(create|drop)"),"Object Modification", 1=1,"Other Security Event")';
-const PW_CLASS = 'eval password_action=case(match(sql_statement,"password \\*\\*\\*"),"Password Change", match(sql_statement,"disable password"),"Disable Lifetime", match(sql_statement,"reset.*connect"),"Reset Attempts", 1=1,"Other")';
+const PW_CLASS = 'eval password_action=case(match(sql_statement,"(?i)password \\*\\*\\*"),"Password Change", match(sql_statement,"(?i)disable password"),"Disable Lifetime", match(sql_statement,"(?i)reset.*connect"),"Reset Attempts", 1=1,"Other")';
 const QRAW_BASE = {
     kpiTotal: `${RAW_HANA} | stats count`,
     kpiFailures: `${RAW_HANA} status!="SUCCESSFUL" | stats count`,
     kpiUsers: `${RAW_HANA} | stats dc(executing_user) as users`,
-    userAdminTimeline: `${RAW_HANA} | where match(audit_category,"HEC Audit - User Administration") | ${UA_CLASS} | timechart span=1d count by admin_action | fillnull value=0`,
-    securityEventsTimeline: `${RAW_HANA} | where status!="SUCCESSFUL" OR match(action_type,"(?i)(grant|revoke|create|drop)") | ${SEC_CLASS} | timechart span=1d count by event_type | fillnull value=0`,
+    userAdminTimeline: `${RAW_HANA} | where match(audit_category,"HEC Audit - User Administration") | ${UA_CLASS} | timechart span=__LSV_SPAN__ count by admin_action | fillnull value=0`,
+    securityEventsTimeline: `${RAW_HANA} | where status!="SUCCESSFUL" OR match(action_type,"(?i)(grant|revoke|create|drop)") | ${SEC_CLASS} | timechart span=__LSV_SPAN__ count by event_type | fillnull value=0`,
     auditCategoryBreakdown: `${RAW_HANA} | stats count by action_category | sort -count`,
-    riskTimeline: `${RAW_HANA} | timechart span=1d count by risk_level | fillnull value=0`,
+    riskTimeline: `${RAW_HANA} | timechart span=__LSV_SPAN__ count by risk_level | fillnull value=0`,
     afterHours: `${RAW_HANA} | eval hour=strftime(_time, "%H") | eval result=if(status="SUCCESSFUL", "Successes", "Failures") | chart count over hour by result | fillnull value=0`,
     healthScore: `${RAW_HANA} | eval day = strftime(_time, "%Y-%m-%d") | stats count as daily_events, dc(executing_user) as active_users, sum(eval(if(status!="SUCCESSFUL", 1, 0))) as daily_failures by day | eval success_rate = round(((daily_events - daily_failures)/daily_events)*100, 1) | sort day | table day, daily_events, active_users, daily_failures, success_rate`,
     passwordMgmt: `${RAW_HANA} | where match(sql_statement,"(?i)password") | ${PW_CLASS} | stats count by password_action, target_user, executing_user, client_ip | sort -count, password_action`,
@@ -227,10 +228,15 @@ const AFTER_HOURS_COLS: ColumnDef[] = [
 ];
 
 const HanaAudit: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const failures = useFirstRowFieldHybrid(Q.kpiFailures, QRAW.kpiFailures, 'count');
     const users = useFirstRowFieldHybrid(Q.kpiUsers, QRAW.kpiUsers, 'users');
@@ -261,7 +267,6 @@ const HanaAudit: React.FC = () => {
      *   - After-Hours Admin row → splunk-search filtered to user + host
      *   - Password Management row → Cross-Stack Authentication dashboard
      */
-    const { timeRange } = useTimeRange();
     const goFailedHost = useCallback((row: Record<string, unknown>) => {
         const host = String(row.host ?? '');
         if (!host) return;

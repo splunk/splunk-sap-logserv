@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../../../styles/logservTheme';
 import AIAssistant from './AIAssistant';
@@ -6,15 +6,17 @@ import AIAssistant from './AIAssistant';
 /**
  * SidePanel — docked AI Assistant.
  *
- * Per design §6.2 (refined session 016 task 4): the entry point lives in
- * the top NavigationBar (next to the time range picker), not as a fixed
- * right-edge vertical strip. The strip was obscuring the dashboard's
- * right edge — see screenshot in session memory.
+ * Per design §6.2 (refined session 016 task 4): the entry point is the
+ * AI Assistant button at the right end of the app header's row 2 (after
+ * Actions and Refresh), not a fixed right-edge vertical strip. The strip
+ * was obscuring the dashboard's right edge — see screenshot in session
+ * memory.
  *
  *   - When `expanded === false`: renders nothing
  *   - When `expanded === true`: 600px-wide overlay (does NOT shift the
- *     dashboard content, sits on top); resizable via drag handle, range
- *     320–1200 px
+ *     dashboard content, sits on top) whose top edge follows the header's
+ *     bottom edge (see useHeaderBottom); resizable via drag handle from
+ *     320 px to the viewport width minus PANEL_LEFT_MARGIN
  *   - Width persists across sessions via sessionStorage; expanded state
  *     persists too so a page refresh keeps the panel where it was
  *   - Conversation persists in-memory (cleared on tab close)
@@ -42,9 +44,64 @@ const computeMaxWidth = (): number => {
 
 const SESSION_KEY_WIDTH = 'logserv.aiAssistant.sidePanel.width';
 
+/** The app header (NavigationBar) carries this attribute. */
+const HEADER_SELECTOR = '[data-logserv-header="true"]';
+/** Used only when the header cannot be found (tests, or a page without it):
+ *  the fixed offset every build used before session 138. */
+const FALLBACK_TOP = 84;
+
+/** The viewport y of the app header's bottom edge, clamped at 0, while
+ *  `active`. Session 138: the panel used a fixed 84 px, sized for Splunk
+ *  Web's app-name bar. Since build 339 layout({ hideAppBar: true }) hides
+ *  that bar and our own two-row header sits there instead (taller than
+ *  84 px, and taller still when row 2 wraps), so the open panel covered the
+ *  right end of header row 2 — the AI Assistant button that closes it
+ *  included. The header scrolls with the document, so the edge is
+ *  re-measured on any scroll (capture phase), on resize and when the header
+ *  itself changes size; once it has scrolled away the panel reaches the
+ *  top of the viewport. Measured in a layout effect, before paint, so the
+ *  first frame is already in place. */
+const useHeaderBottom = (active: boolean): number => {
+    const [top, setTop] = useState<number>(FALLBACK_TOP);
+    useLayoutEffect(() => {
+        if (!active || typeof window === 'undefined' || typeof document === 'undefined') {
+            return undefined;
+        }
+        let frame = 0;
+        const measure = (): void => {
+            frame = 0;
+            const header = document.querySelector(HEADER_SELECTOR);
+            setTop(header
+                ? Math.max(0, Math.round(header.getBoundingClientRect().bottom))
+                : FALLBACK_TOP);
+        };
+        const schedule = (): void => {
+            if (!frame) frame = window.requestAnimationFrame(measure);
+        };
+        measure();
+        window.addEventListener('scroll', schedule, { capture: true, passive: true });
+        window.addEventListener('resize', schedule);
+        const header = document.querySelector(HEADER_SELECTOR);
+        const observer = header && typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(schedule)
+            : null;
+        if (observer && header) observer.observe(header);
+        return () => {
+            window.removeEventListener('scroll', schedule, { capture: true });
+            window.removeEventListener('resize', schedule);
+            if (observer) observer.disconnect();
+            if (frame) window.cancelAnimationFrame(frame);
+        };
+    }, [active]);
+    return top;
+};
+
+/* top is set inline from useHeaderBottom - an inline style rather than a
+ * styled prop, because it changes on every scroll step and each distinct
+ * prop value would mint a new class. */
 const Strip = styled.aside<{ $width: number }>`
     position: fixed;
-    top: 84px; /* below Splunk Web's app-name bar; ~Phase G refines */
+    top: ${FALLBACK_TOP}px;
     right: 0;
     bottom: 0;
     width: ${(p) => p.$width}px;
@@ -227,10 +284,12 @@ const SidePanel: React.FC<SidePanelProps> = ({
         };
     }, []);
 
+    const top = useHeaderBottom(expanded);
+
     if (!expanded) return null;
 
     return (
-        <Strip $width={width}>
+        <Strip $width={width} style={{ top }}>
             <ResizeHandle onMouseDown={onMouseDownResize} aria-label="Resize panel" />
             <HeaderBar>
                 <HeaderTitle>AI Assistant</HeaderTitle>

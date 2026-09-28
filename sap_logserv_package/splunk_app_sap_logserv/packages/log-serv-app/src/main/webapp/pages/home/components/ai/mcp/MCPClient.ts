@@ -1,6 +1,7 @@
 import { Hidden, markHidden } from '../types/Hidden';
 import { clearCredentialCache, readSecret } from '../providers/credentials';
 import { clearAIConfigCache, readAIConfig } from '../../../utils/aiConfigApi';
+import { APP_VERSION } from '../../../buildFlags';
 
 /**
  * MCP client — talks to the official Splunk MCP Server (Splunkbase App
@@ -237,7 +238,14 @@ export class MCPClient {
         const result = await this.jsonrpcCall('initialize', {
             protocolVersion: '2024-11-05',
             capabilities: {},
-            clientInfo: { name: 'logserv-ai-assistant', version: '0.1.1' },
+            // Derived from app.conf via webpack DefinePlugin (buildFlags.APP_VERSION),
+            // so this cannot drift from the shipped version on a line bump.
+            // The literal is only the non-webpack fallback (tests/Node), where
+            // clientInfo is cosmetic.
+            clientInfo: {
+                name: 'logserv-ai-assistant',
+                version: APP_VERSION || '0.1.2',
+            },
         });
         if (result.error) {
             throw new MCPClientError(

@@ -82,6 +82,31 @@ const Header = styled.header`
      * header at its natural height so the Body absorbs all flexing. Inert
      * in the default block layout. */
     flex-shrink: 0;
+
+    /* Build 346. A panel header whose right cluster is wider than the space
+     * left over now WRAPS that cluster onto its own line instead of
+     * overflowing the panel.
+     *
+     * The case that exposed it: DNS Analytics' "Filter clients / All clients /
+     * <1m ago" block needs 617px, and at a 1440px viewport with the rail
+     * expanded its header is 518px — so it ran 163px past the panel border.
+     * It never fitted (612px even with the rail collapsed); the rail widened
+     * an existing shortfall rather than creating one.
+     *
+     * Wrapping is the right answer rather than shrinking, because the cluster
+     * holds real controls — a Multiselect, a Select, the freshness stamp and
+     * the five PanelActions icons. Squeezing those produces unusable targets;
+     * moving them to their own line costs one row of height and keeps every
+     * one at its natural size. */
+    flex-wrap: wrap;
+`;
+
+/* The title/subtitle column. A flex item defaults to `min-width: auto`, which
+ * means it refuses to shrink below its content — so without this the long
+ * subtitles push the header wider instead of wrapping inside it. */
+const HeaderLeft = styled.div`
+    min-width: 0;
+    flex: 1 1 auto;
 `;
 
 const Title = styled.h2`
@@ -118,6 +143,14 @@ const HeaderRight = styled.div`
     align-items: center;
     gap: ${logservTheme.spacing.sm};
     align-self: center;
+    /* Build 346 — see the note on Header. min-width:0 lets this cluster be
+       narrower than its content when the header wraps it onto its own line;
+       flex-wrap lets the controls inside it stack rather than overflow at
+       widths where even a full row is not enough. Right-aligned so a wrapped
+       cluster still reads as belonging to the panel's right edge. */
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 `;
 
 interface FramedPanelProps {
@@ -305,10 +338,10 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
             >
                 {showHeader && (
                     <Header>
-                        <div>
+                        <HeaderLeft>
                             {title && <Title>{title}</Title>}
                             {subtitle && <Subtitle>{subtitle}</Subtitle>}
-                        </div>
+                        </HeaderLeft>
                         {headerRight}
                     </Header>
                 )}

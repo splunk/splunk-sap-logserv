@@ -71,7 +71,7 @@
  * is still required (it's the only way to dispatch SPL).
  *
  * NOT part of this flag: the vendor provider modules are still present
- * in the bundle (v0.1.1 ships them; the frozen v0.0.6 line deletes them
+ * in the bundle (v0.1.2 ships them; the frozen v0.0.6 line deletes them
  * from source instead). Bundle-level stripping was explicitly declined —
  * this is a functional disable, so vendor endpoint strings remaining in
  * `home.js` is expected.

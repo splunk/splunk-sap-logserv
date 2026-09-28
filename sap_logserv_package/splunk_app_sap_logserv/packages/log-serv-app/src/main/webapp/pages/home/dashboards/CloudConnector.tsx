@@ -13,6 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Cloud Connector — honest port of v0.0.4.2 logserv_cloud_connector.xml.
@@ -92,14 +93,14 @@ const Q_BASE = {
     kpiAudit: `| tstats count ${TS_WHERE_AUDIT}`,
     sparkRequests: `| tstats count ${TS_WHERE_HTTP} BY _time span=1d | timechart span=1d sum(count) AS count`,
     sparkAudit: `| tstats count ${TS_WHERE_AUDIT} BY _time span=1d | timechart span=1d sum(count) AS count`,
-    requestVolume: `| tstats count ${TS_WHERE_HTTP} BY _time span=1d | timechart span=1d sum(count) AS Requests`,
+    requestVolume: `| tstats count ${TS_WHERE_HTTP} BY _time span=__LSV_SPAN__ | timechart span=__LSV_SPAN__ sum(count) AS Requests`,
 
     // --- KV-Store rollup: audit (scc:audit ACCESS_DENIED) -------------------
     kpiAccessDenied: `${R_AUDIT} | search scc_audit_type="ACCESS_DENIED" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     sparkAccessDenied: `${R_AUDIT} | search scc_audit_type="ACCESS_DENIED" | eval _time=bucket_ts | timechart span=1d sum(count) AS count | fillnull value=0`,
 
     // --- KV-Store rollup: status / method / client --------------------------
-    statusCodes: `${R_STATUS} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "Success (2xx)", tonumber(status)>=300 AND tonumber(status)<400, "Redirect (3xx)", tonumber(status)>=400 AND tonumber(status)<500, "Client Error (4xx)", tonumber(status)>=500, "Server Error (5xx)", 1=1, "Other") | eval _time=bucket_ts | timechart span=1d sum(count) by status_cat | fillnull value=0`,
+    statusCodes: `${R_STATUS} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "Success (2xx)", tonumber(status)>=300 AND tonumber(status)<400, "Redirect (3xx)", tonumber(status)>=400 AND tonumber(status)<500, "Client Error (4xx)", tonumber(status)>=500, "Server Error (5xx)", 1=1, "Other") | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by status_cat | fillnull value=0`,
     httpMethods: `${R_METHOD} | search method!="(none)" | stats sum(count) as count by method | sort -count`,
     topClients: `${R_CLIENT} | search clientip!="(none)" | stats sum(count) as Requests, sum(bytes_sum) as "Total Bytes", dc(eval(if(uri="(none)",null(),uri))) as "Unique URIs" by clientip | sort -Requests | rename clientip as "Client IP"`,
     // HTTP Error Rate = status>=400 fraction (session-050 fix; props.conf is_error is
@@ -109,7 +110,7 @@ const Q_BASE = {
 
     // --- KV-Store rollup: client metric serves Top URIs (by uri) + Avg Response
     topUris: `${R_CLIENT} | search uri!="(none)" | stats sum(count) as Requests, sum(sum_rt) as s, sum(cnt_rt) as c, sum(bytes_sum) as "Total Bytes" by uri | eval "Avg Response (ms)"=round(if(c>0,s/c,0),1) | sort -Requests | rename uri as URI | table URI, Requests, "Avg Response (ms)", "Total Bytes"`,
-    responseTime: `${R_HTTP} | eval _time=bucket_ts | timechart span=1d sum(sum_rt) as s, sum(cnt_rt) as c | eval "Avg Response Time (ms)"=s/c | fields _time, "Avg Response Time (ms)"`,
+    responseTime: `${R_HTTP} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(sum_rt) as s, sum(cnt_rt) as c | eval "Avg Response Time (ms)"=s/c | fields _time, "Avg Response Time (ms)"`,
     auditLog: `\`sap_logserv_idx_macro\` ${ST_AUDIT} | head 200 | table _time scc_audit_type scc_account_id | sort -_time | rename scc_audit_type as "Audit Type" scc_account_id as "Account ID"`,
 };
 
@@ -127,11 +128,11 @@ const CC_AUDIT = '`sap_logserv_idx_macro` sourcetype="sap:scc:audit"';
 const QRAW_BASE = {
     kpiAccessDenied: `${CC_AUDIT} scc_audit_type="ACCESS_DENIED" | stats count`,
     kpiErrorRate: `${CC_HTTP} | stats count as total, sum(eval(if(tonumber(status)>=400,1,0))) as errs | eval pct=if(total>0, round(errs/total*100, 1), 0) | table pct`,
-    statusCodes: `${CC_HTTP} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "Success (2xx)", tonumber(status)>=300 AND tonumber(status)<400, "Redirect (3xx)", tonumber(status)>=400 AND tonumber(status)<500, "Client Error (4xx)", tonumber(status)>=500, "Server Error (5xx)", 1=1, "Other") | timechart span=1d count by status_cat | fillnull value=0`,
+    statusCodes: `${CC_HTTP} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "Success (2xx)", tonumber(status)>=300 AND tonumber(status)<400, "Redirect (3xx)", tonumber(status)>=400 AND tonumber(status)<500, "Client Error (4xx)", tonumber(status)>=500, "Server Error (5xx)", 1=1, "Other") | timechart span=__LSV_SPAN__ count by status_cat | fillnull value=0`,
     httpMethods: `${CC_HTTP} method=* | stats count by method | sort -count`,
     topClients: `${CC_HTTP} clientip=* | stats count as Requests, sum(bytes) as "Total Bytes", dc(uri) as "Unique URIs" by clientip | sort -Requests | rename clientip as "Client IP"`,
     topUris: `${CC_HTTP} uri=* | stats count as Requests, avg(response_time_ms) as "Avg Response (ms)", sum(bytes) as "Total Bytes" by uri | eval "Avg Response (ms)"=round('Avg Response (ms)',1) | sort -Requests | rename uri as URI | table URI, Requests, "Avg Response (ms)", "Total Bytes"`,
-    responseTime: `${CC_HTTP} | timechart span=1d avg(response_time_ms) as "Avg Response Time (ms)" | fields _time, "Avg Response Time (ms)"`,
+    responseTime: `${CC_HTTP} | timechart span=__LSV_SPAN__ avg(response_time_ms) as "Avg Response Time (ms)" | fields _time, "Avg Response Time (ms)"`,
 };
 
 interface FirstRow {
@@ -176,10 +177,15 @@ const AUDIT_COLS: ColumnDef[] = [
 ];
 
 const CloudConnector: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const requests = useFirstRowField(Q.kpiRequests, 'count');
     const errorRate = useFirstRowFieldHybrid(Q.kpiErrorRate, QRAW.kpiErrorRate, 'pct');
     const audit = useFirstRowField(Q.kpiAudit, 'count');
@@ -199,7 +205,6 @@ const CloudConnector: React.FC = () => {
     const deniedTone = Number(accessDenied.value ?? 0) > 0 ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goUriRow = (row: Record<string, unknown>): void => {
         const uri = String(row.URI ?? '');
         if (!uri) return;

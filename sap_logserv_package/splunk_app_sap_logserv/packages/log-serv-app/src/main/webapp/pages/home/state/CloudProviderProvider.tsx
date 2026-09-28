@@ -13,8 +13,8 @@ import { username as splunkUsername } from '@splunk/splunk-utils/config';
  * CloudProviderProvider — global cloud-provider filter (session 082).
  *
  * One selection applies across EVERY dashboard (except Multi-Cloud
- * Overview, Environment Topology, and Settings — those opt out via
- * DashboardLayout's `noCloudFilter`). Behaves like the global TimeRange
+ * Overview, Environment Topology, Diagnostics, and Settings — those opt out
+ * via DashboardLayout's `noCloudFilter`). Behaves like the global TimeRange
  * picker: the choice is app-wide and persisted per user, so navigating
  * between dashboards keeps the same provider filter in effect.
  *

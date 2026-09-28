@@ -2,8 +2,8 @@
 
 Every action the AI Assistant takes — predefined-prompt dispatches, free-form vendor calls, security blocks, privacy-tier elevations, legal acknowledgements — produces an audit event in a dedicated `logserv_ai_assistant_audit` index. The audit trail is the evidence layer for compliance reviews, SOC investigations, and tamper-resistance posture.
 
-!!! note "Which categories fire in the published (templates-only) package"
-    The released v0.1.1 App is the [templates-only build](templates-only-build.md) — no LLM dispatch, no vendor call, no model discovery. In it, only **`local_only`** (every canned-prompt dispatch), **`audit_forwarder_failure`**, **`forwarder_disabled_acceptance`**, and **`ai_assistant_enable_acceptance`** are ever emitted; the other nine categories are defined but structurally dormant (nothing can trigger them). In the full-LLM variant all thirteen are live.
+!!! note "Which categories fire with no LLM provider configured"
+    Until an admin configures an LLM provider credential — and in any deployment with **Templates-only mode** on or a compile-time [templates-only build](templates-only-build.md) installed — there is no LLM dispatch, no vendor call and no model discovery. In that state only **`local_only`** (every canned-prompt dispatch), **`audit_forwarder_failure`**, **`forwarder_disabled_acceptance`**, and **`ai_assistant_enable_acceptance`** are ever emitted; the other nine categories are defined but structurally dormant (nothing can trigger them). Once a credential is configured, all thirteen are live.
 
 ## :material-circle-box:{ .taiconcolor } The Thirteen Audit Categories
 
@@ -96,7 +96,7 @@ The index name is **macro-configurable** — see [Renaming an index](../install-
 
 You can query the audit index from any search bar — the in-app viewer is just a curated UX over the same SPL. The starter searches below use the `\`sap_logserv_audit_idx_macro\`` macro so they continue to work after a rename:
 
-**All Tier 2 calls in the last 7 days, with USD cost summed by user** *(full-LLM variant only — this category is never emitted by the published templates-only package)*:
+**All Tier 2 calls in the last 7 days, with USD cost summed by user** *(only ever emitted once an LLM provider credential is configured and Tier 2 is selected)*:
 
 ```spl
 `sap_logserv_audit_idx_macro` earliest=-7d

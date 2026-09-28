@@ -565,10 +565,14 @@ export interface RawSampleSet {
 
 export const RAW_SAMPLE_MAX = 5;
 /** §20.4/§20.8a-3 — a SAFETY CEILING, not a truncation policy (was a 500-char
- *  cap through build 319). 2× Splunk's 10,000-byte TRUNCATE default and below
- *  the PDF renderer's MONO_BLOCK_MAX_CHARS (gate-asserted), so the collector's
- *  disclosed marker is always the one the reader sees. HEC ingest bypasses
- *  TRUNCATE, so the ceiling is reachable in principle — never silently. */
+ *  cap through build 319). Chosen as twice Splunk's 10,000-byte TRUNCATE
+ *  default, but that no longer bounds what is indexed: the Data TA sets
+ *  TRUNCATE = 100000 for sap_logserv_logs (session 136), Azure lines of ~52 KB
+ *  now index whole, and HEC ingest bypasses TRUNCATE anyway. So real events do
+ *  reach this ceiling, and a longer sample is clipped with the collector's
+ *  disclosed marker — never silently. Below the PDF renderer's
+ *  MONO_BLOCK_MAX_CHARS (gate-asserted), so that marker is always the one the
+ *  reader sees. */
 export const RAW_SAMPLE_EVENT_MAX_CHARS = 20_000;
 /** Deterministic thousands formatting (toLocaleString is locale-dependent). */
 export const formatCount = (n: number): string =>

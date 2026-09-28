@@ -1,11 +1,11 @@
 # Free-form Prompts
 
-!!! warning "Full-LLM build variant only"
-    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): the free-form / LLM-driven path this page describes is **disabled at compile time** there, and no vendor call is ever made. This page applies to the separately-built **full-LLM variant** used in approved deployments.
+!!! info "Requires a configured LLM provider credential"
+    The published v0.1.2 App package is the **full-LLM build variant**, so the path this page describes is present in it — but it stays **inert until an admin configures an [LLM provider credential](settings.md#provider-credentials-tab)**. An upgrade creates no credential, so nothing reaches a vendor until someone sets one. An admin can also restrict a deployment to predefined prompts at run time with the **Templates-only mode** toggle (Settings → AI Assistant → General), and a compile-time [templates-only build variant](templates-only-build.md) exists for deployments where that restriction must not be reversible in the field.
 
 Free-form prompts are the LLM-driven path through the AI Assistant. The user types a natural-language question; the orchestrator sends a system primer + the question + tool definitions to one of four supported LLM providers; the vendor picks tools, the orchestrator dispatches them via the [Splunk MCP Server](mcp-setup.md), and the vendor synthesizes a narrative response from the privacy-tier-bounded summaries. The narrative ends up in the chat panel on the left; the actual data lands in tool-result tiles on the right.
 
-This path requires a configured [LLM provider credential](settings.md#provider-credentials-tab), is governed by the active [privacy tier](privacy-tiers.md), and is **disabled at compile time in the [Templates-only build variant](templates-only-build.md)**.
+This path requires a configured [LLM provider credential](settings.md#provider-credentials-tab), is governed by the active [privacy tier](privacy-tiers.md), and can be switched off — at run time with the **Templates-only mode** toggle, or irreversibly in the [Templates-only build variant](templates-only-build.md).
 
 ## :material-circle-box:{ .taiconcolor } The Four Supported Providers
 

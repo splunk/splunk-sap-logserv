@@ -24,6 +24,8 @@ linux:slapd,infrastructure,OpenLDAP slapd + Pacemaker HA cluster log,host proces
 syslog,infrastructure,DEPRECATED — historical content from cron/warn/sudolog/slapd before Path B migration (build 145),host process pid os_user msg,"`sap_logserv_idx_macro` sourcetype=syslog process=CROND"
 linux_secure,infrastructure,Linux auth/security log (sudo SSH firewall iptables),host process user src_ip action,"`sap_logserv_idx_macro` sourcetype=linux_secure (FW_DROP OR DROP)"
 squid:access,infrastructure,Squid proxy access log,clientip url action http_method status bytes domain,"`sap_logserv_idx_macro` sourcetype=squid:access action=DENIED | stats count by clientip"
+squid:cache,infrastructure,Squid proxy cache.log (the daemon's own messages; not requests),host source,"`sap_logserv_idx_macro` sourcetype=squid:cache | stats count by host"
+squid:store,infrastructure,Squid proxy store.log (object-store journal; not requests),host source,"`sap_logserv_idx_macro` sourcetype=squid:store | stats count by host"
 isc:bind:query,infrastructure,BIND DNS query log,query query_type record_type src_ip dest_ip transport,"`sap_logserv_idx_macro` sourcetype=isc:bind:query | stats count by query_type"
 isc:bind:network,infrastructure,BIND DNS network events,src_ip dest_ip transport,"`sap_logserv_idx_macro` sourcetype=isc:bind:network"
 isc:bind:transfer,infrastructure,BIND DNS zone transfer events,zone src_ip,"`sap_logserv_idx_macro` sourcetype=isc:bind:transfer"

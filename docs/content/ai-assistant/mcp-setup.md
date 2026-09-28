@@ -1,11 +1,11 @@
 # Splunk MCP Setup
 
-The AI Assistant's tool-dispatch path runs on top of the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) — **in every build variant, including the published templates-only package**: predefined prompts dispatch their saved searches through it, so this page applies to every deployment. MCP — Model Context Protocol — is Anthropic's open standard for connecting LLMs to external tools and data; the Splunk MCP Server exposes Splunk's search-job + saved-search endpoints as MCP tools that any MCP-aware client can call. The LogServ App is the MCP client and the Splunk MCP Server is the MCP server. (Only in the full-LLM variant does an LLM vendor additionally sit in the loop choosing tools; in the published package the App dispatches the tools itself.)
+The AI Assistant's tool-dispatch path runs on top of the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) — **in every build variant and every configuration**: predefined prompts dispatch their saved searches through it, so this page applies to every deployment. MCP — Model Context Protocol — is Anthropic's open standard for connecting LLMs to external tools and data; the Splunk MCP Server exposes Splunk's search-job + saved-search endpoints as MCP tools that any MCP-aware client can call. The LogServ App is the MCP client and the Splunk MCP Server is the MCP server. (An LLM vendor additionally sits in the loop choosing tools only where free-form dispatch is live — that is, once an LLM provider credential is configured; for predefined prompts the App dispatches the tools itself.)
 
 ## :material-circle-box:{ .taiconcolor } Prerequisites
 
 - **Splunk 9.4.3 or later.**
-- **[Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.0.3 or later** — the version floor the App's health probe actually enforces; **v1.1.0 or later is recommended** (cookie auth was validated against 1.1.0) — installed on the **same search head** as the LogServ App. (The LogServ App's React UI calls MCP via the same Splunk Web session, so they need to share an HTTP host.)
+- **[Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.0.3 or later** — the version floor the App's health probe enforces, paired with an upper bound below **v3.0.0**, so the 2.x major is accepted (App build 335 and later); **v1.1.0 or later is recommended** (cookie auth was validated against 1.1.0) — installed on the **same search head** as the LogServ App. (The LogServ App's React UI calls MCP via the same Splunk Web session, so they need to share an HTTP host.)
 - **Admin user role** to install the MCP Server app and configure its REST handlers.
 
 !!! note "Splunk MCP TA gate currently bypassed"
@@ -84,7 +84,7 @@ This `aud=mcp` requirement is an App 7931 server-side configuration; the LogServ
 
 Open Settings → AI Assistant → **General** and confirm:
 
-- **`mcp_required`** = `true` (default). When false, MCP is bypassed and the chat operates in MCP-less chat mode (full-LLM variant only — LLM streaming with no tool dispatch). In the published templates-only package MCP is the only dispatch path, so turning this off just disables the assistant's ability to run anything. **Most customers leave this true.**
+- **`mcp_required`** = `true` (default). When false, MCP is bypassed and the chat operates in MCP-less chat mode (requires a configured LLM provider credential — LLM streaming with no tool dispatch). Where no credential is configured, or **Templates-only mode** is on, MCP is the only dispatch path, so turning this off just disables the assistant's ability to run anything. **Most customers leave this true.**
 - **`mcp_server_url`** = blank (default — uses the scheme-relative `/en-US/splunkd/__raw/services/mcp`). Override only if your MCP server is at a non-default path or you're proxying through a different ingress.
 
 Then in [Settings → Splunk MCP](settings.md#splunk-mcp-tab):
@@ -147,8 +147,8 @@ The MCP Server's response format doesn't match what the LogServ App expects. Mos
 
 ## :material-circle-box:{ .taiconcolor } MCP-less Chat Mode
 
-!!! warning "Full-LLM build variant only"
-    Chat-only mode relies on LLM streaming, which the published templates-only package disables at compile time. In that build, setting `mcp_required = false` leaves the panel with no working dispatch path at all — there is nothing to fall back to.
+!!! warning "Requires a configured LLM provider credential"
+    Chat-only mode relies on LLM streaming, which runs only once an admin has configured an [LLM provider credential](settings.md#provider-credentials-tab). Where none is configured — or **Templates-only mode** is on, or a compile-time [templates-only build](templates-only-build.md) is installed — setting `mcp_required = false` leaves the panel with no working dispatch path at all: there is nothing to fall back to.
 
 For debugging or for specific use cases where you want LLM streaming without MCP, set `mcp_required = false` in Settings → General. The AI Assistant then operates in **chat-only mode**:
 

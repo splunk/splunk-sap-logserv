@@ -1,7 +1,7 @@
 # Settings & Configuration
 
-!!! info "Which settings apply in the published (templates-only) package"
-    The released v0.1.1 App is the **templates-only build variant** — free-form LLM dispatch is disabled at compile time ([Build Variants](templates-only-build.md)). On this page that means: the **Provider Credentials sub-tab is hidden**, the **model-discovery rows** (governance toggle, Discovered-models status, Refresh button) and the **Templates-only mode toggle** are hidden, and the LLM-specific fields (`provider`, `default_model`, `tier`, `power_user_roles`, the Limits & Quotas caps, the Tier-2 privacy rows) still render but have no effect — there is no LLM dispatch for them to govern. The fields that matter in this build are `enabled`, `mcp_required`, `mcp_server_url`, `mcp_timeout_seconds`, and the Audit & Telemetry group. In the separately-built **full-LLM variant**, every field on this page is operational.
+!!! info "Which settings do something on a fresh install"
+    The released v0.1.2 App is the **full-LLM build variant**, so every field on this page is operational — but the LLM-specific ones (`provider`, `default_model`, `tier`, `power_user_roles`, the Limits & Quotas caps, the Tier-2 privacy rows) have nothing to govern until an admin configures a provider credential on the **Provider Credentials** sub-tab. The fields that matter on a fresh install are `enabled`, `mcp_required`, `mcp_server_url`, `mcp_timeout_seconds`, and the Audit & Telemetry group. Turning on **Templates-only mode** (General sub-tab) restricts the deployment to predefined prompts at run time; in a compile-time [templates-only build](templates-only-build.md) the Provider Credentials sub-tab, the model-discovery rows and the Templates-only mode toggle itself are all hidden.
 
 The **Application Settings** page is at **`#/settings`** within the LogServ App (the old `#/settings/ai-assistant` URL still works and redirects here). Admin-only. The page is organized as a **two-level tab hierarchy**:
 
@@ -45,7 +45,7 @@ The General tab is divided into five semantic subsections: **Feature**, **Limits
 
 | Field | Default | Description |
 |---|---|---|
-| **`enabled`** | `false` | Master switch. When false, the `✦ AI Assistant` button in the nav is hidden and no AI traffic flows. The first time an admin flips this to `true`, an [enable-acceptance modal](#legal-acknowledgement-modals) blocks the save until acknowledged. |
+| **`enabled`** | `false` | Master switch. When false, the **AI Assistant** button in the header is hidden and no AI traffic flows. The first time an admin flips this to `true`, an [enable-acceptance modal](#legal-acknowledgement-modals) blocks the save until acknowledged. |
 | **`provider`** | `mock` | Active LLM vendor: `mock` / `anthropic` / `openai` / `azure_openai` / `bedrock` / `ollama` (future release). |
 | **`default_model`** | per-provider | Default model id for the active provider. The dropdown offers the provider's **merged model list** — curated baseline plus any vendor-discovered models (see [How model discovery works](#how-model-discovery-works)). The per-user model picker in the chat panel can switch within the same list. |
 | **`model_discovery_enabled`** | `true` | Governance toggle for [dynamic model discovery](#how-model-discovery-works). When off, the App never calls any vendor model-listing endpoint and the pickers offer the curated static baseline only. |
@@ -56,7 +56,7 @@ The General tab is divided into five semantic subsections: **Feature**, **Limits
 
 Beneath the `mcp_timeout_seconds` field, a **read-only "MCP server timeout"** row displays the Splunk MCP Server app's own `mcp.conf [server] timeout` (read cross-app from App 7931), so both numbers sit side by side — the effective ceiling for a request is the lower of the two. It is display-only: changing the *server* timeout means editing App 7931's `mcp.conf` and restarting Splunk (the MCP server is a different app and caches the value in a persistent process, so it can't be changed live from here). When App 7931 isn't installed or reachable the row shows **Not detected**.
 
-In the **full-LLM variant**, a **Discovered models** status row also renders beneath the model fields — the active provider's discovery state (how many models were discovered, when the list was last fetched, the error text if the last refresh failed) together with a **Refresh model list** button that re-queries the vendor on demand. See [How model discovery works](#how-model-discovery-works). These rows are hidden in the published templates-only package.
+A **Discovered models** status row also renders beneath the model fields — the active provider's discovery state (how many models were discovered, when the list was last fetched, the error text if the last refresh failed) together with a **Refresh model list** button that re-queries the vendor on demand. See [How model discovery works](#how-model-discovery-works). These rows are hidden in a compile-time [templates-only build](templates-only-build.md).
 
 ### Limits & Quotas
 
@@ -91,10 +91,10 @@ In the **full-LLM variant**, a **Discovered models** status row also renders ben
 
 ## :material-circle-box:{ .taiconcolor } How Model Discovery Works
 
-!!! note "Full-LLM variant only"
-    Model discovery is **inert in the published templates-only package** — no vendor model-listing call is ever made, and its Settings rows are hidden. This section describes the full-LLM variant.
+!!! note "Requires a configured provider credential"
+    Model discovery queries the configured provider, so it does nothing until a credential is configured. It is **inert in a compile-time [templates-only build](templates-only-build.md)** — no vendor model-listing call is ever made there, and its Settings rows are hidden.
 
-In the full-LLM variant, the model pickers (Settings → General `default_model` and the chat panel's per-user picker) offer a **merged model list** per provider: a curated static baseline **plus** models discovered live from the configured vendor.
+The model pickers (Settings → General `default_model` and the chat panel's per-user picker) offer a **merged model list** per provider: a curated static baseline **plus** models discovered live from the configured vendor.
 
 **What discovery actually calls.** Discovery is a **metadata-only GET** against the vendor's model-listing endpoint — the same credential and the same trust envelope as the existing "validate credential" check. No prompt text, no Splunk event data, and no aggregates are involved; the request and response carry model metadata only.
 
@@ -124,8 +124,8 @@ In the full-LLM variant, the model pickers (Settings → General `default_model`
 
 ## :material-circle-box:{ .taiconcolor } Provider Credentials Tab
 
-!!! note "Full-LLM variant only"
-    This sub-tab is **hidden in the published templates-only package** (no LLM provider is involved). This section describes the full-LLM variant.
+!!! note "Hidden in a templates-only build"
+    This sub-tab is **hidden in a compile-time [templates-only build](templates-only-build.md)** (no LLM provider is involved there). In the published build it is visible, and configuring a credential here is what activates the free-form path.
 
 One panel per provider. Each panel has the credential fields for that provider — typically just an API key, plus per-provider extras (Azure deployment URL, Bedrock region, etc.). Credentials are stored in Splunk's encrypted password store via `/servicesNS/nobody/<app>/storage/passwords`. The Settings page only ever displays length + prefix, never the cleartext.
 
@@ -174,7 +174,7 @@ HEC token for tamper-evident audit forwarding to a separate Splunk / SIEM. The d
 
 ![Settings — Audit Log tab](../../images/settings-audit.png)
 
-Read-only browser of every event in the `logserv_ai_assistant_audit` index. The search window is driven by the global TimeRange picker in the navigation bar — the viewer re-runs on every picker change, and there is no separate time-range control. Filters: category multi-select (13 categories — `local_only`, `vendor_tier1`, `vendor_tier2`, `security_blocked_spl`, `rate_limited_prompt`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, `vendor_tier2_elevation`, `forwarder_disabled_acceptance`, `ai_assistant_enable_acceptance`, `model_discovery`), user-contains text filter, result limit (50 / 100 / 250 / 500, default 100).
+Read-only browser of every event in the `logserv_ai_assistant_audit` index. The search window is driven by the global time range in the header — the viewer re-runs on every picker change, and there is no separate time-range control. Filters: category multi-select (13 categories — `local_only`, `vendor_tier1`, `vendor_tier2`, `security_blocked_spl`, `rate_limited_prompt`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, `vendor_tier2_elevation`, `forwarder_disabled_acceptance`, `ai_assistant_enable_acceptance`, `model_discovery`), user-contains text filter, result limit (50 / 100 / 250 / 500, default 100).
 
 Clicking a row's **+** expand button reveals the full event JSON. The page is paginated client-side at 25 rows per page; "Showing N-M of T events" + Previous / Next buttons render below the table when T > 25.
 
@@ -225,4 +225,4 @@ Pure `optInVersion`-only gating (acknowledge once, never prompted again until th
 
 When the admin saves a config change in the General tab that affects what users see (master `enabled` toggle, `mcp_required`, `power_user_roles`, etc.), the AI Assistant re-applies the new config to the running session within a few seconds. No page reload required.
 
-For example: disabling the AI Assistant via the master toggle and clicking Save Defaults — the `✦ AI Assistant` button in the top-right nav disappears within ~4 seconds, no browser refresh needed. Similarly, re-enabling re-shows the button immediately. For the callback wiring, see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).
+For example: disabling the AI Assistant via the master toggle and clicking Save Defaults — the **AI Assistant** button in the header disappears within ~4 seconds, no browser refresh needed. Similarly, re-enabling re-shows the button immediately. For the callback wiring, see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).

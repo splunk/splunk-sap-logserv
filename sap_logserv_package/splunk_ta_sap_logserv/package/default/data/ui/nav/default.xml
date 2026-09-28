@@ -1,4 +1,5 @@
 <nav search_view="search">
   <view name="configuration" label="Configuration" />
+  <view name="logserv_s3_direct" label="AWS S3 Direct" />
   <view name="search" />
 </nav>

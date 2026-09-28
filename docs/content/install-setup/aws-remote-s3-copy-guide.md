@@ -56,8 +56,8 @@ You will also need to note the **AWS Region** where these resources are located,
 
 1.<b class="taiconcolor">b</b> If you **do** have console access to your **_SAP ECS account_**, obtain the ARNs yourself:
 
-    - For the **S3 Bucket**: navigate to the S3 console, find the bucket used for LogServ logs, click on the bucket name, and copy the ARN from the **_Properties_** tab.
-    - For the **SQS Queue**: navigate to the SQS console, find the queue that receives S3 notifications, click on the queue name, and copy the ARN from the **_Details_** section.
+- For the **S3 Bucket**: navigate to the S3 console, find the bucket used for LogServ logs, click on the bucket name, and copy the ARN from the **_Properties_** tab.
+- For the **SQS Queue**: navigate to the SQS console, find the queue that receives S3 notifications, click on the queue name, and copy the ARN from the **_Details_** section.
 
 1.<b class="taiconcolor">c</b> Save both ARNs and the AWS Region in a secure location -- you will reference them when creating the S3 Bucket (next section), deploying the CloudFormation Template, and configuring the SQS-Based S3 Input later in this guide.
 
@@ -219,7 +219,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 7.<b class="taiconcolor">b</b> Choose and enter a descriptive name for the role in the **_Name_** field. Enter the IAM Role ARN in the **_IAM Role ARN_** field, then click the **_Add_** button. The ARN for the IAM Role should look like the one below but with your 12-digit AWS account Id of your **_Secondary account_**.
 
-    - arn:aws:iam::**_secondary-account-id_**:role/splunk-logserv-ta-role
+- arn:aws:iam::**_secondary-account-id_**:role/splunk-logserv-ta-role
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-role-02.png "Add Role")
@@ -234,37 +234,37 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 8.<b class="taiconcolor">b</b> Fill out the first three fields in the SQS-Based S3 Input (**_Name_**, **_AWS Account_**, **_Assume Role_**)
 
-    - Choose and enter a descriptive name for the input
-    - Select the AWS Account you configured previously
-    - Select the IAM Role you configured previously
+- Choose and enter a descriptive name for the input
+- Select the AWS Account you configured previously
+- Select the IAM Role you configured previously
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-02.png "Input Fields")
 
 8.<b class="taiconcolor">c</b> Fill out the next three fields in the SQS-Based S3 Input (**_Force using DLQ_**, **_AWS Region_**, **_Use Private Endpoints_**)
 
-    - Leave the **_Force using DLQ (Recommended)_** checkbox **__checked__**
-    - Select the **_AWS Region_** where you deployed the CloudFormation template previously
-    - Leave the **_Use Private Endpoints_** checkbox **__unchecked__**
+- Leave the **_Force using DLQ (Recommended)_** checkbox **__checked__**
+- Select the **_AWS Region_** where you deployed the CloudFormation template previously
+- Leave the **_Use Private Endpoints_** checkbox **__unchecked__**
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-03.png "Input Fields")
 
 8.<b class="taiconcolor">d</b> Fill out the next three fields in the SQS-Based S3 Input (**_SQS Queue Name_**, **_SQS Batch Size_**, **_S3 File Decoder_**)
 
-    - Select the **_SQS Queue Name_** you entered in step **3.j** (**_LocalSQSQueueName_**) when previously deploying the CloudFormation template
-    - Leave the **_SQS Batch Size_** set to 10
-    - Leave the **_S3 File Decoder_** set to Custom Logs
+- Select the **_SQS Queue Name_** you entered in step **3.j** (**_LocalSQSQueueName_**) when previously deploying the CloudFormation template
+- Leave the **_SQS Batch Size_** set to 10
+- Leave the **_S3 File Decoder_** set to Custom Logs
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-04-s3-copy.png "Input Fields")
 
 8.<b class="taiconcolor">e</b> Fill out the next three fields in the SQS-Based S3 Input (**_Signature Validate All Events_**, **_Source Type_**, **_Index_**)
 
-    - **__Uncheck__** the **_Signature Validate All Events_** checkbox
-    - Enter the value of **_sap_logserv_logs_** in the **_Source Type_** field
-    - Enter the name of the Splunk index you want to use in the **_Index_** field
-    - Click on the **_Add_** button
+- **__Uncheck__** the **_Signature Validate All Events_** checkbox
+- Enter the value of **_sap_logserv_logs_** in the **_Source Type_** field
+- Enter the name of the Splunk index you want to use in the **_Index_** field
+- Click on the **_Add_** button
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-05.png "Input Fields")
@@ -378,36 +378,36 @@ After completing all the previous steps, verify that LogServ logs are successful
 
 10.<b class="taiconcolor">b</b> Run a basic search against the index you configured in the SQS-Based S3 Input to confirm events are flowing:
 
-        index=<your_index_name> | stats count by sourcetype
+    index=<your_index_name> | stats count by sourcetype
 
-    If you are using the SAP LogServ App, you can use the provided index macro:
+If you are using the SAP LogServ App, you can use the provided index macro:
 
-        `sap_logserv_idx_macro` | stats count by sourcetype
+    `sap_logserv_idx_macro` | stats count by sourcetype
 
 10.<b class="taiconcolor">c</b> You should see events from the LogServ sourcetypes your SAP LogServ subscription is forwarding. Depending on the log types enabled, expected sourcetypes may include (but are not limited to):
 
-    - `linux_messages_syslog`, `linux_secure`, `syslog` -- Linux OS events
-    - `isc:bind:query` -- DNS query events
-    - `squid:access` -- Proxy events
-    - `XmlWinEventLog` -- Windows events
-    - `sap:hana:audit`, `sap:hana:tracelogs` -- HANA database events
-    - `sap:abap:*` -- ABAP application events
-    - `sap:webdispatcher:access` -- Web Dispatcher events
-    - `sap:scc:audit`, `sap:scc:http_access` -- Cloud Connector events
+- `linux_messages_syslog`, `linux_secure`, `syslog` -- Linux OS events
+- `isc:bind:query` -- DNS query events
+- `squid:access` -- Proxy events
+- `XmlWinEventLog` -- Windows events
+- `sap:hana:audit`, `sap:hana:tracelogs` -- HANA database events
+- `sap:abap:*` -- ABAP application events
+- `sap:webdispatcher:access` -- Web Dispatcher events
+- `sap:scc:audit`, `sap:scc:http_access` -- Cloud Connector events
 
 10.<b class="taiconcolor">d</b> Confirm events are arriving with recent timestamps:
 
-        index=<your_index_name> earliest=-1h | stats count by sourcetype, host
+    index=<your_index_name> earliest=-1h | stats count by sourcetype, host
 
-    You should see recent events from multiple hosts.
+You should see recent events from multiple hosts.
 
 10.<b class="taiconcolor">e</b> If no events appear after 15-20 minutes, troubleshoot as follows:
 
-    - **Lambda function errors** -- In the AWS Console, open CloudWatch Logs for the Lambda function created by the CloudFormation template (Section 3). Check for errors copying objects from the SAP ECS S3 Bucket to your local S3 Bucket. Common causes are missing access policies on the SAP ECS resources (Section 4) or an IAM Role propagation delay (wait 5 minutes after initial setup).
-    - **Local SQS Queue has no messages** -- Verify the SAP LogServ Support team has applied the updated access policies (from Section 4) to the SQS Queue and S3 Bucket in your **_SAP ECS account_**. Without those policies, the Lambda function cannot receive SQS notifications from the SAP ECS account or read from the SAP ECS S3 Bucket. Also verify the SQS Queue Trigger on the Lambda function is active (Section 9).
-    - **Authentication or permission errors** -- In the Splunk Add-on for AWS, check the logs for errors: run `index=_internal source=*aws* log_level IN (ERROR,WARN) earliest=-1h | head 50`. Common causes are a mis-copied Access Key/Secret Key (Section 5), an incorrect IAM Role ARN (Section 7), or the IAM Role not yet propagated through AWS (wait 5 minutes after initial setup).
-    - **SQS URL format** -- Double-check the **_SQS Queue Name_** field in the SQS-Based S3 Input (Section 8) points to the **_local_** SQS Queue that was created by the CloudFormation template in your **_Secondary account_** (not the SAP ECS SQS Queue).
-    - **Wrong AWS Region** -- The CloudFormation template (Section 3) and the SQS-Based S3 Input (Section 8) must both be in the same AWS Region as the SQS Queue and S3 Bucket in your **_SAP ECS account_**.
+- **Lambda function errors** -- In the AWS Console, open CloudWatch Logs for the Lambda function created by the CloudFormation template (Section 3). Check for errors copying objects from the SAP ECS S3 Bucket to your local S3 Bucket. Common causes are missing access policies on the SAP ECS resources (Section 4) or an IAM Role propagation delay (wait 5 minutes after initial setup).
+- **Local SQS Queue has no messages** -- Verify the SAP LogServ Support team has applied the updated access policies (from Section 4) to the SQS Queue and S3 Bucket in your **_SAP ECS account_**. Without those policies, the Lambda function cannot receive SQS notifications from the SAP ECS account or read from the SAP ECS S3 Bucket. Also verify the SQS Queue Trigger on the Lambda function is active (Section 9).
+- **Authentication or permission errors** -- In the Splunk Add-on for AWS, check the logs for errors: run `index=_internal source=*aws* level IN (ERROR,WARNING) earliest=-1h | head 50`. Common causes are a mis-copied Access Key/Secret Key (Section 5), an incorrect IAM Role ARN (Section 7), or the IAM Role not yet propagated through AWS (wait 5 minutes after initial setup).
+- **SQS URL format** -- Double-check the **_SQS Queue Name_** field in the SQS-Based S3 Input (Section 8) points to the **_local_** SQS Queue that was created by the CloudFormation template in your **_Secondary account_** (not the SAP ECS SQS Queue).
+- **Wrong AWS Region** -- The CloudFormation template (Section 3) and the SQS-Based S3 Input (Section 8) must both be in the same AWS Region as the SQS Queue and S3 Bucket in your **_SAP ECS account_**.
 
 ??? tip "Where to go next"
     Once you've confirmed ingestion is working, explore the dashboards in the [LogServ UI App](../logserv-app/dashboards/index.md) to see your LogServ data in action. The default landing page is the [Environment Health](../logserv-app/dashboards/environment-health.md) dashboard, which provides a cross-cutting view of your entire SAP landscape.

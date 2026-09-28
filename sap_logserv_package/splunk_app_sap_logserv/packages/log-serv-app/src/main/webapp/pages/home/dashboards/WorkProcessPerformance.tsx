@@ -13,6 +13,7 @@ import { useTimeRange } from '../state/TimeRangeProvider';
 import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Work Process Performance — honest port of v0.0.4.2 logserv_work_process_performance.xml.
@@ -94,10 +95,10 @@ const Q_BASE = {
     sparkErrors: `${DP} | search dp_severity="ERROR" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkFunctions: `${WP} | search wp_function!="(none)" | eval _time=bucket_ts | timechart span=1d dc(wp_function) as functions | fillnull value=0`,
 
-    categoryTrend: `${WP} | search wp_category_name!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by wp_category_name limit=14 | fillnull value=0`,
+    categoryTrend: `${WP} | search wp_category_name!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by wp_category_name limit=14 | fillnull value=0`,
     categoryMix: `${WP} | search wp_category_name!="(none)" | stats sum(count) as count by wp_category_name | sort -count`,
     topFunctions: `${WP} | search wp_function!="(none)" | stats sum(count) as count by wp_function | sort -count | rename wp_function as "Function", count as "Events"`,
-    severityTrend: `${DP} | search dp_severity!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by dp_severity | fillnull value=0`,
+    severityTrend: `${DP} | search dp_severity!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by dp_severity | fillnull value=0`,
     bySid: `${WP} | stats sum(count) as "Total Events", dc(eval(if(wp_function="(none)",null(),wp_function))) as "Unique Functions", dc(eval(if(wp_category_name="(none)",null(),wp_category_name))) as "WP Categories" by sap_sid, sap_instance | sort -"Total Events" | rename sap_sid as "SID", sap_instance as "Instance"`,
 
     // Recent Dispatcher Errors stays RAW — an event-level listing the rollup
@@ -110,7 +111,7 @@ const Q_BASE = {
     // Avg Queue Depth = Σ(sum_tasks)/Σ(count) reproduces raw avg(icm_tasks)
     // exactly — kept full-precision (NOT round()ed) to match the raw chart's
     // unrounded avg. Empty days stay null in both raw and rollup (no fillnull).
-    asyncRfcQueueTrend: `${ICM} | search icm_request_type="ASYNC_RFC" | eval _time=bucket_ts | timechart span=1d sum(sum_tasks) as st, sum(count) as ct, max(max_tasks) as "Max Queue Depth" | eval "Avg Queue Depth"=st/ct | fields _time, "Avg Queue Depth", "Max Queue Depth"`,
+    asyncRfcQueueTrend: `${ICM} | search icm_request_type="ASYNC_RFC" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(sum_tasks) as st, sum(count) as ct, max(max_tasks) as "Max Queue Depth" | eval "Avg Queue Depth"=st/ct | fields _time, "Avg Queue Depth", "Max Queue Depth"`,
     topProgramsByTasks: `${ICM} | search icm_program!="(none)" | stats sum(count) as Calls, sum(sum_tasks) as st, max(max_tasks) as "Max Tasks", max(max_mem) as "Max Mem (KB)" by icm_program | eval Avg = round(st/Calls, 1) | sort -"Max Tasks" | head 20 | rename icm_program AS Program | table Program Calls Avg "Max Tasks" "Max Mem (KB)"`,
 };
 
@@ -130,12 +131,12 @@ const QRAW_BASE = {
     kpiSids: `${RAW_WP} | stats dc(sap_sid) as sids`,
     kpiErrors: `${RAW_DP} dp_severity="ERROR" | stats count`,
     kpiFunctions: `${RAW_WP} wp_function=* | stats dc(wp_function) as functions`,
-    categoryTrend: `${RAW_WP} wp_category_name=* | timechart span=1d count by wp_category_name limit=14 | fillnull value=0`,
+    categoryTrend: `${RAW_WP} wp_category_name=* | timechart span=__LSV_SPAN__ count by wp_category_name limit=14 | fillnull value=0`,
     categoryMix: `${RAW_WP} wp_category_name=* | stats count by wp_category_name | sort -count`,
     topFunctions: `${RAW_WP} wp_function=* | stats count by wp_function | sort -count | rename wp_function as "Function", count as "Events"`,
-    severityTrend: `${RAW_DP} dp_severity=* | timechart span=1d count by dp_severity | fillnull value=0`,
+    severityTrend: `${RAW_DP} dp_severity=* | timechart span=__LSV_SPAN__ count by dp_severity | fillnull value=0`,
     bySid: `${RAW_WP} | fillnull value="(none)" sap_sid sap_instance | stats count as "Total Events", dc(wp_function) as "Unique Functions", dc(wp_category_name) as "WP Categories" by sap_sid, sap_instance | sort -"Total Events" | rename sap_sid as "SID", sap_instance as "Instance"`,
-    asyncRfcQueueTrend: `${RAW_ICM} icm_tasks=* icm_request_type="ASYNC_RFC" | timechart span=1d sum(icm_tasks) as st, count as ct, max(icm_tasks) as "Max Queue Depth" | eval "Avg Queue Depth"=st/ct | fields _time, "Avg Queue Depth", "Max Queue Depth"`,
+    asyncRfcQueueTrend: `${RAW_ICM} icm_tasks=* icm_request_type="ASYNC_RFC" | timechart span=__LSV_SPAN__ sum(icm_tasks) as st, count as ct, max(icm_tasks) as "Max Queue Depth" | eval "Avg Queue Depth"=st/ct | fields _time, "Avg Queue Depth", "Max Queue Depth"`,
     topProgramsByTasks: `${RAW_ICM} icm_tasks=* icm_program=* | stats count as Calls, sum(icm_tasks) as st, max(icm_tasks) as "Max Tasks", max(icm_memory) as "Max Mem (KB)" by icm_program | eval Avg = round(st/Calls, 1) | sort -"Max Tasks" | head 20 | rename icm_program AS Program | table Program Calls Avg "Max Tasks" "Max Mem (KB)"`,
 };
 
@@ -190,11 +191,16 @@ const TOP_PROGRAMS_COLS: ColumnDef[] = [
 ];
 
 const WorkProcessPerformance: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
 
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const sids = useFirstRowFieldHybrid(Q.kpiSids, QRAW.kpiSids, 'sids');
     const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
@@ -214,7 +220,6 @@ const WorkProcessPerformance: React.FC = () => {
     const errorTone = Number(errors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goBySidRow = (row: Record<string, unknown>): void => {
         const sid = String(row.SID ?? '');
         if (!sid) return;

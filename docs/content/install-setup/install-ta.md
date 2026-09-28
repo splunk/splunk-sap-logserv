@@ -66,7 +66,7 @@ The conf field controls writes; the macro controls reads. They MUST point at the
 
 ### :material-circle-box:{ .taiconcolor } 2. Download the Data TA
 
-Download `splunk_ta_sap_logserv-0.1.1.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
+Download `splunk_ta_sap_logserv-0.1.2.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
 
 !!! note "v0.0.4.3 changes — Path B Linux sourcetype migration"
     The v0.0.4.3 Data TA replaces the legacy `[set_srctype_for_syslog]` transform (which routed cron + warn + sudolog + slapd into Splunk's pretrained `syslog` sourcetype) with four dedicated transforms producing four new sourcetypes: `linux:cron`, `linux:warn`, `linux:sudolog`, `linux:slapd`. This clears Splunkbase precert's pretrained-sourcetype warning and avoids field-extraction collisions with `Splunk_TA_nix`'s built-in `[syslog]` stanza. Existing data with `sourcetype=syslog` ages out per index retention; the LogServ App's dashboards OR both old + new sourcetypes during the transition.
@@ -81,10 +81,13 @@ Refer to the [Architecture](../getting-started/architecture.md) page for the ful
 |---|---|---|
 | **Single instance** | The single Splunk instance | Auto-created by the Data TA — nothing to do |
 | **Deployment Server + HFs + on-prem indexer(s)** | The Deployment Server (manages filter rules + distributes to HFs) **and the indexer(s)** (provides `indexes.conf`). Not on a dedicated search head. | Auto-created by the Data TA on the indexer tier — or manually, see [Creating the indexes on a separate indexer tier](#creating-the-indexes-on-a-separate-indexer-tier) |
-| **Splunk Cloud** | Your HF / Inputs Data Manager (IDM) ingest tier, per Splunk's add-on-on-Cloud guidance. The Cloud indexer tier is Splunk-managed. | Via the Splunk Cloud console / ACS — see below |
+| **Splunk Cloud** | A **customer-managed Heavy Forwarder** in your own environment — not the Inputs Data Manager (IDM); see the note below. The Cloud indexer tier is Splunk-managed. | Via the Splunk Cloud console / ACS — see below |
 
 !!! warning
     If you are using a **Deployment Server** to manage Heavy Forwarders, install the TA on the Deployment Server only. Do **not** install the TA directly on the Heavy Forwarders — the DS will distribute it automatically when you configure filters. See [Configuring Filters](configure-filters.md) for details. On a dedicated **search head** the Data TA is not needed (the LogServ App carries the search-time content); the **indexer tier** is the exception — install the Data TA there so its `indexes.conf` provisions the indexes.
+
+!!! note "Why not the Inputs Data Manager (IDM)?"
+    The Data TA's `app.manifest` declares `targetWorkloads` of `_search_heads` and `_indexers` only — it does not declare `_forwarders`. An IDM is a forwarder-class workload, so Splunk Cloud's placement tooling will not install the Data TA there. Use a Heavy Forwarder you manage yourself. (Our Azure and GCP add-ons do declare `_forwarders`, which is why they install on a forwarder normally.)
 
 ### :material-circle-box:{ .taiconcolor } Creating the indexes on a separate indexer tier
 
@@ -118,7 +121,7 @@ Add the stanzas above to an `indexes.conf` inside a configuration bundle app und
 
 #### :material-crop-square:{ .taiconcolor } Splunk Cloud
 
-The Cloud indexer tier is Splunk-managed — you cannot install apps on it. Create both indexes through the **Splunk Cloud console** (**Settings → Indexes → New Index**) or with the **Admin Config Service (ACS)** CLI/API. Set the audit index's retention to match if desired. The Data TA still goes on your HF / IDM ingest tier as usual.
+The Cloud indexer tier is Splunk-managed — you cannot install apps on it. Create both indexes through the **Splunk Cloud console** (**Settings → Indexes → New Index**) or with the **Admin Config Service (ACS)** CLI/API. Set the audit index's retention to match if desired. The Data TA still goes on your customer-managed Heavy Forwarder as usual.
 
 !!! note "Why the Data TA can't do this for you on a separate indexer"
     An `indexes.conf` only takes effect on an instance that both **has the config** and **indexes data**. In a distributed deployment the Data TA runs on the Deployment Server + Heavy Forwarders, which don't store data — so its bundled `indexes.conf` is inert there and never reaches the indexer. Index definitions are therefore an **indexer-tier concern**, managed through that tier's own mechanism (config file, cluster bundle, or Cloud console) — independent of the data-collection Data TA. (On a true single-instance the Data TA *is* the indexing box, which is the one case where its bundled `indexes.conf` auto-creates the indexes for you.)
@@ -152,7 +155,7 @@ Install the Data TA to your instance of Splunk Enterprise:
 
 5.<b class="taiconcolor">b</b> Click Install app from file.
 
-5.<b class="taiconcolor">c</b> Locate the downloaded `splunk_ta_sap_logserv-0.1.1.tar.gz` file and click Upload.
+5.<b class="taiconcolor">c</b> Locate the downloaded `splunk_ta_sap_logserv-0.1.2.tar.gz` file and click Upload.
 
 5.<b class="taiconcolor">d</b> If Splunk Enterprise prompts you to restart, do so.
 

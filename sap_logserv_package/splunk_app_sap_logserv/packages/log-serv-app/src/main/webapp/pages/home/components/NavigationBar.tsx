@@ -1,158 +1,180 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import TimeRange from '@splunk/react-time-range';
 import SplunkwebConnector from '@splunk/react-time-range/SplunkwebConnector';
 import { useTimeRange } from '../state/TimeRangeProvider';
-import { dashboardsByCategory } from '../routes/dashboardRegistry';
-import { useIsAdmin } from '../hooks/useIsAdmin';
 import { useThemeMode } from '../state/ThemeModeProvider';
 import { useGlobalRefresh } from '../state/GlobalRefreshProvider';
 import { logservTheme } from '../styles/logservTheme';
-import NavCategoryDropdown from './NavCategoryDropdown';
-import ActionsDropdown from './ActionsDropdown';
-import AboutModal from './AboutModal';
+import { APP_VERSION, APP_BUILD } from '../buildFlags';
+import ActionsDropdown, { HEADER_BUTTON_HEIGHT_PX } from './ActionsDropdown';
 
-const Bar = styled.div`
+/**
+ * The app header — TWO ROWS, matching the Magnetic preview's shell
+ * (`jan_magnetic/logserv-magnetic-preview.html`, Artifact v15).
+ *
+ *   row 1 — identity and status: brand lockup, version pills, mode toggle.
+ *   row 2 — controls: the time range, then Actions / Refresh / AI Assistant.
+ *
+ * Phase 7 build 339 shipped this as a SINGLE 48px row. That was a gap rather
+ * than a decision: plan §16.1 lists what the header keeps (time range,
+ * Actions, mode toggle, the two version pills) but never describes its
+ * structure, and the contents list was read without the preview's layout.
+ * Build 342 restores the two-row split the preview was reviewed with.
+ *
+ * WHAT DELIBERATELY DIFFERS FROM THE PREVIEW, and why — so a future reader
+ * does not "fix" these back:
+ *
+ *  - No `Ingest healthy` pill (Q10). The App performs no such health check.
+ *    A hardcoded "healthy" would be a false claim on screen.
+ *  - `App <version>`, not `Data TA <version>` (Q10). These are the App's own
+ *    compile-time constants from `buildFlags.ts` — no REST call, and no
+ *    "Data TA not installed" case to handle. They render `—` when empty,
+ *    matching AboutModal, so a build that forgot to inject them degrades to
+ *    a dash rather than an empty pill.
+ *  - No palette picker. The preview's `Workbench scaffold ▾` control switches
+ *    between three Harbor palettes for comparison; it is a preview device,
+ *    not a product feature.
+ *  - The accent here is `cyanAccent`, the app's general accent, while the
+ *    RAIL's active marker stays `navAccent` (the OneCD teal). Q8 kept
+ *    navAccent specifically for nav-active; the time-range pills are not
+ *    navigation.
+ *
+ * THE TIME RANGE (option B, user-chosen 2026-09-21). Preset pills as in the
+ * preview — four since build 345 removed `Last 60m` (see PRESETS) — plus
+ * Splunk's own `<TimeRange>` control, under its own label, as the custom-range
+ * affordance — clicking it opens Splunk's full dialog (Presets, Relative,
+ * Real-time, Date Range, Date & Time Range, Advanced).
+ *
+ * It is Splunk's real control rather than a pill that opens the dialog
+ * programmatically, because it CANNOT be opened programmatically: the
+ * dropdown's `open` / `onRequestOpen` belong to the inner
+ * `@splunk/react-ui` Dropdown and are not props on `TimeRange`. Driving it
+ * would mean reaching into another vendor's internals. The wrapper styles it
+ * to sit in the pill row by targeting its rendered `button` element — a
+ * structural selector, not a hashed class — and it also serves as the
+ * current-value display whenever the range matches no preset.
+ */
+
+/* Preset tokens are Splunk's own snap syntax so they round-trip cleanly
+ * through the dialog: pick "Last 7d" here, open the dialog, and it shows the
+ * matching preset rather than an unrecognised custom range. `Last 30d`
+ * deliberately equals TimeRangeProvider's DEFAULT_RANGE, so a fresh page
+ * opens with that pill already active rather than showing "Custom". */
+interface Preset {
+    label: string;
+    earliest: string;
+    latest: string;
+}
+
+const PRESETS: readonly Preset[] = [
+    /* `Last 60m` was offered in build 342 and REMOVED in 345 at the user's
+     * request. Worth recording that it was removed as a product choice, not
+     * because it could not work: `shouldUseRawSource` routes any window under
+     * HYBRID_RAW_MAX_SPAN_SEC (90 min) to the raw arm, and
+     * `hybridRouting.consistency-test.ts` pins `-60m@m → RAW` explicitly, so
+     * the hourly-rollup floor never applied to it. Sub-90-minute windows are
+     * still reachable through the Custom control and still route correctly. */
+    { label: 'Last 24h', earliest: '-24h@h', latest: 'now' },
+    { label: 'Last 7d', earliest: '-7d@h', latest: 'now' },
+    { label: 'Last 30d', earliest: '-30d@d', latest: 'now' },
+    { label: 'Last 90d', earliest: '-90d@d', latest: 'now' },
+];
+
+const Header = styled.header`
+    flex: 0 0 auto;
     display: flex;
-    align-items: stretch;
-    gap: ${logservTheme.spacing.xs};
-    padding: 0 ${logservTheme.spacing.lg};
+    flex-direction: column;
     background: ${logservTheme.colors.navBackground};
     border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
-    min-height: 48px;
 `;
 
-const HomeLink = styled(NavLink)`
-    background: transparent;
-    color: ${logservTheme.colors.textActive};
-    text-decoration: none;
-    padding: ${logservTheme.spacing.sm} ${logservTheme.spacing.md};
-    cursor: pointer;
-    font-size: ${logservTheme.fontSize.body};
-    font-weight: ${logservTheme.fontWeight.semibold};
-    border-bottom: 2px solid transparent;
+const TopRow = styled.div`
+    height: 56px;
     display: flex;
     align-items: center;
-    transition: background-color 80ms ease-out;
-
-    &:hover {
-        background: ${logservTheme.colors.hoverBackground};
-    }
-
-    &.active {
-        background: ${logservTheme.colors.hoverBackground};
-        border-bottom-color: ${logservTheme.colors.cyanAccent};
-    }
-
-    &:focus {
-        outline: 2px solid ${logservTheme.colors.cyanAccent};
-        outline-offset: -2px;
-    }
+    justify-content: space-between;
+    gap: ${logservTheme.spacing.lg};
+    padding: 0 20px;
 `;
 
-/* "About" sits with the primary nav (to the right of Platform) but opens a
- * dialog instead of navigating, so it is a <button> styled to match
- * HomeLink rather than a NavLink. It has no active state — there is no
- * route to be "on". Build 302 / session 092. */
-const AboutButton = styled.button`
-    background: transparent;
-    color: ${logservTheme.colors.textActive};
-    border: none;
-    border-bottom: 2px solid transparent;
-    padding: ${logservTheme.spacing.sm} ${logservTheme.spacing.md};
-    cursor: pointer;
-    font-size: ${logservTheme.fontSize.body};
-    font-weight: ${logservTheme.fontWeight.semibold};
-    font-family: inherit;
+const Brand = styled.div`
     display: flex;
     align-items: center;
-    transition: background-color 80ms ease-out;
-
-    &:hover {
-        background: ${logservTheme.colors.hoverBackground};
-    }
-
-    &:focus {
-        outline: 2px solid ${logservTheme.colors.cyanAccent};
-        outline-offset: -2px;
-    }
+    gap: ${logservTheme.spacing.md};
+    min-width: 0;
 `;
 
-const Spacer = styled.div`
-    flex: 1;
+const BrandMark = styled.svg`
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    color: ${logservTheme.colors.cyanAccent};
+    display: block;
 `;
 
-/* Admin-only settings link in the right-hand cluster of the nav bar.
- * Visible only when `useIsAdmin().isAdmin === true`. The Splunk REST
- * endpoints powering the settings page are also gated server-side
- * (require the edit_storage_passwords capability), so this client-side
- * gate is a UX nicety, not the security boundary. */
-const SettingsLink = styled(NavLink)`
-    background: transparent;
+const BrandTitle = styled.span`
+    font-family: ${logservTheme.font.heading};
+    font-size: 15px;
+    font-weight: ${logservTheme.fontWeight.bold};
     color: ${logservTheme.colors.textActive};
-    text-decoration: none;
-    align-self: center;
-    /* Padding + border match AIAssistantButton so the right-edge nav cluster
-     * (Settings · Actions · AI Assistant) renders three buttons with
-     * identical heights and visible outlines. Build 127 / session 024. */
-    padding: 6px 12px;
-    margin-right: ${logservTheme.spacing.sm};
-    cursor: pointer;
-    font-size: ${logservTheme.fontSize.body};
-    font-weight: ${logservTheme.fontWeight.semibold};
-    border: 1px solid ${logservTheme.colors.panelBorderWeak};
-    border-radius: ${logservTheme.radius.small};
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+`;
+
+const Meta = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: ${logservTheme.spacing.sm};
+    justify-content: flex-end;
+`;
+
+const Pill = styled.span`
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: ${logservTheme.fontWeight.normal};
+    color: ${logservTheme.colors.textDefault};
+    background: ${logservTheme.colors.hoverBackground};
+    border: 1px solid ${logservTheme.colors.panelBorder};
+    white-space: nowrap;
+
+    /* First to go when the header runs out of room — the same two values are
+       one click away in About, so losing them costs nothing an operator
+       needs. */
+    @media (max-width: 900px) {
+        display: none;
+    }
+`;
+
+const IconButton = styled.button`
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: ${logservTheme.radius.medium};
+    background: transparent;
+    color: ${logservTheme.colors.textDefault};
+    font: inherit;
+    cursor: pointer;
     transition: background-color 80ms ease-out, border-color 80ms ease-out;
 
     &:hover {
         background: ${logservTheme.colors.hoverBackground};
-        border-color: ${logservTheme.colors.cyanAccent};
+        color: ${logservTheme.colors.textActive};
+        border-color: ${logservTheme.colors.panelBorder};
     }
 
-    &.active {
-        background: ${logservTheme.colors.hoverBackground};
-        color: ${logservTheme.colors.cyanLight};
-        border-color: ${logservTheme.colors.cyanAccent};
-    }
-
-    &:focus {
-        outline: 2px solid ${logservTheme.colors.cyanAccent};
-        outline-offset: -2px;
-    }
-`;
-
-const TimeRangeWrapper = styled.div`
-    display: flex;
-    align-items: center;
-    padding-left: ${logservTheme.spacing.md};
-`;
-
-/* Light/dark mode toggle — mirrors Magnetic's header ModeSelector (sun /
- * moon-stars icon button). Chrome matches SettingsLink / AIAssistantButton
- * so the right-edge cluster stays visually uniform. Phase 1a / build 247. */
-const ModeToggleButton = styled.button`
-    background: transparent;
-    color: ${logservTheme.colors.textActive};
-    align-self: center;
-    padding: 6px 10px;
-    margin-right: ${logservTheme.spacing.sm};
-    cursor: pointer;
-    border: 1px solid ${logservTheme.colors.panelBorderWeak};
-    border-radius: ${logservTheme.radius.small};
-    display: inline-flex;
-    align-items: center;
-    transition: background-color 80ms ease-out, border-color 80ms ease-out;
-
-    &:hover {
-        background: ${logservTheme.colors.hoverBackground};
-        border-color: ${logservTheme.colors.cyanAccent};
-    }
-
-    &:focus {
+    &:focus-visible {
         outline: 2px solid ${logservTheme.colors.focusRing};
         outline-offset: -2px;
     }
@@ -162,54 +184,169 @@ const ModeToggleButton = styled.button`
     }
 `;
 
+/* --- row 2 ---------------------------------------------------------- */
+
+const SubRow = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    border-top: 1px solid ${logservTheme.colors.panelBorderWeak};
+    flex-wrap: wrap;
+`;
+
+const RangeLabel = styled.span`
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: ${logservTheme.colors.textDefault};
+    white-space: nowrap;
+
+    b {
+        color: ${logservTheme.colors.textActive};
+        font-weight: ${logservTheme.fontWeight.semibold};
+    }
+`;
+
+const Dot = styled.span`
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: ${logservTheme.colors.cyanAccent};
+    flex: 0 0 auto;
+`;
+
+const Pills = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+`;
+
+const RangePill = styled.button<{ $active: boolean }>`
+    box-sizing: border-box;
+    padding: 5px 13px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-family: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 80ms ease-out, border-color 80ms ease-out;
+
+    background: ${(p) => (p.$active ? logservTheme.colors.cyanAccent : 'transparent')};
+    border: 1px solid
+        ${(p) =>
+            p.$active ? logservTheme.colors.cyanAccent : logservTheme.colors.panelBorderWeak};
+    color: ${(p) => (p.$active ? '#ffffff' : logservTheme.colors.textDefault)};
+    font-weight: ${(p) =>
+        p.$active ? logservTheme.fontWeight.semibold : logservTheme.fontWeight.normal};
+
+    &:hover {
+        color: ${(p) => (p.$active ? '#ffffff' : logservTheme.colors.textActive)};
+        border-color: ${logservTheme.colors.panelBorder};
+    }
+
+    &:focus-visible {
+        outline: 2px solid ${logservTheme.colors.focusRing};
+        outline-offset: 1px;
+    }
+`;
+
+/* Splunk's own TimeRange control, restyled to sit among the pills. The
+ * descendant `button` selector is structural rather than a hashed class, so
+ * it survives a vendor minor; if a future version changes the element, the
+ * control still works and merely looks like Splunk's default. */
+const CustomRange = styled.div`
+    display: inline-flex;
+    align-items: center;
+
+    button {
+        box-sizing: border-box;
+        border-radius: 999px !important;
+        font-size: 12px !important;
+        min-height: 0 !important;
+        padding: 4px 13px !important;
+        white-space: nowrap;
+    }
+`;
+
+const Spacer = styled.div`
+    flex: 1 1 auto;
+`;
+
+const BarButton = styled.button<{ $accent?: boolean }>`
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    /* The same height as the Actions button between the time range and
+     * these (session 138) - their natural height, now pinned for both. */
+    height: ${HEADER_BUTTON_HEIGHT_PX}px;
+    padding: 6px 13px;
+    border-radius: ${logservTheme.radius.medium};
+    font-size: 12px;
+    font-family: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+    background: ${(p) => (p.$accent ? logservTheme.colors.hoverBackground : 'transparent')};
+    border: 1px solid
+        ${(p) => (p.$accent ? logservTheme.colors.cyanAccent : logservTheme.colors.panelBorderWeak)};
+    color: ${(p) => (p.$accent ? logservTheme.colors.cyanLight : logservTheme.colors.textDefault)};
+    transition: background-color 80ms ease-out, border-color 80ms ease-out;
+
+    &:hover {
+        color: ${(p) => (p.$accent ? logservTheme.colors.cyanLight : logservTheme.colors.textActive)};
+        background: ${logservTheme.colors.hoverBackground};
+        border-color: ${logservTheme.colors.panelBorder};
+    }
+
+    &:focus-visible {
+        outline: 2px solid ${logservTheme.colors.focusRing};
+        outline-offset: -2px;
+    }
+
+    svg {
+        width: 15px;
+        height: 15px;
+        display: block;
+    }
+`;
+
+/* --- icons ---------------------------------------------------------- */
+
+const LogServMark: React.FC = () => (
+    <BrandMark
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+    >
+        <rect x="3" y="3" width="18" height="18" rx="4" />
+        <path d="M8.2 8.4v7.2h3.1" />
+        <path d="M16.4 9.1a2 2 0 0 0-3.3 1.4c0 1.9 3.4 1.1 3.4 3a2 2 0 0 1-3.3 1.2" />
+    </BrandMark>
+);
+
 const SunIcon: React.FC = () => (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
         <circle cx="12" cy="12" r="4.5" />
         <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" />
     </svg>
 );
 
 const MoonIcon: React.FC = () => (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
         <path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z" />
     </svg>
 );
 
-/* Manual refresh button (session 088) — re-runs every panel on the current view
- * with the selected time range (bumps the GlobalRefreshProvider nonce, which
- * useSearch reads). Sits at the far RIGHT of the nav bar, after the time-range
- * picker. Chrome matches ModeToggleButton so the right-edge icon cluster stays
- * uniform; margin-LEFT (not right) since it's the last element. */
 const spin = keyframes`
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
-`;
-const RefreshButton = styled.button`
-    background: transparent;
-    color: ${logservTheme.colors.textActive};
-    align-self: center;
-    padding: 6px 10px;
-    margin-left: ${logservTheme.spacing.sm};
-    cursor: pointer;
-    border: 1px solid ${logservTheme.colors.panelBorderWeak};
-    border-radius: ${logservTheme.radius.small};
-    display: inline-flex;
-    align-items: center;
-    transition: background-color 80ms ease-out, border-color 80ms ease-out;
-
-    &:hover {
-        background: ${logservTheme.colors.hoverBackground};
-        border-color: ${logservTheme.colors.cyanAccent};
-    }
-
-    &:focus {
-        outline: 2px solid ${logservTheme.colors.focusRing};
-        outline-offset: -2px;
-    }
-
-    svg {
-        display: block;
-    }
 `;
 const RefreshIconSvg = styled.svg<{ $spinning: boolean }>`
     animation: ${(p) => (p.$spinning ? spin : 'none')} 0.6s linear;
@@ -217,8 +354,6 @@ const RefreshIconSvg = styled.svg<{ $spinning: boolean }>`
 const RefreshIcon: React.FC<{ spinning: boolean }> = ({ spinning }) => (
     <RefreshIconSvg
         $spinning={spinning}
-        width="15"
-        height="15"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -232,50 +367,31 @@ const RefreshIcon: React.FC<{ spinning: boolean }> = ({ spinning }) => (
     </RefreshIconSvg>
 );
 
-const AIAssistantButton = styled.button<{ $active: boolean }>`
-    background: ${(p) => (p.$active ? logservTheme.colors.hoverBackground : 'transparent')};
-    color: ${(p) => (p.$active ? logservTheme.colors.cyanLight : logservTheme.colors.textActive)};
-    border: 1px solid ${(p) => (p.$active ? logservTheme.colors.cyanAccent : logservTheme.colors.panelBorderWeak)};
-    border-radius: ${logservTheme.radius.small};
-    padding: 6px 12px;
-    margin-right: ${logservTheme.spacing.sm};
-    align-self: center;
-    cursor: pointer;
-    font-size: ${logservTheme.fontSize.body};
-    font-weight: ${logservTheme.fontWeight.semibold};
-    font-family: inherit;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: background-color 80ms ease-out, border-color 80ms ease-out;
-
-    &:hover {
-        background: ${logservTheme.colors.hoverBackground};
-        border-color: ${logservTheme.colors.cyanAccent};
-    }
-
-    &:focus {
-        outline: 2px solid ${logservTheme.colors.cyanAccent};
-        outline-offset: -2px;
-    }
-`;
+const WandIcon: React.FC = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M5 19 19 5" />
+        <path d="M14.5 5.5 18.5 9.5" />
+        <path d="M6 3.5v3M4.5 5h3M17 16.5v3M15.5 18h3" />
+    </svg>
+);
 
 interface NavigationBarProps {
-    /** When provided, renders an "AI Assistant" toggle button before the time
-     *  range picker. Omit to hide the button (e.g., when the feature flag is off). */
+    /** When provided, renders the AI Assistant toggle. Omit to hide it
+     *  (e.g. when the feature flag is off). */
     onToggleAIAssistant?: () => void;
     /** Highlights the AI Assistant button when its panel is open. */
     aiAssistantOpen?: boolean;
 }
 
-const NavigationBar: React.FC<NavigationBarProps> = ({ onToggleAIAssistant, aiAssistantOpen = false }) => {
+const NavigationBar: React.FC<NavigationBarProps> = ({
+    onToggleAIAssistant,
+    aiAssistantOpen = false,
+}) => {
     const { timeRange, setTimeRange } = useTimeRange();
-    const { isAdmin } = useIsAdmin();
     const { mode, setMode } = useThemeMode();
     const { triggerGlobalRefresh } = useGlobalRefresh();
     const [refreshSpinning, setRefreshSpinning] = React.useState<boolean>(false);
-    const [aboutOpen, setAboutOpen] = React.useState<boolean>(false);
-    const closeAbout = React.useCallback((): void => setAboutOpen(false), []);
+
     const handleRefresh = React.useCallback((): void => {
         triggerGlobalRefresh();
         // Brief spin as click feedback; the icon resets after the animation.
@@ -283,121 +399,112 @@ const NavigationBar: React.FC<NavigationBarProps> = ({ onToggleAIAssistant, aiAs
         window.setTimeout(() => setRefreshSpinning(false), 600);
     }, [triggerGlobalRefresh]);
 
+    const activePreset = React.useMemo(
+        () =>
+            PRESETS.find(
+                (p) => p.earliest === timeRange.earliest && p.latest === timeRange.latest,
+            ),
+        [timeRange.earliest, timeRange.latest],
+    );
+
     return (
-        <>
-        <Bar>
-            <HomeLink to="/" end>
-                Environment Health
-            </HomeLink>
+        /* data-logserv-header: the AI Assistant's SidePanel measures this
+         * element's bottom edge to sit flush below the header (session 138). */
+        <Header data-logserv-header="true">
+            <TopRow>
+                <Brand>
+                    <LogServMark />
+                    <BrandTitle>Splunk for SAP LogServ</BrandTitle>
+                </Brand>
 
-            {/* Topology is a single-dashboard top-level link (not a dropdown) so
-              * the Topology view is one click away. If we add more topology
-              * views later, swap back to a NavCategoryDropdown. */}
-            <HomeLink to="/topology/integration-topology">
-                Topology
-            </HomeLink>
+                <Meta>
+                    <Pill title="Installed app version">App {APP_VERSION || '—'}</Pill>
+                    <Pill title="Installed app build number">build {APP_BUILD || '—'}</Pill>
+                    <IconButton
+                        type="button"
+                        onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+                        aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                        title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                    >
+                        {mode === 'dark' ? <SunIcon /> : <MoonIcon />}
+                    </IconButton>
+                </Meta>
+            </TopRow>
 
-            <NavCategoryDropdown
-                label="Applications"
-                items={dashboardsByCategory.applications}
-                matchPathPrefix="/applications/"
-            />
-            <NavCategoryDropdown
-                label="Integration"
-                items={dashboardsByCategory.integration}
-                matchPathPrefix="/integration/"
-            />
-            <NavCategoryDropdown
-                label="Security"
-                items={dashboardsByCategory.security}
-                matchPathPrefix="/security/"
-            />
-            <NavCategoryDropdown
-                label="Platform"
-                items={dashboardsByCategory.platform}
-                matchPathPrefix="/platform/"
-            />
+            <SubRow>
+                <RangeLabel>
+                    <Dot aria-hidden />
+                    Time range <b>{activePreset ? activePreset.label : 'Custom'}</b>
+                </RangeLabel>
 
-            <AboutButton
-                type="button"
-                onClick={() => setAboutOpen(true)}
-                aria-haspopup="dialog"
-                aria-expanded={aboutOpen}
-                title="Version and build information"
-            >
-                About
-            </AboutButton>
+                <Pills>
+                    {PRESETS.map((p) => (
+                        <RangePill
+                            key={p.label}
+                            type="button"
+                            $active={activePreset === p}
+                            aria-pressed={activePreset === p}
+                            onClick={() => setTimeRange({ earliest: p.earliest, latest: p.latest })}
+                        >
+                            {p.label}
+                        </RangePill>
+                    ))}
 
-            <Spacer />
+                    {/* SplunkwebConnector injects parseEarliest/parseLatest +
+                        onRequestParseEarliest/Latest + the preset list via
+                        Splunk's splunkweb context. Without it TimeRange has no
+                        way to validate input and its Apply button stays
+                        disabled permanently. */}
+                    <CustomRange>
+                        <SplunkwebConnector>
+                            <TimeRange
+                                earliest={timeRange.earliest}
+                                latest={timeRange.latest}
+                                onChange={(_e, data) => {
+                                    if (
+                                        data &&
+                                        typeof data.earliest === 'string' &&
+                                        typeof data.latest === 'string'
+                                    ) {
+                                        setTimeRange({
+                                            earliest: data.earliest,
+                                            latest: data.latest,
+                                        });
+                                    }
+                                }}
+                            />
+                        </SplunkwebConnector>
+                    </CustomRange>
+                </Pills>
 
-            <ModeToggleButton
-                type="button"
-                onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
-                aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-                title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-                {mode === 'dark' ? <SunIcon /> : <MoonIcon />}
-            </ModeToggleButton>
+                <Spacer />
 
-            {isAdmin && (
-                <SettingsLink to="/settings" aria-label="Application Settings">
-                    <span aria-hidden>⚙</span>
-                    Settings
-                </SettingsLink>
-            )}
+                <ActionsDropdown />
 
-            <ActionsDropdown />
-
-            {onToggleAIAssistant && (
-                <AIAssistantButton
+                <BarButton
                     type="button"
-                    onClick={onToggleAIAssistant}
-                    $active={aiAssistantOpen}
-                    aria-pressed={aiAssistantOpen}
-                    aria-label={aiAssistantOpen ? 'Close AI Assistant' : 'Open AI Assistant'}
+                    onClick={handleRefresh}
+                    aria-label="Refresh dashboard"
+                    title="Refresh — re-run all panels for the selected time range"
                 >
-                    <span aria-hidden>✦</span>
-                    AI Assistant
-                </AIAssistantButton>
-            )}
+                    <RefreshIcon spinning={refreshSpinning} />
+                    Refresh
+                </BarButton>
 
-            <TimeRangeWrapper>
-                {/* SplunkwebConnector injects parseEarliest/parseLatest +
-                 * onRequestParseEarliest/Latest + presets via Splunk's
-                 * splunkweb context. Without it, TimeRange has no way to
-                 * validate user input and the Apply button stays disabled
-                 * permanently. (See @splunk/react-time-range docs:
-                 * "this function is required when not using the
-                 * SplunkwebConnector".) */}
-                <SplunkwebConnector>
-                    <TimeRange
-                        earliest={timeRange.earliest}
-                        latest={timeRange.latest}
-                        onChange={(_e, data) => {
-                            if (
-                                data &&
-                                typeof data.earliest === 'string' &&
-                                typeof data.latest === 'string'
-                            ) {
-                                setTimeRange({ earliest: data.earliest, latest: data.latest });
-                            }
-                        }}
-                    />
-                </SplunkwebConnector>
-            </TimeRangeWrapper>
-
-            <RefreshButton
-                type="button"
-                onClick={handleRefresh}
-                aria-label="Refresh dashboard"
-                title="Refresh — re-run all panels for the selected time range"
-            >
-                <RefreshIcon spinning={refreshSpinning} />
-            </RefreshButton>
-        </Bar>
-
-        <AboutModal open={aboutOpen} onClose={closeAbout} />
-        </>
+                {onToggleAIAssistant && (
+                    <BarButton
+                        type="button"
+                        $accent
+                        onClick={onToggleAIAssistant}
+                        aria-pressed={aiAssistantOpen}
+                        aria-label={aiAssistantOpen ? 'Close AI Assistant' : 'Open AI Assistant'}
+                    >
+                        <WandIcon />
+                        AI Assistant
+                    </BarButton>
+                )}
+            </SubRow>
+        </Header>
     );
 };
 

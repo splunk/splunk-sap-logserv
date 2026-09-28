@@ -1,0 +1,230 @@
+/* SAP LogServ TA — AWS S3 Direct view.
+ * Deliberately plain: inherits Splunk Web's own typography and button styles
+ * rather than restating them, so it stays legible across Splunk versions. */
+
+#logserv-s3-direct-root {
+    max-width: 1100px;
+}
+
+.logserv-s3-lede {
+    color: #5c6773;
+    margin-bottom: 18px;
+}
+
+.logserv-s3-section {
+    margin: 0 0 26px 0;
+    padding: 0 0 18px 0;
+    border-bottom: 1px solid #e1e6eb;
+}
+
+.logserv-s3-section h3 {
+    margin: 0 0 10px 0;
+    font-size: 15px;
+}
+
+/* ---- banners ---- */
+
+.logserv-s3-banner {
+    padding: 10px 12px;
+    margin: 10px 0;
+    border-left: 4px solid #999;
+    background: #f4f6f8;
+}
+
+.logserv-s3-banner strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.logserv-s3-banner p {
+    margin: 4px 0 0 0;
+}
+
+.logserv-s3-error { border-left-color: #d41f1f; background: #fdf1f1; }
+.logserv-s3-warn  { border-left-color: #f8be34; background: #fdf8ec; }
+.logserv-s3-ok    { border-left-color: #5eb96a; background: #f1f9f2; }
+
+/* ---- tables ---- */
+
+.logserv-s3-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+}
+
+.logserv-s3-table th,
+.logserv-s3-table td {
+    text-align: left;
+    padding: 6px 10px;
+    border-bottom: 1px solid #e1e6eb;
+    vertical-align: top;
+    /* Bucket names and key prefixes are long and must not be truncated —
+     * the operator needs to read exactly what an input is pointed at. */
+    word-break: break-all;
+}
+
+.logserv-s3-table th {
+    font-weight: 600;
+    border-bottom: 2px solid #c3cbd4;
+}
+
+.logserv-s3-table button {
+    margin-right: 6px;
+}
+
+.logserv-s3-params {
+    border-collapse: collapse;
+    margin: 8px 0 12px 0;
+}
+
+.logserv-s3-params th,
+.logserv-s3-params td {
+    text-align: left;
+    padding: 4px 14px 4px 0;
+    vertical-align: top;
+    word-break: break-all;
+}
+
+.logserv-s3-params th {
+    font-weight: 600;
+    white-space: nowrap;
+    color: #5c6773;
+}
+
+/* ---- form ---- */
+
+.logserv-s3-field {
+    margin-bottom: 14px;
+}
+
+.logserv-s3-field label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+/* TYPE-scoped on purpose: a control type missing from this list gets no width,
+   max-width or box-sizing at all, so every input type the form renders must
+   be named here. */
+.logserv-s3-field input[type="text"],
+.logserv-s3-field input[type="date"],
+.logserv-s3-field select {
+    width: 100%;
+    max-width: 620px;
+    box-sizing: border-box;
+}
+
+/* The Dashboards checklist (design note 18.6). The title is styled like the
+   field labels above it; it is not a label because it names a group. */
+.logserv-s3-group-title {
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.logserv-s3-rowlist {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2px 18px;
+    max-width: 1000px;
+}
+
+/* Outranks .logserv-s3-field label, which would make every row bold. */
+.logserv-s3-field label.logserv-s3-row {
+    display: block;
+    font-weight: normal;
+    margin: 0;
+    padding: 2px 0;
+    cursor: pointer;
+}
+
+.logserv-s3-row input[type="checkbox"] {
+    margin: 0 6px 0 0;
+    vertical-align: middle;
+}
+
+.logserv-s3-count {
+    color: #5c6773;
+    font-size: 12px;
+}
+
+.logserv-s3-section h4 {
+    margin: 14px 0 6px 0;
+    font-size: 13px;
+}
+
+/* A backfill's inputs, listed under its row in the list. */
+.logserv-s3-members {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12px;
+    color: #5c6773;
+    word-break: break-all;
+}
+
+.logserv-s3-field input[disabled],
+.logserv-s3-field select[disabled] {
+    background: #f4f6f8;
+    color: #5c6773;
+}
+
+.logserv-s3-help,
+.logserv-s3-note {
+    color: #5c6773;
+    font-size: 12px;
+    margin: 4px 0 0 0;
+}
+
+.logserv-s3-warn {
+    color: #8a6100;
+}
+
+.logserv-s3-actions {
+    margin: 16px 0 4px 0;
+}
+
+.logserv-s3-actions button {
+    margin-right: 8px;
+}
+
+/* ---- generated artifacts ---- */
+
+.logserv-s3-assisted {
+    background: #f9fafb;
+    padding: 14px;
+    border: 1px solid #e1e6eb;
+}
+
+.logserv-s3-artifact {
+    margin: 12px 0;
+}
+
+.logserv-s3-artifact-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.logserv-s3-artifact pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #ffffff;
+    border: 1px solid #d8dde3;
+    padding: 10px;
+    margin: 0;
+    font-size: 12px;
+}
+
+.logserv-s3-copied {
+    color: #3c7d47;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+/* Off-screen textarea used by the execCommand copy fallback on HTTP origins. */
+.logserv-s3-clip {
+    position: fixed;
+    left: -9999px;
+    top: 0;
+    opacity: 0;
+}

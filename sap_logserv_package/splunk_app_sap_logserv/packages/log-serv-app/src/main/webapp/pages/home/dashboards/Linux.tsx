@@ -13,6 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Linux System & Security — honest port of v0.0.4.2 logserv_linux.xml.
@@ -101,7 +102,7 @@ const Q_BASE = {
     sparkHosts: `${HOSTS} | eval _time=bucket_ts | timechart span=1d dc(eval(if(host="(none)",null(),host))) AS hosts | fillnull value=0`,
 
     // Charts
-    volumeByType: `${TOTAL} | eval _time=bucket_ts | timechart span=1d sum(count) by sourcetype | fillnull value=0`,
+    volumeByType: `${TOTAL} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by sourcetype | fillnull value=0`,
     // sapAppActivity — plain stats (no _time axis) rendered as a HORIZONTAL bar
     // chart of the top-15 (sap_app / sap_sid) combinations by volume. The combo
     // label sits on the roomy y-axis so long app names (ICINGA_PROXY,
@@ -110,7 +111,7 @@ const Q_BASE = {
     // puts the largest bar at the top of the chart.
     sapAppActivity: `${SAPAPP} | search sap_sid!="(none)" | stats sum(count) as count by sap_app, sap_sid | eval combo=sap_app." / ".sap_sid | sort -count | head 15 | sort count | fields combo count`,
     // fwTimeline counts ALL linux_secure (no IN_DROP filter) — derived from `total`.
-    fwTimeline: `${TOTAL} | search sourcetype="linux_secure" | eval _time=bucket_ts | timechart span=1d sum(count) AS "Firewall Events" | fillnull value=0`,
+    fwTimeline: `${TOTAL} | search sourcetype="linux_secure" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) AS "Firewall Events" | fillnull value=0`,
     kernelEvents: `${KERNEL} | stats sum(count) as count by kernel_event | sort -count`,
 
     // Tables (sapInstances restores raw's null-group drop on sap_inst AND sap_cid;
@@ -125,7 +126,7 @@ const Q_BASE = {
     oomByHost: `${OOM} | search host!="(none)" | stats sum(count) AS Kills, values(eval(if(oom_proc="(none)",null(),oom_proc))) AS Victims, max(max_rss) AS MaxRssKb, max(max_vm) AS MaxVmKb by host | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | eval "Max VM (MB)" = round(MaxVmKb / 1024, 0) | fields - MaxRssKb, MaxVmKb | sort -Kills`,
     oomByVictim: `${OOM} | search oom_proc!="(none)" | stats sum(count) AS Kills, dc(eval(if(host="(none)",null(),host))) AS Hosts, max(max_rss) AS MaxRssKb by oom_proc | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | fields - MaxRssKb | sort -Kills`,
     cpuLockups: `${LOCKUP} | search host!="(none)" | stats sum(count) AS Lockups, dc(eval(if(lockup_cpu="(none)",null(),lockup_cpu))) AS "CPUs", max(max_dur) AS "Max (sec)", sum(sum_dur) AS tot_dur by host | eval "Avg (sec)" = round(tot_dur / Lockups, 1) | fields - tot_dur | sort -Lockups`,
-    tcpOomTimeline: `${TCPOOM} | search host!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by host | fillnull value=0`,
+    tcpOomTimeline: `${TCPOOM} | search host!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by host | fillnull value=0`,
 };
 
 /* ---------------------------------------------------------------------------
@@ -146,17 +147,17 @@ const QRAW_BASE = {
     kpiFwDrops: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | stats count`,
     kpiTopDropSrc: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | where isnotnull(fw_src) AND fw_src!="" | stats count as drops by fw_src | sort -drops | head 1 | eval display = fw_src . " (" . tostring(drops, "commas") . ")" | table display`,
     kpiHosts: `${RAW_ALL} | stats dc(host) as hosts`,
-    volumeByType: `${RAW_ALL} | timechart span=1d count by sourcetype | fillnull value=0`,
+    volumeByType: `${RAW_ALL} | timechart span=__LSV_SPAN__ count by sourcetype | fillnull value=0`,
     sapAppActivity: `${RAW_LMSG} sap_app=* | stats count by sap_app, sap_sid | eval combo=sap_app." / ".sap_sid | sort -count | head 15 | sort count | fields combo count`,
-    fwTimeline: `${RAW_LSEC} | timechart span=1d count AS "Firewall Events" | fillnull value=0`,
-    kernelEvents: `${RAW_LSEC} | rex field=_raw "kernel:.*?\\]\\s+(?<kernel_event>[A-Z_]+)" | where isnotnull(kernel_event) | stats count by kernel_event | sort -count`,
+    fwTimeline: `${RAW_LSEC} | timechart span=__LSV_SPAN__ count AS "Firewall Events" | fillnull value=0`,
+    kernelEvents: `${RAW_LSEC} | rex field=_raw "kernel:.*?\\]\\s+(?<kernel_event>[A-Z]{2}[A-Z0-9_]*)(?=[\\s:\\-/(\\[,.#]|$)" | where isnotnull(kernel_event) | stats count by kernel_event | sort -count`,
     sapInstances: `${RAW_LMSG} sap_sid=* | stats count as Events dc(host) as Hosts by sap_sid, sap_inst, sap_cid | sort -Events`,
     fwTopSources: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops dc(fw_dst) as Targets values(fw_proto) as Protocol by fw_src | sort -Drops`,
     fwTopPorts: `${RAW_LSEC} | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops`,
     oomByHost: `${RAW_OOM} "Out of memory: Killed process" | stats count AS Kills, values(oom_proc) AS Victims, max(oom_rss_kb) AS MaxRssKb, max(oom_vm_kb) AS MaxVmKb by host | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | eval "Max VM (MB)" = round(MaxVmKb / 1024, 0) | fields - MaxRssKb, MaxVmKb | sort -Kills`,
     oomByVictim: `${RAW_OOM} "Out of memory: Killed process" oom_proc=* | stats count AS Kills, dc(host) AS Hosts, max(oom_rss_kb) AS MaxRssKb by oom_proc | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | fields - MaxRssKb | sort -Kills`,
     cpuLockups: `${RAW_OOM} "soft lockup" | stats count AS Lockups, dc(lockup_cpu) AS "CPUs", max(lockup_duration_s) AS "Max (sec)", avg(lockup_duration_s) AS avg_s by host | eval "Avg (sec)" = round(avg_s, 1) | fields - avg_s | sort -Lockups`,
-    tcpOomTimeline: `${RAW_OOM} "TCP: out of memory" host=* | timechart span=1d count by host | fillnull value=0`,
+    tcpOomTimeline: `${RAW_OOM} "TCP: out of memory" host=* | timechart span=__LSV_SPAN__ count by host | fillnull value=0`,
 };
 
 interface FirstRow {
@@ -228,10 +229,15 @@ const CPU_LOCKUP_COLS: ColumnDef[] = [
 ];
 
 const Linux: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const fwDrops = useFirstRowFieldHybrid(Q.kpiFwDrops, QRAW.kpiFwDrops, 'count');
     const topDropSrc = useFirstRowFieldHybrid(Q.kpiTopDropSrc, QRAW.kpiTopDropSrc, 'display');
@@ -256,7 +262,6 @@ const Linux: React.FC = () => {
     const dropSrcTone = topDropSrc.value ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goSapInstanceRow = (row: Record<string, unknown>): void => {
         // SAP Instance row → Host Details (no specific host but useful for SID-level investigation)
         const sid = String(row.sap_sid ?? '');

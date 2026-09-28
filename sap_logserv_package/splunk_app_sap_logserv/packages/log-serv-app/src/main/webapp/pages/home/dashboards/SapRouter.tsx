@@ -13,6 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * SAP Router — honest port of v0.0.4.2 logserv_sap_router.xml.
@@ -116,8 +117,8 @@ const Q_BASE = {
     sparkInval: `${MAIN} | search action="INVAL DATA" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkPeers: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(peer_ip="(none)",null(),peer_ip))) as peers | fillnull value=0`,
 
-    connTrend: `${MAIN} | search action!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by action | fillnull value=0`,
-    errorTrend: `${MAIN} | search is_error="true" | eval _time=bucket_ts | timechart span=1d sum(count) as "Errors" | fillnull value=0`,
+    connTrend: `${MAIN} | search action!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by action | fillnull value=0`,
+    errorTrend: `${MAIN} | search is_error="true" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) as "Errors" | fillnull value=0`,
     topPeers: `${MAIN} | search peer_ip!="(none)" | stats sum(count) as "Connections" by peer_ip | sort -Connections | rename peer_ip as "Peer IP"`,
     returnCodes: `${MAIN} | search return_code!="(none)" | ${RC_DECODE} | stats sum(count) as count by return_code | sort -count | rename return_code as "Return Code"`,
     // Error-Detail: Count/dc(peer_ip)/values(return_code) from `main`, left-joined
@@ -142,8 +143,8 @@ const QRAW_BASE = {
     kpiErrors: `${SRRAW} is_error="true" | stats count`,
     kpiInval: `${SRRAW} action="INVAL DATA" | stats count`,
     kpiPeers: `${SRRAW} | stats dc(peer_ip) as peers`,
-    connTrend: `${SRRAW} action=* | timechart span=1d count by action | fillnull value=0`,
-    errorTrend: `${SRRAW} is_error="true" | timechart span=1d count as "Errors" | fillnull value=0`,
+    connTrend: `${SRRAW} action=* | timechart span=__LSV_SPAN__ count by action | fillnull value=0`,
+    errorTrend: `${SRRAW} is_error="true" | timechart span=__LSV_SPAN__ count as "Errors" | fillnull value=0`,
     topPeers: `${SRRAW} peer_ip=* | stats count as "Connections" by peer_ip | sort -Connections | rename peer_ip as "Peer IP"`,
     returnCodes: `${SRRAW} return_code=* | ${RC_DECODE} | stats count by return_code | sort -count | rename return_code as "Return Code"`,
     // Single-pass stats (latest(error_detail) folded into the same aggregation,
@@ -196,10 +197,15 @@ const CONN_LOG_COLS: ColumnDef[] = [
 ];
 
 const SapRouter: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
     const inval = useFirstRowFieldHybrid(Q.kpiInval, QRAW.kpiInval, 'count');
@@ -218,7 +224,6 @@ const SapRouter: React.FC = () => {
     const invalTone = Number(inval.value ?? 0) > 0 ? 'warning' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goPeerRow = (row: Record<string, unknown>): void => {
         const ip = String(row['Peer IP'] ?? '');
         if (!ip) return;

@@ -13,6 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildDashboardUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * ABAP Operations — honest port of v0.0.4.2 logserv_abap_operations.xml.
@@ -71,9 +72,9 @@ const Q_BASE = {
     sparkSids: `${ABAP} | eval _time=bucket_ts | timechart span=1d dc(eval(if(sap_sid="(none)",null(),sap_sid))) as sids | fillnull value=0`,
     sparkWpErrors: `${DP} | search (dp_severity="ERROR" OR dp_severity="FATAL") | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
-    volumeByType: `${ABAP} | eval _time=bucket_ts | timechart span=1d sum(count) by sourcetype | fillnull value=0`,
-    dispatcherSeverity: `${DP} | search dp_severity!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by dp_severity | fillnull value=0`,
-    enqueueTimeline: `${ABAP} | search sourcetype="sap:abap:enqueueserver" | eval _time=bucket_ts | timechart span=1d sum(count) as "Lock Operations" | fillnull value=0`,
+    volumeByType: `${ABAP} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by sourcetype | fillnull value=0`,
+    dispatcherSeverity: `${DP} | search dp_severity!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by dp_severity | fillnull value=0`,
+    enqueueTimeline: `${ABAP} | search sourcetype="sap:abap:enqueueserver" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) as "Lock Operations" | fillnull value=0`,
 
     uptime: `${UPTIME} | eval _time=bucket_ts | stats latest(uptime_days) as uptime_days latest(uptime_hours) as uptime_hours by sap_sid, sap_instance | sort sap_sid sap_instance`,
     wpCategories: `${WP} | search wp_category_name!="(none)" | stats sum(count) as count by wp_category_name | sort -count`,
@@ -98,9 +99,9 @@ const QRAW_BASE = {
     kpiTotal: `${RAW_ABAP6} | stats count`,
     kpiSids: `${RAW_ABAP6} | stats dc(sap_sid) as sids`,
     kpiWpErrors: `${RAW_DP} (dp_severity="ERROR" OR dp_severity="FATAL") | stats count`,
-    volumeByType: `${RAW_ABAP6} | timechart span=1d count by sourcetype | fillnull value=0`,
-    dispatcherSeverity: `${RAW_DP} dp_severity=* | timechart span=1d count by dp_severity | fillnull value=0`,
-    enqueueTimeline: `${RAW_ENQ} | timechart span=1d count as "Lock Operations" | fillnull value=0`,
+    volumeByType: `${RAW_ABAP6} | timechart span=__LSV_SPAN__ count by sourcetype | fillnull value=0`,
+    dispatcherSeverity: `${RAW_DP} dp_severity=* | timechart span=__LSV_SPAN__ count by dp_severity | fillnull value=0`,
+    enqueueTimeline: `${RAW_ENQ} | timechart span=__LSV_SPAN__ count as "Lock Operations" | fillnull value=0`,
     uptime: `${RAW_EVENT} uptime_days=* | stats latest(uptime_days) as uptime_days latest(uptime_hours) as uptime_hours by sap_sid, sap_instance | sort sap_sid sap_instance`,
     wpCategories: `${RAW_WP} wp_category_name=* | stats count by wp_category_name | sort -count`,
     wpFunctions: `${RAW_WP} wp_function=* | stats count as Events by wp_function, wp_sub_function | sort -Events`,
@@ -147,10 +148,15 @@ const SID_COLS: ColumnDef[] = [
 ];
 
 const AbapOperations: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const sids = useFirstRowFieldHybrid(Q.kpiSids, QRAW.kpiSids, 'sids');
     const wpErrors = useFirstRowFieldHybrid(Q.kpiWpErrors, QRAW.kpiWpErrors, 'count');
@@ -168,7 +174,6 @@ const AbapOperations: React.FC = () => {
     const wpErrorsTone = Number(wpErrors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goWpPerformance = (): void => {
         openInNewTab(buildDashboardUrl('work-process-performance', timeRange.earliest, timeRange.latest));
     };

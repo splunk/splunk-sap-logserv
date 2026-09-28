@@ -13,6 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildDashboardUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * ABAP Network & Security — honest port of v0.0.4.2 logserv_abap_security.xml.
@@ -99,8 +100,8 @@ const Q_BASE = {
     sparkIcmErrors: `${ICMERR} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkGwErrors: `${GWLATEST} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
-    volumeByType: `${VOL} | eval _time=bucket_ts | timechart span=1d sum(count) by sourcetype | fillnull value=0`,
-    icmStatus: `${ICMSTAT} | eval _time=bucket_ts | timechart span=1d sum(count) by status_cat | fillnull value=0`,
+    volumeByType: `${VOL} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by sourcetype | fillnull value=0`,
+    icmStatus: `${ICMSTAT} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by status_cat | fillnull value=0`,
     icmStatusPie: `${ICMSTAT} | stats sum(count) as count by status_cat | sort status_cat`,
     icmPeers: `${ICMPEER} | stats sum(count) as Requests, dc(eval(if(icm_transaction_id="(none)",null(),icm_transaction_id))) as Transactions, values(eval(if(icm_protocol="(none)",null(),icm_protocol))) as Protocols by icm_peer_ip | sort -Requests | rename icm_peer_ip as "Peer IP"`,
     // Decode ICM request type codes (ASYNC_RFC / HTTP_NORMAL / INTERNAL → plain
@@ -117,7 +118,7 @@ const Q_BASE = {
     // mirroring raw `by rhost func` null-drop), left-joined to `gwlatest`'s
     // latest(gw_error_detail) for the "Last Error" column.
     gwHosts: `${GWHOST} | stats sum(count) as Events, values(eval(if(gw_service="(none)",null(),gw_service))) as Services by gw_remote_host gw_function | search gw_remote_host!="(none)" gw_function!="(none)" | join type=left gw_remote_host gw_function [ ${GWLATEST} | eval _time=bucket_ts | stats latest(gw_error_detail) as "Last Error" by gw_remote_host gw_function | search gw_remote_host!="(none)" gw_function!="(none)" ] | sort -Events | rename gw_remote_host as "Remote Host" gw_function as "Function"`,
-    gwErrorsTimeline: `${GWLATEST} | eval _time=bucket_ts | timechart span=1d sum(count) as "Gateway Errors" | fillnull value=0`,
+    gwErrorsTimeline: `${GWLATEST} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) as "Gateway Errors" | fillnull value=0`,
     sidInstance: `${VOL} | search sap_sid!="(none)" sap_instance!="(none)" | stats sum(count) as count by sap_sid sap_instance | sort -count`,
 };
 
@@ -140,13 +141,13 @@ const QRAW_BASE = {
     kpiTotal: `${RAW_ABAP3} | stats count`,
     kpiIcmErrors: `${RAW_ICM} icm_is_error="true" | stats count`,
     kpiGwErrors: `${RAW_GW} gw_error_detail=* gw_error_detail!="" | stats count`,
-    volumeByType: `${RAW_ABAP3} | timechart span=1d count by sourcetype | fillnull value=0`,
-    icmStatus: `${RAW_ICM} icm_status_code=* | ${STATUS_CAT} | timechart span=1d count by status_cat | fillnull value=0`,
+    volumeByType: `${RAW_ABAP3} | timechart span=__LSV_SPAN__ count by sourcetype | fillnull value=0`,
+    icmStatus: `${RAW_ICM} icm_status_code=* | ${STATUS_CAT} | timechart span=__LSV_SPAN__ count by status_cat | fillnull value=0`,
     icmStatusPie: `${RAW_ICM} icm_status_code=* | ${STATUS_CAT} | stats count by status_cat | sort status_cat`,
     icmPeers: `${RAW_ICM} icm_peer_ip=* | stats count as Requests, dc(icm_transaction_id) as Transactions, values(icm_protocol) as Protocols by icm_peer_ip | sort -Requests | rename icm_peer_ip as "Peer IP"`,
     icmRequestTypes: `${RAW_ICM} icm_request_type=* | ${ICM_REQ_DECODE} | stats count by icm_request_type | sort -count`,
     gwHosts: `${RAW_GW} | stats count as Events, values(gw_service) as Services, latest(gw_error_detail) as "Last Error" by gw_remote_host gw_function | sort -Events | rename gw_remote_host as "Remote Host" gw_function as "Function"`,
-    gwErrorsTimeline: `${RAW_GW} gw_error_detail=* gw_error_detail!="" | timechart span=1d count as "Gateway Errors" | fillnull value=0`,
+    gwErrorsTimeline: `${RAW_GW} gw_error_detail=* gw_error_detail!="" | timechart span=__LSV_SPAN__ count as "Gateway Errors" | fillnull value=0`,
     sidInstance: `${RAW_ABAP3} | stats count by sap_sid sap_instance | sort -count`,
 };
 
@@ -187,10 +188,15 @@ const GW_HOST_COLS: ColumnDef[] = [
 ];
 
 const AbapSecurity: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const icmErrors = useFirstRowFieldHybrid(Q.kpiIcmErrors, QRAW.kpiIcmErrors, 'count');
     const gwErrors = useFirstRowFieldHybrid(Q.kpiGwErrors, QRAW.kpiGwErrors, 'count');
@@ -210,7 +216,6 @@ const AbapSecurity: React.FC = () => {
     const gwTone = Number(gwErrors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goSidInstanceChart = (): void => {
         openInNewTab(buildDashboardUrl('abap-operations', timeRange.earliest, timeRange.latest));
     };

@@ -7,7 +7,8 @@ import { logservTheme } from '../styles/logservTheme';
  * CloudProviderPicker — title-row dropdown for the global cloud-provider
  * filter (session 082). Renders in DashboardLayout's ActionsBlock, to the
  * LEFT of RefreshIntervalPicker, on every dashboard except Multi-Cloud
- * Overview / Environment Topology / Settings (they set noCloudFilter).
+ * Overview / Environment Topology / Diagnostics / Settings (they set
+ * noCloudFilter).
  *
  * Reads/writes the app-wide selection via CloudProviderProvider (one
  * choice applies everywhere, persisted per user). Options: All / aws /

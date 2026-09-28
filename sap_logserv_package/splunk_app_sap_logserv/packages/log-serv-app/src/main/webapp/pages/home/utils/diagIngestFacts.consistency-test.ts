@@ -257,9 +257,15 @@ export const run = async (): Promise<number> => {
     check('b2.multiSlashNothing', mod.typeDropStatus('squid:access', facts({ includeFilters: ['proxy/squid/extra'] })) === 'dropped');
     check('b2.starStarInMixed', mod.isPassAllInclude(['linux/cron', '*/*']) === true);
     check('eval.passAllDefault', mod.typeDropStatus('squid:access', facts({})) === 'kept');
-    check('eval.excluded', mod.typeDropStatus('squid:access', facts({ excludeFilters: ['proxy/squid'] })) === 'dropped');
+    check('eval.excluded', mod.typeDropStatus('sap:hana:audit', facts({ excludeFilters: ['hana/hanaaudit'] })) === 'dropped');
     check('eval.excludeWins', mod.typeDropStatus('squid:access', facts({ includeFilters: ['proxy/*'], excludeFilters: ['proxy/squid'] })) === 'dropped');
-    check('eval.notIncluded', mod.typeDropStatus('squid:access', facts({ includeFilters: ['linux/*'] })) === 'dropped');
+    check('eval.notIncluded', mod.typeDropStatus('sap:hana:audit', facts({ includeFilters: ['linux/*'] })) === 'dropped');
+    // Session 140: real LogServ data files Squid under proxy/squid (AWS) AND linux/proxy (Azure), and
+    // pacemaker.log under linux/pacemaker (GCP) - a rule naming one layout drops only part of the type.
+    check('eval.squidOneLayoutPartial', mod.typeDropStatus('squid:access', facts({ excludeFilters: ['proxy/squid'] })) === 'partial');
+    check('eval.squidBothLayoutsDropped', mod.typeDropStatus('squid:access', facts({ excludeFilters: ['proxy/squid', 'linux/proxy'] })) === 'dropped');
+    check('eval.linuxStarKeepsAzureSquid', mod.typeDropStatus('squid:store', facts({ includeFilters: ['linux/*'] })) === 'partial');
+    check('eval.pacemakerSurvivesSlapdRule', mod.typeDropStatus('linux:slapd', facts({ excludeFilters: ['linux/slapd'] })) === 'partial');
     check('eval.winPartial', mod.typeDropStatus('XmlWinEventLog', facts({ excludeFilters: ['windows/WinEventLog:Security'] })) === 'partial');
     check('eval.winAll', mod.typeDropStatus('XmlWinEventLog', facts({ excludeFilters: ['windows/*'] })) === 'dropped');
     check('eval.disabledKept', mod.typeDropStatus('squid:access', facts({ filterEnabled: false, excludeFilters: ['proxy/squid'] })) === 'kept');

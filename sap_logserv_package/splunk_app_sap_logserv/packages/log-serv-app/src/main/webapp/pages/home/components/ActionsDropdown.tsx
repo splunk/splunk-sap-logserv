@@ -7,6 +7,7 @@ import { useTimeRange } from '../state/TimeRangeProvider';
 import { useCloudProvider } from '../state/CloudProviderProvider';
 import { getActivePageSnapshot } from '../state/DiagnosticCollector';
 import { triggerDownload } from '../utils/download';
+import { freezeAnimationsInClone, pauseLiveAnimationsAtStart } from '../utils/exportCapture';
 import { beginDiagnosis, endDiagnosis } from '../utils/diagProbe';
 import { sweepDashboard, collectDashboardRollupSpl } from '../utils/diagSweep';
 import { gatherEnvironmentEvidence } from '../utils/diagEnvironment';
@@ -22,19 +23,23 @@ import { findDashboardByPath } from '../routes/dashboardRegistry';
 import { APP_VERSION, APP_BUILD, APP_BUILD_DATE, TEMPLATES_ONLY } from '../buildFlags';
 
 /**
- * ActionsDropdown — small button + popup menu rendered in the NavigationBar
- * (left of the AI Assistant button). Menu items:
+ * ActionsDropdown — small button + popup menu in row 2 of the NavigationBar
+ * (after the time range, left of the Refresh button). Menu items:
  *
- *   • Download PNG — capture the current dashboard at full width × full
- *     scrollHeight and trigger a browser download.
+ *   • Download PNG — capture the page at full width × full scrollHeight and
+ *     trigger a browser download.
  *   • Download PDF — same capture, packaged as a single-page PDF sized to
- *     the rendered dashboard.
+ *     the rendered page.
+ *   • Diagnose dashboard (PDF) — run the Data Doctor over every panel on
+ *     this dashboard and download the report (PDF + JSON).
+ *   • Environment report (PDF) — index, sourcetype and summarised-data
+ *     health for the whole environment (PDF + JSON).
  *
- * Capture target: the first ancestor with `data-dashboard-root="true"`,
- * which `DashboardLayout` adds to its outer wrapper. Using a stable data
- * attribute means we don't have to wire individual dashboards into the
- * download flow — every dashboard that passes through `DashboardLayout`
- * is downloadable for free.
+ * Capture target: `document.body` (see findCaptureRoot), so the header and
+ * the left rail are in the output, as on screen, and no dashboard needs
+ * wiring into the download flow. `DashboardLayout` still marks its outer
+ * wrapper `data-dashboard-root="true"`, but the capture no longer stops
+ * there.
  *
  * Library cost: html2canvas + jspdf together add ~150 KB to the bundle.
  * Both are dynamically imported inside the click handlers so they load
@@ -42,19 +47,27 @@ import { APP_VERSION, APP_BUILD, APP_BUILD_DATE, TEMPLATES_ONLY } from '../build
  * pays nothing.
  */
 
+/** Height of the buttons in header row 2 — Actions here, and Refresh and
+ *  AI Assistant (NavigationBar's BarButton) — so the three line up. Session
+ *  138: Actions was a fixed 32 px, the other two a natural 29 px. Exported
+ *  from this module because NavigationBar already imports it; the reverse
+ *  import would be a cycle. */
+export const HEADER_BUTTON_HEIGHT_PX = 29;
+
 const ActionsButton = styled.button<{ $active: boolean }>`
     background: ${(p) => (p.$active ? logservTheme.colors.hoverBackground : 'transparent')};
     color: ${(p) => (p.$active ? logservTheme.colors.cyanLight : logservTheme.colors.textActive)};
     border: 1px solid ${(p) => (p.$active ? logservTheme.colors.cyanAccent : logservTheme.colors.panelBorderWeak)};
     border-radius: ${logservTheme.radius.small};
-    /* Explicit height matches the rendered height of the AI Assistant
-     * button next to us. We can't rely on natural content-driven sizing
-     * because the inner caret glyph "down-arrow" and the AI Assistant's
-     * star glyph have different inline box metrics, which produced a
-     * visible 2-3 px height difference between the two buttons. With
-     * box-sizing border-box, this height includes the 1 px borders. */
+    /* Pinned to HEADER_BUTTON_HEIGHT_PX, the height NavigationBar also gives
+     * the Refresh and AI Assistant buttons beside it, so the three line up
+     * whatever their glyphs' inline metrics (the caret here, the icons
+     * there). Through build 361 this was 32 px, sized for the AI Assistant
+     * button it sat beside before build 342, which left it 3 px taller than
+     * its row-2 neighbours (session 138). With box-sizing border-box the
+     * height includes the 1 px borders. */
     box-sizing: border-box;
-    height: 32px;
+    height: ${HEADER_BUTTON_HEIGHT_PX}px;
     padding: 0 12px;
     margin-right: ${logservTheme.spacing.sm};
     align-self: center;
@@ -449,6 +462,9 @@ const captureDashboardCanvas = async (root: HTMLElement, bgColor: string): Promi
     const fullWidth = Math.max(root.scrollWidth, root.clientWidth);
     const fullHeight = Math.max(root.scrollHeight, root.clientHeight);
 
+    // Build 368: the live animations rest at their start while html2canvas
+    // copies the page, and resume afterwards (utils/exportCapture says why).
+    const resumeAnimations = pauseLiveAnimationsAtStart(document);
     try {
         const canvas = await html2canvas(root, {
             // Resolved per-mode page background (Surface 2 — html2canvas needs a
@@ -464,12 +480,16 @@ const captureDashboardCanvas = async (root: HTMLElement, bgColor: string): Promi
             windowHeight: fullHeight,
             scrollX: 0,
             scrollY: 0,
-            onclone: svgRasters
-                ? (clonedDoc: Document) => applySvgRastersToClone(clonedDoc, svgRasters)
-                : undefined,
+            // Build 368: every capture freezes the clone's animations, and the
+            // topology svgs (when present) are swapped for their rasters.
+            onclone: (clonedDoc: Document) => {
+                freezeAnimationsInClone(clonedDoc);
+                if (svgRasters) applySvgRastersToClone(clonedDoc, svgRasters);
+            },
         });
         return canvas;
     } finally {
+        resumeAnimations();
         window.scrollTo(prevScrollX, prevScrollY);
     }
 };

@@ -38,6 +38,14 @@ export type ChartPalette =
     | 'categorical'
     | 'neutral';
 
+/* The two colours in these ramps with NO token equivalent: an accent-c pink
+ * and an accent-a indigo. Left as literals ON PURPOSE rather than mapped to
+ * the nearest token, which would change the ramp. Everything else below is
+ * token-derived so a palette swap carries into the charts -- before session
+ * 129 these ramps were hardcoded Harbor hex and did not follow one. */
+const RAMP_PINK: Record<ThemeMode, string> = { dark: '#fcb3c8', light: '#f2638c' };
+const RAMP_INDIGO: Record<ThemeMode, string> = { dark: '#9ca6ff', light: '#7d8aff' };
+
 // THE ONLY THREE permitted pairings for error / warning 2-series charts.
 // Use exactly as defined — first color = first series, second color = second
 // series. No other red/orange/yellow combinations are allowed on
@@ -46,35 +54,36 @@ export type ChartPalette =
 //   Pair 2 (errors-2) — red + salmon          (negative + accent-c pink)
 //   Pair 3 (errors-3) — orange + red          (severe + negative)
 const ERROR_PAIR_1: Record<ThemeMode, string[]> = {
-    dark: ['#cc2d37', '#fa5762'],
-    light: ['#a01d26', '#cc2d37'],
+    dark: [MODE_TOKENS.dark.redSevere, MODE_TOKENS.dark.red],
+    light: [MODE_TOKENS.light.redSevere, MODE_TOKENS.light.red],
 };
 const ERROR_PAIR_2: Record<ThemeMode, string[]> = {
-    dark: ['#fa5762', '#fcb3c8'],
-    light: ['#cc2d37', '#f2638c'],
+    dark: [MODE_TOKENS.dark.red, RAMP_PINK.dark],
+    light: [MODE_TOKENS.light.red, RAMP_PINK.light],
 };
 const ERROR_PAIR_3: Record<ThemeMode, string[]> = {
-    dark: ['#f7782f', '#fa5762'],
-    light: ['#f26722', '#cc2d37'],
+    dark: [MODE_TOKENS.dark.redLight, MODE_TOKENS.dark.red],
+    light: [MODE_TOKENS.light.redLight, MODE_TOKENS.light.red],
 };
 
 // Volume/throughput ramp: interact blue → accent-a indigo → teal → purple →
 // muted gray. Blue-spectrum = "flow" per the dashboard conventions.
 const VOLUME_RAMP: Record<ThemeMode, string[]> = {
-    dark: ['#649ef5', '#9ca6ff', '#4ad9d9', '#9b5ff5', '#889099'],
-    light: ['#1d69cc', '#7d8aff', '#04a4b0', '#753bcc', '#889099'],
+    dark: [MODE_TOKENS.dark.cyanAccent, RAMP_INDIGO.dark, MODE_TOKENS.dark.teal, MODE_TOKENS.dark.purple, MODE_TOKENS.dark.textMuted],
+    light: [MODE_TOKENS.light.cyanAccent, RAMP_INDIGO.light, MODE_TOKENS.light.teal, MODE_TOKENS.light.purple, MODE_TOKENS.light.textMuted],
 };
 
 // Auth ramp: severe orange → red → warning yellow → gold → deep red.
 const AUTH_RAMP: Record<ThemeMode, string[]> = {
-    dark: ['#f7782f', '#fa5762', '#f0c243', '#f5d160', '#cc2d37'],
-    light: ['#f26722', '#cc2d37', '#cc8604', '#f0c243', '#a01d26'],
+    dark: [MODE_TOKENS.dark.redLight, MODE_TOKENS.dark.red, MODE_TOKENS.dark.orangeLight, MODE_TOKENS.dark.yellow, MODE_TOKENS.dark.redSevere],
+    light: [MODE_TOKENS.light.redLight, MODE_TOKENS.light.red, MODE_TOKENS.light.orange, MODE_TOKENS.light.orangeLight, MODE_TOKENS.light.redSevere],
 };
 
 /** Field-name → color map for status / severity / risk fields, per mode.
  *  Semantics: 2xx/success = positive green, 3xx/info/low = info blue,
- *  4xx/warning/medium = severe orange, 5xx/error/critical/high = negative
- *  red, fatal = deep red, Other = purple. */
+ *  4xx/warning/medium = severe orange, 5xx/error/high = negative red,
+ *  critical/fatal = deep red, Other = purple. Each word is listed in lower,
+ *  Title and UPPER case -- a series name matches only exactly. */
 export const statusFieldColors = (mode: ThemeMode): Record<string, string> => {
     const t = MODE_TOKENS[mode];
     const positive = t.green;
@@ -109,17 +118,27 @@ export const statusFieldColors = (mode: ThemeMode): Record<string, string> => {
         fatal: deepRed,
         FATAL: deepRed,
         Fatal: deepRed,
-        critical: negative,
-        CRITICAL: negative,
-        Critical: negative,
+        // critical outranks error/high, so it takes fatal's deep red. With it
+        // on `negative`, Windows' severity vocabulary (critical / high /
+        // medium / informational) drew critical and high in the IDENTICAL
+        // red (measured session 132, Severity Distribution Over Time).
+        critical: deepRed,
+        CRITICAL: deepRed,
+        Critical: deepRed,
 
         // Risk levels
+        // UPPER case added session 132: HANA Audit's Risk-Tiered Event
+        // Timeline emits HIGH / MEDIUM / LOW, which matched nothing here, so
+        // Splunk's defaults drew HIGH purple and MEDIUM teal.
         high: negative,
         High: negative,
+        HIGH: negative,
         medium: severe,
         Medium: severe,
+        MEDIUM: severe,
         low: infoBlue,
         Low: infoBlue,
+        LOW: infoBlue,
     };
 };
 
@@ -150,4 +169,71 @@ export const paletteColors = (
         default:
             return undefined;
     }
+};
+
+/* ------------------------------------------------------------------ */
+/* Count-aware resolution (session 131)                                */
+/* ------------------------------------------------------------------ */
+
+/** The RAMP palettes: ordered shade sequences for series that form a SCALE
+ *  (error severity, auth outcome, volume band). Their hue range is narrow on
+ *  purpose — which is exactly what makes them unusable for naming arbitrary
+ *  categories, and why a donut of usernames tagged `auth` reads as one
+ *  orange ring. `status` is NOT here: it maps field VALUES to fixed colours
+ *  rather than positions to shades. */
+const RAMP_PALETTES: ReadonlySet<string> = new Set([
+    'errors',
+    'errors-2',
+    'errors-3',
+    'auth',
+    'volume',
+]);
+
+export const isRampPalette = (palette?: ChartPalette): boolean =>
+    palette != null && RAMP_PALETTES.has(palette);
+
+/**
+ * Palette resolution that knows how many series will actually be drawn.
+ *
+ * Splunk CYCLES `seriesColors`, so a palette shorter than the series count
+ * silently repaints series N with series 0's colour. The three `errors*`
+ * ramps are TWO colours each, so a 9-wedge donut tagged `errors` was drawn
+ * in two alternating reds. Falling back to the 11-hue categorical palette
+ * can only fire in cases that were already repeating, so it never makes a
+ * chart worse than it was.
+ *
+ * Beyond 11 series even categorical cycles — unavoidable, and far better
+ * than cycling at 2. Pie wedges are capped well below that upstream.
+ */
+export const paletteColorsFor = (
+    seriesCount: number,
+    palette?: ChartPalette,
+    mode: ThemeMode = 'dark',
+): string[] | undefined => {
+    const chosen = paletteColors(palette, mode);
+    if (!chosen) return undefined;
+    if (seriesCount <= chosen.length) return chosen;
+    return paletteColors('categorical', mode) ?? chosen;
+};
+
+/**
+ * Wedge colours for a pie/donut.
+ *
+ * A wedge NAMES a category — a user, a sourcetype, a port — so a ramp is the
+ * wrong instrument regardless of how many wedges there are, and the prompt
+ * catalogue proves the mistake is easy to make: 14 of 26 pie prompts carry a
+ * ramp chosen for the prompt's SUBJECT ("this one is about auth") rather than
+ * for the shape of its data. Ramps are therefore ignored here.
+ *
+ * Deliberately still honoured: an explicit `categorical`, and `status`, whose
+ * wedge values carry fixed meaning (2xx/4xx, INFO/ERROR) and which resolves
+ * through the categorical fallback below.
+ */
+export const piePaletteColors = (
+    wedgeCount: number,
+    palette?: ChartPalette,
+    mode: ThemeMode = 'dark',
+): string[] | undefined => {
+    const effective: ChartPalette = isRampPalette(palette) ? 'categorical' : palette ?? 'categorical';
+    return paletteColorsFor(wedgeCount, effective, mode) ?? paletteColors('categorical', mode);
 };

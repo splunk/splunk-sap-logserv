@@ -43,60 +43,60 @@ export type ThemeMode = 'light' | 'dark';
  *  accent, now Magnetic blue-on-dark; navAccent = the OneCD teal). */
 const DARK_COLORS = {
     // Backgrounds
-    pageBackground: '#0f1214',
-    panelBackground: '#23282e',
-    navBackground: '#0f1214',
+    pageBackground: '#0b1322',
+    panelBackground: '#111d31',
+    navBackground: '#101a2c',
 
     // Borders
-    panelBorder: '#596069',
-    panelBorderWeak: '#464c54',
+    panelBorder: '#2b3f5f',
+    panelBorderWeak: '#1e304c',
 
     // Text
-    textActive: '#f7f7f7',
-    textDefault: '#d0d4d9',
-    textMuted: '#889099',
+    textActive: '#e8eef9',
+    textDefault: '#c8d5ea',
+    textMuted: '#9fb2d1',
 
     // Status colors
-    red: '#fa5762',
-    redSevere: '#cc2d37',
-    redLight: '#f7782f',
-    orange: '#f0b02f',
+    red: '#ef4a4a',
+    redSevere: '#b24343',
+    redLight: '#eb6f33',
+    orange: '#e79a22',
     orangeLight: '#f0c243',
     yellow: '#f5d160',
     teal: '#4ad9d9',
-    green: '#6bbf41',
-    cyanAccent: '#649ef5',
-    cyanLight: '#7cadf7',
-    cyanLightGlow: '#7cadf780',
+    green: '#2fb56f',
+    cyanAccent: '#3b82f6',
+    cyanLight: '#76a8f9',
+    cyanLightGlow: '#76a8f959',
     purple: '#9b5ff5',
 
     // Tables
-    tableHeaderBackground: '#373c42',
-    tableRowOdd: '#282d33',
+    tableHeaderBackground: '#16253d',
+    tableRowOdd: '#16253d',
     tableRowEven: 'transparent',
 
     // Interactive states
-    hoverBackground: '#2a3442',
-    activeAccent: '#649ef5',
+    hoverBackground: '#3b82f62e',
+    activeAccent: '#3b82f6',
 
     // Magnetic vocabulary (Phase 1a additions)
-    focusRing: '#7cadf7',
-    info: '#7cadf7',
-    surfaceInverse: '#373c42',
+    focusRing: '#5e98f8',
+    info: '#3b82f6',
+    surfaceInverse: '#c8d5ea',
     // Text ON the inverse surface — mode-INVARIANT by design (the Magnetic
     // tooltip idiom is a dark surface with light text in BOTH modes).
     // Phase 3 / build 257.
-    inverseText: '#f7f7f7',
-    inverseTextMuted: '#d0d4d9',
+    inverseText: '#132038',
+    inverseTextMuted: '#2f4567',
     navAccent: '#16bae8',
     navAccentMuted: '#a6adb6',
-    positiveTint: '#395534',
-    warningTint: '#5c4d28',
-    severeTint: '#644637',
-    negativeTint: '#63363e',
-    infoTint: '#3e506a',
-    dormant: '#6f7680',
-    dormantTint: '#464c54',
+    positiveTint: '#2fb56f29',
+    warningTint: '#e79a222e',
+    severeTint: '#ac31312e',
+    negativeTint: '#ef44442e',
+    infoTint: '#3b82f62e',
+    dormant: '#7288aa',
+    dormantTint: '#1e304c',
 } as const;
 
 export type ColorTokens = { [K in keyof typeof DARK_COLORS]: string };
@@ -107,51 +107,51 @@ export type ColorTokens = { [K in keyof typeof DARK_COLORS]: string };
  *  hover-blue) instead of `#7cadf7` — the token doubles as highlight TEXT
  *  color and `#7cadf7` fails contrast on white cards. */
 const LIGHT_COLORS: ColorTokens = {
-    pageBackground: '#f7f7f7',
+    pageBackground: '#f5f7fb',
     panelBackground: '#ffffff',
     navBackground: '#ffffff',
 
-    panelBorder: '#e1e4e8',
-    panelBorderWeak: '#f0f1f2',
+    panelBorder: '#dde2e6',
+    panelBorderWeak: '#e7ebee',
 
-    textActive: '#23282e',
-    textDefault: '#596069',
-    textMuted: '#889099',
+    textActive: '#1a1f26',
+    textDefault: '#4a535c',
+    textMuted: '#7e868f',
 
-    red: '#cc2d37',
-    redSevere: '#a01d26',
-    redLight: '#f26722',
-    orange: '#cc8604',
-    orangeLight: '#f0c243',
-    yellow: '#f0c243',
+    red: '#d33c3c',
+    redSevere: '#ac3131',
+    redLight: '#eb6f33',
+    orange: '#a06b16',
+    orangeLight: '#b18f30',
+    yellow: '#b18f30',
     teal: '#04a4b0',
-    green: '#45991f',
-    cyanAccent: '#1d69cc',
-    cyanLight: '#0d5cbd',
-    cyanLightGlow: '#0d5cbd59',
+    green: '#258651',
+    cyanAccent: '#3372da',
+    cyanLight: '#2a5eb1',
+    cyanLightGlow: '#2a5eb159',
     purple: '#753bcc',
 
-    tableHeaderBackground: '#f7f7f7',
-    tableRowOdd: '#f7f7f7',
+    tableHeaderBackground: '#eff1f4',
+    tableRowOdd: '#eff1f4',
     tableRowEven: 'transparent',
 
-    hoverBackground: '#f0f6ff',
-    activeAccent: '#1d69cc',
+    hoverBackground: '#3b82f61a',
+    activeAccent: '#3372da',
 
-    focusRing: '#3e84e5',
-    info: '#2774d9',
-    surfaceInverse: '#373c42',
-    inverseText: '#f7f7f7',
-    inverseTextMuted: '#d0d4d9',
+    focusRing: '#3b82f6',
+    info: '#3372da',
+    surfaceInverse: '#2c333d',
+    inverseText: '#f7f9fa',
+    inverseTextMuted: '#c1c6cc',
     navAccent: '#198cb3',
     navAccentMuted: '#687381',
-    positiveTint: '#e0f5d5',
-    warningTint: '#faefb9',
-    severeTint: '#ffeadb',
-    negativeTint: '#ffe8e9',
-    infoTint: '#e3eeff',
-    dormant: '#6f7680',
-    dormantTint: '#e1e4e8',
+    positiveTint: '#e8f8f0',
+    warningTint: '#fffbeb',
+    severeTint: '#f3e2e2',
+    negativeTint: '#fef2f2',
+    infoTint: '#3b82f61a',
+    dormant: '#6f767f',
+    dormantTint: '#e7ebee',
 };
 
 /** Magnetic data-viz accent palette a–k per mode (real values). Consumed
@@ -229,6 +229,43 @@ body.${BODY_CLASS_LIGHT} {
 };
 
 /* ------------------------------------------------------------------ */
+/* Shell backdrop (Phase 7, build 344)                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The content area's layered backdrop, carried byte-for-byte from the
+ * Workbench-scaffold palette in the Magnetic preview
+ * (`jan_magnetic/logserv-magnetic-preview.html`, `--mag-shell-bg-overlay`
+ * on `:root` and `[data-theme="dark"]`).
+ *
+ * Two mirrored radial lobes plus a vertical wash. Session 128 part 5
+ * reworked the lobes to be an exact mirror of one another — same size, same
+ * alpha, same stop, x reflected to `100 - x` — so they are emitted here as a
+ * matched pair and must stay that way; an edit to one belongs on both.
+ *
+ * NOT a `--lsv-*` colour token, deliberately. `ColorTokens` is a COLOUR
+ * vocabulary: `resolveTokens()` feeds it to chart `seriesColors`, SVG
+ * presentation attributes and `colorMath`, all of which would choke on a
+ * multi-stop gradient. This is applied through the body mode class instead
+ * (see AppShell's `Main`), which is why both values live here together
+ * rather than in the light/dark token blocks.
+ *
+ * The dark variant's wash is `rgba(11, 19, 34, …)`, which is
+ * `DARK_COLORS.pageBackground` — they must not drift apart.
+ */
+export const SHELL_BACKDROP_LIGHT = `
+    radial-gradient(1000px 480px at 15% 0%, rgba(59, 130, 246, 0.08), transparent 62%),
+    radial-gradient(1000px 480px at 85% 0%, rgba(59, 130, 246, 0.08), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0) 34%)
+`.trim();
+
+export const SHELL_BACKDROP_DARK = `
+    radial-gradient(1200px 560px at 12% -8%, rgba(59, 130, 246, 0.24), transparent 64%),
+    radial-gradient(1200px 560px at 88% -8%, rgba(59, 130, 246, 0.24), transparent 64%),
+    linear-gradient(180deg, rgba(11, 19, 34, 0.06) 0%, rgba(11, 19, 34, 0.34) 42%, rgba(11, 19, 34, 0.52) 100%)
+`.trim();
+
+/* ------------------------------------------------------------------ */
 /* Mode selection + persistence                                        */
 /* ------------------------------------------------------------------ */
 
@@ -281,12 +318,27 @@ export const writeStoredThemeMode = (mode: ThemeMode): void => {
 export const readInitialThemeMode = (): ThemeMode =>
     readModeOverrideFromHash() ?? readStoredThemeMode() ?? 'dark';
 
-/** Apply the mode class pair to <body>. Callable pre-React-mount
- *  (pages/home/index.tsx) so the first paint is already in the right mode. */
+/** Apply the mode class pair to <body>, and the matching `color-scheme` to
+ *  the root element. Callable pre-React-mount (pages/home/index.tsx) so the
+ *  first paint is already in the right mode.
+ *
+ *  The root `color-scheme` (build 359) is what the browser reads when it
+ *  draws its OWN parts of the page. The page scrollbar is one of them: the
+ *  document scrolls, not an inner div (see AppShell's Page). Left at its
+ *  initial `normal`, the browser drew its light scrollbar down the side of
+ *  the dark app. It has to be the root element: the viewport scrollbar takes
+ *  its scheme from <html> only, and the same declaration on <body> leaves it
+ *  light (measured, session 135).
+ *
+ *  The property is inherited, so it also covers every inner scrollbar and
+ *  native form control that sets no scheme of its own, including the ones
+ *  portaled to <body>. @splunk/react-ui components already set theirs through
+ *  the prisma theme's reset mixin, so they are unchanged. */
 export const applyBodyModeClass = (mode: ThemeMode): void => {
     try {
         document.body.classList.toggle(BODY_CLASS_DARK, mode === 'dark');
         document.body.classList.toggle(BODY_CLASS_LIGHT, mode === 'light');
+        document.documentElement.style.setProperty('color-scheme', mode);
     } catch (_e) {
         /* ignore */
     }

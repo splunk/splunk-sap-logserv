@@ -109,10 +109,10 @@ These two roles are the **complete** runtime set — the input makes exactly fou
 
 ## :material-circle-box:{ .taiconcolor } Install the GCP add-on
 
-Install `splunk_ta_sap_logserv_gcp-0.1.1.tar.gz` **directly on each Heavy Forwarder** that will ingest GCP data — exactly the tier where `Splunk_TA_aws` (AWS) and the LogServ Azure add-on (Azure) are installed for their paths.
+Install `splunk_ta_sap_logserv_gcp-0.1.2.tar.gz` **directly on each Heavy Forwarder** that will ingest GCP data — exactly the tier where `Splunk_TA_aws` (AWS) and the LogServ Azure add-on (Azure) are installed for their paths.
 
 - Splunk Web → **Manage Apps → Install app from file** → upload the tarball, **or**
-- `/opt/splunk/bin/splunk install app /path/splunk_ta_sap_logserv_gcp-0.1.1.tar.gz`, **or**
+- `/opt/splunk/bin/splunk install app /path/splunk_ta_sap_logserv_gcp-0.1.2.tar.gz`, **or**
 - configuration management (Ansible / Puppet / Chef) drops the app into `etc/apps/`, then `chown -R splunk:splunk` and restart.
 
 !!! danger "Do NOT distribute the GCP add-on via the Deployment Server"
@@ -127,6 +127,8 @@ On **each** Heavy Forwarder, create one input instance for your GCP landscape. T
 ### Via Splunk Web (per Heavy Forwarder)
 
 Splunk Web → **Apps → Splunk TA for SAP LogServ on GCP → Inputs → Create New Input**, and fill in the fields below with the project ID + subscription name from SAP — and paste the **entire JSON key file of your own service account** into the key field. (For a second landscape on the same HF, use the Inputs table's **Clone** action and give it a new name — the key is not carried on clone, so re-paste it. On **Edit**, the key field shows `******`; saving without changing it preserves the existing key.)
+
+![GCP Inputs](../../images/gcp-ta-inputs-tab.png)
 
 !!! warning ":material-lightning-bolt:{ .taiconcolor } Paste the *whole file* — not just the private key"
     The key field takes the **complete downloaded `.json` file, verbatim** — everything from the

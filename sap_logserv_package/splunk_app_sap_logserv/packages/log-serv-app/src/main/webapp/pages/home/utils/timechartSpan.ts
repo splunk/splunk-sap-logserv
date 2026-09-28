@@ -15,6 +15,79 @@
  *   const span = chooseTimechartSpan(timeRange.earliest, timeRange.latest);
  *   const query = `... | timechart span=${span} count`;
  */
+/**
+ * Placeholder written into the module-level query strings of every dashboard,
+ * substituted at the same `useMemo` boundary that already applies
+ * `mapCloudProviderQueries`. Build 345.
+ *
+ * WHY A TOKEN. The query objects are module-level constants, so `span` — which
+ * depends on the live time range — cannot be interpolated where they are
+ * written. Substituting where the cloud-provider splice already happens keeps
+ * it to one insertion point per dashboard.
+ *
+ * WHY BOTH ARMS. `utils/rawTwin.ts` keys its map on the EXACT dispatched SPL
+ * string, and its contract is that every transform is applied to the cached
+ * AND raw arms BEFORE `useRoutedQuery` picks between them. A span substitution
+ * applied to only one arm would silently break twin resolution.
+ */
+export const SPAN_TOKEN = '__LSV_SPAN__';
+
+/** Seconds per span string this module can emit — used only to decide whether
+ *  a span is finer than the rollup's bucket size. */
+const SPAN_SECONDS: Readonly<Record<string, number>> = {
+    '1m': 60,
+    '15m': 900,
+    '1h': 3600,
+    '6h': 21600,
+    '1d': 86400,
+};
+
+/** The KV rollups are bucketed HOURLY (`bucket_ts`), so no query reading them
+ *  can resolve finer than this however narrow the window is. */
+const ROLLUP_MIN_SPAN = '1h';
+
+/**
+ * Substitute `SPAN_TOKEN` in one SPL string, clamping to the rollup's floor
+ * when the query reads rollup rows.
+ *
+ * The clamp keys on `bucket_ts` — the marker of a KV-rollup read — and
+ * deliberately NOT on `tstats`: a `tstats ... BY _time span=...` runs over the
+ * index via `sap_logserv_idx_macro`, not over the rollup, so it can bucket as
+ * finely as the window deserves.
+ *
+ * In practice the clamp is belt-and-braces: `shouldUseRawSource` already routes
+ * any window under 90 minutes to the raw arm, so a rollup query is not
+ * dispatched at a width where sub-hour spans would arise. It stays because that
+ * threshold is a tuning knob (`HYBRID_RAW_MAX_SPAN_SEC`) and lowering it should
+ * not silently produce empty rollup charts.
+ */
+export const applySpanToken = (spl: string, span: string): string => {
+    if (!spl.includes(SPAN_TOKEN)) return spl;
+    const readsRollup = spl.includes('bucket_ts');
+    const effective =
+        readsRollup && (SPAN_SECONDS[span] ?? 0) < SPAN_SECONDS[ROLLUP_MIN_SPAN]
+            ? ROLLUP_MIN_SPAN
+            : span;
+    return spl.split(SPAN_TOKEN).join(effective);
+};
+
+/** Map `applySpanToken` over a dashboard's query object. Returns the SAME
+ *  object when nothing carries the token, so a dashboard that opted out costs
+ *  no extra renders. */
+export const applySpanTokens = <T extends Record<string, string>>(
+    queries: T,
+    span: string,
+): T => {
+    let changed = false;
+    const out = {} as Record<string, string>;
+    (Object.keys(queries) as Array<keyof T & string>).forEach((k) => {
+        const next = applySpanToken(queries[k], span);
+        if (next !== queries[k]) changed = true;
+        out[k] = next;
+    });
+    return changed ? (out as T) : queries;
+};
+
 export const chooseTimechartSpan = (earliest: string, latest: string): string => {
     const sec = estimateWindowSeconds(earliest, latest);
     if (sec <= 6 * 3600) return '1m';            // ≤6h → ~360 pts

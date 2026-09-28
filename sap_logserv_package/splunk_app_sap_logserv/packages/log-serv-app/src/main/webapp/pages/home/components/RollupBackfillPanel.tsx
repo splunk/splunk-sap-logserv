@@ -7,8 +7,27 @@ import {
     ROLLUPS_SORTED,
     ALL_AGG_SEARCHES,
     ALL_COLLECTIONS,
+    FIXED30_BACKFILL_STANZAS,
 } from '../routes/rollupRegistry';
 import { COMPLETE_SECONDS } from '../utils/diagEnvironment';
+import {
+    resolveWindow,
+    planChunks,
+    isCostlyWindow,
+    toUtcDateString,
+    PRESET_DAYS,
+    DEFAULT_PRESET_DAYS,
+    RETENTION_DAYS,
+} from '../utils/backfillWindow';
+import type { ResolvedWindow, WindowChoice } from '../utils/backfillWindow';
+import {
+    decidePoll,
+    observeJob,
+    pollDelayMs,
+    mergeRowOutcome,
+    INITIAL_TRACKER,
+} from '../utils/backfillPoll';
+import type { ArmVerdict, PollObservation, PollTracker, RowOutcome } from '../utils/backfillPoll';
 
 /**
  * Dashboard Data — admin control for the entire KV-Store rollup data layer that
@@ -61,12 +80,16 @@ const BACKFILL_LATEST = '@h';
  *  (no subsearch wall-clock cap → no truncation), so mild concurrency is safe
  *  and faster than strict serial without overwhelming the search tier. */
 const CONCURRENCY = 3;
-const POLL_INTERVAL_MS = 2500;
-/** Per-arm poll backstops so a reaped/stuck job can never wedge the pool. A
- *  30-day arm at extreme scale can run many minutes — the cap is generous but
- *  bounded so the button always re-enables. */
-const MAX_POLLS = 2000; // ~83 min/arm ceiling
-const MAX_NULL_STREAK = 24; // ~60s of consecutive poll failures → sid likely gone
+/* How long to wait on each arm-search, and what counts as its failure, lives in
+ * utils/backfillPoll.ts - wait on the JOB, not a clock (session 134, build 357).
+ * Build 353 gave up after a fixed 2,000 polls (~90 min) and called the arm
+ * FAILED while the search kept running and writing on the server: a false
+ * failure at about twice the reference box's volume, and a re-run that repeated
+ * the work. It also failed an arm after ~60 s of poll errors. Now the panel
+ * waits as long as Splunk reports the job alive, fails it only on Splunk's own
+ * verdict (FAILED, a zombie process, a vanished job), and reports anything else
+ * that ends the wait - Cancel, the 24 h backstop, lost contact - as "still
+ * running on the server". */
 /* COMPLETE_SECONDS ("a rollup is complete when its oldest bucket reaches back
  * ~30 days") moved to utils/diagEnvironment.ts in session 096 so this panel and
  * the #/diagnostics page share the completeness PREDICATE structurally. NOTE:
@@ -184,12 +207,21 @@ const fetchBackfillSpl = async (stanza: string): Promise<string | null> => {
  *  the job returns empty/errors (session-048 sticky #4). The union arms already
  *  start with `search \`macro\``; the single-pipeline backfills start with the
  *  bare macro, so we normalize a leading `search` here. */
-const dispatchAdHoc = async (spl: string): Promise<string | null> => {
+const dispatchAdHoc = async (
+    spl: string,
+    earliest: number,
+    latest: number,
+): Promise<string | null> => {
     const norm = /^\s*(search\b|\|)/i.test(spl) ? spl : `search ${spl}`;
     const params = new URLSearchParams();
     params.set('search', norm);
-    params.set('earliest_time', BACKFILL_EARLIEST);
-    params.set('latest_time', BACKFILL_LATEST);
+    /* EPOCH, not a formatted time string. The search head resolves an absolute
+     * time string in ITS OWN timezone, which is not necessarily the box's
+     * (session-116: SH-rendered timestamps are SH-local even on a UTC box), so a
+     * formatted window would silently shift by the SH offset. Epoch has no
+     * timezone to get wrong. */
+    params.set('earliest_time', String(earliest));
+    params.set('latest_time', String(latest));
     params.set('exec_mode', 'normal');
     params.set('output_mode', 'json');
     try {
@@ -207,62 +239,48 @@ const dispatchAdHoc = async (spl: string): Promise<string | null> => {
     }
 };
 
-interface JobState {
-    isDone: boolean;
-    failed: boolean;
-    truncated: boolean;
-    dispatchState: string;
-}
-
-const pollJobOnce = async (sid: string): Promise<JobState | null> => {
+/** One status poll, reduced to an observation by the wait policy. A thrown
+ *  fetch (network down) is a poll ERROR, never a verdict. */
+const pollJobOnce = async (sid: string): Promise<PollObservation> => {
     try {
         const res = await fetch(`${NS_PREFIX}/search/jobs/${encodeURIComponent(sid)}?output_mode=json`, {
             credentials: 'same-origin',
             headers: getHeaders(),
         });
-        if (!res.ok) return null;
-        const json = await res.json();
-        const c = json?.entry?.[0]?.content ?? {};
-        const isDone = c.isDone === true || c.isDone === '1' || c.isDone === 1;
-        const state = String(c.dispatchState ?? '');
-        const messages: Array<{ type?: string; text?: string }> = Array.isArray(c.messages)
-            ? c.messages
-            : [];
-        // top-level arms should never hit a wall-clock/output cap — flag if one does.
-        const truncated = messages.some((m) =>
-            /time limit|auto.?finaliz|maxout|truncat|results may be incomplete/i.test(
-                String(m.text ?? ''),
-            ),
-        );
-        return { isDone, failed: state === 'FAILED', truncated, dispatchState: state };
+        const body = res.ok ? await res.json().catch(() => null) : null;
+        return observeJob(res.status, body);
     } catch {
-        return null;
+        return { kind: 'error' };
     }
 };
 
-type ArmResult = 'done' | 'truncated' | 'failed' | 'cancelled';
+interface ArmOutcome {
+    verdict: ArmVerdict;
+    /** null only when the dispatch itself failed. */
+    sid: string | null;
+}
 
-/** Dispatch a single arm + poll to completion. Bounded (MAX_POLLS / null-streak)
- *  so a reaped or stuck job can never wedge the pool, and cancellable. */
-const runArm = async (spl: string, shouldCancel: () => boolean): Promise<ArmResult> => {
-    const sid = await dispatchAdHoc(spl);
-    if (!sid) return 'failed';
-    let nullStreak = 0;
-    for (let polls = 0; polls < MAX_POLLS; polls += 1) {
-        if (shouldCancel()) return 'cancelled';
-        await new Promise((r) => window.setTimeout(r, POLL_INTERVAL_MS));
-        if (shouldCancel()) return 'cancelled';
-        const st = await pollJobOnce(sid);
-        if (!st) {
-            nullStreak += 1;
-            if (nullStreak >= MAX_NULL_STREAK) return 'failed'; // sid gone / auth lapsed
-            continue;
-        }
-        nullStreak = 0;
-        if (st.failed) return 'failed';
-        if (st.isDone) return st.truncated ? 'truncated' : 'done';
+/** Dispatch one arm and wait on the job (utils/backfillPoll.ts). Cancel stops
+ *  the WAITING, not the job: an arm in flight at Cancel is reported DETACHED
+ *  ("still running on the server"), because it is. */
+const runArm = async (
+    spl: string,
+    earliest: number,
+    latest: number,
+    shouldCancel: () => boolean,
+): Promise<ArmOutcome> => {
+    const sid = await dispatchAdHoc(spl, earliest, latest);
+    if (!sid) return { verdict: 'failed', sid: null };
+    const dispatchedAt = Date.now();
+    let tracker: Readonly<PollTracker> = INITIAL_TRACKER;
+    for (;;) {
+        if (shouldCancel()) return { verdict: 'detached', sid };
+        await new Promise((r) => window.setTimeout(r, pollDelayMs(Date.now() - dispatchedAt)));
+        if (shouldCancel()) return { verdict: 'detached', sid };
+        const d = decidePoll(await pollJobOnce(sid), tracker, Date.now(), dispatchedAt);
+        if (d.verdict !== 'continue') return { verdict: d.verdict, sid };
+        tracker = d.tracker;
     }
-    return 'failed'; // exceeded the poll ceiling
 };
 
 /** Blocking oneshot returning {n, m} for the completeness detector. n=0 → empty
@@ -346,32 +364,81 @@ interface WorkItem {
     spl: string;
     armIndex: number;
     armCount: number;
+    /** epoch seconds — this item's own window, which is NOT always the run's
+     *  window (the FIXED30 stanzas get a pinned 30 days). */
+    earliest: number;
+    latest: number;
+    /** "Jun 2025" when the arm was split into monthly chunks; '' when it runs
+     *  whole. Shown in the progress line so a failure names a re-runnable month. */
+    chunkLabel: string;
 }
-const buildWorkItems = async (defs: RollupDef[]): Promise<WorkItem[]> => {
+
+/**
+ * Expand the selected rollups into dispatchable units.
+ *
+ * Two dimensions of expansion, in order:
+ *   1. ARMS — each `*_backfill` stanza's `| union` is split so every arm is a
+ *      TOP-LEVEL search. Pre-existing and load-bearing: the bundled saved
+ *      searches truncate at customer scale because subsearches hit a wall-clock
+ *      cap.
+ *   2. CHUNKS — each arm is then split at UTC calendar-month boundaries, so no
+ *      single dispatch has to cover a year. Month boundaries are also DAY
+ *      boundaries, which is what keeps the day-scoped rollups correct. A window
+ *      no longer than one calendar month runs WHOLE (planChunks) -- splitting it
+ *      only doubled the default run's dispatches (session 132).
+ *
+ * The FIXED30 stanzas take neither the run's window nor any chunking — see the
+ * block comment on FIXED30_BACKFILL_STANZAS for why forcing them would be
+ * silently wrong rather than merely slow.
+ */
+const buildWorkItems = async (
+    defs: RollupDef[],
+    win: ResolvedWindow,
+    fixed30: ResolvedWindow,
+): Promise<WorkItem[]> => {
     const items: WorkItem[] = [];
     for (const def of defs) {
-        const spls = await Promise.all(def.backfillStanzas.map(fetchBackfillSpl));
-        const armSpls: string[] = [];
-        spls.forEach((spl) => {
+        const loaded = await Promise.all(
+            def.backfillStanzas.map(async (stanza) => ({
+                stanza,
+                spl: await fetchBackfillSpl(stanza),
+            })),
+        );
+        const arms: Array<{ spl: string; win: ResolvedWindow; chunk: boolean }> = [];
+        loaded.forEach(({ stanza, spl }) => {
             if (!spl) return;
-            const { arms, tail } = parseUnion(spl);
-            if (arms.length === 0) armSpls.push(spl);
-            else arms.forEach((arm) => armSpls.push(`${arm} ${tail}`));
+            const pinned = FIXED30_BACKFILL_STANZAS.has(stanza);
+            const w = pinned ? fixed30 : win;
+            const { arms: parsed, tail } = parseUnion(spl);
+            if (parsed.length === 0) arms.push({ spl, win: w, chunk: !pinned });
+            else parsed.forEach((a) => arms.push({ spl: `${a} ${tail}`, win: w, chunk: !pinned }));
         });
-        if (armSpls.length === 0) {
+        if (arms.length === 0) {
             // every stanza was unreadable → one failed sentinel item
-            items.push({ key: def.key, label: def.label, spl: '', armIndex: 1, armCount: 1 });
-        } else {
-            armSpls.forEach((spl, i) => {
+            items.push({
+                key: def.key, label: def.label, spl: '', armIndex: 1, armCount: 1,
+                earliest: win.earliest, latest: win.latest, chunkLabel: '',
+            });
+            continue;
+        }
+        arms.forEach((arm, i) => {
+            const chunks = arm.chunk ? planChunks(arm.win.earliest, arm.win.latest) : [];
+            const units = chunks.length > 1
+                ? chunks
+                : [{ earliest: arm.win.earliest, latest: arm.win.latest, label: '' }];
+            units.forEach((u) => {
                 items.push({
                     key: def.key,
                     label: def.label,
-                    spl,
+                    spl: arm.spl,
                     armIndex: i + 1,
-                    armCount: armSpls.length,
+                    armCount: arms.length,
+                    earliest: u.earliest,
+                    latest: u.latest,
+                    chunkLabel: units.length > 1 ? u.label : '',
                 });
             });
-        }
+        });
     }
     return items;
 };
@@ -525,6 +592,66 @@ const ReadonlyValue = styled.code`
     font-family: monospace;
     font-size: ${logservTheme.fontSize.body};
 `;
+/* NO BACKTICKS IN THESE CSS COMMENTS — a backtick terminates the tagged
+   template and the file stops compiling (sessions 017, 036, 130 x3). */
+const PresetRow = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+`;
+
+const PresetButton = styled.button<{ $on: boolean }>`
+    padding: 5px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12.5px;
+    border: 1px solid ${(p) => (p.$on
+        ? logservTheme.colors.cyanAccent
+        : logservTheme.colors.panelBorderWeak)};
+    background: ${(p) => (p.$on
+        ? logservTheme.colors.hoverBackground
+        : 'transparent')};
+    color: ${(p) => (p.$on
+        ? logservTheme.colors.textActive
+        : logservTheme.colors.textDefault)};
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: default;
+    }
+`;
+
+const DateRow = styled.div`
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: ${logservTheme.colors.textMuted};
+`;
+
+const DateInput = styled.input`
+    padding: 4px 8px;
+    border-radius: ${logservTheme.radius.medium};
+    border: 1px solid ${logservTheme.colors.panelBorderWeak};
+    background: ${logservTheme.colors.panelBackground};
+    color: ${logservTheme.colors.textActive};
+    font: inherit;
+    font-size: 12.5px;
+`;
+
+const WindowSummary = styled.div<{ $bad: boolean }>`
+    margin-top: 8px;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: ${(p) => (p.$bad
+        ? logservTheme.colors.red
+        : logservTheme.colors.textMuted)};
+`;
+
 const ProgressOuter = styled.div`
     width: 100%;
     height: 10px;
@@ -629,6 +756,10 @@ const seedColl = (prev: CollState | undefined, status: CollStatus): CollState =>
     armsTotal: 0,
 });
 
+/** oldestBucketMs sentinel while a just-finished row re-measures its depth
+ *  (session 134) - never a real epoch, never passed to fmtAge. */
+const REMEASURING = -1;
+
 const fmtAge = (ms: number): string => {
     if (!ms) return 'empty';
     const days = (Date.now() - ms) / 86400000;
@@ -668,6 +799,14 @@ const RollupBackfillPanel: React.FC = () => {
     });
     const [notice, setNotice] = useState<string | null>(null);
     const [opError, setOpError] = useState<string | null>(null);
+    /** The last run's "still running on the server" summary; persists until the next run. */
+    const [runWarn, setRunWarn] = useState<string | null>(null);
+    /** Each rollup row's outcome from the last run (utils/backfillPoll.ts). Kept
+     *  apart from collStates because refresh() rebuilds those from completeness
+     *  alone after every run - which used to erase the failed/truncated marks.
+     *  Partial because most rows have none - a plain Record would type every
+     *  lookup as present and make the completeness fallback look unreachable. */
+    const [runOutcome, setRunOutcome] = useState<Partial<Record<string, RowOutcome>>>({});
     /** false once unmounted → guards every post-await setState. */
     const mountedRef = useRef<boolean>(true);
     /** user-requested cancel → stops dispatching new arms (in-flight + already-
@@ -744,8 +883,34 @@ const RollupBackfillPanel: React.FC = () => {
 
     const anyOtherBusy = busy || togglingMaster || clearingAll;
 
+    /* Window selection. Deliberately NOT persisted: a backfill window is a
+     * decision about one run, and a remembered 365 would be an expensive
+     * surprise on the next visit. The default is the pre-session-131 constant,
+     * so an operator who ignores this control gets exactly the old behaviour:
+     * the same window AND, via planChunks, the same single dispatch per arm
+     * (build 353 had split it into two; session 132). */
+    const [presetDays, setPresetDays] = useState<number | 'custom'>(DEFAULT_PRESET_DAYS);
+    const [fromDate, setFromDate] = useState<string>('');
+    const [toDate, setToDate] = useState<string>('');
+
+    const winChoice: WindowChoice = presetDays === 'custom'
+        ? { kind: 'custom', from: fromDate, to: toDate }
+        : { kind: 'preset', days: presetDays };
+    /* Resolved every render rather than memoised: it is arithmetic on three
+     * small values, and memoising on Date.now() would pin the clock. */
+    const winResult = resolveWindow(winChoice, Date.now());
+    const fixed30Result = resolveWindow({ kind: 'preset', days: 30 }, Date.now());
+    const winOk = winResult.ok && fixed30Result.ok;
+    const chunkCount = winResult.ok
+        ? planChunks(winResult.window.earliest, winResult.window.latest).length
+        : 0;
+    const startBackfill = (defs: RollupDef[]): void => {
+        if (!winResult.ok || !fixed30Result.ok) return;
+        void runBackfill(defs, winResult.window, fixed30Result.window);
+    };
+
     const runBackfill = useCallback(
-        async (defs: RollupDef[]) => {
+        async (defs: RollupDef[], win: ResolvedWindow, fixed30: ResolvedWindow) => {
             if (defs.length === 0) return;
             if (runningRef.current) return; // re-entrancy guard (busy is async)
             runningRef.current = true;
@@ -753,6 +918,14 @@ const RollupBackfillPanel: React.FC = () => {
             setBusy(true);
             setOpError(null);
             setNotice(null);
+            setRunWarn(null);
+            setRunOutcome((prev) => {
+                const next = { ...prev };
+                defs.forEach((d) => {
+                    delete next[d.key];
+                });
+                return next;
+            });
 
             try {
                 setCollStates((prev) => {
@@ -763,13 +936,31 @@ const RollupBackfillPanel: React.FC = () => {
                     return next;
                 });
 
-                const items = await buildWorkItems(defs);
+                const items = await buildWorkItems(defs, win, fixed30);
                 const failedKeys = items.filter((it) => !it.spl);
                 const runnable = items.filter((it) => it.spl);
                 const totals: Record<string, number> = {};
                 runnable.forEach((it) => {
                     totals[it.key] = (totals[it.key] ?? 0) + 1;
                 });
+                /* Per-row depth refresh (session 134): a row whose arms have all
+                 * finished re-measures its depth at once. Before, it showed its
+                 * PRE-run depth until the whole run ended - a just-cleared row read
+                 * "empty" after a successful backfill, and in a long multi-rollup
+                 * run a finished row stayed stale for hours. */
+                const armsLeft: Record<string, number> = { ...totals };
+                const remeasure = async (key: string): Promise<void> => {
+                    const def = ROLLUPS.find((d) => d.key === key);
+                    if (!def || !mountedRef.current) return;
+                    setCollStates((prev) => (prev[key]
+                        ? { ...prev, [key]: { ...prev[key], oldestBucketMs: REMEASURING } }
+                        : prev));
+                    const hist = await fetchEntryHistory(def);
+                    if (!mountedRef.current) return;
+                    setCollStates((prev) => (prev[key]
+                        ? { ...prev, [key]: { ...prev[key], oldestBucketMs: hist.oldestMs } }
+                        : prev));
+                };
                 if (mountedRef.current) {
                     setCollStates((prev) => {
                         const next = { ...prev };
@@ -782,11 +973,22 @@ const RollupBackfillPanel: React.FC = () => {
                         return next;
                     });
                     setProgress({ done: 0, total: runnable.length, current: '' });
+                    if (failedKeys.length) {
+                        setRunOutcome((prev) => {
+                            const next = { ...prev };
+                            failedKeys.forEach((it) => {
+                                const merged = mergeRowOutcome(next[it.key], 'failed', null);
+                                if (merged) next[it.key] = merged;
+                            });
+                            return next;
+                        });
+                    }
                 }
 
                 let idx = 0; // claim-an-index: no `await` between read+increment → atomic
                 let failCount = 0;
                 let truncCount = 0;
+                let detachedCount = 0;
                 const worker = async (): Promise<void> => {
                     for (;;) {
                         if (cancelRef.current) return;
@@ -797,14 +999,23 @@ const RollupBackfillPanel: React.FC = () => {
                         if (mountedRef.current) {
                             setProgress((p) => ({
                                 ...p,
-                                current: `${it.label} (arm ${it.armIndex}/${it.armCount})`,
+                                current: it.chunkLabel
+                                    ? `${it.label} (arm ${it.armIndex}/${it.armCount} · ${it.chunkLabel})`
+                                    : `${it.label} (arm ${it.armIndex}/${it.armCount})`,
                             }));
                         }
-                        const result = await runArm(it.spl, () => cancelRef.current);
-                        if (result === 'cancelled') return;
-                        if (result === 'failed') failCount += 1;
-                        else if (result === 'truncated') truncCount += 1;
+                        const { verdict, sid } = await runArm(
+                            it.spl, it.earliest, it.latest, () => cancelRef.current,
+                        );
+                        if (verdict === 'failed') failCount += 1;
+                        else if (verdict === 'truncated') truncCount += 1;
+                        else if (verdict === 'detached') detachedCount += 1;
                         if (!mountedRef.current) return;
+                        setRunOutcome((prev) => {
+                            const cur = prev[it.key];
+                            const merged = mergeRowOutcome(cur, verdict, sid);
+                            return merged === cur || !merged ? prev : { ...prev, [it.key]: merged };
+                        });
                         setProgress((p) => ({ ...p, done: p.done + 1 }));
                         setCollStates((prev) => {
                             const cur = prev[it.key];
@@ -812,30 +1023,47 @@ const RollupBackfillPanel: React.FC = () => {
                             const armsDone = cur.armsDone + 1;
                             const complete = armsDone >= cur.armsTotal;
                             const status: CollStatus =
-                                cur.status === 'error' || result === 'failed'
+                                cur.status === 'error' || verdict === 'failed'
                                     ? 'error'
-                                    : cur.status === 'truncated' || result === 'truncated'
+                                    : cur.status === 'truncated' || verdict === 'truncated'
                                     ? 'truncated'
                                     : complete
                                     ? 'done'
                                     : 'running';
                             return { ...prev, [it.key]: { ...cur, armsDone, status } };
                         });
+                        armsLeft[it.key] -= 1;
+                        if (armsLeft[it.key] === 0) void remeasure(it.key);
                     }
                 };
                 await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
 
                 if (!mountedRef.current) return;
                 const cancelled = cancelRef.current;
+                /* A detached search is not a failure: it is still running on the server
+                 * and writes its rows when it finishes (utils/backfillPoll.ts). Say so
+                 * persistently, not in a notice that times out. */
+                setRunWarn(detachedCount
+                    ? `${detachedCount} search${detachedCount === 1 ? ' was' : 'es were'} still running `
+                      + 'on the server when this panel stopped waiting. They finish on their own and '
+                      + 'write their rows; the rollups involved are marked "still running on server" '
+                      + '(hover for the search IDs). Re-running those rollups before the searches '
+                      + 'finish repeats their work.'
+                    : null);
                 if (cancelled) {
-                    setNotice('Backfill cancelled. Already-dispatched searches finish server-side; re-run to complete the rest (idempotent).');
+                    setNotice('Backfill cancelled. Re-run to complete the rest (idempotent).');
                     window.setTimeout(() => mountedRef.current && setNotice(null), 10000);
                 } else if (failedKeys.length || failCount || truncCount) {
                     setOpError(
                         'Backfill finished with issues — re-run to retry (idempotent). Affected rollups are marked in the table.',
                     );
-                } else {
-                    setNotice('Backfill complete. All targeted rollups now hold 30 days of history.');
+                } else if (!detachedCount) {
+                    setNotice(
+                        `Backfill complete (${win.label}). Each rollup's own row shows the history `
+                        + 'it now holds. The two flat Environment Topology collections (inventory, '
+                        + 'IP enrichment) were refreshed over the last 30 days regardless of the '
+                        + 'chosen window — they describe current state, not history.',
+                    );
                     window.setTimeout(() => mountedRef.current && setNotice(null), 10000);
                 }
             } finally {
@@ -983,6 +1211,7 @@ const RollupBackfillPanel: React.FC = () => {
         <>
             {notice && <Banner $tone="good">{notice}</Banner>}
             {opError && <Banner $tone="error">{opError}</Banner>}
+            {runWarn && <Banner $tone="warn">{runWarn}</Banner>}
             {!busy && incompleteDefs.length > 0 && (
                 <Banner $tone="warn">
                     Dashboard history backfill needed — {incompleteDefs.length} of {ROLLUPS.length}{' '}
@@ -1047,17 +1276,111 @@ const RollupBackfillPanel: React.FC = () => {
             <SectionHeading>Backfill</SectionHeading>
             <FieldRow>
                 <div>
-                    <FieldLabel>One-time 30-day backfill</FieldLabel>
+                    <FieldLabel>Backfill window</FieldLabel>
                     <FieldHint>
-                        Required after first install. Fills the last 30 days of every rollup KV
-                        Store collection that powers the dashboards and the Environment Topology
-                        view. Each rollup&apos;s backfill is split into its component searches and
+                        How far back to rebuild. Dates are <strong>UTC whole days</strong>. Use a
+                        custom range to match a historical ingest — the{' '}
+                        <strong>S3 key dates</strong> you backfilled
+                        (<code>logserv/&lt;type&gt;/&lt;sub&gt;/YYYY/MM/DD/</code>), which are the
+                        event dates. On the Data TA&apos;s AWS S3 Direct screen those are the{' '}
+                        <strong>Scan from</strong> and <strong>Scan until</strong> dates: enter the
+                        same two here, for the same rows.
+                    </FieldHint>
+                    <PresetRow style={{ marginTop: 8 }}>
+                        {PRESET_DAYS.map((d) => (
+                            <PresetButton
+                                key={d}
+                                type="button"
+                                $on={presetDays === d}
+                                disabled={anyOtherBusy || busy}
+                                onClick={() => setPresetDays(d)}
+                            >
+                                {d} days
+                            </PresetButton>
+                        ))}
+                        <PresetButton
+                            type="button"
+                            $on={presetDays === 'custom'}
+                            disabled={anyOtherBusy || busy}
+                            onClick={() => {
+                                setPresetDays('custom');
+                                if (!fromDate) {
+                                    setFromDate(toUtcDateString(Date.now() - 30 * 86400000));
+                                }
+                                if (!toDate) setToDate(toUtcDateString(Date.now()));
+                            }}
+                        >
+                            Custom range
+                        </PresetButton>
+                    </PresetRow>
+                    {presetDays === 'custom' && (
+                        <DateRow>
+                            <label htmlFor="lsv-bf-from">From</label>
+                            <DateInput
+                                id="lsv-bf-from"
+                                type="date"
+                                value={fromDate}
+                                disabled={anyOtherBusy || busy}
+                                onChange={(e) => setFromDate(e.target.value)}
+                            />
+                            <label htmlFor="lsv-bf-to">to</label>
+                            <DateInput
+                                id="lsv-bf-to"
+                                type="date"
+                                value={toDate}
+                                disabled={anyOtherBusy || busy}
+                                onChange={(e) => setToDate(e.target.value)}
+                            />
+                            <span>(inclusive, UTC)</span>
+                        </DateRow>
+                    )}
+                    <WindowSummary $bad={!winResult.ok}>
+                        {/* A preset names its own length, so repeating it as a day
+                          * count read "last 30 days — 30 day(s)"; show where it
+                          * starts instead. A custom range already names its
+                          * dates, so it shows the inclusive day count. */}
+                        {winResult.ok
+                            ? (presetDays === 'custom'
+                                ? `Will rebuild ${winResult.window.label} — ${winResult.window.days} day(s)`
+                                : `Will rebuild the ${winResult.window.label} (since `
+                                  + `${toUtcDateString(winResult.window.earliest * 1000)} UTC)`)
+                              + `${chunkCount > 1 ? `, dispatched as ${chunkCount} monthly chunks per search` : ''}.`
+                            : winResult.error}
+                        {winResult.ok && isCostlyWindow(winResult.window) && (
+                            <div style={{ marginTop: 4 }}>
+                                That is roughly {Math.round(winResult.window.days / 30)}x the 30-day
+                                baseline and can run for hours on a large estate. It is safe to
+                                leave the page — dispatched searches finish server-side — and safe
+                                to re-run, since every chunk upserts by key.
+                            </div>
+                        )}
+                        <div style={{ marginTop: 4 }}>
+                            The two flat Environment Topology collections (inventory, IP enrichment)
+                            always refresh over the last 30 days regardless of this setting: they
+                            describe current state rather than history, and a longer window resolves
+                            fewer partner IPs to SIDs, not more.
+                        </div>
+                    </WindowSummary>
+                </div>
+                <span />
+                <span />
+            </FieldRow>
+            <FieldRow>
+                <div>
+                    <FieldLabel>Run the backfill</FieldLabel>
+                    <FieldHint>
+                        Required after first install. Fills the window selected above for every
+                        rollup KV Store collection that powers the dashboards and the Environment
+                        Topology view. Each rollup&apos;s backfill is split into its component
+                        searches, then into monthly chunks, and
                         dispatched as top-level jobs (so they complete correctly even at high event
                         volumes — unlike running the bundled <code>*_backfill</code> saved searches
                         directly, which truncate at scale). Idempotent — safe to re-run;
                         already-complete rollups are skipped. Runs server-side; already-dispatched
                         searches keep running if you leave this page, and re-opening resumes any
-                        remaining work.
+                        remaining work. Each search is waited on for as long as Splunk reports
+                        it running; one still running when you cancel is marked &ldquo;still
+                        running on server&rdquo; — not failed.
                     </FieldHint>
                     {/* Build 325 (plan item E2) — the RFC re-key upgrade note. Phrased by
                       * FEATURE, not by version (session-017 sticky: no version numbers in
@@ -1080,13 +1403,54 @@ const RollupBackfillPanel: React.FC = () => {
                         installs older than that, the release notes describe an RFC-only
                         migration that keeps the rest of the history.
                     </FieldHint>
+                    {/* Session 134 (build 358) - two rollups now record corrected values
+                      * for existing data, so an upgraded install needs one Clear +
+                      * Backfill of each: Change & Configuration no longer stores an
+                      * after-hours flag classified in the writer's time zone (it could
+                      * store an hour twice); Linux no longer records word fragments as
+                      * kernel event types. Session 138 (build 361) adds Beaconing
+                      * detection, which this note had missed: build 356 moved its day
+                      * key from the writer's midnight to UTC midnight, the same class of
+                      * double count (the upgrade guide already named it). Phrased by
+                      * feature, no versions (session-017 sticky). */}
+                    <FieldHint style={{ marginTop: 8 }}>
+                        Upgrading note: three rollups record corrected values and need one
+                        <strong> Clear</strong> then <strong>Backfill</strong> after an upgrade
+                        &mdash; &ldquo;Beaconing detection&rdquo; (it used to key each day on midnight
+                        in the time zone of whichever search wrote it, so a day could be stored twice),
+                        &ldquo;Change &amp; Configuration Activity&rdquo; (it used to store an
+                        after-hours flag in the time zone of whichever search wrote the row, so an
+                        hour could be counted twice) and &ldquo;Linux System &amp; Security&rdquo; (it
+                        used to record fragments of ordinary words as kernel event types). All three
+                        are rebuilt from the indexed events.
+                    </FieldHint>
+                    {/* Sessions 139-140 (builds 364-365) - real SAP LogServ records keep the JSON
+                      * escapes of the source record and use formats the demo data never had: the
+                      * Squid key=value (recommended) format, the HANA audit status of every action,
+                      * upper-case password statements. Rows written before the upgrade keep the old
+                      * values, some under the old key (none), so the proxy, HANA and cross-stack
+                      * rollups need Clear + Backfill; five more only recount what they hold. Same
+                      * wording as the upgrade guide. Phrased by feature, no versions (session-017
+                      * sticky). */}
+                    <FieldHint style={{ marginTop: 8 }}>
+                        Upgrading note: real SAP LogServ proxy and HANA audit records are now parsed
+                        as they arrive, so rows written before the upgrade hold the old values. Click
+                        <strong> Clear</strong> then <strong>Backfill</strong> once on &ldquo;Proxy
+                        Analytics&rdquo;, &ldquo;HANA Audit&rdquo; and &ldquo;Cross-Stack
+                        Authentication&rdquo;; then <strong>Backfill</strong>, without Clear,
+                        &ldquo;Network Perimeter&rdquo;, &ldquo;Environment Health&rdquo;, &ldquo;Beaconing
+                        detection&rdquo; and the two &ldquo;Environment Topology&rdquo; rows, which
+                        recount what they already hold.
+                    </FieldHint>
                 </div>
                 <ButtonRow>
                     <Button
                         type="button"
                         $variant="primary"
-                        onClick={() => runBackfill(incompleteDefs.length ? incompleteDefs : ROLLUPS)}
-                        disabled={anyOtherBusy || loading}
+                        onClick={() => startBackfill(
+                            incompleteDefs.length ? incompleteDefs : ROLLUPS,
+                        )}
+                        disabled={anyOtherBusy || loading || !winOk}
                     >
                         {busy
                             ? 'Backfilling…'
@@ -1130,13 +1494,18 @@ const RollupBackfillPanel: React.FC = () => {
             {ROLLUPS_SORTED.map((def) => {
                 const st = collStates[def.key];
                 const a = aggStates[def.key];
-                const status = st?.status ?? 'unknown';
+                const outcome = runOutcome[def.key];
+                /* The last run's outcome outlives the post-run refresh(), which
+                 * rebuilds collStates from completeness alone. A row still
+                 * backfilling shows its progress first. */
+                const status: CollStatus | 'detached' =
+                    st?.status === 'running' ? 'running' : outcome?.status ?? st?.status ?? 'unknown';
                 const tone: 'good' | 'absent' | 'error' | 'warn' | 'running' =
                     status === 'complete' || status === 'done'
                         ? 'good'
                         : status === 'error'
                         ? 'error'
-                        : status === 'truncated'
+                        : status === 'truncated' || status === 'detached'
                         ? 'warn'
                         : status === 'running'
                         ? 'running'
@@ -1146,15 +1515,22 @@ const RollupBackfillPanel: React.FC = () => {
                 const historyText =
                     status === 'running'
                         ? `backfilling ${st?.armsDone ?? 0}/${st?.armsTotal ?? '?'}`
+                        : status === 'done' && st?.oldestBucketMs === REMEASURING
+                        ? 'refreshing…'
                         : status === 'done' || status === 'complete'
                         ? fmtAge(st?.oldestBucketMs ?? 0)
                         : status === 'error'
                         ? 'failed — re-run'
                         : status === 'truncated'
                         ? 'truncated — re-run'
+                        : status === 'detached'
+                        ? 'still running on server'
                         : status === 'incomplete'
                         ? fmtAge(st?.oldestBucketMs ?? 0)
                         : '—';
+                const historyTitle = outcome && outcome.sids.length
+                    ? `Still running on the server when this panel stopped waiting: ${outcome.sids.join(', ')}`
+                    : undefined;
                 const rowEnabled =
                     !!a && a.existCount === a.total && a.enabledCount === a.total && a.total > 0;
                 const rowMixed = !!a && a.enabledCount > 0 && a.enabledCount < a.total;
@@ -1186,12 +1562,12 @@ const RollupBackfillPanel: React.FC = () => {
                             />
                             {rowToggleText}
                         </RowToggle>
-                        <HistoryVal $tone={tone}>{historyText}</HistoryVal>
+                        <HistoryVal $tone={tone} title={historyTitle}>{historyText}</HistoryVal>
                         <RowActions>
                             <SmallButton
                                 type="button"
-                                onClick={() => runBackfill([def])}
-                                disabled={anyOtherBusy || !!op || loading}
+                                onClick={() => startBackfill([def])}
+                                disabled={anyOtherBusy || !!op || loading || !winOk}
                             >
                                 Backfill
                             </SmallButton>

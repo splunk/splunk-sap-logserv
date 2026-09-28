@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import Pie from '@splunk/visualizations/Pie';
 import { useSearch } from '../hooks/useSearch';
 import { logservTheme } from '../styles/logservTheme';
-import { ChartPalette, paletteColors, statusFieldColors } from '../styles/chartPalettes';
+import { ChartPalette, paletteColorsFor, statusFieldColors } from '../styles/chartPalettes';
 import { useThemeMode } from '../state/ThemeModeProvider';
 import GradientWrap from './GradientWrap';
 import LegendTitleTooltips from './LegendTitleTooltips';
@@ -140,7 +140,12 @@ const PieChart: React.FC<PieChartProps> = ({
         );
     }
 
-    const paletteSeriesColors = paletteColors(palette, mode);
+    /* Wedge count drives the palette — see TimeSeriesChart for the cycling
+     * rationale. A pie repeats a colour as soon as it has more wedges than
+     * the palette has colours, which for the two-colour error ramps means
+     * three wedges. */
+    const wedgeCount = results ? results.length : 0;
+    const paletteSeriesColors = paletteColorsFor(wedgeCount, palette, mode);
     const finalSeriesColors = seriesColorsProp ?? paletteSeriesColors;
     const paletteFieldColors = palette === 'status' ? statusFieldColors(mode) : undefined;
     const finalFieldColors = seriesColorsByFieldProp

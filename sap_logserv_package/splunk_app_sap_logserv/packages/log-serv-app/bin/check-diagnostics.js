@@ -132,6 +132,23 @@ const TESTS = [
     // (per-IP hostname uniqueness after normalization, the crowd guard, the
     // user-line rule, sanitize-on-read). The conf side is section 3r.
     'topologyEnrichment.consistency-test',
+    // Session 131 - the custom backfill window: UTC resolution under a frozen
+    // clock, the retention floor, and the CHUNK COVER (contiguous, ordered,
+    // day-aligned, exactly covering the window). The cover is what makes
+    // chunking safe: an overlap double-aggregates an hourly bucket, a gap
+    // leaves an hour unbuilt, and a boundary inside a day would split the
+    // day-scoped beaconing streamstats.
+    'backfillWindow.consistency-test',
+    // Session 132 - the chart colour maps: every status word's case variants
+    // agree (HANA Audit's upper-case HIGH/MEDIUM/LOW had matched nothing), words
+    // that share a chart never share a colour (Windows drew critical and high in
+    // one red), and the build-352 count-aware fallback only fires past the ramp.
+    'chartPalettes.consistency-test',
+    // Session 134 - the backfill wait policy: no poll-count ceiling (build 353
+    // reported a still-running search FAILED after ~90 minutes), only Splunk's
+    // own verdicts fail an arm, and anything else that ends the wait is
+    // DETACHED ("still running on the server"). Mutation-tested 28/28.
+    'backfillPoll.consistency-test',
 ];
 
 let failed = false;
@@ -634,6 +651,132 @@ if (missing.length || extra.length) {
         if (!clzFailed) {
             console.log(
                 `check-diagnostics: clz map derived from the Data TA matches (${sKeys.length} sourcetypes)`,
+            );
+        }
+    }
+}
+
+// --- 3e-2: the S3 Direct dashboard table (session 135, S3 design note §18.8) --
+//
+// The Data TA's AWS S3 Direct screen offers this App's Settings -> Dashboard
+// Data rows and reads the S3 folders each one is built from. It runs on a
+// heavy forwarder, which cannot read this App, so the table ships in the Data
+// TA's logserv_s3_direct.js as strict JSON between two marker comments. This
+// gate re-derives it the way that design says - ROLLUPS_SORTED x
+// extractAggregateScope over each row's aggregate AND backfill stanzas x
+// SOURCETYPE_CLZ_MAP / TAG_CLZ_MAP, a row whose searches constrain nothing
+// reading every folder - and fails on any difference in rows, order, labels or
+// folders. It also holds the screen's CLZ_PAIRS to the routed set, which check
+// 29 above ties to the Data TA's own annotations. HARD-FAIL when the script is
+// missing, like check 29. LOGSERV_S3_DIRECT_JS overrides the path, so the
+// gate's control runs can point it at a pre-change or deliberately drifted copy.
+{
+    let s3Failed = false;
+    const s3Fail = (msg) => {
+        s3Failed = true;
+        failed = true;
+        console.error(msg);
+    };
+    const S3_JS = process.env.LOGSERV_S3_DIRECT_JS || path.resolve(
+        __dirname,
+        '../../../../splunk_ta_sap_logserv/package/appserver/static/logserv_s3_direct.js',
+    );
+    if (!fs.existsSync(S3_JS)) {
+        s3Fail(`check-diagnostics: the Data TA's S3 Direct script is missing at\n  ${S3_JS}`);
+    } else {
+        const s3Text = fs.readFileSync(S3_JS, 'utf8');
+        const tm = /\/\* BEGIN ROLLUP_FOLDERS \*\/\s*var ROLLUP_FOLDERS = ([\s\S]*?);\s*\/\* END ROLLUP_FOLDERS \*\//.exec(s3Text);
+        let shippedRows = null;
+        if (!tm) {
+            s3Fail('check-diagnostics: logserv_s3_direct.js carries no ROLLUP_FOLDERS table between its markers');
+        } else {
+            try {
+                shippedRows = JSON.parse(tm[1]);
+            } catch (e) {
+                s3Fail(`check-diagnostics: the ROLLUP_FOLDERS table in logserv_s3_direct.js is not strict JSON (${e.message})`);
+            }
+        }
+        const pm = /var CLZ_PAIRS = \[([\s\S]*?)\];/.exec(s3Text);
+        const shippedPairs = pm ? (pm[1].match(/'([^']+)'/g) || []).map((q) => q.slice(1, -1)) : null;
+
+        const { extractAggregateScope } = loadTs(path.join(UTILS, 'diagEvidence'));
+        const { ROLLUPS_SORTED } = loadTs(path.resolve(__dirname, '../src/main/webapp/pages/home/routes/rollupRegistry'));
+        const { SOURCETYPE_CLZ_MAP, TAG_CLZ_MAP } = loadTs(path.join(UTILS, 'diagIngestFacts'));
+        const ssText = fs.readFileSync(
+            path.resolve(__dirname, '../src/main/resources/splunk/default/savedsearches.conf'),
+            'utf8',
+        );
+        const stanzaBody = {};
+        let current = null;
+        for (const raw of ssText.split('\n')) {
+            const m = /^\[(.+)\]\s*$/.exec(raw.trim());
+            if (m) {
+                current = m[1];
+                stanzaBody[current] = [];
+            } else if (current) {
+                stanzaBody[current].push(raw);
+            }
+        }
+        const uniqSorted = (a) => Array.from(new Set(a)).sort();
+        const ALL = uniqSorted([].concat(...Object.values(SOURCETYPE_CLZ_MAP)));
+        const expected = ROLLUPS_SORTED.map((r) => {
+            let sts = [];
+            let tags = [];
+            for (const name of r.aggregateSearches.concat(r.backfillStanzas)) {
+                if (!stanzaBody[name]) {
+                    s3Fail(`check-diagnostics: rollup "${r.key}" names a missing stanza [${name}]`);
+                    continue;
+                }
+                const sc = extractAggregateScope(stanzaBody[name].join('\n'));
+                sts = sts.concat(sc.sourcetypes);
+                tags = tags.concat(sc.tags);
+            }
+            let folders = [];
+            sts.forEach((s) => { folders = folders.concat(SOURCETYPE_CLZ_MAP[s] || []); });
+            tags.forEach((t) => { folders = folders.concat(TAG_CLZ_MAP[t] || []); });
+            const unscoped = sts.length === 0 && tags.length === 0;
+            return { key: r.key, label: r.label, folders: unscoped ? ALL : uniqSorted(folders) };
+        });
+
+        if (shippedRows) {
+            const want = expected.map((r) => r.key).join(',');
+            const got = shippedRows.map((r) => r.key).join(',');
+            if (want !== got) {
+                s3Fail(
+                    "check-diagnostics: S3 Direct ROLLUP_FOLDERS rows drifted from the App's rollups (order included)" +
+                        `\n  App:     ${want}\n  Data TA: ${got}`,
+                );
+            } else {
+                expected.forEach((r, i) => {
+                    const sh = shippedRows[i];
+                    if (sh.label !== r.label) {
+                        s3Fail(
+                            `check-diagnostics: S3 Direct ROLLUP_FOLDERS['${r.key}'] label drifted:` +
+                                `\n  App:     ${r.label}\n  Data TA: ${sh.label}`,
+                        );
+                    }
+                    const a = r.folders.join('|');
+                    const b = (sh.folders || []).join('|');
+                    if (a !== b) {
+                        s3Fail(
+                            `check-diagnostics: S3 Direct ROLLUP_FOLDERS['${r.key}'] folders drifted:` +
+                                `\n  App:     ${a}\n  Data TA: ${b}`,
+                        );
+                    }
+                });
+            }
+        }
+        if (!shippedPairs) {
+            s3Fail('check-diagnostics: logserv_s3_direct.js carries no CLZ_PAIRS list');
+        } else if (shippedPairs.length !== ALL.length || uniqSorted(shippedPairs).join('|') !== ALL.join('|')) {
+            s3Fail(
+                'check-diagnostics: S3 Direct CLZ_PAIRS drifted from the routed set' +
+                    `\n  routed:  ${ALL.join(', ')}\n  Data TA: ${shippedPairs.join(', ')}`,
+            );
+        }
+        if (!s3Failed) {
+            console.log(
+                `check-diagnostics: S3 Direct dashboard table matches the App's rollups (${expected.length} rows, ${ALL.length} folders)`,
             );
         }
     }
@@ -2271,10 +2414,35 @@ if (missing.length || extra.length) {
                 for (let k = 1; k < cycled.length; k += 1) {
                     adjMin = Math.min(adjMin, pfMod.colorDistance(cycled[k - 1], cycled[k]));
                 }
-                if (adjMin < baseMin - 1e-6) {
+                // ABSOLUTE floor, not `>= baseMin` (changed 2026-09-20, session 129,
+                // plan v0.2 Phase 6; user-ratified).
+                //
+                // The old bar compared two quantities that move in OPPOSITE
+                // directions as a palette improves: raising the base colours'
+                // separation raises baseMin, while the shade schedule compresses
+                // every colour toward black/white as the cycle deepens (factor
+                // ~0.44 by cycle 4), so adjMin barely moves. A well-separated
+                // palette therefore FAILS a bar that a poorly-separated one
+                // clears -- the guard rewarded the wrong thing. Measured:
+                //
+                //   palette            baseMin   adjMin
+                //   Harbor  dark          46.0     52.7   passed (46.0 <= 52.7)
+                //   Harbor  light         43.2     57.5   passed
+                //   scaffold dark         89.7     53.4   would FAIL on 89.7
+                //   scaffold light        80.7     48.7   would FAIL on 80.7
+                //
+                // The scaffold palette is strictly better separated at the base
+                // and comparable at adjacency; only the relative bar objected.
+                // 40 is anchored to the palette that actually shipped for months
+                // -- below Harbor's own baseMin (43.2 / 46.0), and below every
+                // adjMin measured above -- so it still catches a shade schedule
+                // that genuinely collapses, which is what this check is for.
+                const ADJ_FLOOR = 40;
+                if (adjMin < ADJ_FLOOR - 1e-6) {
                     console.error(
-                        `check-diagnostics: ${labels[i]} adjacent wedges fall below the base palette's `
-                        + `separation (${adjMin.toFixed(1)} < ${baseMin.toFixed(1)})`,
+                        `check-diagnostics: ${labels[i]} adjacent wedges are not separable `
+                        + `(${adjMin.toFixed(1)} < ${ADJ_FLOOR}) — the shade schedule has collapsed; `
+                        + `base palette separation is ${baseMin.toFixed(1)}`,
                     );
                     failed = true;
                 }
@@ -2368,6 +2536,126 @@ if (missing.length || extra.length) {
     }
 
     console.log('check-diagnostics: node-panel claims pinned (traffic scope, attribution key, ownership gate, host cap)');
+}
+
+// --- 3s: no timezone-dependent DAY key in any rollup (session 132) ----------
+//
+// `bin/bucket _time span=1d` and a `@d` snap resolve to midnight IN THE
+// DISPATCHING USER'S TIMEZONE. The scheduled aggregates run in the server's
+// timezone (UTC on the reference box); Settings -> Dashboard Data dispatches
+// every backfill as the SIGNED-IN USER (America/Chicago on the reference box).
+// For the day-keyed beaconing rollups that stored the same calendar day under
+// two keys, and the dashboards SUM rows: measured, the Beaconing Domains KPI
+// read 1,777 for 30 days against 688 / 1,089 per key family, with 73 days
+// carrying both. The day is now UTC epoch arithmetic, floor(_time/86400)*86400,
+// and every beaconing stanza narrows its dispatch window to the COMPLETE UTC
+// days inside it (subsearch: addinfo -> ceil/floor to 86400), so a non-UTC
+// search head cannot feed a partial UTC day. The same text sits in aggregate
+// and backfill - section 3l's identity premise holds. Hourly `span=1h` keys are left alone:
+// sub-day bins align to the EPOCH hour in every timezone. Measured in session
+// 134 with the admin set to Asia/Kolkata (+05:30): daily bins moved to local
+// midnight; hourly bins (bin, bucket, timechart) and an @h snap did not.
+//
+// Session 134 also bans strftime() from every rollup search. The compliance
+// rollup classified after-hours with strftime(_time, "%H"/"%A") - the
+// dispatcher's timezone - and put the flag in _key: 2,068 hour-groups were
+// stored twice and Total Changes read +23.8% over 30 days. After-hours is now
+// derived at read time (ChangeConfig AFTER_HOURS).
+{
+    const DEFAULT_DIR_3S = path.resolve(__dirname, '../src/main/resources/splunk/default');
+    const conf3s = fs.readFileSync(path.join(DEFAULT_DIR_3S, 'savedsearches.conf'), 'utf8');
+    const stanzas3s = {};
+    let cur3s = null;
+    for (const raw of conf3s.split('\n')) {
+        const m = /^\[(.+)\]\s*$/.exec(raw.trim());
+        if (m) { cur3s = m[1]; stanzas3s[cur3s] = []; } else if (cur3s) stanzas3s[cur3s].push(raw);
+    }
+    const searchOf = (n) => {
+        const line = (stanzas3s[n] || []).find((l) => /^search\s*=/.test(l));
+        return line ? line.replace(/^search\s*=\s*/, '') : '';
+    };
+    const p3s = (label, ok, detail) => {
+        if (!ok) {
+            console.error(`check-diagnostics: 3s ${label}: ${detail}`);
+            failed = true;
+        }
+    };
+    const rollupSearches = Object.keys(stanzas3s).filter((n) => /^logserv_.+_(aggregate|backfill)$/.test(n));
+    p3s('denominator', rollupSearches.length >= 40,
+        `only ${rollupSearches.length} rollup aggregate/backfill stanzas found - did the parse break?`);
+    for (const n of rollupSearches) {
+        const s = searchOf(n);
+        p3s(`${n} bins by DAY`, !/span\s*=\s*1\s*d(ay)?\b/.test(s),
+            'span=1d is a midnight in the dispatcher timezone - use floor(_time/86400)*86400');
+        p3s(`${n} snaps to @d`, !/@d\b/.test(s),
+            '@d is a midnight in the dispatcher timezone');
+        p3s(`${n} formats time`, !/strftime\s*\(/.test(s),
+            'strftime renders in the dispatcher timezone - a rollup key or value built from it differs between the schedule and a Settings backfill; derive it at read time or use epoch arithmetic');
+    }
+    const UTC_DAY = 'floor(_time/86400)*86400';
+    const OVERRIDE = 'return earliest latest';
+    const count = (s, needle) => s.split(needle).length - 1;
+    const beacon = {
+        logserv_beaconing_aggregate: { days: 1, overrides: 1 },
+        logserv_beaconing_backfill: { days: 1, overrides: 1 },
+        logserv_beaconing_detail_aggregate: { days: 2, overrides: 2 },
+        logserv_beaconing_detail_backfill: { days: 2, overrides: 2 },
+    };
+    for (const [n, want] of Object.entries(beacon)) {
+        const s = searchOf(n);
+        p3s(`${n} present`, s.length > 0, 'stanza or search line missing');
+        p3s(`${n} UTC day`, count(s, UTC_DAY) === want.days,
+            `expected ${want.days} x ${UTC_DAY}, found ${count(s, UTC_DAY)}`);
+        p3s(`${n} complete-UTC-day window`, count(s, OVERRIDE) === want.overrides,
+            `every arm must narrow its window to the complete UTC days inside it (${want.overrides} expected, ${count(s, OVERRIDE)} found)`);
+    }
+}
+
+// --- 3t: the backfill panel waits on the job; after-hours is read-time ------
+//
+// Session 134. The wait policy lives in utils/backfillPoll.ts (mutation-tested
+// 28/28); these pins stop the panel from quietly growing its own ceiling back,
+// and the compliance dashboard from reading a stored after-hours flag again.
+{
+    const HOME_3T = path.resolve(__dirname, '../src/main/webapp/pages/home');
+    const panel3t = fs.readFileSync(path.join(HOME_3T, 'components/RollupBackfillPanel.tsx'), 'utf8');
+    const cc3t = fs.readFileSync(path.join(HOME_3T, 'dashboards/ChangeConfig.tsx'), 'utf8');
+    const tr3t = fs.readFileSync(path.resolve(__dirname, '../src/main/resources/splunk/default/transforms.conf'), 'utf8');
+    const p3t = (label, ok, detail) => {
+        if (!ok) {
+            console.error(`check-diagnostics: 3t ${label}: ${detail}`);
+            failed = true;
+        }
+    };
+    p3t('panel poll ceiling', !/MAX_POLLS|MAX_NULL_STREAK|exceeded the poll ceiling/.test(panel3t),
+        'a poll-count ceiling reports still-running searches as failed - use utils/backfillPoll.ts');
+    p3t('panel wait policy', /from '\.\.\/utils\/backfillPoll'/.test(panel3t)
+        && /decidePoll\(/.test(panel3t) && /pollDelayMs\(/.test(panel3t),
+        'runArm must decide through decidePoll and pace through pollDelayMs');
+    p3t('panel row outcomes', /mergeRowOutcome\(/.test(panel3t),
+        'row outcomes must survive the post-run refresh (mergeRowOutcome)');
+    p3t('after-hours read-time', /const AFTER_HOURS = /.test(cc3t)
+        && !/\$\{MAIN\}\s*\|\s*search is_after_hours/.test(cc3t),
+        'the compliance rollup no longer stores is_after_hours - derive it from bucket_ts (AFTER_HOURS)');
+    const fl3t = /\[logserv_compliance_rollup\][\s\S]*?fields_list\s*=\s*([^\r\n]*)/.exec(tr3t);
+    p3t('compliance fields_list', !!fl3t && !/is_after_hours/.test(fl3t[1]),
+        'transforms.conf still lists is_after_hours for logserv_compliance_rollup');
+    // Build 358: the Linux rollup and its raw twin must classify kernel lines the
+    // same way, and the tag may not be a lone capital ("Write cache" -> W).
+    const ss3t = fs.readFileSync(path.resolve(__dirname, '../src/main/resources/splunk/default/savedsearches.conf'), 'utf8');
+    const linux3t = fs.readFileSync(path.join(HOME_3T, 'dashboards/Linux.tsx'), 'utf8');
+    // `rex field=_raw "` is 16 characters; the TSX copy sits in a template literal
+    // (every backslash doubled), so it is un-doubled before comparing.
+    const kRe = /rex field=_raw "(kernel:[^"]*\(\?<kernel_event>[^"]*)"/g;
+    const confRex = (ss3t.match(kRe) || []).map((m) => m.slice(16, -1));
+    const tsxRex = (linux3t.match(kRe) || []).map((m) => m.slice(16, -1).replace(/\\\\/g, '\\'));
+    p3t('kernel rex count', confRex.length === 2 && tsxRex.length === 1,
+        `expected 2 conf + 1 Linux.tsx kernel rex, found ${confRex.length} + ${tsxRex.length}`);
+    p3t('kernel rex identity', new Set(confRex.concat(tsxRex)).size === 1,
+        'the Linux aggregate, backfill and raw twin must carry the identical kernel rex');
+    p3t('kernel rex tag shape', confRex.every((r) => r.includes('(?<kernel_event>[A-Z]{2}')),
+        'the kernel_event tag must start with two capitals - a lone capital is a word fragment');
+    console.log('check-diagnostics: 3t backfill wait policy + read-time after-hours pinned');
 }
 
 // --- 3n: every consistency test on disk is actually wired ------------------

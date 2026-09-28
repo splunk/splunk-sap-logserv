@@ -12,6 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Windows Events — honest port of v0.0.4.2 logserv_windows.xml.
@@ -77,11 +78,11 @@ const Q_BASE = {
     sparkCritical: `${MAIN} | search severity IN ("critical", "high") | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkHosts: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(host="(none)",null(),host))) as hosts | fillnull value=0`,
 
-    volumeByLog: `${MAIN} | search source!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by source | fillnull value=0`,
-    severity: `${MAIN} | search severity!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by severity | fillnull value=0`,
+    volumeByLog: `${MAIN} | search source!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by source | fillnull value=0`,
+    severity: `${MAIN} | search severity!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by severity | fillnull value=0`,
     topEvents: `${MAIN} | eval _time=last_seen, log_name=replace(source,"WinEventLog:","") | stats sum(count) as Events, dc(eval(if(host="(none)",null(),host))) as Hosts, latest(eval(if(signature="(none)",null(),signature))) as Description, latest(eval(if(severity="(none)",null(),severity))) as Severity, latest(eval(if(log_name="(none)",null(),log_name))) as Source, max(last_seen) as last_seen_ts by EventCode | eval "Last Seen" = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | sort -Events | table EventCode, Description, Source, Severity, Events, Hosts, "Last Seen" | rename EventCode as "Event Code"`,
     serviceEvents: `${SVC} | eval _time=bucket_ts | stats sum(count) as Events, latest(svc_state) as "Last State" by svc_name | sort -Events | rename svc_name as "Service Name"`,
-    powershell: `${MAIN} | where match(source, "(?i)powershell") | eval _time=bucket_ts | timechart span=1d sum(count) as "PowerShell Events" | fillnull value=0`,
+    powershell: `${MAIN} | where match(source, "(?i)powershell") | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) as "PowerShell Events" | fillnull value=0`,
 };
 
 /* ---------------------------------------------------------------------------
@@ -101,11 +102,11 @@ const QRAW_BASE = {
     kpiTotal: `${RAW_WIN} | stats count`,
     kpiCritical: `${RAW_WIN} severity IN ("critical","high") | stats count`,
     kpiHosts: `${RAW_WIN} | stats dc(host) as hosts`,
-    volumeByLog: `${RAW_WIN} | timechart span=1d count by source | fillnull value=0`,
-    severity: `${RAW_WIN} | where isnotnull(severity) | timechart span=1d count by severity | fillnull value=0`,
+    volumeByLog: `${RAW_WIN} | timechart span=__LSV_SPAN__ count by source | fillnull value=0`,
+    severity: `${RAW_WIN} | where isnotnull(severity) | timechart span=__LSV_SPAN__ count by severity | fillnull value=0`,
     topEvents: `${RAW_WIN} | eval log_name = replace(source, "WinEventLog:", "") | stats count as Events, dc(host) as Hosts, latest(signature) as Description, latest(severity) as Severity, latest(log_name) as Source, latest(_time) as last_seen_ts by EventCode | eval "Last Seen" = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | sort -Events | table EventCode, Description, Source, Severity, Events, Hosts, "Last Seen" | rename EventCode as "Event Code"`,
     serviceEvents: `${RAW_WIN} source IN ("WinEventLog:System","XmlWinEventLog:System") EventCode IN (7036, 7034, 7031) | rex field=_raw "<Data Name='param1'>(?<svc_name>[^<]+)</Data>" | rex field=_raw "<Data Name='param2'>(?<svc_state>[^<]+)</Data>" | where isnotnull(svc_name) | stats count as Events latest(svc_state) as "Last State" by svc_name | sort -Events | rename svc_name as "Service Name"`,
-    powershell: `${RAW_WIN} | where match(source, "(?i)powershell") | timechart span=1d count as "PowerShell Events" | fillnull value=0`,
+    powershell: `${RAW_WIN} | where match(source, "(?i)powershell") | timechart span=__LSV_SPAN__ count as "PowerShell Events" | fillnull value=0`,
 };
 
 interface FirstRow {
@@ -146,10 +147,15 @@ const SERVICE_COLS: ColumnDef[] = [
 ];
 
 const Windows: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const critical = useFirstRowFieldHybrid(Q.kpiCritical, QRAW.kpiCritical, 'count');
     const hosts = useFirstRowFieldHybrid(Q.kpiHosts, QRAW.kpiHosts, 'hosts');
@@ -165,7 +171,6 @@ const Windows: React.FC = () => {
     const criticalTone = Number(critical.value ?? 0) > 0 ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goEventCodeRow = (row: Record<string, unknown>): void => {
         const ec = String(row['Event Code'] ?? '');
         if (!ec) return;

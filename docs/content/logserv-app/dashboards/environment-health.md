@@ -51,7 +51,7 @@ The dashboard reads three kinds of source, chosen per panel for the cheapest pat
   ABAP family, Web Dispatcher, SAP Cloud Connector, SAProuter, sapstartsrv, Windows event logs,
   Linux secure and Squid proxy).
 - **The Beaconing Domains KPI** reads the daily `logserv_beaconing_rollup` (populated at 00:30 by a
-  per-day gap-variance detection over DNS query events — daily cadence because the detection
+  per-UTC-day gap-variance detection over DNS query events — daily cadence because the detection
   needs at least a day of inter-arrival history).
 - **Pure-count pipeline panels** run `tstats` directly against indexed fields — no summary
   needed, fast at any volume.

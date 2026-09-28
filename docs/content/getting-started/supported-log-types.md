@@ -126,13 +126,15 @@ The `lastlog`, `who`, `linux_secure`, and `linux_messages_syslog` sourcetypes ar
 | /var/log/firewall | linux_secure | `linux/linux_secure` |
 | /var/log/kernel | linux_secure | `linux/linux_secure` |
 | /var/log/localmessages | linux_messages_syslog | `linux/localmessages` |
-| /var/log/messages | linux_messages_syslog | `linux/messages` |
-| /var/log/pacemaker/pacemaker.log | linux:slapd | `linux/slapd` |
+| /var/log/messages | linux_messages_syslog | `linux/messages`, `linux/proxy` |
+| /var/log/pacemaker/pacemaker.log | linux:slapd | `linux/pacemaker`, `linux/slapd` |
 | /var/log/slapd.log | linux:slapd | `linux/slapd` |
 | /var/log/sssd/sssd* | linux_secure | `linux/linux_secure` |
 | /var/log/sudolog | linux:sudolog | `linux/sudolog` |
 | /var/log/warn | linux:warn | `linux/warn` |
 | /who | who | `linux/linux_secure` |
+
+On `/var/log/pacemaker/pacemaker.log` lines the App extracts `resource_agent` and `cluster_resource` from resource-agent lines and `pacemaker_daemon` and `pacemaker_function` from daemon lines. `slapd.log` lines name no user.
 
 
 ### <a href="https://splunkbase.splunk.com/app/742" target="_blank">Splunk Add-on for Microsoft Windows</a>
@@ -144,15 +146,17 @@ The `lastlog`, `who`, `linux_secure`, and `linux_messages_syslog` sourcetypes ar
 | WinEventLog:Security | XmlWinEventLog | `windows/WinEventLog:Security` |
 | WinEventLog:System | XmlWinEventLog | `windows/WinEventLog:System` |
 
-### Squid Proxy (`squid:access`)
+### Squid Proxy (`squid:access`, `squid:cache`, `squid:store`) { #squid-proxy-squidaccess }
 
-Parsing is absorbed natively into the LogServ App (from the archived Splunk Add-on for Squid Proxy v2.1.0 — no longer required as a separate install).
+Parsing of Squid's native format is absorbed into the LogServ App (from the archived Splunk Add-on for Squid Proxy v2.1.0 — no longer required as a separate install), and the App parses the `logformat=splunk_recommended_squid` key=value format SAP LogServ proxy logs use with its own transforms. Each file has its own sourcetype: `access.log` holds the requests, `cache.log` the daemon's own messages and `store.log` the object-store journal. Data indexed by an earlier Data TA carries all three as `squid:access`, so the dashboards count only `access.log` lines as requests.
 
 | Source field value | Sourcetype assigned | Filter path |
 |-----------------------------|-------------------------|-------------|
-| /var/log/squid/access.log | squid:access | `proxy/squid` |
-| /var/log/squid/cache.log | squid:access | `proxy/squid` |
-| /var/log/squid/store.log | squid:access | `proxy/squid` |
+| /var/log/squid/access.log | squid:access | `proxy/squid`, `linux/proxy` |
+| /var/log/squid/cache.log | squid:cache | `proxy/squid`, `linux/proxy` |
+| /var/log/squid/store.log | squid:store | `proxy/squid`, `linux/proxy` |
+
+Real LogServ deliveries do not all use one folder layout. The AWS bucket files Squid under `proxy/squid`; Azure delivers it under `linux/proxy`; GCP delivers `pacemaker.log` under `linux/pacemaker` and a proxy VM's `/var/log/messages` under `linux/proxy`. The Filter path columns list every path seen, and the Data TA declares all of them, so a filter rule meant to cover a log type on every cloud names each of its paths — `proxy/squid, linux/proxy` for Squid.
 
 
 ### ISC BIND (`isc:bind:*`)

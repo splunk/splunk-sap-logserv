@@ -84,7 +84,7 @@ Each of the 3 TI correlation searches has a corresponding entry in the AI Assist
 - `security.ti_proxy_to_malicious_ip`
 - `security.ti_compromised_credential_use`
 
-SOC analysts can dispatch them on demand from the AI Assistant's predefined-prompt browser → Security pack → **TI: DNS to malicious domain** (and siblings). Natural-language routing ("Show me TI hits across DNS in the last hour") requires the full-LLM build variant — the published templates-only package dispatches via the prompt browser only.
+SOC analysts can dispatch them on demand from the AI Assistant's predefined-prompt browser → Security pack → **TI: DNS to malicious domain** (and siblings). Natural-language routing ("Show me TI hits across DNS in the last hour") requires the free-form path, which activates once an LLM provider credential is configured; without one, dispatch is via the prompt browser only.
 
 ## :material-circle-box:{ .taiconcolor } Verifying the lookups loaded correctly
 

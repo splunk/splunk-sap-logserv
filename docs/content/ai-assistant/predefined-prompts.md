@@ -2,7 +2,7 @@
 
 Predefined prompts are cataloged saved searches across three packs that the AI Assistant can dispatch via the [Splunk MCP Server](mcp-setup.md) **without invoking any LLM**. They are the deterministic, vendor-traffic-free path through the AI Assistant: the user clicks a prompt card, the orchestrator dispatches the saved search, the result tile renders in the right pane, and a static interpretation + suggested-next-steps card appears in the chat.
 
-This is the path the **published v0.1.1 package activates** — the released App is the [templates-only build](templates-only-build.md), so predefined prompts are the AI Assistant, end-to-end, with no LLM provider configured or involved. (In the separately-built full-LLM variant, the same catalog coexists with the [free-form path](free-form-prompts.md).)
+This is the path that works **out of the box**: predefined prompts need no LLM provider, no credential, and make no vendor call, so they are the whole AI Assistant on a fresh install and in any deployment that never configures a provider. Once an [LLM provider credential](settings.md#provider-credentials-tab) is configured, the same catalog coexists with the [free-form path](free-form-prompts.md).
 
 ![AI Assistant — predefined-prompts modal open](../../images/ai-assistant-prompt-browser.png)
 

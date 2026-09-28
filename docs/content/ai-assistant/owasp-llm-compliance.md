@@ -5,8 +5,8 @@ This page is intended for the **customer's security team** reviewing the LogServ
 !!! tip "Companion page"
     For the same controls organized along Google's [Secure AI Framework (SAIF)](https://saif.google/) four-pillar structure plus a coverage matrix of SAIF's 15 Key Risks, see [SAIF Security Architecture](security-architecture.md).
 
-!!! warning "Full-LLM build variant only"
-    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): the LLM-driven path is disabled at compile time, so the LLM-specific attack surface this page addresses **does not exist in the published package** — the strongest form of each control is that there is no vendor dispatch to attack. The controls below (prompt-injection sanitization, the type-system data boundary, tier-gated summaries, SPL static analysis, rate limits, spend caps) actively govern the separately-built **full-LLM variant**; the tamper-evident audit trail is live in both variants.
+!!! info "These controls govern the path an LLM provider credential unlocks"
+    The published v0.1.2 App package is the **full-LLM build variant**, so the controls below (prompt-injection sanitization, the type-system data boundary, tier-gated summaries, SPL static analysis, rate limits, spend caps) actively govern it once an admin configures an [LLM provider credential](settings.md#provider-credentials-tab). Until a credential exists — and wherever **Templates-only mode** is on or a compile-time [templates-only build](templates-only-build.md) is installed — there is no vendor dispatch at all, which is the strongest form of each LLM-specific control. The tamper-evident audit trail and the supply-chain controls are live either way.
 
 ## :material-circle-box:{ .taiconcolor } LLM01 — Prompt Injection
 
@@ -130,6 +130,6 @@ Enforcement of the rate limit and the spend cap is browser-side (`localStorage` 
 | LLM09 — Misinformation | Mitigated | AI-generated disclaimer + time-window reasoning + citation chips + predefined-prompt path |
 | LLM10 — Unbounded Consumption | Mitigated | Per-user rate limit + daily spend cap + session tool-call cap + token-usage audit |
 
-## :material-circle-box:{ .taiconcolor } Which Variant These Controls Govern
+## :material-circle-box:{ .taiconcolor } When These Controls Are Live
 
-The published v0.1.1 App package is the [templates-only build](templates-only-build.md): LLM dispatch is disabled at compile time, so the LLM-specific items above (LLM01/02/04/07/09/10) are moot in it by construction — there is no vendor dispatch to attack — while the audit trail, its forwarder, and the supply-chain controls remain live. In the separately-built **full-LLM variant**, every control on this page actively governs the LLM path; nothing about the controls differs between variants beyond whether the path they protect exists.
+The published v0.1.2 App package is the **full-LLM build variant**: every control on this page actively governs its LLM path once an [LLM provider credential](settings.md#provider-credentials-tab) is configured. Where no credential exists, or **Templates-only mode** is on, or a compile-time [templates-only build](templates-only-build.md) is installed, the LLM-specific items above (LLM01/02/04/07/09/10) are moot by construction — there is no vendor dispatch to attack — while the audit trail, its forwarder, and the supply-chain controls remain live. Nothing about the controls themselves differs between builds beyond whether the path they protect is reachable.

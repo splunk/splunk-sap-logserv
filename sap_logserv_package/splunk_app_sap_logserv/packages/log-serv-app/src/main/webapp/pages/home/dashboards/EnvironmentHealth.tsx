@@ -17,6 +17,7 @@ import {
     openInNewTab,
 } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Environment Health — honest port of v0.0.4.2 logserv_environment_health.xml.
@@ -82,7 +83,7 @@ const BEACON = `| inputlookup logserv_beaconing_rollup | addinfo | where day_ts>
 // One error-trend chart = the trend metric filtered to a category, timechart by
 // src. `| fillnull value=0` matches raw `count by src`'s 0-fill on empty bins.
 const trendChart = (cat: string): string =>
-    `${TREND} | search trend_cat="${cat}" | eval _time=bucket_ts | timechart span=1d sum(count) by trend_src | fillnull value=0`;
+    `${TREND} | search trend_cat="${cat}" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by trend_src | fillnull value=0`;
 
 const Q_BASE = {
     // KPIs (rollup). HANA Failed Ops + Firewall Drops derive from the toterr
@@ -95,7 +96,7 @@ const Q_BASE = {
     // beaconing now reads the precomputed daily rollup (logserv_beaconing_rollup).
     beaconing: `${BEACON} | rename day_ts as _time | sort _time | eventstats sum(count) as total`,
     // pipeline KPI stays tstats-now (build 200) — pure tsidx count, already fast.
-    pipelineEventsPerDay: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=1d | timechart span=1d sum(count) as daily | stats avg(daily) as total | eval total=round(total, 0)`,
+    pipelineEventsPerDay: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=__LSV_SPAN__ | timechart span=__LSV_SPAN__ sum(count) as daily | stats avg(daily) as total | eval total=round(total, 0)`,
 
     // KPI sparklines (rollup)
     sparkTotalErrors: `${TOTERR} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
@@ -116,10 +117,10 @@ const Q_BASE = {
 
     // Other charts (rollup). webResponseTime avg = Σrt_sum/Σrt_cnt per day
     // (reproduces raw avg(response_time_ms); ~1e-13 float diff is invisible).
-    webResponseTime: `${WEB} | eval _time=bucket_ts | timechart span=1d sum(web_rt_sum) as rt_sum, sum(web_rt_cnt) as rt_cnt | eval "Avg Response Time (ms)"=rt_sum/rt_cnt | fields _time, "Avg Response Time (ms)"`,
-    icmStatus: `${ICMSTAT} | eval _time=bucket_ts | timechart span=1d sum(count) by status_cat | fillnull value=0`,
+    webResponseTime: `${WEB} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(web_rt_sum) as rt_sum, sum(web_rt_cnt) as rt_cnt | eval "Avg Response Time (ms)"=rt_sum/rt_cnt | fields _time, "Avg Response Time (ms)"`,
+    icmStatus: `${ICMSTAT} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by status_cat | fillnull value=0`,
     // pipeline trend stays tstats-now (build 200)
-    pipelineTrend: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=1d | timechart span=1d sum(count) as "Events/Day"`,
+    pipelineTrend: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=__LSV_SPAN__ | timechart span=__LSV_SPAN__ sum(count) as "Events/Day"`,
 
     // Tables. criticalEvents stays RAW (event listing — needs the actual events) but is
     // | head 200-capped: Splunk's default newest-first event scan short-circuits after 200,
@@ -168,7 +169,7 @@ const TREND_RAW_BASE =
     'sourcetype="XmlWinEventLog" AND severity="medium", "Windows Medium", sourcetype="sap:scc:http_access" AND status>=500, "5xx Server", ' +
     'sourcetype="sap:scc:http_access" AND status>=400, "4xx Client")';
 const trendChartRaw = (cat: string): string =>
-    `${TREND_RAW_BASE} | search trend_cat="${cat}" | timechart span=1d count by trend_src | fillnull value=0`;
+    `${TREND_RAW_BASE} | search trend_cat="${cat}" | timechart span=__LSV_SPAN__ count by trend_src | fillnull value=0`;
 
 const QRAW_BASE = {
     totalErrors:
@@ -197,12 +198,12 @@ const QRAW_BASE = {
     // rename the timechart output to the cached read's display column name.
     webResponseTime:
         '`sap_logserv_idx_macro` sourcetype="sap:webdispatcher:access" | eval response_time_ms=tonumber(total_us)/1000 ' +
-        '| timechart span=1d avg(response_time_ms) as "Avg Response Time (ms)"',
+        '| timechart span=__LSV_SPAN__ avg(response_time_ms) as "Avg Response Time (ms)"',
     icmStatus:
         '`sap_logserv_idx_macro` sourcetype="sap:abap:icm" icm_status_code=* ' +
         '| eval status_cat=case(icm_status_code>=200 AND icm_status_code<300, "2xx", icm_status_code>=300 AND icm_status_code<400, "3xx", ' +
         'icm_status_code>=400 AND icm_status_code<500, "4xx", icm_status_code>=500, "5xx", 1=1, "Other") ' +
-        '| timechart span=1d count by status_cat | fillnull value=0',
+        '| timechart span=__LSV_SPAN__ count by status_cat | fillnull value=0',
     // reconstructed from the logserv_severity_aggregate `tophost` arm.
     topHosts:
         '`sap_logserv_idx_macro` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR ' +
@@ -293,11 +294,16 @@ const TOP_HOSTS_COLS: ColumnDef[] = [
 ];
 
 const EnvironmentHealth: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 085); same cloud-provider
     // mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const totalErrors = useFirstRowFieldHybrid(Q.totalErrors, QRAW.totalErrors, 'count');
     const hanaFailures = useFirstRowFieldHybrid(Q.hanaFailures, QRAW.hanaFailures, 'count');
     const authFailures = useFirstRowFieldHybrid(Q.authFailures, QRAW.authFailures, 'count');
@@ -331,7 +337,6 @@ const EnvironmentHealth: React.FC = () => {
      * TimeRangeProvider hydrates from those params on first mount, so the
      * source dashboard's selected window is preserved across the navigation.
      * Mapping ported from v0.0.4.2 logserv_environment_health.xml. */
-    const { timeRange } = useTimeRange();
     const goTo = useCallback(
         (slug: string) => () => openInNewTab(buildDashboardUrl(slug, timeRange.earliest, timeRange.latest)),
         [timeRange.earliest, timeRange.latest],

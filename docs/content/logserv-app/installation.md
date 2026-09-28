@@ -2,18 +2,18 @@
 
 This page covers installing the **LogServ App** (`splunk_app_sap_logserv`). For the Data TA installation, see [Installing the Data TA](../install-setup/install-ta.md).
 
-!!! warning "The published package is the templates-only build variant"
-    The published LogServ App tarball is the **templates-only build variant**: the AI Assistant's free-form / LLM-driven path is disabled at compile time. The predefined-prompt path + Splunk MCP Server integration + tool tiles + drill-down chips + audit log + the full dashboard set + the Environment Topology view are all fully active. The free-form chat input, the model picker, the Power Mode toggle, and the Provider Credentials Settings sub-tab are hidden. A **full-LLM variant** of the identical build exists for approved deployments but is not the published artifact. See [Build Variants](../ai-assistant/templates-only-build.md) for the mechanism.
+!!! info "The published package is the full-LLM build variant"
+    The published LogServ App tarball is the **regular, full-LLM build variant**: the AI Assistant's free-form path is present but **inert until an admin configures an LLM provider credential**, and the runtime **Templates-only mode** toggle can restrict a deployment to predefined prompts with no rebuild. The predefined-prompt path + Splunk MCP Server integration + tool tiles + drill-down chips + audit log + the full dashboard set + the Environment Topology view are all active on install, with no credential needed. A compile-time **templates-only** variant of the same source is available for deployments where that restriction must not be reversible in the field. See [Build Variants](../ai-assistant/templates-only-build.md).
 
 !!! warning "Upgrading an existing install"
-    Installing this tarball **over a full-LLM v0.1.1 deployment disables free-form chat** — the compile-time flag forces templates-only mode at every point the setting is read, so a stored `templates_only_mode = 0` (KV Store or `local/` conf) cannot re-enable it. All other `local/` configuration and KV-Store data survive the upgrade. Coming from a pre-rollup build, run **Settings → Dashboard Data → Run backfill** afterwards — see [Upgrading to this release](../getting-started/upgrading.md).
+    Installing this tarball **over a templates-only v0.1.1 deployment removes the compile-time restriction** — the deployment's stored `templates_only_mode` setting governs again, and an installation with no stored value falls back to the shipped default of **off**, so free-form chat becomes available as soon as an LLM provider credential is configured. An upgrade creates no credential. To keep a deployment restricted, turn **Settings → AI Assistant → Templates-only mode** on after upgrading. All `local/` configuration and KV-Store data survive the upgrade. Coming from a pre-rollup build, run **Settings → Dashboard Data → Run backfill** afterwards — see [Upgrading to this release](../getting-started/upgrading.md).
 
 ### :material-circle-box:{ .taiconcolor } About the LogServ App
 
 The LogServ App provides:
 
 - **A full set of React-based dashboards** plus the **Environment Topology** view, organized as one top-level **Environment Health** landing page + four purpose-driven groups (Applications, Integration, Security, Platform). Built on `@splunk/react-ui` + `@splunk/visualizations` + `@xyflow/react`. See [Dashboards Overview](dashboards/index.md).
-- **Built-in AI Assistant panel** — predefined prompts + Splunk MCP integration + audit log (the published package is the templates-only variant; the LLM-driven path is compile-time disabled). See [AI Assistant Overview](../ai-assistant/overview.md).
+- **Built-in AI Assistant panel** — predefined prompts + Splunk MCP integration + audit log, active on install with no LLM provider; the free-form LLM-driven path activates once a provider credential is configured. See [AI Assistant Overview](../ai-assistant/overview.md).
 - **Search-time field extractions** (EXTRACT / EVAL / FIELDALIAS) for every SAP-specific sourcetype the Data TA routes.
 - **The `sap_logserv_idx_macro` macro** for searching the LogServ index.
 - **Actions menu** on every dashboard — Download PNG, Download PDF (full-canvas captures), Diagnose dashboard (PDF), and Environment report (PDF).
@@ -51,7 +51,7 @@ Below are the high level steps for installing the LogServ App. Follow them in or
 
 ### :material-circle-box:{ .taiconcolor } 2. Install the Splunk MCP Server prerequisite
 
-The AI Assistant requires the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) — v1.1.0 or later (the tested-against version; the App's version gate accepts 1.0.3 up to, but not including, 2.0.0) — installed on the **same Search Head** as the LogServ App. Install it via Splunk Web (**Apps → Install app from file**) or via CLI:
+The AI Assistant requires the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) — v1.1.0 or later (the tested-against version; the App's version gate accepts 1.0.3 up to, but not including, 3.0.0, so the 2.x major is supported) — installed on the **same Search Head** as the LogServ App. Install it via Splunk Web (**Apps → Install app from file**) or via CLI:
 
 ```bash
 /opt/splunk/bin/splunk install app /path/to/<splunk-mcp-server-download>.tar.gz
@@ -59,14 +59,14 @@ The AI Assistant requires the [Splunk MCP Server (Splunkbase App 7931)](https://
 
 After install, restart Splunkd. Cookie auth from the same Splunk Web session works by default; no bearer token configuration required for HTTP-only Splunk. See [Splunk MCP Setup](../ai-assistant/mcp-setup.md) for full configuration including the optional bearer token for OAuth-strict environments.
 
-!!! note "No AI provider credentials needed"
-    The AI Assistant's predefined-prompt path requires the Splunk MCP Server to dispatch saved searches — install it. Do **not** configure any AI provider credential (Anthropic / OpenAI / Azure / Bedrock): the published package is the templates-only variant, the credentials are unused, and the Settings → AI Assistant → Provider Credentials sub-tab is hidden.
+!!! note "No AI provider credential needed for predefined prompts"
+    The AI Assistant's predefined-prompt path requires the Splunk MCP Server to dispatch saved searches — install it. It needs **no** AI provider credential (Anthropic / OpenAI / Azure / Bedrock). Configure one on the Settings → AI Assistant → Provider Credentials sub-tab only if you also want the free-form LLM path; until you do, it stays inert and no vendor call is possible.
 
 ### :material-circle-box:{ .taiconcolor } 3. Download the LogServ App
 
-Download `splunk_app_sap_logserv-0.1.1.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
+Download `splunk_app_sap_logserv-0.1.2.tar.gz` from the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">GitHub repository</a>.
 
-The published tarball is the **templates-only build variant** (LLM-driven path disabled at compile time pending review). There is no separate "regular" tarball published in the current release.
+The published tarball is the **regular, full-LLM build variant**: the AI Assistant's free-form path is present but inert until an admin configures an LLM provider credential, and the runtime **Templates-only mode** toggle can restrict it to predefined prompts with no rebuild. A compile-time **templates-only** variant of the same source is available for deployments where that restriction must not be reversible — see [Build Variants](../ai-assistant/templates-only-build.md).
 
 ### :material-circle-box:{ .taiconcolor } 4. Install in Splunk Cloud
 
@@ -91,7 +91,7 @@ Install the LogServ App to your Splunk Enterprise Search Head:
 
 5.<b class="taiconcolor">b</b> Click Install app from file.
 
-5.<b class="taiconcolor">c</b> Locate the downloaded `splunk_app_sap_logserv-0.1.1.tar.gz` file and click Upload.
+5.<b class="taiconcolor">c</b> Locate the downloaded `splunk_app_sap_logserv-0.1.2.tar.gz` file and click Upload.
 
 5.<b class="taiconcolor">d</b> If Splunk Enterprise prompts you to restart, do so.
 
@@ -99,17 +99,19 @@ Install the LogServ App to your Splunk Enterprise Search Head:
 
 ### :material-circle-box:{ .taiconcolor } 6. Verify installation
 
-After installation, navigate to the LogServ App in Splunk Web. You should see the navigation bar with:
+After installation, navigate to the LogServ App in Splunk Web. You should see a **navigation rail** down the left edge with:
 
 - **Environment Health** (default landing page — cross-cutting operations view)
 - **Topology** (graph-based Environment Topology view)
-- **Applications** dropdown (ABAP Network & Security, ABAP Operations, Work Process Performance, HANA Audit, HANA Trace)
-- **Integration** dropdown (SAP Services, SAP Router, Cloud Connector, Web Dispatcher, Web and API Performance)
-- **Security** dropdown (Network Perimeter, Cross-Stack Authentication, Change & Configuration Activity)
-- **Platform** dropdown (Data Pipeline Overview, DNS Analytics, Linux, Windows, Proxy, Host Details, Multi-Cloud Overview, Diagnostics)
-- The theme toggle, global **Refresh** button, **About**, and **Settings** at the right end of the nav bar
+- **Applications** (ABAP Network & Security, ABAP Operations, Work Process Performance, HANA Audit, HANA Trace)
+- **Integration** (SAP Services, SAP Router, Cloud Connector, Web Dispatcher, Web and API Performance)
+- **Security** (Network Perimeter, Cross-Stack Authentication, Change & Configuration Activity)
+- **Platform** (Data Pipeline Overview, DNS Analytics, Linux, Windows, Proxy, Host Details, Multi-Cloud Overview, Diagnostics)
+- **Settings** (admins only) and **About**, below a divider
 
-The **`✦ AI Assistant`** button does **not** appear yet on a fresh install — the feature ships disabled. An admin enables it at **Settings → AI Assistant → General → Enable AI Assistant** (an acknowledgement modal gates the first enable); the button then appears in the top-right of the nav bar within a few seconds.
+Each of the four categories opens a flyout beside the rail that lists its dashboards, with a ✓ on the one you are viewing. The button at the top of the rail collapses it to a 56 px strip of icons; the choice is remembered per user in the browser. Across the top runs a two-row header: the product name with the **App** version and **build** pills and the light/dark toggle, then the global time range (the **Last 24h / 7d / 30d / 90d** pills and Splunk's own time-range picker), the **Actions** menu and the **Refresh** button.
+
+The **AI Assistant** button does **not** appear yet on a fresh install — the feature ships disabled. An admin enables it at **Settings → AI Assistant → General → Enable AI Assistant** (an acknowledgement modal gates the first enable); the button then appears at the right end of the header's second row within a few seconds.
 
 If the dashboards show no data, verify that:
 

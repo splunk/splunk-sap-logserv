@@ -22,7 +22,7 @@ Splunk's REST framework enforces some capability requirements server-side, indep
 
 | REST endpoint | Gate | LogServ usage |
 |---|---|---|
-| `/storage/passwords` | `edit_storage_passwords` (typically granted to `sc_subadmin`) | HEC audit-forwarder tokens, MCP bearer tokens (and LLM provider credentials in builds where the LLM path is enabled — not the published templates-only build) |
+| `/storage/passwords` | `edit_storage_passwords` (typically granted to `sc_subadmin`) | HEC audit-forwarder tokens, MCP bearer tokens, and LLM provider credentials where the free-form path is used |
 | `/storage/collections/data/<collection>` | None — collection-level metadata ACL only | AI Assistant settings + acks, topology layouts, dashboard refresh preferences |
 | `/configs/conf-<name>/...` | **`admin_all_objects`** (hardcoded in the REST framework) | Historical AI Assistant settings storage — migrated to KV Store to dodge this gate |
 | `/data/inputs/<service>` | `admin_all_objects` | UCC modular-input writes — the LogServ **Azure** and **GCP** add-ons ship `passSystemAuth = true` on every `[admin_external:*]` stanza so the input-CRUD handler runs in system context (applied at build time by each add-on's `additional_packaging.py`) |

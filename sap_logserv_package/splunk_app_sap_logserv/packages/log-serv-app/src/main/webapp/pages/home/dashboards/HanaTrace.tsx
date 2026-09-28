@@ -12,6 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * HANA Trace — honest port of v0.0.4.2 logserv_hana_trace.xml.
@@ -84,8 +85,8 @@ const Q_BASE = {
     sparkErrors: `${MAIN} | search hana_trace_severity IN ("error", "fatal") | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkComponents: `${MAIN} | eval _time=bucket_ts | timechart span=1d dc(eval(if(hana_trace_component="(none)",null(),hana_trace_component))) as components | fillnull value=0`,
 
-    traceVolume: `${MAIN} | eval _time=bucket_ts | timechart span=1d sum(count) as "Trace Events" | fillnull value=0`,
-    bySeverity: `${MAIN} | search hana_trace_severity!="(none)" | eval _time=bucket_ts | timechart span=1d sum(count) by hana_trace_severity | fillnull value=0`,
+    traceVolume: `${MAIN} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) as "Trace Events" | fillnull value=0`,
+    bySeverity: `${MAIN} | search hana_trace_severity!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by hana_trace_severity | fillnull value=0`,
     topComponents: `${MAIN} | where ${COMP_GUARD} | stats sum(count) as Events, dc(eval(if(hana_trace_source_file="(none)",null(),hana_trace_source_file))) as "Source Files", values(eval(if(hana_trace_severity="(none)",null(),hana_trace_severity))) as Severities by hana_trace_component | sort -Events | rename hana_trace_component as Component`,
     componentSeverity: `${MAIN} | where ${COMP_GUARD} AND hana_trace_severity!="(none)" | stats sum(count) as count by hana_trace_component, hana_trace_severity | sort -count | chart sum(count) over hana_trace_component by hana_trace_severity | sort -info | rename hana_trace_component as Component`,
     sourceHotspots: `${MAIN} | where hana_trace_source_file!="(none)" AND ${COMP_GUARD} | eval _time=last_seen | stats sum(count) as Events, dc(eval(if(hana_trace_source_line="(none)",null(),hana_trace_source_line))) as "Unique Lines", latest(eval(if(hana_trace_severity="(none)",null(),hana_trace_severity))) as "Latest Severity" by hana_trace_source_file, hana_trace_component | sort -Events | rename hana_trace_source_file as "Source File" hana_trace_component as Component`,
@@ -101,7 +102,7 @@ const Q_BASE = {
     // changed semantics — it now ranks OPERATIONS by max/avg duration (was the
     // top-20 individual slowest events); per-event _time/host are dropped.
     slowestOps: `${DUROP} | search hana_op!="(none)" | stats sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as max_ms, sum(count) as events by hana_op, sap_sid | eval "Avg (ms)" = round(if(c>0, s/c, 0), 2), "Max (ms)" = round(max_ms, 2) | sort - "Max (ms)" | head 20 | rename sap_sid AS SID, hana_op AS Operation, events AS Events | table Operation, SID, Events, "Avg (ms)", "Max (ms)"`,
-    durationPercentiles: `${DUR} | eval _time=bucket_ts | timechart span=1d sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 2), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+    durationPercentiles: `${DUR} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 2), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
 /* ---------------------------------------------------------------------------
@@ -119,14 +120,14 @@ const QRAW_BASE = {
     kpiTotal: `${HRAW} | stats count`,
     kpiErrors: `${HRAW} hana_trace_severity IN ("error", "fatal") | stats count`,
     kpiComponents: `${HRAW} | stats dc(hana_trace_component) as components`,
-    traceVolume: `${HRAW} | timechart span=1d count as "Trace Events" | fillnull value=0`,
-    bySeverity: `${HRAW} hana_trace_severity=* | timechart span=1d count by hana_trace_severity | fillnull value=0`,
+    traceVolume: `${HRAW} | timechart span=__LSV_SPAN__ count as "Trace Events" | fillnull value=0`,
+    bySeverity: `${HRAW} hana_trace_severity=* | timechart span=__LSV_SPAN__ count by hana_trace_severity | fillnull value=0`,
     topComponents: `${HRAW} hana_trace_component=* | where len(hana_trace_component) > 3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:" | stats count as Events dc(hana_trace_source_file) as "Source Files" values(hana_trace_severity) as Severities by hana_trace_component | sort -Events | rename hana_trace_component as Component`,
     componentSeverity: `${HRAW} hana_trace_component=* hana_trace_severity=* | where len(hana_trace_component) > 3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:" | stats count by hana_trace_component hana_trace_severity | sort -count | chart sum(count) over hana_trace_component by hana_trace_severity | sort -info | rename hana_trace_component as Component`,
     sourceHotspots: `${HRAW} hana_trace_source_file=* | where len(hana_trace_component) > 3 AND hana_trace_component!="INFO" AND hana_trace_component!="of" AND hana_trace_component!="service:" | stats count as Events dc(hana_trace_source_line) as "Unique Lines" latest(hana_trace_severity) as "Latest Severity" by hana_trace_source_file hana_trace_component | sort -Events | rename hana_trace_source_file as "Source File" hana_trace_component as Component`,
     sidInstance: `${HRAW} | stats count by sap_sid hana_instance | sort -count | rename sap_sid as SID hana_instance as Instance`,
-    slowestOps: `${HRAW} hana_op_duration_ms=* | rex field=_raw "^\\"(?<hana_op>[^\\"]+)\\"" | fillnull value="(none)" hana_op sap_sid | stats avg(hana_op_duration_ms) as avg_ms, max(hana_op_duration_ms) as max_ms, count as events by hana_op, sap_sid | search hana_op!="(none)" | eval "Avg (ms)"=round(avg_ms,2), "Max (ms)"=round(max_ms,2) | sort - "Max (ms)" | head 20 | rename sap_sid AS SID, hana_op AS Operation, events AS Events | table Operation, SID, Events, "Avg (ms)", "Max (ms)"`,
-    durationPercentiles: `${HRAW} hana_op_duration_ms=* | timechart span=1d sum(hana_op_duration_ms) as s, count(hana_op_duration_ms) as c, max(hana_op_duration_ms) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 2), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+    slowestOps: `${HRAW} hana_op_duration_ms=* | rex field=_raw "^\\\\\\\\?\\"(?<hana_op>[^\\"\\\\\\\\]+)\\\\\\\\?\\"" | fillnull value="(none)" hana_op sap_sid | stats avg(hana_op_duration_ms) as avg_ms, max(hana_op_duration_ms) as max_ms, count as events by hana_op, sap_sid | search hana_op!="(none)" | eval "Avg (ms)"=round(avg_ms,2), "Max (ms)"=round(max_ms,2) | sort - "Max (ms)" | head 20 | rename sap_sid AS SID, hana_op AS Operation, events AS Events | table Operation, SID, Events, "Avg (ms)", "Max (ms)"`,
+    durationPercentiles: `${HRAW} hana_op_duration_ms=* | timechart span=__LSV_SPAN__ sum(hana_op_duration_ms) as s, count(hana_op_duration_ms) as c, max(hana_op_duration_ms) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 2), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
 interface FirstRow {
@@ -184,10 +185,15 @@ const SLOWEST_OPS_COLS: ColumnDef[] = [
 ];
 
 const HanaTrace: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
     const components = useFirstRowFieldHybrid(Q.kpiComponents, QRAW.kpiComponents, 'components');
@@ -207,7 +213,6 @@ const HanaTrace: React.FC = () => {
     const errorTone = Number(errors.value ?? 0) > 0 ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goComponentRow = (row: Record<string, unknown>): void => {
         const c = String(row.Component ?? '');
         if (!c) return;

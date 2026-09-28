@@ -66,8 +66,35 @@ export const single = (
     };
 };
 
+/**
+ * Backfill stanzas that must NOT be chunked, and are run over a fixed recent
+ * window instead of the operator's chosen one.
+ *
+ * Both write FLAT collections — no time dimension in the `_key` — so chunks
+ * would OVERWRITE each other rather than accumulate, and with three arms in
+ * flight not even "last chunk wins" is deterministic:
+ *
+ *   logserv_topology_backfill_inventory   _key = canonical_value. Worse than the
+ *     overwrite: `mvcount(sids)=1` is a WHOLE-WINDOW predicate. An IP mapping to
+ *     one SID in June and another in July passes each chunk individually and
+ *     fails the true whole-window test, so chunking would admit mappings that
+ *     must be rejected.
+ *   logserv_topology_enrichment_backfill  _key = ip:evidence_source, aggregating
+ *     count / values(enr_user) / min(_time) across the window — chunking would
+ *     undercount events, drop users seen in earlier chunks and corrupt first_seen.
+ *
+ * Pinning them to 30 days is not a compromise: both describe CURRENT state, not
+ * history, and a longer window makes the inventory strictly worse — over a year
+ * more IPs get reassigned, so more fail `mvcount(sids)=1` and are excluded,
+ * resolving FEWER partner nodes to SIDs. Session 131.
+ */
+export const FIXED30_BACKFILL_STANZAS: ReadonlySet<string> = new Set([
+    'logserv_topology_backfill_inventory',
+    'logserv_topology_enrichment_backfill',
+]);
+
 export const ROLLUPS: RollupDef[] = [
-    single('wp_perf', 'Work Process Performance'),
+    single('wp_perf', 'Work Process Performance / ABAP Operations'),
     single('severity', 'Environment Health'),
     single('hana', 'HANA Audit', 'logserv_hana_category_rollup'),
     single('compliance', 'Change & Configuration Activity'),
@@ -76,7 +103,7 @@ export const ROLLUPS: RollupDef[] = [
     single('xstack_auth', 'Cross-Stack Authentication'),
     single('perimeter', 'Network Perimeter'),
     single('linux', 'Linux System & Security'),
-    single('web_timing', 'Web & API Performance'),
+    single('web_timing', 'Web & API Performance / Web Dispatcher'),
     single('hana_trace', 'HANA Trace'),
     single('windows', 'Windows'),
     single('sapservices', 'SAP Services'),

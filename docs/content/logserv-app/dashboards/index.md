@@ -2,11 +2,15 @@
 
 The LogServ App includes React-based dashboards organized as one top-level landing page and four purpose-driven navigation groups, plus an **Environment Topology** view and a **Diagnostics (Data Doctor)** page. The app is built on `@splunk/react-ui` + `@splunk/visualizations` + `@xyflow/react` and ships as a single React bundle. Requires Splunk 9.4.3 or later.
 
-The top menu is:
+The navigation rail on the left holds:
 
-**Environment Health** (default landing) · **Topology** · **Applications ▼** · **Integration ▼** · **Security ▼** · **Platform ▼** · **About**
+**Environment Health** (default landing) · **Topology** · **Applications ›** · **Integration ›** · **Security ›** · **Platform ›** · **Settings** (admin-tier roles only) · **About**
 
-The right-hand cluster holds the theme toggle (light/dark) · **Settings** (admin-tier roles only) · **Actions ▾** · **AI Assistant** (when enabled) · the time-range picker · **Refresh**.
+Each category opens a flyout that lists its dashboards; the button at the top of the rail collapses it to icons.
+
+![The navigation rail with the Integration flyout open](../../../images/app-navigation-rail.png)
+
+The header's first row carries the product name, the version and build badges and the theme toggle (light/dark); its second row carries the time-range picker and, on the right, **Actions ▾** · **Refresh** · **AI Assistant** (when enabled).
 
 Use this page as an index — click any dashboard below to see its full purpose, panel list, and interpretation guide on the corresponding category page.
 
@@ -69,22 +73,22 @@ Use this page as an index — click any dashboard below to see its full purpose,
     All dashboards use the `sap_logserv_idx_macro` macro to query the LogServ index. You can use this same macro in your own searches: `` `sap_logserv_idx_macro` | stats count by sourcetype ``
 
 !!! tip "Cross-dashboard navigation"
-    Use the top navigation bar (Environment Health · Topology · Applications ▾ · Integration ▾ · Security ▾ · Platform ▾) to move between dashboards — the selected time range is held app-wide, so it follows you. Table-row drill-downs likewise carry the time range to their destination via URL parameters.
+    Use the navigation rail on the left (Environment Health · Topology · Applications · Integration · Security · Platform — each category opens a flyout listing its dashboards, with a ✓ on the one you are viewing) to move between dashboards — the selected time range is held app-wide, so it follows you. Table-row drill-downs likewise carry the time range to their destination via URL parameters.
 
 !!! tip "In-dashboard help — the ? icon"
     Every dashboard's title row ends with a blue rotating **?** help icon. Clicking it opens this online documentation in a new browser tab, jumping directly to the section for the dashboard you're looking at. For multi-tab dashboards (Data Pipeline Overview and Host Details) the icon is present on every tab and always links back to the same dashboard's section in the docs.
 
 !!! tip "Per-dashboard auto-refresh"
-    Each dashboard's title row carries a **Refresh** picker (Never / 30s / 1m / 5m / 15m / 30m / 1hr) next to the time-range picker. The selection is per-user-per-dashboard — your choice on Environment Health doesn't carry over to HANA Audit. State persists across browser sessions via Splunk KV Store. (The Diagnostics page has no auto-refresh picker — it re-runs its checks on demand.)
+    Each dashboard's title row carries a **Refresh** picker (Never / 30s / 1m / 5m / 15m / 30m / 1hr), to the right of the **Cloud** filter. The selection is per-user-per-dashboard — your choice on Environment Health doesn't carry over to HANA Audit. State persists across browser sessions via Splunk KV Store. (The Diagnostics page has no auto-refresh picker — it re-runs its checks on demand.)
 
 !!! tip "Refresh the current view on demand"
-    The app's top **navigation bar** carries a **Refresh** button — a circular-arrow icon to the right of the time-range picker, alongside the theme toggle, Settings, and AI Assistant controls. Clicking it re-runs **every panel on the dashboard you're currently viewing** for the selected time range — a one-click "get me the latest." It is distinct from the per-dashboard auto-refresh picker above (which re-runs on a timer) and from each panel's own **Refresh** toolbar action (which re-runs a single panel). Because it lives in the global nav bar, it's available on every dashboard and on the Environment Topology view.
+    The header's second row carries a **Refresh** button, between the **Actions** menu and the AI Assistant button. Clicking it re-runs **every panel on the dashboard you're currently viewing** for the selected time range — a one-click "get me the latest." It is distinct from the per-dashboard auto-refresh picker above (which re-runs on a timer) and from each panel's own **Refresh** toolbar action (which re-runs a single panel). Because it lives in the app-wide header, it's available on every dashboard and on the Environment Topology view.
 
 !!! tip "Filter by cloud provider"
     Every dashboard except Multi-Cloud Overview, Environment Topology, Diagnostics, and Settings carries a **Cloud Provider** dropdown (`All / aws / azure / gcp`) in its title row, to the left of the Refresh picker. Choosing a provider filters **every panel** on the dashboard to that cloud; the choice is **global and remembered per user**, so it carries across dashboard navigation and page reloads. Leave it on **All** to see the whole estate. (Events with no cloud attribution are counted as `aws`, matching the Multi-Cloud Overview convention.)
 
 !!! tip "Which build am I running? — the About dialog"
-    The navigation bar's **About** item (to the right of *Platform*) opens a dialog showing the app icon, the product name, and the **version**, **build number** and **build date** (UTC) of the app you are running. Use it to confirm an upgrade landed, or to quote the exact build when reporting an issue. The values are read from the app's own `app.conf` at build time (the date is stamped as the bundle is compiled), so they always match the installed bundle.
+    The **About** item at the bottom of the navigation rail opens a dialog showing the app icon, the product name, and the **version**, **build number** and **build date** (UTC) of the app you are running. Use it to confirm an upgrade landed, or to quote the exact build when reporting an issue. The values are read from the app's own `app.conf` at build time (the date is stamped as the bundle is compiled), so they always match the installed bundle. The header's **App** and **build** pills show the same version and build number at a glance (on windows wider than 900 px).
 
 !!! tip "Performance & data freshness"
     The dashboards are tuned to stay fast at high event volume — most panels read from an hourly KV-Store rollup layer rather than scanning raw events on every open. After a fresh install on a large environment, an admin runs a one-time backfill. See [Dashboard Performance & Data Freshness](performance.md) for how each panel sources its data, what "hourly fresh" means, and the backfill step.
@@ -93,7 +97,7 @@ Use this page as an index — click any dashboard below to see its full purpose,
 
 ## :material-circle-box:{ .taiconcolor } Visual Style
 
-All dashboards share a consistent framed-card visual language, built on Cisco's Magnetic design tokens, so that patterns are easy to recognize as you move between views. The app ships **light and dark modes** — toggled via the nav bar's sun/moon button, persisted per user — and every color is a mode-resolved design token rather than a fixed hex:
+All dashboards share a consistent framed-card visual language, built on Cisco's Magnetic design tokens, so that patterns are easy to recognize as you move between views. The app ships **light and dark modes** — toggled via the sun/moon button at the right end of the header, persisted per user — and every color is a mode-resolved design token rather than a fixed hex:
 
 - **Page background** with slightly lighter **panel cards** outlined by a muted border token — each visualization sits inside its own framed card with consistent spacing
 - **KPI typography** — large numeric headline with a small muted label; number color carries semantic meaning (white for neutral counts, red for errors/failures/denials, orange for warnings, teal for healthy/positive signals)
@@ -129,10 +133,12 @@ Table rows are the main drill-down surface; Environment Health additionally make
 Tool-result tiles in the AI Assistant's right pane carry two drill-down chips in their actions slot, alongside the Clear button:
 
 - **`↗ <Dashboard name>`** — opens the related OOTB dashboard (one chip per related dashboard for prompts mapped to multiple, each labelled with the destination's name). Sourced from the intent map's `dashboard` field.
-- **`↗ Run SPL`** — opens Splunk's universal Search app with the tool's SPL pre-populated and the dispatch's exact earliest/latest pre-applied. The same chip renders alongside `[→ saved_search]` citations in the left-hand conversation pane — on the guidance card a predefined prompt produces, and (in the [full-LLM build variant](../../ai-assistant/templates-only-build.md)) in the assistant's narrative.
+- **`↗ Run SPL`** — opens Splunk's universal Search app with the tool's SPL pre-populated and the dispatch's exact earliest/latest pre-applied. The same chip renders alongside `[→ saved_search]` citations in the left-hand conversation pane — on the guidance card a predefined prompt produces, and — once an [LLM provider credential](../../ai-assistant/settings.md#provider-credentials-tab) is configured — in the assistant's narrative.
 
 These chips connect the AI Assistant's investigation flow back into the dashboards: a top-N finding tile leads directly to the relevant dashboard, OR to a raw-search drill-down at the same time window the AI just queried.
 
 ### :material-lightning-bolt:{ .taiconcolor } Dashboard Export (Actions Menu)
 
-The navigation bar's **Actions** menu includes **Download PNG** and **Download PDF**. Both captures use `html2canvas` to render the full dashboard DOM (including off-screen content), so the saved output always covers the entire dashboard length — not just what's visible in the viewport. Useful for sharing in slide decks, embedding in incident reports, or capturing a dashboard's state at a specific moment for compliance evidence. The same menu carries the two [Data Doctor](platform/diagnostics.md) reports — **Diagnose dashboard (PDF)** and **Environment report (PDF)**.
+The header's **Actions** menu includes **Download PNG** and **Download PDF**. Both captures use `html2canvas` to render the full dashboard DOM (including off-screen content), so the saved output always covers the entire dashboard length — not just what's visible in the viewport. Useful for sharing in slide decks, embedding in incident reports, or capturing a dashboard's state at a specific moment for compliance evidence. The same menu carries the two [Data Doctor](platform/diagnostics.md) reports — **Diagnose dashboard (PDF)** and **Environment report (PDF)**.
+
+![The Actions menu](../../../images/app-header-actions.png)

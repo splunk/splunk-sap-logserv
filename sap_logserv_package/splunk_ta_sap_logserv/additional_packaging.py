@@ -16,11 +16,11 @@ Seven jobs:
    MUST run before job 3 appends a [script:] stanza — see
    patch_admin_external_stanzas().
 
-3. Append the deployment_push REST endpoint stanzas to restmap.conf.
-   (UCC overwrites restmap.conf if a copy exists in package/default/,
-   so we append here instead.)
+3. Append the deployment_push and s3_direct_meta REST endpoint stanzas to
+   restmap.conf. (UCC overwrites restmap.conf if a copy exists in
+   package/default/, so we append here instead.)
 
-4. Append web.conf expose stanza for deployment_push.
+4. Append web.conf expose stanzas for deployment_push and s3_direct_meta.
 
 5. Defensive cleanup of AArch64-incompatible binaries from lib/.
    Belt-and-suspenders alongside the solnlib<8.0.0 pin in
@@ -74,12 +74,39 @@ python.version        = python3
 python.required       = 3.13
 """
 
-# ---- web.conf expose stanza for deployment_push ----
+# ---- s3_direct_meta endpoint stanzas (session 136) ----
+# The AWS S3 Direct screen's cloud_provider stamp. The browser cannot reach
+# the Splunk Add-on for AWS's native data/inputs/aws_s3 endpoint through the
+# Splunk Web proxy (it is not exposed), so this endpoint makes the call
+# server-side. No passSystemAuth and no capability line on purpose: the
+# handler calls splunkd with the CALLER's session token, so the write is
+# checked against the caller's own permissions.
+
+S3_DIRECT_META_STANZAS = """
+# --- Custom REST endpoint for the AWS S3 Direct cloud_provider stamp ---
+[script:splunk_ta_sap_logserv_s3_direct_meta]
+match                 = /splunk_ta_sap_logserv/s3_direct_meta
+script                = splunk_ta_sap_logserv_rh_s3_direct_meta.py
+scripttype            = persist
+handler               = splunk_ta_sap_logserv_rh_s3_direct_meta.S3DirectMetaHandler
+requireAuthentication = true
+output_modes          = json
+passPayload           = true
+passHttpHeaders       = true
+python.version        = python3
+python.required       = 3.13
+"""
+
+# ---- web.conf expose stanzas (deployment_push, s3_direct_meta) ----
 
 WEBCONF_EXPOSE_STANZA = """
 [expose:splunk_ta_sap_logserv_deployment_push]
 pattern = splunk_ta_sap_logserv/deployment_push
 methods = POST, GET
+
+[expose:splunk_ta_sap_logserv_s3_direct_meta]
+pattern = splunk_ta_sap_logserv/s3_direct_meta
+methods = POST
 """
 
 # ---- handler import patch ----
@@ -209,12 +236,13 @@ def cleanup_output_files(output_path, ta_name):
     restmap_path = os.path.join(app_dir, "default", "restmap.conf")
     patch_admin_external_stanzas(restmap_path)
 
-    # --- 3. Append deployment push stanzas to restmap.conf ---
+    # --- 3. Append deployment push + s3_direct_meta stanzas to restmap.conf ---
     if os.path.isfile(restmap_path):
         with open(restmap_path, "a") as f:
             f.write(DEPLOYMENT_PUSH_STANZAS)
+            f.write(S3_DIRECT_META_STANZAS)
 
-    # --- 4. Append deployment_push expose stanza to web.conf ---
+    # --- 4. Append the expose stanzas to web.conf ---
     webconf_path = os.path.join(app_dir, "default", "web.conf")
     if os.path.isfile(webconf_path):
         with open(webconf_path, "a") as f:

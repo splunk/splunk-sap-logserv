@@ -29,8 +29,28 @@ export const MIN_MCP_SERVER_VERSION = '1.0.3';
  *
  * Bump this when the team has validated the next major against the
  * AI Assistant's expectations and updated MCPClient as needed.
+ *
+ * 2.x admitted in build 335 (session 120). What that bump rests on:
+ *   - `initialize` handshake -- VERIFIED IN THE FIELD against 2.0.0.
+ *     `useMCPHealth` calls `client.info()` before reaching this gate,
+ *     so any server whose version the gate can read has already
+ *     accepted our hardcoded `protocolVersion: '2024-11-05'` and
+ *     returned a parseable `serverInfo.version` over the JSON-RPC
+ *     transport. A customer seeing the "not yet certified" wizard is
+ *     itself proof that step succeeded.
+ *   - `tools/list` and `tools/call` -- VERIFIED against a live 2.0.0
+ *     server (manual operator check, 2026-09-17, session 123): tool
+ *     calls dispatch and come back usable. That closes the gap this
+ *     bump was knowingly taking -- the tool names
+ *     `splunk_run_saved_search` / `splunk_run_query` and the
+ *     `result.structuredContent` / `result.content` / `result.isError`
+ *     envelope `MCPClient` reads are exactly what a major is allowed
+ *     to break, and 2.0.0 did not.
+ *     Scope: 2.0.0 by spot-check -- not an automated regression, and
+ *     not a claim about later 2.x minors. Re-verify and record the
+ *     result here before admitting 3.x.
  */
-export const MAX_MCP_SERVER_VERSION_EXCLUSIVE = '2.0.0';
+export const MAX_MCP_SERVER_VERSION_EXCLUSIVE = '3.0.0';
 
 /**
  * Compare two semver-shaped strings ("MAJOR.MINOR.PATCH" with

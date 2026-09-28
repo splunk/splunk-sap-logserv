@@ -15,7 +15,7 @@ Compliance conversations (SOX, PCI, internal change management) all require evid
 - **User Account Changes** -- Count of user-management actions (HANA `User Management`/`User Creation`/`User Deletion`; Windows EventCodes 4720/4722/4725/4726/4738/4781; Linux `useradd`/`usermod`/`userdel`)
 - **Permission Grants** -- Count of privilege/group-membership grants (HANA `Permission Grant`; Windows EventCodes 4728/4732/4756 -- "added to group")
 - **Password Events** -- Count of password changes and resets (HANA `Password Management`/`Password Reset`; Windows EventCode 4724; Linux `passwd`)
-- **After-Hours Changes** (orange when non-zero) -- Count of change events occurring outside business hours (weekday 8am-7pm, i.e. 08:00-18:59) or on weekends. All three sources use the same window, computed from each event's `_time` on the search head
+- **After-Hours Changes** (orange when non-zero) -- Count of change events occurring outside business hours (weekday 8am-7pm, i.e. 08:00-18:59) or on weekends, **judged in your own time zone** (your Splunk time-zone preference). All three sources use the same window, and the KPI, its sparkline and the After-Hours table agree whichever path serves them
 - **Unique Operators** -- Distinct count of source-prefixed operator identities (e.g., `HANA:XCPADM`, `Windows:domain\admin`, `Linux:ops-user`)
 - **Change Activity Over Time (by Source)** -- Stacked column by day (left half of the row, beside the Category donut), series split by source (HANA / Windows / Linux). Same-day spikes across two or three series often line up with maintenance windows; isolated spikes in one source worth investigating.
 - **Change Events by Category** -- Donut showing the category mix: Permission Grant, Permission Revoke, User Management, Password Change, Group Membership, Account Status, Sudo Command, DDL / Config, Other.
@@ -34,10 +34,13 @@ Sources span the three change surfaces: `sap:hana:audit` (user/role/privilege/DD
 
 - **Summary-backed panels** — the KPIs, sparklines, activity chart, category donut and operator
   table read the `logserv_compliance_rollup` KV Store collection: metric `main` carries an hourly
-  grain over (change source, category, operator, after-hours flag), and metrics `userchg`,
-  `permgrant` and `password` pre-compute their KPIs' exact filters per hour. The after-hours flag is
-  computed from the event timestamp at aggregation time (outside 08:00–18:59, or a weekend).
-  Populated at minute :12 of every hour by `logserv_compliance_aggregate`.
+  grain over (change source, category, operator), and metrics `userchg`, `permgrant` and
+  `password` pre-compute their KPIs' exact filters per hour. After-hours is **not stored**: the
+  After-Hours KPI and sparkline derive it when you view the dashboard, from each hourly bucket, in
+  your time zone — the same rule the raw After-Hours table applies to each event, so the two agree.
+  (In a time zone with a half-hour offset, such as India at UTC+05:30, an hour that straddles 08:00
+  or 19:00 is judged by its start.) Populated at minute :12 of every hour by
+  `logserv_compliance_aggregate`.
 - **Live panels** — the five audit-trail tables (HANA, Windows, Linux, Privileged Changes,
   After-Hours) are per-event listings dispatched against the raw events at view time (capped at the
   500 most recent matches each) — deliberately raw, so the compliance record shows actual

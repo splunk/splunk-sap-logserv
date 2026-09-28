@@ -26,12 +26,12 @@ Where you install each package depends on your Splunk topology:
 |----------|---------|-------------|
 | **Single instance** | Same instance | Same instance |
 | **DS + HFs + on-prem SH** | Deployment Server + each HF + Indexer | Search Head only |
-| **DS + HFs + Splunk Cloud** | Deployment Server + each HF (Splunk Cloud admin handles the indexer tier — Data TA installed there provides the index defs) | Splunk Cloud SH only |
+| **DS + HFs + Splunk Cloud** | Deployment Server + each HF (the Cloud indexer tier is Splunk-managed — create the indexes through the Cloud console or ACS) | Splunk Cloud SH only |
 
 !!! warning "Important"
     - The Data TA is **never** installed directly on Heavy Forwarders when using a Deployment Server -- the DS distributes it automatically.
     - The LogServ App is **never** installed on Heavy Forwarders or the Deployment Server.
-    - On Splunk Cloud, the customer's Splunk Cloud admin handles the indexer tier separately. The Data TA installed on that indexer provides the bundled index definitions.
+    - On Splunk Cloud you cannot install apps on the indexer tier, so the Data TA's bundled `indexes.conf` never applies there. Create both indexes through the Splunk Cloud console or the Admin Config Service (ACS) — see [Installing the Data TA](../install-setup/install-ta.md).
     - For single-instance deployments, both packages are installed on the same instance and Splunk merges their configurations at runtime.
 
 !!! note "Cloud ingest add-on placement (Azure / GCP)"

@@ -66,6 +66,31 @@ const Wrapper = styled.div<{ $zebra: boolean; $clickableRows: boolean }>`
         width: 100%;
     }
 
+    /* Build 346 — THE fix for tables scrolling horizontally in narrow panels.
+       Measured on Linux at 1440px with the rail expanded: 4 tables overflowed
+       their containers (21 / 218 / 85 / 78 px); with this rule, 0.
+
+       Splunk renders each head cell as th > div(flex) > div(GRID) > span(label),
+       and that label span is a GRID ITEM left at the default min-width:auto,
+       so it cannot shrink below its content. Because the table is
+       table-layout:auto, the width:100% above is only a suggestion and the
+       real width is the sum of those header minimums — which is why a table
+       of 7-character cells still demanded 378px inside a 357px panel.
+
+       Established by experiment on the live page rather than by reading: rules
+       targeting the th, or table-layout:fixed, did NOT fix it (fixed made it
+       worse, 3 remaining); min-width:0 on the label span fixed it completely,
+       and on its own — overflow:hidden there was not needed.
+
+       Deliberately selected structurally rather than by Splunk's class name
+       (HeadInnerStyles__StyledLabel): both work, but a vendor class is a
+       vendor internal. If Splunk changes this markup the rule simply stops
+       matching and we are back to today's scrollbar — degradation, not
+       breakage. */
+    & thead th span {
+        min-width: 0;
+    }
+
     /* Magnetic table header (§6, build 254): 12px semibold sentence case
        (the old uppercase + letter-spacing dropped), default text color. */
     & thead th {
@@ -135,9 +160,37 @@ const SortableHeader = styled.span<{ $align?: 'left' | 'right' | 'center' }>`
     width: 100%;
     justify-content: ${(p) => (p.$align === 'right' ? 'flex-end' : p.$align === 'center' ? 'center' : 'flex-start')};
 
+    /* Build 346 — keep the sort affordance intact when a header is squeezed.
+     * (No backticks in this comment: it sits inside a styled-components
+     * tagged template, where one would terminate the literal early.)
+     *
+     * NOT the fix for the table overflow — that is the min-width:0 rule on
+     * the head-cell label in Wrapper above. My first attempt put overflow
+     * here and it changed nothing, because THIS element is a child of the
+     * grid item, not the grid item itself, and the automatic-minimum rule
+     * applies to the item. The live experiment is recorded in Wrapper.
+     *
+     * What this pair does earn: once the label span CAN shrink, the squeeze
+     * has to land somewhere. overflow:hidden plus HeadLabel's ellipsis makes
+     * it land on the text, which is recoverable — this element already
+     * carries a title attribute with the full label — rather than on the
+     * sort arrows, which are not. */
+    min-width: 0;
+    overflow: hidden;
+
     &:hover {
         color: ${logservTheme.colors.cyanLight};
     }
+`;
+
+/* The header's text. Shrinks and ellipsises so the SORT ARROWS never get
+ * squeezed out — losing a character of a label is recoverable (the title
+ * tooltip has it in full); losing the sort affordance is not. */
+const HeadLabel = styled.span`
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 `;
 
 const SortIndicator = styled.span<{ $dir: SortDir }>`
@@ -145,6 +198,8 @@ const SortIndicator = styled.span<{ $dir: SortDir }>`
     color: ${(p) => (p.$dir === 'none' ? logservTheme.colors.textMuted : logservTheme.colors.cyanLight)};
     opacity: ${(p) => (p.$dir === 'none' ? 0.4 : 1)};
     line-height: 1;
+    /* Never absorb the squeeze — the label does. */
+    flex: 0 0 auto;
 `;
 
 const PaginationFooter = styled.div`
@@ -606,7 +661,7 @@ function DataTable<TRow extends Record<string, unknown>>({
                                         }}
                                         title={`Sort by ${typeof col.label === 'string' ? col.label : col.key}`}
                                     >
-                                        <span>{col.label}</span>
+                                        <HeadLabel>{col.label}</HeadLabel>
                                         <SortIndicator $dir={dir} aria-hidden="true">
                                             {indicator}
                                         </SortIndicator>

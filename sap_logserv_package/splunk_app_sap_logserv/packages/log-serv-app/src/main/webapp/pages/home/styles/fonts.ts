@@ -6,7 +6,7 @@
  *
  * Families (mirroring Harbor base.css's stacks):
  *   - "Inter" 400/500/600/700 (OFL 1.1)       → body/UI text
- *   - "Sharp Sans" 700 (Cisco-licensed)       → page titles (v0.1.1 is the
+ *   - "Sharp Sans" 700 (Cisco-licensed)       → page titles (v0.1.2 is the
  *     internal line; if this ever ports to the public v0.0.6 line, Sharp
  *     Sans must be dropped — Inter 700 is the fallback — unless licensing
  *     is cleared. Plan §2.3 flag.)

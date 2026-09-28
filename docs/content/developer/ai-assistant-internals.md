@@ -5,7 +5,7 @@ This document covers the implementation details of the LogServ App's AI Assistan
 For the customer-facing documentation, see the [AI Assistant section](../ai-assistant/overview.md). The customer-facing pages cover what users see and how to use the feature; this page covers how it's built.
 
 !!! note "Build variant"
-    The published v0.1.1 App artifact is the **templates-only build**, in which the free-form LLM path is disabled (see **The Build Flag Pattern** below). Everything here describing free-form dispatch — tool definitions, primers, Power Mode, tier sanitization on vendor calls — describes code that is present but inert in that artifact, and active only in a locally built full-LLM variant (`yarn build`). The predefined-prompt path, MCP dispatch, tier sanitization of tool results, and the audit log are fully active in both.
+    The published v0.1.2 App artifact is the **full-LLM build** (`yarn build`), in which the free-form LLM path is present and governed at run time by the `templates_only_mode` setting (default off) — so everything here describing free-form dispatch (tool definitions, primers, Power Mode, tier sanitization on vendor calls) is live code, reached once a provider credential is configured. The compile-time **templates-only** variant (`yarn build:templates-only`) forces that setting on and leaves the same code present but unreachable — see **The Build Flag Pattern** below. The predefined-prompt path, MCP dispatch, tier sanitization of tool results, and the audit log are fully active in both.
 
 ---
 
@@ -364,4 +364,4 @@ The 3-part SemVer in `[id] version` is independent and only changes on user-faci
 
 When the admin saves a config change in the General tab that affects what users see (master `enabled` toggle, `mcp_required`, `power_user_roles`, etc.), the React app re-runs `loadAIAssistantConfig()` immediately and re-applies the new config to the running session. No page reload required.
 
-Implementation: `App.tsx` accepts an `onConfigSaved` callback that re-loads config from the storage REST API. The callback is threaded `App → AppShell → AIAssistantSettings → GeneralPanel`, called after `writeAIConfig` succeeds. Affected props are recomputed on the next React render and the dependent UI re-renders accordingly (e.g., the `✦ AI Assistant` button in the top-right nav appears / disappears).
+Implementation: `App.tsx` accepts an `onConfigSaved` callback that re-loads config from the storage REST API. The callback is threaded `App → AppShell → AIAssistantSettings → GeneralPanel`, called after `writeAIConfig` succeeds. Affected props are recomputed on the next React render and the dependent UI re-renders accordingly (e.g., the **AI Assistant** button in the header appears / disappears).

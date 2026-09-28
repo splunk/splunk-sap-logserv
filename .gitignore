@@ -36,11 +36,19 @@ coverage_report
 Thumbs.db
 
 # Tarballs — broad ignore so iteration / dev tarballs never accidentally
-# commit. The two final 0.1.1 canonical release artifacts are explicitly
-# allowed by the negation rules below.
+# commit. Only the release artifacts below are allowed through, each named
+# in full: a wildcard negation would let a build-suffixed tarball slip in
+# if one ever landed in release_binaries/ by accident (mandate 7).
+#
+# v0.1.2 is the current canonical set. The v0.1.1 set is retained alongside
+# it by product decision (2026-09-20), so it needs negations of its own --
+# without them the broad ignore above would swallow the very files we kept.
 *.tar.gz
+!release_binaries/splunk_app_sap_logserv-0.1.2.tar.gz
+!release_binaries/splunk_ta_sap_logserv-0.1.2.tar.gz
+!release_binaries/splunk_ta_sap_logserv_azure-0.1.2.tar.gz
+!release_binaries/splunk_ta_sap_logserv_gcp-0.1.2.tar.gz
 !release_binaries/splunk_app_sap_logserv-0.1.1.tar.gz
 !release_binaries/splunk_ta_sap_logserv-0.1.1.tar.gz
 !release_binaries/splunk_ta_sap_logserv_azure-0.1.1.tar.gz
 !release_binaries/splunk_ta_sap_logserv_gcp-0.1.1.tar.gz
-!release_binaries/splunk_ta_sap_logserv-0.1.2.tar.gz

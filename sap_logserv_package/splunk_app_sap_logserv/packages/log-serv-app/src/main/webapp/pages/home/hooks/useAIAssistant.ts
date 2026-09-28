@@ -477,6 +477,11 @@ Sourcetypes and their key fields:
 - squid:access
     action (DENIED|TCP_HIT|TCP_MISS|...), url, src, dest, status,
     http_method, response_time_ms
+- squid:cache, squid:store
+    Squid's own daemon log (cache.log) and object-store journal
+    (store.log): not requests, so count proxy traffic from
+    squid:access. Older data carries these lines as squid:access
+    with source=*cache.log / *store.log.
 - XmlWinEventLog (Windows Security)
     EventCode (4625 failed login, 4720 user created, 4740 lockout,
     4672 special privileges), TargetUserName, Computer

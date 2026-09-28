@@ -2,7 +2,7 @@
 
 Drill-down chips are clickable affordances that appear next to AI Assistant tool-result tiles (right pane) and inline citations in the chat narrative (left pane). They connect the AI Assistant's investigation flow back into the dashboards or Splunk's universal Search app, with the dispatch's exact time range pre-applied.
 
-The tile chips and guidance-card chips are fully active in the **published (templates-only) package** — every predefined-prompt tile carries them. The chat-narrative *citation* chips accompany LLM-written narratives, which exist only in the [full-LLM variant](templates-only-build.md).
+The tile chips and guidance-card chips are active **on install** — every predefined-prompt tile carries them, with no LLM provider involved. The chat-narrative *citation* chips accompany LLM-written narratives, so they appear only once an [LLM provider credential](settings.md#provider-credentials-tab) is configured.
 
 ![AI Assistant — drill-down chips on a tool tile](../../images/ai-assistant-drilldown-chips.png)
 
@@ -30,7 +30,7 @@ Chips appear in the tile's actions slot (in the FramedPanel header), between the
 
 The AI's narrative response cites tool dispatches as `[→ logserv_xxx]`. Each citation in chat becomes a clickable scroll-to-tile span (clicking it scrolls the right pane to the matching tile), with sibling chips auto-appended on the same line: `↗ Dashboard` (one per resolvable target) + `↗ Run SPL`.
 
-*This rendering path requires an AI-generated narrative and therefore exists only in the [full-LLM variant](templates-only-build.md) — in the published templates-only package only the tile chips (right pane) and guidance-card links render.*
+*This rendering path requires an AI-generated narrative, so it appears only once an [LLM provider credential](settings.md#provider-credentials-tab) is configured — until then, and in a compile-time [templates-only build](templates-only-build.md), only the tile chips (right pane) and guidance-card links render.*
 
 A typical citation in chat reads:
 

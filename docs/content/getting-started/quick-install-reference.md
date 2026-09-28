@@ -17,7 +17,7 @@ A single matrix mapping every Splunkbase add-on, prerequisite, and LogServ compo
 | **Splunk Add-on for AWS** | <a href="https://splunkbase.splunk.com/app/1876" target="_blank">1876</a> | required if SAP ECS in AWS | — | — | ✓ (S3 inputs) | — |
 | **LogServ Azure add-on** (`splunk_ta_sap_logserv_azure`) | this repo | required if SAP ECS in Azure | — | — | ✓ (Blob input, per-HF) | — |
 | **LogServ GCP add-on** (`splunk_ta_sap_logserv_gcp`) | this repo | required if SAP ECS in GCP | — | — | ✓ (Pub/Sub input, per-HF) | — |
-| **Splunk MCP Server** | <a href="https://splunkbase.splunk.com/app/7931" target="_blank">7931</a> v1.0.3+ (< 2.0.0; tested against 1.1.0) | required for AI Assistant | ✓ | — | — | — |
+| **Splunk MCP Server** | <a href="https://splunkbase.splunk.com/app/7931" target="_blank">7931</a> v1.0.3+ (< 3.0.0, so 2.x is supported; tested against 1.1.0 and 2.0.0) | required for AI Assistant | ✓ | — | — | — |
 | **Splunk AI Assistant** | <a href="https://splunkbase.splunk.com/app/200" target="_blank">200</a> | recommended companion to 7931 | ✓ | — | — | — |
 
 ### :material-circle-box:{ .taiconcolor } Notes

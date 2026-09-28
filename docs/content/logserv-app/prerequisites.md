@@ -18,11 +18,11 @@ The Squid Proxy and ISC BIND add-ons are **not** required — their parsing is a
 
 The LogServ App includes a built-in **AI Assistant** panel that dispatches predefined prompts (saved searches) against your data via the Splunk MCP Server. To use it, install:
 
-- <a href="https://splunkbase.splunk.com/app/7931" target="_blank">Splunk MCP Server (Splunkbase App 7931)</a> — v1.1.0 or later is the version this release is tested against (the App's version gate accepts 1.0.3 up to, but not including, 2.0.0).
+- <a href="https://splunkbase.splunk.com/app/7931" target="_blank">Splunk MCP Server (Splunkbase App 7931)</a> — v1.1.0 or later is the version this release is tested against (the App's version gate accepts 1.0.3 up to, but not including, 3.0.0, so the 2.x major is supported).
 
 Install on the same Search Head as the LogServ App. Cookie auth from the same Splunk Web session works by default; no bearer token required for HTTP-only Splunk (on Splunk Cloud Victoria, see the JWT-audience note in [Splunk MCP Setup](../ai-assistant/mcp-setup.md)).
 
-**The AI Assistant ships disabled.** After installing the App and the MCP Server, an admin must turn it on at **Settings → AI Assistant → General → Enable AI Assistant** (an acknowledgement modal gates the first enable); only then does the `✦ AI Assistant` button appear in the nav bar.
+**The AI Assistant ships disabled.** After installing the App and the MCP Server, an admin must turn it on at **Settings → AI Assistant → General → Enable AI Assistant** (an acknowledgement modal gates the first enable); only then does the **AI Assistant** button appear at the right end of the header's second row.
 
 #### Recommended companion app
 
@@ -30,8 +30,8 @@ Install on the same Search Head as the LogServ App. Cookie auth from the same Sp
 
 The Splunk AI Assistant is **not a strict prerequisite** for the LogServ App's AI Assistant — the LogServ App uses only the core `splunk_run_saved_search` and `splunk_run_query` MCP tools, which work standalone against the Splunk MCP Server. However, App 200 is the typical co-install for the Splunk MCP Server (per Splunk's documented setup pattern), and installing it alongside avoids friction if a future LogServ release calls the additional MCP tools it unlocks.
 
-!!! note "The published package needs no AI provider credentials"
-    The published App package is the **templates-only build variant**: the LLM-driven path is disabled at compile time, and the predefined-prompt path (which dispatches saved searches via the Splunk MCP Server) is the AI Assistant. It does **not** call any LLM provider — **you do not need an Anthropic / OpenAI / Azure / Bedrock credential.** In the separately-built full-LLM variant used in approved deployments, the **Settings → AI Assistant → Provider Credentials** sub-tab becomes visible and one provider credential is required for the free-form chat input. See [Build Variants](../ai-assistant/templates-only-build.md).
+!!! note "No AI provider credential is needed to run the AI Assistant"
+    The predefined-prompt path — which dispatches saved searches via the Splunk MCP Server — is the AI Assistant on a fresh install. It calls no LLM provider, so **you do not need an Anthropic / OpenAI / Azure / Bedrock credential** to use it. The published App package is the **full-LLM build variant**, so the free-form chat input is present as well: configure one provider credential on the **Settings → AI Assistant → Provider Credentials** sub-tab to activate it, or leave it unconfigured and that path stays inert. See [Build Variants](../ai-assistant/templates-only-build.md).
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 

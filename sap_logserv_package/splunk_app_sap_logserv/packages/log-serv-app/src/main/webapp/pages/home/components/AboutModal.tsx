@@ -5,7 +5,8 @@ import { logservTheme } from '../styles/logservTheme';
 import { APP_VERSION, APP_BUILD, APP_BUILD_DATE } from '../buildFlags';
 
 /**
- * About dialog — opened from the "About" item in the navigation bar.
+ * About dialog — opened from the "About" item in the left rail (SideNav),
+ * below the divider with Settings.
  *
  * Shows the app icon, the customer-facing solution name, and the version
  * + build number of the running app. Version and build are compile-time

@@ -57,7 +57,7 @@ Each package has its own additional prerequisites — install Splunkbase add-ons
 |---|---|
 | Single Splunk instance running the full LogServ solution | Both prerequisite sets — Data TA + App, plus the cloud-ingest add-on matching your provider: the Splunk Add-on for AWS (1876) for AWS S3, the LogServ Azure add-on (`splunk_ta_sap_logserv_azure`) for Azure Blob, or the LogServ GCP add-on (`splunk_ta_sap_logserv_gcp`) for Google Cloud Storage |
 | Distributed Splunk with on-prem Search Head | Data TA prereqs on DS + each HF + the indexer; App prereqs on the SH; the cloud-ingest add-on matching your provider (AWS 1876 / LogServ Azure / LogServ GCP) on each HF |
-| Distributed Splunk with Splunk Cloud Search Head | Data TA prereqs on DS + each HF; App prereqs on the Splunk Cloud SH; the cloud-ingest add-on matching your provider (AWS 1876 / LogServ Azure / LogServ GCP) on each HF; Splunk Cloud admin handles the indexer tier (Data TA installed there provides the index defs) |
+| Distributed Splunk with Splunk Cloud Search Head | Data TA prereqs on DS + each HF; App prereqs on the Splunk Cloud SH; the cloud-ingest add-on matching your provider (AWS 1876 / LogServ Azure / LogServ GCP) on each HF; the Cloud indexer tier is Splunk-managed — create the indexes through the Cloud console or ACS |
 | Splunk Cloud Search Head only (no on-prem ingest tier) | App prereqs only — your Splunk Cloud admin handles the data tier (including the cloud-ingest add-on matching your provider) and the indexer tier separately |
 
 ## :material-circle-box:{ .cboxmove } Next Steps

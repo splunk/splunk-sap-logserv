@@ -13,6 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Network Perimeter — honest port of v0.0.4.2 logserv_network_perimeter.xml.
@@ -117,13 +118,13 @@ const Q_BASE = {
     // null-fill empty bins; the count-spark 0-fill rule does NOT apply here).
     sparkBw: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) as bytes_daily | eval daily = round(bytes_daily/1048576, 2)`,
 
-    activity: `${ACTIVITY} | eval _time=bucket_ts | timechart span=1d sum(count) by source_type | fillnull value=0`,
+    activity: `${ACTIVITY} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by source_type | fillnull value=0`,
     blockedSrc: `${FW} | search fw_src!="(none)" | stats sum(count) as Drops, dc(eval(if(fw_dst="(none)",null(),fw_dst))) as "Unique Targets", values(eval(if(fw_proto="(none)",null(),fw_proto))) as Protocols by fw_src | sort -Drops | rename fw_src as "Source IP"`,
     // blockedPort adds fw_proto!="(none)" because raw `stats by fw_dpt, fw_proto`
     // drops a null-proto group (a DPT-present-but-PROTO-absent event).
     blockedPort: `${FW} | search fw_dpt!="(none)" fw_proto!="(none)" | stats sum(count) as Drops, dc(eval(if(host="(none)",null(),host))) as Hosts by fw_dpt, fw_proto | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
-    fwProto: `${FW} | search fw_action="IN_DROP" fw_proto!="(none)" | eval proto_name = ${PROTO_NAME} | eval _time=bucket_ts | timechart span=1d sum(count) by proto_name | fillnull value=0`,
-    proxyDenied: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(denied_count) as "Denied Requests" | fillnull value=0`,
+    fwProto: `${FW} | search fw_action="IN_DROP" fw_proto!="(none)" | eval proto_name = ${PROTO_NAME} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by proto_name | fillnull value=0`,
+    proxyDenied: `${PROXY} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(denied_count) as "Denied Requests" | fillnull value=0`,
     outDomains: `${PROXYDOM} | stats sum(count) as Requests, sum(bytes_sum) as bytes, dc(eval(if(src_ip="(none)",null(),src_ip))) as "Unique Clients" by url_domain | eval Bandwidth = ${bytesFmt('bytes')} | sort -bytes | table url_domain, Requests, Bandwidth, "Unique Clients" | rename url_domain as "Domain"`,
     dnsType: `${DNSTYPE} | eval query_type_label = ${QTYPE_LABEL} | stats sum(count) as count by query_type_label | sort -count | rename query_type_label as "Query Type"`,
     queried: `${DNSQ} | stats sum(count) as Queries, dc(eval(if(src="(none)",null(),src))) as "Unique Clients", sum(txt_count) as txt_count, sum(mx_count) as mx_count by query | eval pct_txt = tostring(round(txt_count*100/Queries, 1)) . "%" | eval pct_mx = tostring(round(mx_count*100/Queries, 1)) . "%" | sort -Queries | table query, Queries, "Unique Clients", pct_txt, pct_mx | rename query as "Domain", pct_txt as "%TXT", pct_mx as "%MX"`,
@@ -145,7 +146,8 @@ const Q_BASE = {
  * cached — beaconing has no meaningful sub-hour answer.
  * ------------------------------------------------------------------------- */
 const RAW_LSEC = '`sap_logserv_idx_macro` sourcetype="linux_secure"';
-const RAW_SQUID = '`sap_logserv_idx_macro` sourcetype="squid:access"';
+// Access-log lines only, as in the rollup's proxy and activity arms (session 139).
+const RAW_SQUID = '`sap_logserv_idx_macro` sourcetype="squid:access" source="*access.log*"';
 const RAW_DNS = '`sap_logserv_idx_macro` tag=dns message_type="Query"';
 const QRAW_BASE = {
     kpiFw: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | stats count`,
@@ -153,11 +155,11 @@ const QRAW_BASE = {
     kpiDns: `${RAW_DNS} | stats count`,
     kpiDenied: `${RAW_SQUID} (status=403 OR vendor_action="TCP_DENIED") | stats count`,
     kpiBw: `${RAW_SQUID} bytes_out=* | stats sum(bytes_out) as total_bytes | eval display = ${bytesFmt('total_bytes')} | table display`,
-    activity: `\`sap_logserv_idx_macro\` (sourcetype="linux_secure" OR sourcetype="squid:access" OR (tag=dns message_type="Query")) | eval source_type = case(sourcetype="linux_secure" AND match(_raw, "IN_DROP"), "Firewall Drops", sourcetype="squid:access", "Proxy Requests", sourcetype="isc:bind:query", "DNS Queries", 1=1, "other") | where source_type != "other" | timechart span=1d count by source_type | fillnull value=0`,
+    activity: `\`sap_logserv_idx_macro\` (sourcetype="linux_secure" OR (sourcetype="squid:access" source="*access.log*") OR (tag=dns message_type="Query")) | eval source_type = case(sourcetype="linux_secure" AND match(_raw, "IN_DROP"), "Firewall Drops", sourcetype="squid:access", "Proxy Requests", sourcetype="isc:bind:query", "DNS Queries", 1=1, "other") | where source_type != "other" | timechart span=__LSV_SPAN__ count by source_type | fillnull value=0`,
     blockedSrc: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops, dc(fw_dst) as "Unique Targets", values(fw_proto) as Protocols by fw_src | sort -Drops | rename fw_src as "Source IP"`,
     blockedPort: `${RAW_LSEC} | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops, dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
-    fwProto: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_proto) | eval proto_name = ${PROTO_NAME} | timechart span=1d count by proto_name | fillnull value=0`,
-    proxyDenied: `${RAW_SQUID} (status=403 OR vendor_action="TCP_DENIED") | timechart span=1d count as "Denied Requests" | fillnull value=0`,
+    fwProto: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_proto) | eval proto_name = ${PROTO_NAME} | timechart span=__LSV_SPAN__ count by proto_name | fillnull value=0`,
+    proxyDenied: `${RAW_SQUID} (status=403 OR vendor_action="TCP_DENIED") | timechart span=__LSV_SPAN__ count as "Denied Requests" | fillnull value=0`,
     outDomains: `${RAW_SQUID} url_domain=* bytes_out=* | stats count as Requests, sum(bytes_out) as bytes, dc(src_ip) as "Unique Clients" by url_domain | eval Bandwidth = ${bytesFmt('bytes')} | sort -bytes | table url_domain, Requests, Bandwidth, "Unique Clients" | rename url_domain as "Domain"`,
     dnsType: `${RAW_DNS} query_type=* | eval query_type_label = ${QTYPE_LABEL} | stats count by query_type_label | sort -count | rename query_type_label as "Query Type"`,
     queried: `${RAW_DNS} query=* | stats count as Queries, dc(src) as "Unique Clients", sum(eval(if(query_type="TXT", 1, 0))) as txt_count, sum(eval(if(query_type="MX", 1, 0))) as mx_count by query | eval pct_txt = tostring(round(txt_count*100/Queries, 1)) . "%" | eval pct_mx = tostring(round(mx_count*100/Queries, 1)) . "%" | sort -Queries | table query, Queries, "Unique Clients", pct_txt, pct_mx | rename query as "Domain", pct_txt as "%TXT", pct_mx as "%MX"`,
@@ -219,10 +221,15 @@ const SUSPICIOUS_COLS: ColumnDef[] = [
 ];
 
 const NetworkPerimeter: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const fw = useFirstRowFieldHybrid(Q.kpiFw, QRAW.kpiFw, 'count');
     const proxy = useFirstRowFieldHybrid(Q.kpiProxy, QRAW.kpiProxy, 'count');
     const dns = useFirstRowFieldHybrid(Q.kpiDns, QRAW.kpiDns, 'count');
@@ -247,7 +254,6 @@ const NetworkPerimeter: React.FC = () => {
     const deniedTone = Number(denied.value ?? 0) > 0 ? 'warning' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goDeniedKpi = (): void => {
         const spl = '`sap_logserv_idx_macro` sourcetype=squid:access (status=403 OR vendor_action="TCP_DENIED") | sort -_time';
         openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));

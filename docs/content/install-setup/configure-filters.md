@@ -319,11 +319,13 @@ The table below lists the **Primary** log types — those with dedicated sourcet
 | linux | cron | `linux:cron` |
 | linux | localmessages | `linux_messages_syslog` |
 | linux | messages | `linux_messages_syslog` |
+| linux | pacemaker ‡ | `linux:slapd` |
+| linux | proxy ‡ | `squid:access`, `squid:cache`, `squid:store`, `linux_messages_syslog` |
 | linux | linux_secure | `linux_secure`, `lastlog`, `who` |
 | linux | slapd | `linux:slapd` |
 | linux | sudolog | `linux:sudolog` |
 | linux | warn | `linux:warn` |
-| proxy | squid | `squid:access` |
+| proxy | squid | `squid:access`, `squid:cache`, `squid:store` |
 | sap | saphostexec | `sap:saphostexec` |
 | sap | saprouter | `sap:saprouter` |
 | sap | sapstartsrv | `sap:sapstartsrv` |
@@ -337,9 +339,12 @@ The table below lists the **Primary** log types — those with dedicated sourcet
 
 † `abap/dispatcher`, `abap/event`, and `abap/workprocess` were discontinued by SAP from LogServ delivery effective April 2026 — filters on them affect historical data only. Contact SAP about continued collection.
 
+‡ Paths seen in real LogServ data beside the older layout: Azure delivers Squid under `linux/proxy` (the AWS bucket uses `proxy/squid`), and GCP delivers `pacemaker.log` under `linux/pacemaker` and a proxy VM's `/var/log/messages` under `linux/proxy`. A rule meant to cover a log type on every cloud names all of its paths.
+
 ??? tip "Filter pattern examples using this table"
     - To include all DNS logs: `dns/*` or `dns/binddns`
     - To include all Linux logs except cron: Include `linux/*`, Exclude `linux/cron`
+    - To exclude Squid on every cloud: Exclude `proxy/squid, linux/proxy` (an Include of `linux/*` also keeps Azure's Squid logs)
     - To include only HANA audit and web dispatcher logs: `hana/hanaaudit, webdispatcher/accesslog`
     - To include all Windows event logs: `windows/*`
     - To include all ABAP application logs: `abap/*`

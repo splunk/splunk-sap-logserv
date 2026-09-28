@@ -1,7 +1,7 @@
 # Time-Window Reasoning
 
-!!! warning "Full-LLM build variant only"
-    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): no LLM ever writes a narrative there, so no primer applies. This page applies to the separately-built **full-LLM variant** used in approved deployments.
+!!! info "Applies once an LLM provider credential is configured"
+    The rules on this page shape what an LLM writes, so they apply only where free-form dispatch is live. The published v0.1.2 App package is the **full-LLM build variant**, but no LLM writes a narrative until an admin configures an [LLM provider credential](settings.md#provider-credentials-tab) — and none does where **Templates-only mode** is on or a compile-time [templates-only build](templates-only-build.md) is installed. Predefined prompts are unaffected either way: their windows are fixed in their SPL and their guidance cards are static.
 
 Time-window reasoning is a set of primer rules baked into the AI Assistant's system primer (present in both the Tier 1 and Tier 2 primer variants, in tier-appropriate forms — see below) that teach the LLM to **identify the dispatch window, normalize cumulative count to per-hour or per-day rate, and run a verify-query before declaring high-severity findings**. The rules ship as a dedicated `=== TIME-WINDOW REASONING — APPLY BEFORE EVERY SEVERITY CLAIM ===` block in the primer, inserted right after the data-boundary block and before the saved-search catalog.
 

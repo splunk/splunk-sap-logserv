@@ -122,7 +122,7 @@ Each of the 4 anomaly searches has a corresponding entry in the AI Assistant pre
 - `security.anomaly_topology_edge_volume`
 - `security.anomaly_after_hours_admin`
 
-SOC analysts can dispatch them on demand from the AI Assistant's predefined-prompt browser (Security pack) and read the result table plus its static interpretation guidance. (Asking the assistant in natural language to *explain* an anomaly requires the full-LLM build variant — the published templates-only package has no free-form chat.)
+SOC analysts can dispatch them on demand from the AI Assistant's predefined-prompt browser (Security pack) and read the result table plus its static interpretation guidance. (Asking the assistant in natural language to *explain* an anomaly requires the free-form path, which activates once an LLM provider credential is configured.)
 
 ## :material-circle-box:{ .taiconcolor } See also
 

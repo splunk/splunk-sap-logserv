@@ -1,7 +1,7 @@
 # Power Mode
 
-!!! warning "Full-LLM build variant only"
-    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): there is no LLM dispatch to force a saved-search before, so the `✦ Power` toggle is hidden there. This page applies to the separately-built **full-LLM variant** used in approved deployments.
+!!! info "Requires a configured LLM provider credential"
+    Power Mode governs free-form LLM dispatch, so the `✦ Power` toggle appears only where that path is live. The published v0.1.2 App package is the **full-LLM build variant**, but an admin must first configure an [LLM provider credential](settings.md#provider-credentials-tab). The toggle is hidden while **Templates-only mode** is on (Settings → AI Assistant → General) and in a compile-time [templates-only build](templates-only-build.md), since there is then no LLM dispatch to force a saved search before.
 
 Power Mode is a role-gated **`✦ Power`** toggle in the AI Assistant chat-input toolbar that forces a saved-search dispatch before LLM synthesis on every prompt. When Power Mode is on, the AI MUST call `splunk_run_saved_search` (or `splunk_run_query`) at least once before generating any narrative response — forced-RAG. Reasoning from prior knowledge alone is disallowed; every reply is data-grounded.
 

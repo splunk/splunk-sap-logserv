@@ -1,10 +1,16 @@
 import React, { useMemo } from 'react';
 import styled from 'styled-components';
+import Bar from '@splunk/visualizations/Bar';
 import Column from '@splunk/visualizations/Column';
 import Line from '@splunk/visualizations/Line';
 import Pie from '@splunk/visualizations/Pie';
 import { logservTheme } from '../../../styles/logservTheme';
-import { paletteColors, ChartPalette, statusFieldColors } from '../../../styles/chartPalettes';
+import {
+    paletteColorsFor,
+    piePaletteColors,
+    ChartPalette,
+    statusFieldColors,
+} from '../../../styles/chartPalettes';
 import { ThemeMode } from '../../../styles/magneticTokens';
 import { useThemeMode } from '../../../state/ThemeModeProvider';
 import FramedPanel from '../../FramedPanel';
@@ -601,7 +607,9 @@ const renderTimeSeries = (
     if (effectivePalette === 'status') {
         options.seriesColorsByField = statusFieldColors(mode);
     } else {
-        const colors = paletteColors(effectivePalette, mode);
+        /* Count-aware: a 3-series chart tagged `errors` used to get a
+           2-colour ramp and draw series 3 in series 1's red. */
+        const colors = paletteColorsFor(valueKeys.length, effectivePalette, mode);
         if (colors) options.seriesColors = colors;
     }
     const Viz = useLine ? Line : Column;
@@ -641,7 +649,14 @@ const renderPie = (
     //      fallback (the renderer will then plot string-string).
     const isMetricName = (k: string): boolean => {
         const n = k.toLowerCase();
-        return /(?:^|_)(count|total|sum|pct|percent|rate|ms|num|n)(?:_|$)/.test(n)
+        /* `errors?` (session 132): logserv_top_error_categories names its
+         * headline aggregate `Errors`. Without it nothing matched and the
+         * fall-back took the LAST numeric column, `affected_hosts`, so the
+         * donut was sized by host counts while the table listed error counts.
+         * Audited against all 25 pie prompts: it changes exactly that one --
+         * the only other "error" column, gw_error_detail, is a string and the
+         * numeric filter below already excludes it. */
+        return /(?:^|_)(count|total|sum|pct|percent|rate|ms|num|n|errors?)(?:_|$)/.test(n)
             || /^(count|total|sum|value)$/.test(n);
     };
     const isAllNumeric = (k: string): boolean =>
@@ -703,12 +718,74 @@ const renderPie = (
         pieRows = [...top, otherRow];
     }
 
+    /* DOMINANCE GUARD.
+     *
+     * A pie answers "what share of the whole?", and it stops answering
+     * anything once one wedge owns almost all of it. Measured on the live
+     * dataset, logserv_cross_stack_auth_failures is 96.16% one user
+     * (sapadm); its other eight wedges share 3.84% of the circumference, a
+     * few pixels each, and are invisible whatever colour they are given.
+     * The build-350 palette work was real and DID apply to that chart — the
+     * ring went from orange to categorical[0] — which is precisely how we
+     * know the residue is geometry rather than colour.
+     *
+     * A horizontal bar keeps every category on its own labelled row against
+     * a shared axis: the dominance is still the headline, and the tail is
+     * readable. The full row set also still renders in the table below.
+     *
+     * The threshold is deliberately high so this cannot fire on an ordinary
+     * skewed breakdown — logserv_top_error_categories peaks at 41.2% and
+     * correctly stays a pie. Three wedges minimum, because at two a 4%
+     * wedge is still ~14 degrees and perfectly visible. */
+    const DOMINANCE_THRESHOLD = 0.85;
+    const pieTotal = pieRows.reduce((sum, r) => sum + valueOf(r), 0);
+    const pieMax = pieRows.reduce((max, r) => Math.max(max, valueOf(r)), 0);
+    const dominated =
+        pieRows.length >= 3 && pieTotal > 0 && pieMax / pieTotal >= DOMINANCE_THRESHOLD;
+
+    if (dominated) {
+        /* One measure, so ONE colour: a bar's category is carried by its
+         * axis label, not by hue, and colouring single-series bars
+         * individually is noise that implies a distinction that is not
+         * there. Taking [0] of the same palette keeps it in the family. */
+        const barColor = (piePaletteColors(pieRows.length, chartPalette, mode) ?? [])[0];
+        const BAR_ROW_HEIGHT = 28;
+        const barHeight = Math.min(
+            560,
+            Math.max(PIE_HEIGHT, pieRows.length * BAR_ROW_HEIGHT + 64),
+        );
+        const barOptions: Record<string, unknown> = {
+            backgroundColor: 'transparent',
+            showProgressBar: false,
+            showLastUpdated: false,
+            legendTruncation: 'ellipsisMiddle',
+            ...(barColor ? { seriesColors: [barColor] } : {}),
+        };
+        return (
+            <LegendTitleTooltips>
+                <GradientWrap>
+                    <ChartContainer $height={barHeight}>
+                        <Bar
+                            dataSources={buildDataSources(pieRows, [catKey, valueKey])}
+                            width="100%"
+                            height={barHeight}
+                            options={barOptions}
+                        />
+                    </ChartContainer>
+                </GradientWrap>
+            </LegendTitleTooltips>
+        );
+    }
+
     const dataSources = buildDataSources(pieRows, [catKey, valueKey]);
-    // Pie palette: explicit > 'categorical' default. The categorical
-    // ramp's wide hue spread is the right default for pies because pie
-    // wedges typically represent arbitrary categorical breakdowns
-    // (top destinations, top users, top peers, etc.).
-    const pieColors = paletteColors(chartPalette ?? 'categorical', mode) ?? paletteColors('categorical', mode);
+    // Pie palette. The categorical ramp's wide hue spread is right for pies
+    // because wedges represent arbitrary categorical breakdowns (top
+    // destinations, top users, top peers). That was already the DEFAULT here,
+    // but an explicit ramp tag could override it — and 14 of 26 pie prompts
+    // carry one, chosen for the prompt's subject rather than its data shape.
+    // piePaletteColors ignores ramps for exactly that reason; `status` and an
+    // explicit `categorical` still mean what they say.
+    const pieColors = piePaletteColors(pieRows.length, chartPalette, mode);
     const options = {
         backgroundColor: 'transparent',
         showProgressBar: false,

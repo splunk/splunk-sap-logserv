@@ -3,7 +3,7 @@ import { DashboardInfo, dashboards } from '../routes/dashboardRegistry';
 /**
  * Resolves a dashboard's published-docs URL.
  *
- * Docs root is the GitHub Pages site that publishes the v0.1.1 mkdocs
+ * Docs root is the GitHub Pages site that publishes the v0.1.2 mkdocs
  * output. URL pattern follows the mkdocs `use_directory_urls: true`
  * default — `/<dir>/<page>/` (no .html extension, trailing slash).
  *

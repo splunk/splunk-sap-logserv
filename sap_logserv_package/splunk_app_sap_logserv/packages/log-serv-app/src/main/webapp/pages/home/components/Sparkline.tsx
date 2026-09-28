@@ -53,12 +53,12 @@ const PlaceholderLine = styled.div<{ $height: number }>`
     border-radius: 2px;
 `;
 
-const Tooltip = styled.div<{ $left: number; $alignRight: boolean }>`
+const Tooltip = styled.div<{ $left: number; $align: 'left' | 'center' | 'right' }>`
     position: absolute;
     bottom: calc(100% + 6px);
-    left: ${(p) => (p.$alignRight ? 'auto' : `${p.$left}%`)};
-    right: ${(p) => (p.$alignRight ? `${100 - p.$left}%` : 'auto')};
-    transform: ${(p) => (p.$alignRight ? 'translateX(0)' : 'translateX(-50%)')};
+    left: ${(p) => (p.$align === 'right' ? 'auto' : `${p.$left}%`)};
+    right: ${(p) => (p.$align === 'right' ? `${100 - p.$left}%` : 'auto')};
+    transform: ${(p) => (p.$align === 'center' ? 'translateX(-50%)' : 'translateX(0)')};
     pointer-events: none;
     background: ${logservTheme.colors.tableHeaderBackground};
     color: ${logservTheme.colors.textActive};
@@ -179,9 +179,12 @@ export const Sparkline: React.FC<SparklineProps> = ({
     const hoverValue = hoverIdx !== null ? cleaned[hoverIdx] : null;
     const hoverTime = hoverIdx !== null && times ? formatTimeShort(times[hoverIdx]) : null;
     const hoverLeftPct = hoverIdx !== null ? (hoverIdx / (cleaned.length - 1)) * 100 : 0;
-    // Flip the tooltip to align right when the hovered point is in the right ~20%
-    // of the chart, otherwise the tooltip overflows the KPI card.
-    const alignRight = hoverLeftPct > 80;
+    // Inside the outer ~20% at either end, pin the tooltip's NEAR edge at the
+    // hovered point instead of centring on it, or it overflows the KPI card. The
+    // left branch was missing until session 134: a centred tooltip escaped the card
+    // by ~52 px at the leftmost points (measured on the Magnetic preview, session 129).
+    const tooltipAlign: 'left' | 'center' | 'right' =
+        hoverLeftPct > 80 ? 'right' : hoverLeftPct < 20 ? 'left' : 'center';
 
     return (
         <Wrap>
@@ -234,7 +237,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
                     )}
                 </ResponsiveSvg>
                 {hoverPoint && hoverValue !== null && (
-                    <Tooltip $left={hoverLeftPct} $alignRight={alignRight}>
+                    <Tooltip $left={hoverLeftPct} $align={tooltipAlign}>
                         {hoverTime && <TimeLine>{hoverTime}</TimeLine>}
                         <ValueLine>
                             {label ? `${label}: ` : ''}

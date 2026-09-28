@@ -1,0 +1,13 @@
+<dashboard version="1.1" script="logserv_s3_direct.js" stylesheet="logserv_s3_direct.css" hideEdit="true" hideExport="true">
+  <label>AWS S3 Direct</label>
+  <description>Create and manage LogServ-scoped Generic S3 inputs for backfill and outage recovery.</description>
+  <row>
+    <panel>
+      <html>
+        <div id="logserv-s3-direct-root">
+          <p class="logserv-s3-boot">Loading&#8230;</p>
+        </div>
+      </html>
+    </panel>
+  </row>
+</dashboard>

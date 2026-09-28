@@ -10,7 +10,7 @@
 #   ./build_logserv_ta.sh <version>
 #
 # Example:
-#   ./build_logserv_ta.sh 0.1.1
+#   ./build_logserv_ta.sh 0.1.2
 #
 # Working directory: this script must be run from the directory containing
 # splunk_ta_sap_logserv/ (i.e., the source tree's sap_logserv_package/ dir,
@@ -44,7 +44,7 @@ set -euo pipefail
 
 if [ -z "${1:-}" ]; then
     echo "Usage: $0 <version>" >&2
-    echo "Example: $0 0.1.1" >&2
+    echo "Example: $0 0.1.2" >&2
     exit 1
 fi
 ta_ver="$1"

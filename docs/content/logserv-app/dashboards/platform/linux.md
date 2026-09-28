@@ -16,7 +16,7 @@ The Linux dashboard provides OS-level visibility for the hosts running SAP appli
 - **SAP Application Activity** -- Horizontal bar chart of the top 15 `sap_app` / `sap_sid` combinations by event volume (the combination label sits on the y-axis so long application names stay readable)
 - **SAP Instance Distribution** -- Table of SAP instances with event counts by SID, instance number, and CID
 - **Firewall Drops Over Time** -- Daily volume of `linux_secure` firewall events (both drops and accepts); the Firewall Drops KPI above is the IN_DROP-only count
-- **Kernel Event Types** -- Donut breakdown of kernel event categories parsed from the `kernel:` prefix (uppercase tokens such as IN_DROP and FWD_DROP)
+- **Kernel Event Types** -- Donut breakdown of kernel event categories parsed from the `kernel:` prefix — the ALL-CAPS tag that follows the kernel timestamp, such as `IN_DROP`, `FWD_DROP`, `ACPI` or `EXT4` (at least two leading capitals, digits allowed after them). Kernel lines that start with an ordinary sentence-case word ("Write cache…", "I/O error…") carry no tag and are not counted here
 - **Blocked Sources** -- Table of source IPs seen in firewall events, with target counts and protocols
 - **Blocked Destination Ports** -- Table of destination ports targeted by firewall traffic
 

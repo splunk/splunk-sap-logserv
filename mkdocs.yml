@@ -86,6 +86,7 @@ nav:
         - AWS Remote S3 Connect Setup Guide: 'content/install-setup/aws-remote-s3-connect-guide.md'
         - AWS Remote S3 Filter Setup Guide: 'content/install-setup/aws-remote-s3-filter-guide.md'
         - AWS Remote S3 Copy Setup Guide: 'content/install-setup/aws-remote-s3-copy-guide.md'
+        - AWS Direct S3 Polling (Backfill & Recovery): 'content/install-setup/aws-direct-s3-polling.md'
 #    - AWS Migrations Guide:
 #        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md'
     - Azure Setup Guide: 'content/install-setup/azure-setup.md'
@@ -142,7 +143,7 @@ nav:
     - Settings & Configuration: 'content/ai-assistant/settings.md'
     - Audit Log: 'content/ai-assistant/audit-log.md'
     - Build Variants: 'content/ai-assistant/templates-only-build.md'
-    - Full-LLM Variant:
+    - Free-form LLM Features:
         - Free-form Prompts: 'content/ai-assistant/free-form-prompts.md'
         - Privacy Tiers: 'content/ai-assistant/privacy-tiers.md'
         - Power Mode: 'content/ai-assistant/power-mode.md'

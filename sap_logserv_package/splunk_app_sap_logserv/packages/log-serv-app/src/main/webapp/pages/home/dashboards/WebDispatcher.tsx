@@ -15,7 +15,7 @@ import { shouldUseRawSource } from '../utils/hybridRouting';
 import { recordRawTwin } from '../utils/rawTwin';
 import { useCloudProvider, mapCloudProviderQueries, withCloudProvider } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
-import { chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
 import { useThemeMode } from '../state/ThemeModeProvider';
@@ -93,7 +93,7 @@ const Q_BASE = {
     // --- tstats-now (pure counts on default-indexed fields) ------------------
     kpiRequests: `| tstats count ${TS_WHERE}`,
     sparkRequests: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS count`,
-    requestVolumeOverTime: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS Requests`,
+    requestVolumeOverTime: `| tstats count ${TS_WHERE} BY _time span=__LSV_SPAN__ | timechart span=__LSV_SPAN__ sum(count) AS Requests`,
 
     // --- KV-Store rollup: wd_core (error rate + avg response) ----------------
     kpiErrorRate: `${WD_CORE} | stats sum(err_count) as errors, sum(count) as total | eval pct = if(total>0, round(errors/total*100, 1), 0) | table pct`,
@@ -221,10 +221,15 @@ const RECENT_ERROR_COLS: ColumnDef[] = [
 ];
 
 const WebDispatcher: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const [uriStatusFilter, setUriStatusFilter] = useState<UriStatusFilter>('all');
     /* Resolved hex tokens — seriesColorsByField flows into
      * @splunk/visualizations (SVG fills), where logservTheme's var(--lsv-*)
@@ -234,11 +239,6 @@ const WebDispatcher: React.FC = () => {
     // Dynamic timechart span — recomputed when the time range changes so
     // the per-bin granularity stays readable across "Last 6h" through
     // "Last 90 days" without becoming a wall of bars or a single point.
-    const { timeRange } = useTimeRange();
-    const span = useMemo(
-        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
-        [timeRange.earliest, timeRange.latest],
-    );
     // Sub-hour hybrid (session 086): the two span-parametrised charts build SPL
     // in a useMemo, so route inline via the pure fn rather than the hook.
     const useRawSrc = shouldUseRawSource(timeRange.earliest, timeRange.latest);

@@ -12,6 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Cross-Stack Authentication — honest port of v0.0.4.2 logserv_cross_stack_authentication.xml.
@@ -96,7 +97,7 @@ const Q_BASE = {
     sparkHana: `${FAIL} | search layer="HANA" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkWin: `${FAIL} | search layer="Windows" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
-    failuresTrend: `${FAIL} | eval _time=bucket_ts | timechart span=1d sum(count) by layer | fillnull value=0`,
+    failuresTrend: `${FAIL} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by layer | fillnull value=0`,
     topUsers: `${FAIL} | search failed_user!="(none)" | stats sum(count) as "Failures" by failed_user | sort -Failures | rename failed_user as "User"`,
     // Source IPs: failip grain (src, sourcetype) + last_seen. Layer derived at
     // read from sourcetype reproduces raw values(eval(case())) (Layers) +
@@ -127,7 +128,7 @@ const QRAW_BASE = {
     kpiSap: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | stats count`,
     kpiHana: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" action_category="Authentication" status!="SUCCESSFUL" | stats count`,
     kpiWin: `\`sap_logserv_idx_macro\` sourcetype="XmlWinEventLog" action="failure" | stats count`,
-    failuresTrend: `${AAF} | eval layer=case(sourcetype="sap:sapstartsrv", "SAP", sourcetype="sap:hana:audit", "HANA", sourcetype="XmlWinEventLog", "Windows") | timechart span=1d count by layer | fillnull value=0`,
+    failuresTrend: `${AAF} | eval layer=case(sourcetype="sap:sapstartsrv", "SAP", sourcetype="sap:hana:audit", "HANA", sourcetype="XmlWinEventLog", "Windows") | timechart span=__LSV_SPAN__ count by layer | fillnull value=0`,
     topUsers: `${AAF} | eval failed_user=coalesce(auth_user, src_user, user) | where isnotnull(failed_user) AND failed_user!="" | stats count as "Failures" by failed_user | sort -Failures | rename failed_user as "User"`,
     sourceIps: `${AAF} | eval src=coalesce(remote_ip, client_ip, src_ip, IpAddress) | where isnotnull(src) AND src!="" AND src!="127.0.0.1" | stats count as "Failures", dc(sourcetype) as "Layers Hit", values(eval(case(sourcetype="sap:sapstartsrv","SAP",sourcetype="sap:hana:audit","HANA",sourcetype="XmlWinEventLog","Windows"))) as "Layers", latest(_time) as last_seen by src | eval "Last Seen"=strftime(last_seen, "%Y-%m-%d %H:%M:%S") | sort -Failures | fields - last_seen | rename src as "Source IP"`,
     hanaUsers: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" action_category="Authentication" | stats count as "Events", dc(action_type) as "Action Types", sum(eval(if(status!="SUCCESSFUL",1,0))) as "Failures", values(risk_level) as "Risk Level", latest(_time) as last_seen by src_user | eval "Last Seen"=strftime(last_seen, "%Y-%m-%d %H:%M:%S") | sort -Failures | fields - last_seen | rename src_user as "User"`,
@@ -191,10 +192,15 @@ const SAP_AUTH_COLS: ColumnDef[] = [
 ];
 
 const CrossStackAuthentication: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const sap = useFirstRowFieldHybrid(Q.kpiSap, QRAW.kpiSap, 'count');
     const hana = useFirstRowFieldHybrid(Q.kpiHana, QRAW.kpiHana, 'count');
@@ -218,7 +224,6 @@ const CrossStackAuthentication: React.FC = () => {
      * - Source IPs row → splunk-search filtered to that IP across all 3 layers.
      * - HANA Users row → splunk-search filtered to that HANA user.
      * - Recent Windows / SAP rows → host-details with ?host=<row.host>. */
-    const { timeRange } = useTimeRange();
     const goSourceIpRow = (row: Record<string, unknown>): void => {
         const ip = String(row['Source IP'] ?? '');
         if (!ip) return;

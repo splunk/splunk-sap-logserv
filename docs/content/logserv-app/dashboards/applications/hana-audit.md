@@ -17,7 +17,7 @@ Most panels read the hourly summary layer, so wide-range figures can lag by up t
 - **Daily Security Health Score** -- Full-width table with one row per day: total events, active users, failures, and success rate (%), newest day first
 - **Audit Category Breakdown** -- Table of audit event categories (`action_category`) with event counts
 - **Security Events Timeline** -- Shows failed operations, object modifications, and permission grants
-- **Password Management Activities** -- Table of password-related audit events with user and IP details
+- **Password Management Activities** -- Table of password-related audit events with user and IP details, classified as Password Change, Disable Lifetime, Reset Attempts or Other in any letter case (build 365)
 - **Failed Operations by Host** -- Table showing which hosts generate the most failed operations; click a row to open Host Details for that host
 - **Users by Activity** -- Table ranking executing users by event count, with the number of distinct action types and failure count; click a row to open Cross-Stack Authentication
 - **Activity by Hour of Day** -- Column chart showing successes vs. failures by hour for after-hours detection
@@ -28,7 +28,7 @@ Most panels read the hourly summary layer, so wide-range figures can lag by up t
 
 ## :material-circle-box:{ .taiconcolor } Where the Data Comes From
 
-The single source is `sap:hana:audit`.
+The single source is `sap:hana:audit`. The action status and target principal are read from their fixed positions in the audit record, so every action has them; earlier builds found them for connect-type actions only (build 364). The SQL Statement column shows user and privilege management statements, in any letter case and also when the record quotes them; quoted identifiers read as in the database — `grant "ROLE" to USER` — without the JSON escapes real ingest keeps (build 365).
 
 - **Summary-backed panels** — the KPIs, category/action/user/client breakdowns and the
   compliance timelines read the `logserv_hana_category_rollup` KV Store collection: metric `main`

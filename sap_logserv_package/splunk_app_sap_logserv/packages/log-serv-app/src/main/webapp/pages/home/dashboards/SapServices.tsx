@@ -13,6 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * SAP Services — honest port of v0.0.4.2 logserv_sap_services.xml.
@@ -66,7 +67,7 @@ const Q_BASE = {
     sparkAuthFail: `${MAIN} | search sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkSslEvents: `${MAIN} | search sourcetype="sap:sapstartsrv" is_ssl_event="true" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
-    volumeByType: `${MAIN} | eval is_error_event = case(sourcetype="sap:sapstartsrv" AND is_auth_event="true" AND auth_result="failure", 1, sourcetype="sap:saphostexec" AND severity IN ("ERROR", "WARNING"), 1, 1=1, 0) | eval series = case(sourcetype="sap:sapstartsrv" AND is_error_event=1, "sapstartsrv (errors)", sourcetype="sap:sapstartsrv", "sapstartsrv (normal)", sourcetype="sap:saphostexec" AND is_error_event=1, "saphostexec (errors)", sourcetype="sap:saphostexec", "saphostexec (normal)") | eval _time=bucket_ts | timechart span=1d sum(count) by series | fillnull value=0`,
+    volumeByType: `${MAIN} | eval is_error_event = case(sourcetype="sap:sapstartsrv" AND is_auth_event="true" AND auth_result="failure", 1, sourcetype="sap:saphostexec" AND severity IN ("ERROR", "WARNING"), 1, 1=1, 0) | eval series = case(sourcetype="sap:sapstartsrv" AND is_error_event=1, "sapstartsrv (errors)", sourcetype="sap:sapstartsrv", "sapstartsrv (normal)", sourcetype="sap:saphostexec" AND is_error_event=1, "saphostexec (errors)", sourcetype="sap:saphostexec", "saphostexec (normal)") | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by series | fillnull value=0`,
     authEvents: `\`sap_logserv_idx_macro\` sourcetype="sap:sapstartsrv" is_auth_event="true" | head 200 | table _time auth_user remote_ip webmethod auth_result | sort -_time | rename auth_user as User remote_ip as "Remote IP" webmethod as Method auth_result as Result`,
     sslEvents: `${SSL} | search remote_ip!="(none)" | stats sum(count) as failures, dc(eval(if(auth_user="(none)",null(),auth_user))) as users, values(eval(if(auth_user="(none)",null(),auth_user))) as user_list, max(last_ts) as last_seen_ts, min(first_ts) as first_seen_ts by remote_ip | eval first_seen = strftime(first_seen_ts, "%Y-%m-%d %H:%M:%S") | eval last_seen = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | eval span_h = round((last_seen_ts - first_seen_ts)/3600, 1) | sort -failures | table remote_ip, failures, users, user_list, first_seen, last_seen, span_h | rename remote_ip as "Source IP", failures as "Failures", users as "Distinct Users", user_list as "Users Tried", first_seen as "First Seen", last_seen as "Last Seen", span_h as "Activity Span (h)"`,
     hostexecSeverity: `${MAIN} | search sourcetype="sap:saphostexec" severity!="(none)" | stats sum(count) as count by severity | sort -count`,
@@ -87,7 +88,7 @@ const QRAW_BASE = {
     kpiTotal: `${RAW_BOTH} | stats count`,
     kpiAuthFail: `${RAW_SSRV} is_auth_event="true" auth_result="failure" | stats count`,
     kpiSslEvents: `${RAW_SSRV} is_ssl_event="true" | stats count`,
-    volumeByType: `${RAW_BOTH} | eval is_error_event = case(sourcetype="sap:sapstartsrv" AND is_auth_event="true" AND auth_result="failure", 1, sourcetype="sap:saphostexec" AND severity IN ("ERROR", "WARNING"), 1, 1=1, 0) | eval series = case(sourcetype="sap:sapstartsrv" AND is_error_event=1, "sapstartsrv (errors)", sourcetype="sap:sapstartsrv", "sapstartsrv (normal)", sourcetype="sap:saphostexec" AND is_error_event=1, "saphostexec (errors)", sourcetype="sap:saphostexec", "saphostexec (normal)") | timechart span=1d count by series | fillnull value=0`,
+    volumeByType: `${RAW_BOTH} | eval is_error_event = case(sourcetype="sap:sapstartsrv" AND is_auth_event="true" AND auth_result="failure", 1, sourcetype="sap:saphostexec" AND severity IN ("ERROR", "WARNING"), 1, 1=1, 0) | eval series = case(sourcetype="sap:sapstartsrv" AND is_error_event=1, "sapstartsrv (errors)", sourcetype="sap:sapstartsrv", "sapstartsrv (normal)", sourcetype="sap:saphostexec" AND is_error_event=1, "saphostexec (errors)", sourcetype="sap:saphostexec", "saphostexec (normal)") | timechart span=__LSV_SPAN__ count by series | fillnull value=0`,
     sslEvents: `${RAW_SSRV} is_ssl_event="true" auth_result="failure" | stats count as failures, dc(auth_user) as users, values(auth_user) as user_list, latest(_time) as last_seen_ts, earliest(_time) as first_seen_ts by remote_ip | eval first_seen = strftime(first_seen_ts, "%Y-%m-%d %H:%M:%S") | eval last_seen = strftime(last_seen_ts, "%Y-%m-%d %H:%M:%S") | eval span_h = round((last_seen_ts - first_seen_ts)/3600, 1) | sort -failures | table remote_ip, failures, users, user_list, first_seen, last_seen, span_h | rename remote_ip as "Source IP", failures as "Failures", users as "Distinct Users", user_list as "Users Tried", first_seen as "First Seen", last_seen as "Last Seen", span_h as "Activity Span (h)"`,
     hostexecSeverity: `${RAW_HEXEC} severity=* | stats count by severity | sort -count`,
 };
@@ -132,10 +133,15 @@ const SSL_COLS: ColumnDef[] = [
 ];
 
 const SapServices: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const authFail = useFirstRowFieldHybrid(Q.kpiAuthFail, QRAW.kpiAuthFail, 'count');
     const sslEvents = useFirstRowFieldHybrid(Q.kpiSslEvents, QRAW.kpiSslEvents, 'count');
@@ -151,7 +157,6 @@ const SapServices: React.FC = () => {
     const sslTone = Number(sslEvents.value ?? 0) > 0 ? 'warning' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goAuthRow = (row: Record<string, unknown>): void => {
         const ip = String(row['Remote IP'] ?? '');
         if (!ip) return;

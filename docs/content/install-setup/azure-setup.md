@@ -81,10 +81,10 @@ echo "$SAS" | tr '&' '\n' | grep -E '^(ss|srt|sp|se)='
 
 ## :material-circle-box:{ .taiconcolor } Install the Azure add-on
 
-Install `splunk_ta_sap_logserv_azure-0.1.1.tar.gz` **directly on each Heavy Forwarder** that will ingest Azure data — exactly the tier where `Splunk_TA_aws` is installed for the AWS path.
+Install `splunk_ta_sap_logserv_azure-0.1.2.tar.gz` **directly on each Heavy Forwarder** that will ingest Azure data — exactly the tier where `Splunk_TA_aws` is installed for the AWS path.
 
 - Splunk Web → **Manage Apps → Install app from file** → upload the tarball, **or**
-- `/opt/splunk/bin/splunk install app /path/splunk_ta_sap_logserv_azure-0.1.1.tar.gz`, **or**
+- `/opt/splunk/bin/splunk install app /path/splunk_ta_sap_logserv_azure-0.1.2.tar.gz`, **or**
 - configuration management (Ansible / Puppet / Chef) drops the app into `etc/apps/`, then `chown -R splunk:splunk` and restart.
 
 !!! danger "Do NOT distribute the Azure add-on via the Deployment Server"

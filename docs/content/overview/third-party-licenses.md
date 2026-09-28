@@ -11,9 +11,9 @@ The complete list of bundled third-party packages — names, versions, declared 
 
 The file is generated deterministically from the resolved workspace `node_modules/` tree at build time, so every package resolved into that tree is listed at the version that was bundled with the App you have installed.
 
-## License-distribution summary (v0.1.1)
+## License-distribution summary (v0.1.2)
 
-The v0.1.1 build includes **1236 unique top-level packages** under `node_modules/` (see the Summary block at the top of the shipped `THIRD-PARTY-NOTICES.md` for the authoritative figures). The license breakdown:
+The v0.1.2 build includes **1236 unique top-level packages** under `node_modules/` (see the Summary block at the top of the shipped `THIRD-PARTY-NOTICES.md` for the authoritative figures). The license breakdown:
 
 | License (SPDX as declared) | Count | Inclusion obligation |
 |---|---:|---|
@@ -54,4 +54,4 @@ This page covers the **LogServ UI App's** npm dependencies and bundled fonts. Th
 
 ## Refresh policy
 
-The `THIRD-PARTY-NOTICES.md` file is regenerated from the resolved `node_modules/` tree at every release. v0.0.5.0 used a one-off generation pass; v0.0.6 and every later release (including v0.1.1) auto-refresh the file as part of the standard `yarn build` pipeline (`bin/generate-third-party-notices.js`, run after the webpack output lands in `stage/`) so the notices and the bundled JavaScript artifacts always agree on what was shipped.
+The `THIRD-PARTY-NOTICES.md` file is regenerated from the resolved `node_modules/` tree at every release. v0.0.5.0 used a one-off generation pass; v0.0.6 and every later release (including v0.1.1 and v0.1.2) auto-refresh the file as part of the standard `yarn build` pipeline (`bin/generate-third-party-notices.js`, run after the webpack output lands in `stage/`) so the notices and the bundled JavaScript artifacts always agree on what was shipped.

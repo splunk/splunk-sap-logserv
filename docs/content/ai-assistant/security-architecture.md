@@ -2,8 +2,8 @@
 
 This page is for **customer security teams** evaluating the LogServ App's AI Assistant feature against Google's [Secure AI Framework (SAIF)](https://saif.google/). It complements the [OWASP LLM Top 10 Compliance](owasp-llm-compliance.md) page — same set of controls, organized along SAIF's four-pillar structure and mapped to SAIF's 15 Key Risks catalog.
 
-!!! warning "Full-LLM build variant only"
-    The published v0.1.1 App package is the [templates-only build](templates-only-build.md): it dispatches to no LLM vendor, so the AI-specific risk surface this page maps **does not exist in the published package**. The architecture described below governs the separately-built **full-LLM variant** used in approved deployments.
+!!! info "The AI-specific risk surface appears once an LLM provider credential is configured"
+    The published v0.1.2 App package is the **full-LLM build variant**, so the architecture described below is the one that governs it — but the vendor-dispatch path that architecture protects is **inert until an admin configures an [LLM provider credential](settings.md#provider-credentials-tab)**. Until then, and wherever **Templates-only mode** is on or a compile-time [templates-only build](templates-only-build.md) is installed, there is no vendor dispatch and the AI-specific surface does not exist. The audit trail and the type-system data boundary are live in every build.
 
 ## :material-circle-box:{ .taiconcolor } The Privacy Boundary
 
@@ -191,5 +191,5 @@ Concrete actions a customer's security team can take to validate or strengthen t
 - [Settings](settings.md) — admin-controlled toggles and configuration
 - [Audit Log](audit-log.md) — viewer + filter conventions + tamper-evidence model
 - [Free-Form Prompts](free-form-prompts.md) — system primer + tool catalog
-- [Build Variants](templates-only-build.md) — the templates-only build published as the v0.1.1 release tarball
+- [Build Variants](templates-only-build.md) — the full-LLM build published as the v0.1.2 release tarball, and the compile-time templates-only variant
 - Google's [Secure AI Framework (SAIF)](https://saif.google/) — the external reference framework this page maps against

@@ -12,6 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Web and API Performance — honest port of v0.0.4.2 logserv_web_api_performance.xml.
@@ -96,12 +97,12 @@ const Q_BASE = {
 
     // Four-stage timing: UNROUNDED avg per stage (Σsum_dtN / Σcnt_dt) → verify
     // float-tolerantly (~1e-13 vs raw avg(), invisible on the chart).
-    timing: `${TIMING} | eval _time=bucket_ts | timechart span=1d sum(sum_dt1) as s1, sum(sum_dt2) as s2, sum(sum_dt3) as s3, sum(sum_dt4) as s4, sum(cnt_dt) as c | eval "Receive (dt1)" = s1/c | eval "Handler (dt2)" = s2/c | eval "Response (dt3)" = s3/c | eval "Send (dt4)" = s4/c | fields _time, "Receive (dt1)", "Handler (dt2)", "Response (dt3)", "Send (dt4)"`,
-    percentiles: `${CORE} | eval _time=bucket_ts | timechart span=1d sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" | eval "Avg (ms)" = if(c>0, s/c, 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+    timing: `${TIMING} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(sum_dt1) as s1, sum(sum_dt2) as s2, sum(sum_dt3) as s3, sum(sum_dt4) as s4, sum(cnt_dt) as c | eval "Receive (dt1)" = s1/c | eval "Handler (dt2)" = s2/c | eval "Response (dt3)" = s3/c | eval "Send (dt4)" = s4/c | fields _time, "Receive (dt1)", "Handler (dt2)", "Response (dt3)", "Send (dt4)"`,
+    percentiles: `${CORE} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" | eval "Avg (ms)" = if(c>0, s/c, 0) | fields _time, "Avg (ms)", "Max (ms)"`,
     slowUris: `${SLOWURI} | stats sum(count) as events, sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as max_ms, sum(err_count) as errors by uri, src_log | eval avg_ms = round(if(c>0, s/c, 0), 0), max_ms = round(max_ms, 0) | sort -avg_ms | rename uri as "URI", src_log as "Source", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", errors as "Errors"`,
     // errorAuth: HTTP error rate denom = sum(count) (all ST_BOTH); CC auth-fail
     // rate denom = sum(cc_count) (CC only). Both if(denom>0,...,0)-guarded.
-    errorAuth: `${CORE} | eval _time=bucket_ts | timechart span=1d sum(count) as total_all, sum(err_count) as http_err, sum(cc_count) as total_cc, sum(cc_authfail_count) as cc_auth_fail | eval "HTTP Error Rate (%)" = if(total_all>0, round(http_err*100/total_all, 2), 0) | eval "CC Auth Failure Rate (%)" = if(total_cc>0, round(cc_auth_fail*100/total_cc, 2), 0) | fields _time, "HTTP Error Rate (%)", "CC Auth Failure Rate (%)"`,
+    errorAuth: `${CORE} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) as total_all, sum(err_count) as http_err, sum(cc_count) as total_cc, sum(cc_authfail_count) as cc_auth_fail | eval "HTTP Error Rate (%)" = if(total_all>0, round(http_err*100/total_all, 2), 0) | eval "CC Auth Failure Rate (%)" = if(total_cc>0, round(cc_auth_fail*100/total_cc, 2), 0) | fields _time, "HTTP Error Rate (%)", "CC Auth Failure Rate (%)"`,
     tlsVersion: `${TLS} | stats sum(count) as count by tls_version | sort tls_version`,
     tlsCipher: `${CIPHER} | stats sum(count) as count by cipher_suite | sort -count | rename cipher_suite as "Cipher Suite"`,
     slowClients: `${CLIENT} | stats sum(count) as events, sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as max_ms, dc(eval(if(uri="(none)", null(), uri))) as unique_uris by clientip | eval avg_ms = round(if(c>0, s/c, 0), 0), max_ms = round(max_ms, 0) | sort -max_ms | rename clientip as "Client IP", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", unique_uris as "Unique URIs"`,
@@ -126,10 +127,10 @@ const QRAW_BASE = {
     kpiAvgRt: `${ST_BOTH_RAW} response_time_ms=* | stats sum(response_time_ms) as s, count(response_time_ms) as c | eval avg_ms=if(c>0,s/c,0) | eval display=tostring(round(avg_ms,0))." ms" | fields display`,
     kpiAuthFail: `${ST_BOTH_RAW} ((sourcetype="sap:webdispatcher:access" AND (status=401 OR status=403)) OR (sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"))) | stats count`,
     kpiUniqueUrls: `${ST_BOTH_RAW} uri=* | stats dc(uri) as urls`,
-    timing: `${ST_WD_RAW} dt1_us=* dt2_us=* dt3_us=* dt4_us=* | eval dt1_ms=dt1_us/1000, dt2_ms=dt2_us/1000, dt3_ms=dt3_us/1000, dt4_ms=dt4_us/1000 | timechart span=1d avg(dt1_ms) as "Receive (dt1)", avg(dt2_ms) as "Handler (dt2)", avg(dt3_ms) as "Response (dt3)", avg(dt4_ms) as "Send (dt4)" | fields _time, "Receive (dt1)", "Handler (dt2)", "Response (dt3)", "Send (dt4)"`,
-    percentiles: `${ST_BOTH_RAW} response_time_ms=* | timechart span=1d sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" | eval "Avg (ms)" = if(c>0, s/c, 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+    timing: `${ST_WD_RAW} dt1_us=* dt2_us=* dt3_us=* dt4_us=* | eval dt1_ms=dt1_us/1000, dt2_ms=dt2_us/1000, dt3_ms=dt3_us/1000, dt4_ms=dt4_us/1000 | timechart span=__LSV_SPAN__ avg(dt1_ms) as "Receive (dt1)", avg(dt2_ms) as "Handler (dt2)", avg(dt3_ms) as "Response (dt3)", avg(dt4_ms) as "Send (dt4)" | fields _time, "Receive (dt1)", "Handler (dt2)", "Response (dt3)", "Send (dt4)"`,
+    percentiles: `${ST_BOTH_RAW} response_time_ms=* | timechart span=__LSV_SPAN__ sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" | eval "Avg (ms)" = if(c>0, s/c, 0) | fields _time, "Avg (ms)", "Max (ms)"`,
     slowUris: `${ST_BOTH_RAW} response_time_ms=* uri=* | eval src_log=if(sourcetype="sap:webdispatcher:access","WebDisp","CC") | stats count as events, avg(response_time_ms) as avg_ms, max(response_time_ms) as max_ms, sum(eval(if(tonumber(status)>=400,1,0))) as errors by uri, src_log | eval avg_ms=round(avg_ms,0), max_ms=round(max_ms,0) | sort -avg_ms | rename uri as "URI", src_log as "Source", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", errors as "Errors"`,
-    errorAuth: `${ST_BOTH_RAW} | eval is_http_err=if(tonumber(status)>=400,1,0) | eval is_cc=if(sourcetype="sap:scc:http_access",1,0) | eval is_cc_auth_fail=if(sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"),1,0) | timechart span=1d count as total_all, sum(is_http_err) as http_err, sum(is_cc) as total_cc, sum(is_cc_auth_fail) as cc_auth_fail | eval "HTTP Error Rate (%)" = if(total_all>0, round(http_err*100/total_all, 2), 0) | eval "CC Auth Failure Rate (%)" = if(total_cc>0, round(cc_auth_fail*100/total_cc, 2), 0) | fields _time, "HTTP Error Rate (%)", "CC Auth Failure Rate (%)"`,
+    errorAuth: `${ST_BOTH_RAW} | eval is_http_err=if(tonumber(status)>=400,1,0) | eval is_cc=if(sourcetype="sap:scc:http_access",1,0) | eval is_cc_auth_fail=if(sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"),1,0) | timechart span=__LSV_SPAN__ count as total_all, sum(is_http_err) as http_err, sum(is_cc) as total_cc, sum(is_cc_auth_fail) as cc_auth_fail | eval "HTTP Error Rate (%)" = if(total_all>0, round(http_err*100/total_all, 2), 0) | eval "CC Auth Failure Rate (%)" = if(total_cc>0, round(cc_auth_fail*100/total_cc, 2), 0) | fields _time, "HTTP Error Rate (%)", "CC Auth Failure Rate (%)"`,
     tlsVersion: `${ST_WD_RAW} tls_version=* | stats count by tls_version | sort tls_version`,
     tlsCipher: `${ST_WD_RAW} cipher_suite=* | stats count by cipher_suite | sort -count | rename cipher_suite as "Cipher Suite"`,
     slowClients: `${ST_BOTH_RAW} response_time_ms=* clientip=* | stats count as events, avg(response_time_ms) as avg_ms, max(response_time_ms) as max_ms, dc(uri) as unique_uris by clientip | eval avg_ms=round(avg_ms,0), max_ms=round(max_ms,0) | sort -max_ms | rename clientip as "Client IP", events as "Events", avg_ms as "Avg (ms)", max_ms as "Max (ms)", unique_uris as "Unique URIs"`,
@@ -188,10 +189,15 @@ const ERR500_COLS: ColumnDef[] = [
 ];
 
 const WebApiPerformance: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const errorRate = useFirstRowFieldHybrid(Q.kpiErrorRate, QRAW.kpiErrorRate, 'display');
     const avgRt = useFirstRowFieldHybrid(Q.kpiAvgRt, QRAW.kpiAvgRt, 'display');
@@ -214,7 +220,6 @@ const WebApiPerformance: React.FC = () => {
     const authFailTone = Number(authFail.value ?? 0) > 0 ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goErrorRateKpi = (): void => {
         const spl = `\`sap_logserv_idx_macro\` ${ST_BOTH} status>=400 | sort -_time`;
         openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));

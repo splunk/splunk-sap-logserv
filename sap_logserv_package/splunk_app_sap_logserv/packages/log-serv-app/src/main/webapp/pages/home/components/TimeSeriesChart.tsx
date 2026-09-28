@@ -6,7 +6,7 @@ import Area from '@splunk/visualizations/Area';
 import Bar from '@splunk/visualizations/Bar';
 import { useSearch } from '../hooks/useSearch';
 import { logservTheme } from '../styles/logservTheme';
-import { ChartPalette, paletteColors, statusFieldColors } from '../styles/chartPalettes';
+import { ChartPalette, paletteColorsFor, statusFieldColors } from '../styles/chartPalettes';
 import { useThemeMode } from '../state/ThemeModeProvider';
 import GradientWrap from './GradientWrap';
 import LegendTitleTooltips from './LegendTitleTooltips';
@@ -124,7 +124,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // the palettes resolve per mode and the chart re-renders on mode flips.
     const { mode } = useThemeMode();
 
-    const dataSources = useMemo(() => {
+    const chartData = useMemo(() => {
         if (!results || results.length === 0) {
             return null;
         }
@@ -154,13 +154,25 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
         const data = rowsToColumnar(allRows, fieldNames);
         return {
-            primary: {
-                data,
-                meta: { totalCount: results.length, sid: '', app: '' },
-                requestParams: { count: results.length, offset: 0 },
+            sources: {
+                primary: {
+                    data,
+                    meta: { totalCount: results.length, sid: '', app: '' },
+                    requestParams: { count: results.length, offset: 0 },
+                },
             },
+            /* How many series the chart will actually draw. Carried out of
+             * this memo because the palette below has to know it, and derived
+             * from the SAME valueKeys the data is built from so the two can
+             * never disagree — a separately recomputed count would be a
+             * second source of truth that drifts the first time the field
+             * detection above changes. */
+            seriesCount: valueKeys.length,
         };
     }, [results, valueFields]);
+
+    const dataSources = chartData ? chartData.sources : null;
+    const seriesCount = chartData ? chartData.seriesCount : 0;
 
     if (error) {
         return (
@@ -197,7 +209,16 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         );
     }
 
-    const paletteSeriesColors = paletteColors(palette, mode);
+    /* Count-aware. Splunk CYCLES seriesColors, so a chart with more series
+     * than its palette has colours draws two of them in the SAME colour —
+     * distance 0 on the project's own redmean metric, i.e. not "similar" but
+     * identical. Measured: the three `errors*` ramps are TWO colours, so any
+     * such chart with three or more series has been repeating.
+     *
+     * paletteColorsFor falls back to the 11-hue categorical palette in
+     * exactly that case and returns the requested palette untouched
+     * otherwise, so it cannot alter a chart whose colours already fit. */
+    const paletteSeriesColors = paletteColorsFor(seriesCount, palette, mode);
     const finalSeriesColors = seriesColorsProp ?? paletteSeriesColors;
     const paletteFieldColors = palette === 'status' ? statusFieldColors(mode) : undefined;
     const finalFieldColors = seriesColorsByFieldProp

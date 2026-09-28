@@ -25,7 +25,7 @@ The Proxy Analytics dashboard monitors outbound internet access through the Squi
 
 ## :material-circle-box:{ .taiconcolor } Where the Data Comes From
 
-The single source is `squid:access`.
+The single source is `squid:access`, and only its **access-log lines** count as requests. The Data TA routes Squid's `cache.log` and `store.log` to `squid:cache` and `squid:store`, but data indexed before that change carries them as `squid:access`, where they record cache housekeeping, not requests, so every panel scopes to `source="*access.log*"`. Both access-log formats are parsed: Squid's native format, and the `logformat=splunk_recommended_squid` key=value format that SAP LogServ proxy logs use (from build 364; earlier builds extracted no fields from it).
 
 - **Summary-backed panels** read the `logserv_proxy_rollup` KV Store collection — metrics
   `core` (per-hour request/denied/bandwidth sums), `status` (HTTP status classes), `dur` +
@@ -41,13 +41,13 @@ Summary-backed panels switch automatically to their exact raw-equivalent search 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 
 - **Denied request spikes** -- A sudden increase in denied requests may indicate a compromised system attempting to reach blocked destinations, or a policy change affecting legitimate traffic.
-
-!!! note "Squid parsing is built into the LogServ App"
-    The App absorbed the parsing from the archived Splunk Add-on for Squid Proxy. Do **not** install the standalone Squid TA alongside it — you would get double parsing, and its CIM-standard `action="blocked"` vocabulary differs from the App's customized `action="denied"`, which the Denied Requests KPI and the Cache Action panel depend on. The App shows a detection banner on the home view when a conflicting add-on is enabled.
 - **High-bandwidth domains** -- The URL Domains by Bytes Out panel is tuned specifically for exfiltration detection. A new domain appearing near the top, or a known-OK domain spiking, warrants investigation.
 - **Sustained-bandwidth domains** -- The Bandwidth Over Time by Domain chart shows whether a top domain's traffic is steady (expected service) or a sudden burst (exfiltration attempt, large file transfer).
 - **Client domain diversity** -- A client IP with extremely high domain diversity in the Clients by Domain Diversity panel is unusual for a well-behaved SAP server -- most production systems talk to a predictable small set of external domains.
 - **Cache miss dominance** -- If Cache Action Distribution is dominated by TCP_MISS, the proxy cache may not be earning its keep (or a new workload is defeating it). For security-relevant investigations, TCP_TUNNEL dominance signals mostly CONNECT-tunnelled HTTPS traffic that the proxy can't inspect.
 - **New high-volume clients** -- A system that suddenly appears as a top proxy client may be compromised and performing outbound scanning, beaconing, or data exfiltration.
+
+!!! note "Squid parsing is built into the LogServ App"
+    The App absorbed the native-format parsing from the archived Splunk Add-on for Squid Proxy, and parses the `splunk_recommended_squid` format with its own transforms. Do **not** install the standalone Squid TA alongside it — you would get double parsing, and its CIM-standard `action="blocked"` vocabulary differs from the App's customized `action="denied"`, which the Denied Requests KPI and the Cache Action panel depend on. The App shows a detection banner on the home view when a conflicting add-on is enabled.
 
 

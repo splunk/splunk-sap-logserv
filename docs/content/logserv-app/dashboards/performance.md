@@ -45,7 +45,7 @@ Each rollup aggregate dispatches the just-completed hour (`-1h@h`..`@h`), so the
 | `:06` | `logserv_topology_aggregate_edges` | Environment Topology (graph) | 3 / 12 s |
 | `:07` | `logserv_topology_aggregate_inventory` | Environment Topology (graph) | 3 / 13 s |
 | `:08` | `logserv_topology_detail_aggregate` | Environment Topology (detail tabs) | 13 / 35 s |
-| `:09` | `logserv_wp_perf_aggregate` | Work Process Performance | 5 / 16 s |
+| `:09` | `logserv_wp_perf_aggregate` | Work Process Performance **+** ABAP Operations | 5 / 16 s |
 | `:10` | `logserv_severity_aggregate` | Environment Health | 5 / 18 s |
 | `:11` | `logserv_hana_aggregate` | HANA Audit | 3 / 12 s |
 | `:12` | `logserv_compliance_aggregate` | Change & Configuration Activity | 3 / 15 s |
@@ -54,7 +54,7 @@ Each rollup aggregate dispatches the just-completed hour (`-1h@h`..`@h`), so the
 | `:15` | `logserv_xstack_auth_aggregate` | Cross-Stack Authentication | 3 / 10 s |
 | `:16` | `logserv_perimeter_aggregate` | Network Perimeter | 6 / 22 s |
 | `:17` | `logserv_linux_aggregate` | Linux System & Security | 7 / 24 s |
-| `:18` | `logserv_web_timing_aggregate` | Web & API Performance | 8 / 21 s |
+| `:18` | `logserv_web_timing_aggregate` | Web & API Performance **+** Web Dispatcher | 8 / 21 s |
 | `:19` | `logserv_hana_trace_aggregate` | HANA Trace | 2 / 6 s |
 | `:20` | `logserv_windows_aggregate` | Windows | 2 / 6 s |
 | `:21` | `logserv_sapservices_aggregate` | SAP Services | 2 / 6 s |
@@ -176,23 +176,30 @@ A freshly installed rollup collection is empty until its hourly aggregation has 
 2. Review the per-rollup status. Rollups with no history show a "Dashboard history backfill needed" banner and a warning row.
 3. Click **Run backfill** (the button targets only the incomplete rollups; once all are complete it becomes **Re-run backfill (all)**).
 
-The backfill seeds **30 days** of history into every rollup collection. It dispatches each rollup's component aggregation searches as **top-level Splunk jobs** — this matters at scale: the bundled `*_backfill` saved searches use a single `\| union` that Splunk auto-finalizes at a subsearch wall-clock limit, which silently truncates results at high event volume. The Dashboard Data button avoids that by running each component as its own unrestricted job. It shows a progress bar, is **idempotent** (re-running upserts the same rows), and is **resumable** (it detects collections that are already complete and skips them).
+By default the backfill seeds **30 days** of history into every rollup collection. The **Backfill window** control above the button also offers 60, 90, 180 and 365 days, or a custom range of whole UTC days, reaching back as far as the 365-day retention (an earlier start is refused rather than silently clamped). A window longer than a month is dispatched in monthly chunks per search, and choosing one longer than 90 days shows a cost warning. The two flat Environment Topology collections (inventory, IP enrichment) always refresh over the last 30 days: they describe current state, and a longer window resolves fewer partner IPs to systems, not more. When backfilling after a historical S3 ingest, match the **dates in the S3 keys** you ingested — on the Data TA's AWS S3 Direct screen, its **Scan from** and **Scan until** — not a hand-made input's write-time scan window; see [AWS Direct S3 Polling](../../install-setup/aws-direct-s3-polling.md), step 4f.
 
-After the initial backfill, the hourly aggregation keeps each collection current and the 365-day retention grows the cached history toward a full year (seed-and-grow). You only need to run the backfill again if you reinstall or deliberately clear a collection.
+The backfill dispatches each rollup's component aggregation searches as **top-level Splunk jobs** — this matters at scale: the bundled `*_backfill` saved searches use a single `\| union` that Splunk auto-finalizes at a subsearch wall-clock limit, which silently truncates results at high event volume. The Dashboard Data button avoids that by running each component as its own unrestricted job. It shows a progress bar, is **idempotent** (re-running upserts the same rows), and is **resumable** (it detects collections that are already complete and skips them).
+
+After the initial backfill, the hourly aggregation keeps each collection current and the 365-day retention grows the cached history toward a full year (seed-and-grow). You only need to run the backfill again if you reinstall, deliberately clear a collection, or an upgrade note asks for one (see [Upgrading](../../getting-started/upgrading.md)).
+
+**How long it waits.** Each search is waited on for as long as Splunk reports it running — there is no fixed time limit, because one month of a large estate can take hours. A rollup is marked **failed — re-run** only on Splunk's own verdict: the job failed, its search process died, or the job disappeared. If you cancel, or the panel stops waiting (after 24 hours, or after 15 minutes without being able to reach Splunk), a search that is still running is marked **still running on server** instead: it finishes on its own and writes its rows. Hover the row for the search IDs to follow them under **Activity → Jobs**; re-running that rollup before they finish repeats their work.
+
+!!! warning "Keep long backfills clear of the nightly retention run"
+    Each rollup's `*_retention` search rewrites its whole collection once a night (00:34–00:58, 01:30–01:58 and 02:34 in the search head's time zone). Rows a backfill writes into a collection *while* that collection's retention is running can be lost. Start a long backfill so that it does not overlap that window — or re-run it afterwards, which restores anything lost (the backfill is idempotent).
 
 !!! note "If you skip the backfill"
-    You don't have to run it. Without a backfill, rolled-up panels simply start populating from the next hourly aggregation onward, filling in one hour at a time. The backfill is purely to make 30 days of history available immediately.
+    You don't have to run it. Without a backfill, rolled-up panels simply start populating from the next hourly aggregation onward, filling in one hour at a time. The backfill is purely to make that history available immediately.
 
 ### Per-rollup table
 
-One row per logical rollup (each dashboard, plus **Environment Topology (graph)**, **Environment Topology (detail tabs)**, and **Beaconing detection**). Columns:
+One row per logical rollup (each dashboard, plus **Environment Topology (graph)**, **Environment Topology (detail tabs)**, and **Beaconing detection**). Two dashboards share a row, and its label names both: **ABAP Operations** is rebuilt with *Work Process Performance / ABAP Operations*, and **Web Dispatcher** reads *Web & API Performance / Web Dispatcher* as well as its own *Web Dispatcher Slowest Traces*. Columns:
 
 | Column | Meaning |
 |---|---|
 | **Dashboard** | The dashboard / view this rollup powers. |
 | **Schedule** | The aggregate search's cron (e.g. `5 * * * *`); hover for the next scheduled run. |
 | **Aggregation** | Per-rollup enable toggle (acts on that rollup's aggregate search(es); a multi-collection rollup like the topology graph toggles all of its searches). |
-| **History** | Oldest bucket present — `~30d of history` (complete), a shorter span (incomplete), `empty`, or live `backfilling N/M` while a backfill runs. |
+| **History** | How far back the rollup reaches, measured from its oldest bucket — e.g. `106.7d of history` (about 30 days or more counts as complete), `empty`, or live `backfilling N/M` while a backfill runs, then `refreshing…` for the moment it takes to re-measure the depth once that row's searches have finished. After a run it can also read `failed — re-run`, `truncated — re-run`, or `still running on server` (hover for the search IDs). |
 | **Actions** | **Backfill** (this rollup only, per-arm top-level dispatch) · **Clear** (delete this rollup's collection(s), confirm-gated). |
 
 ### Danger zone
@@ -218,6 +225,6 @@ KPI single-value cards show the loading spinner and a corner **Diagnose** button
 - **Most panels are hourly-fresh; counts and per-event listings are real-time.** If a rolled-up trend looks an hour behind at a multi-day range, that's expected.
 - **Sub-hour time ranges (under 90 minutes) are real-time automatically** — a rolled-up panel routes a *Last 15 minutes*-style window to its raw query, so short ranges stay minute-accurate with no manual step.
 - **Scheduled searches are staggered into collision-free bands** — hourly aggregates at `:03`–`:28` (plus the platform snapshot at `:02`), daily retention + maintenance at `:30`–`:58` (hours 00–02), and the ES content (enabled by default) in the minutes those bands leave free — `:00`/`:01` for the feeds, `:29` and odd `:31`–`:59` for the hourly correlations, and `:30` at hours 02–05 for the daily anomaly searches — so no two enabled scheduled searches collide.
-- **On a new high-volume install, run Settings → Dashboard Data → Run backfill once** to populate 30 days of history immediately.
+- **On a new high-volume install, run Settings → Dashboard Data → Run backfill once** to populate 30 days of history immediately (or pick a longer backfill window, up to 365 days).
 - **No CIM acceleration is needed** for dashboard performance.
 - **Use a panel's Open in Search action** for ad-hoc raw-event investigation at any range (sub-hour ranges are already real-time on the dashboard itself).

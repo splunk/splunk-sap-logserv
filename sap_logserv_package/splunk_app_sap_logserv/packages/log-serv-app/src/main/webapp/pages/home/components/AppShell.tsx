@@ -3,9 +3,15 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { variables } from '@splunk/themes';
 import NavigationBar from './NavigationBar';
+import SideNav, { RAIL_GEOMETRY } from './SideNav';
 import PlaceholderDashboard from './PlaceholderDashboard';
 import { dashboards } from '../routes/dashboardRegistry';
 import { logservTheme } from '../styles/logservTheme';
+import {
+    BODY_CLASS_DARK,
+    SHELL_BACKDROP_DARK,
+    SHELL_BACKDROP_LIGHT,
+} from '../styles/magneticTokens';
 import { GlobalRefreshProvider } from '../state/GlobalRefreshProvider';
 import { DiagnosticDrawerProvider } from '../state/DiagnosticDrawerProvider';
 import { AIAssistant, SidePanel } from './ai/chat';
@@ -56,7 +62,32 @@ const AIAssistantSettings = lazy(() => import('../dashboards/AIAssistantSettings
 const Diagnostics = lazy(() => import('../dashboards/Diagnostics'));
 
 const Page = styled.div`
+    /* Phase 7 (build 339): the page becomes the shell's outer COLUMN —
+       header on top, then the rail + content row beneath it.
+
+       The min-height below deliberately STAYS, rather than becoming a
+       height of 100vh with an internally-scrolling main. Our React root is
+       mounted by @splunk/react-page's layout() INSIDE Splunk Web's own page
+       chrome, whose height is not ours to know: a viewport-owning shell
+       would push its own bottom below the fold by exactly that chrome's
+       height. Keeping the document scroll costs nothing — the rail stays
+       reachable because its inner wrapper is sticky (see SideNav.tsx).
+
+       (No backticks in this comment: it sits inside a styled-components
+       tagged template, where one would terminate the literal early. Sticky
+       since session 017, and it bit again writing this file.) */
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    /* Session 138: Splunk Web's own bar floats its right-hand menus, and when
+       they do not fit beside the brand (below about 880 px) they wrap onto a
+       second line that hangs below the 34 px bar. This column is a flex
+       container, which may not overlap a float, so it was laid out in the
+       space left beside that line - 118 px wide at a 720 px window, 213 px at
+       860 - and the whole app stayed that narrow. Clearing starts the column
+       below whatever hangs out of Splunk's chrome; when nothing does (900 px
+       and wider) it changes nothing. */
+    clear: both;
     background: ${logservTheme.colors.pageBackground};
     color: ${logservTheme.colors.textActive};
     /* Magnetic body stack (Phase 1b, build 254) — Inter first, Splunk Web's
@@ -115,6 +146,61 @@ const Page = styled.div`
     div.highcharts-tooltip span,
     .highcharts-tooltip span {
         color: ${logservTheme.colors.textActive} !important;
+    }
+`;
+
+/* The shell row: rail on the left, routed content on the right.
+ *
+ * `position: relative` is load-bearing — it is the containing block the rail
+ * falls back to once it stops reserving width and starts overlaying at the
+ * narrow breakpoint. `min-height: 0` is the flex-child escape hatch: without
+ * it a flex item refuses to shrink below its content's intrinsic size, which
+ * is how a tall dashboard ends up overflowing its own row. */
+const ShellBody = styled.div`
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+    position: relative;
+`;
+
+/* `min-width: 0` for the same reason `min-height: 0` is on the row above: a
+ * wide table or chart inside would otherwise set this column's floor and push
+ * the whole page into horizontal scroll rather than scrolling itself. */
+const Main = styled.main`
+    flex: 1 1 0;
+    min-width: 0;
+
+    /* The Magnetic backdrop (build 344) — two mirrored radial lobes over a
+       vertical wash, carried from the preview's scaffold palette.
+
+       Applied HERE rather than on Page because the preview puts its base
+       colour on the shell and this overlay on the content area only, so the
+       header and rail keep their own flat surface and the wash reads as
+       belonging to the dashboard.
+
+       Mode is switched by the body class rather than a var() token: a
+       multi-stop gradient is not a colour, and ColorTokens is consumed by
+       code paths (chart seriesColors, SVG attributes, colorMath) that
+       require colour literals. See the note in magneticTokens.ts.
+
+       The lobes are anchored to this element's top, so the wash sits behind
+       the dashboard title and fades out down the page, as it does in the
+       preview. Backgrounds do not scroll with content, so on a long
+       dashboard it stays with the top of the content area. */
+    background: ${SHELL_BACKDROP_LIGHT};
+
+    body.${BODY_CLASS_DARK} & {
+        background: ${SHELL_BACKDROP_DARK};
+    }
+
+    /* Once the rail overlays instead of reserving width (SideNav's narrow
+       breakpoint), the content would run underneath its collapsed strip.
+       Pad by exactly the collapsed width, read from the rail's own geometry
+       rather than re-typed here — an expanded rail at this size is a
+       deliberate overlay and covers the content on purpose, as it does in
+       every drawer-style mobile nav. */
+    @media (max-width: ${RAIL_GEOMETRY.overlayBreakpoint}) {
+        padding-left: ${RAIL_GEOMETRY.collapsed};
     }
 `;
 
@@ -227,6 +313,13 @@ const AppShell: React.FC<AppShellProps> = ({
                     onClose={closeAiPanel}
                 />
             )}
+            <ShellBody>
+                {/* Phase 7 — the Magnetic left rail. Owns all navigation:
+                    the two singleton dashboards, the four category flyouts,
+                    Settings and About. Its own collapse state is per-user
+                    and persisted; nothing above it needs to know. */}
+                <SideNav />
+                <Main>
             <Suspense fallback={<SuspenseFallback>Loading dashboard…</SuspenseFallback>}>
                 <Routes>
                     <Route path="/" element={<EnvironmentHealth />} />
@@ -311,6 +404,8 @@ const AppShell: React.FC<AppShellProps> = ({
                     <Route path="*" element={<PlaceholderDashboard fallback />} />
                 </Routes>
             </Suspense>
+                </Main>
+            </ShellBody>
             </DiagnosticDrawerProvider>
             </GlobalRefreshProvider>
         </Page>

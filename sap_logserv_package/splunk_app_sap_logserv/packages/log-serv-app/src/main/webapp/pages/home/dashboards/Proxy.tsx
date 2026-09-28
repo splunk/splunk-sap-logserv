@@ -12,6 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
+import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
 
 /**
  * Proxy Analytics — honest port of v0.0.4.2 logserv_proxy.xml.
@@ -61,7 +62,9 @@ const PanelGrid3 = styled.div`
     @media (max-width: 1400px) { grid-template-columns: 1fr; }
 `;
 
-const ST = 'sourcetype="squid:access"';
+// Access-log lines only: store.log and cache.log lines share the sourcetype but are not
+// requests (session 139) - the rollup arms carry the same filter.
+const ST = 'sourcetype="squid:access" source="*access.log*"';
 
 // --- Acceleration tiers (session 049 — CIM data-model acceleration) ----------
 // Pure-count panels read default-indexed dims via tstats-now: fast today, exact,
@@ -96,7 +99,7 @@ const Q_BASE = {
     kpiTotal: `| tstats count ${TS_WHERE}`,
 
     sparkTotal: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS count`,
-    requestVolume: `| tstats count ${TS_WHERE} BY _time span=1d | timechart span=1d sum(count) AS Requests`,
+    requestVolume: `| tstats count ${TS_WHERE} BY _time span=__LSV_SPAN__ | timechart span=__LSV_SPAN__ sum(count) AS Requests`,
 
     // --- KV-Store rollup: core (bandwidth / denied) -------------------------
     kpiBandwidth: `${R_CORE} | stats count as n, sum(bytes_sum) as total_bytes | fillnull value=0 total_bytes | eval total = case(total_bytes >= 1073741824, round(total_bytes/1073741824, 1) . " GB", total_bytes >= 1048576, round(total_bytes/1048576, 1) . " MB", total_bytes >= 1024, round(total_bytes/1024, 1) . " KB", 1=1, tostring(total_bytes) . " B")`,
@@ -105,7 +108,7 @@ const Q_BASE = {
     sparkBandwidth: `${R_CORE} | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) as bytes_daily | eval daily = round(bytes_daily/1048576, 2) | fields _time daily`,
     sparkDenied: `${R_CORE} | eval _time=bucket_ts | timechart span=1d sum(denied_count) as count | fillnull value=0`,
 
-    statusCodes: `${R_STATUS} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "2xx", tonumber(status)>=300 AND tonumber(status)<400, "3xx", tonumber(status)>=400 AND tonumber(status)<500, "4xx", tonumber(status)>=500, "5xx", 1=1, "Other") | eval _time=bucket_ts | timechart span=1d sum(count) by status_cat | fillnull value=0`,
+    statusCodes: `${R_STATUS} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "2xx", tonumber(status)>=300 AND tonumber(status)<400, "3xx", tonumber(status)>=400 AND tonumber(status)<500, "4xx", tonumber(status)>=500, "5xx", 1=1, "Other") | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by status_cat | fillnull value=0`,
 
     // dc() distinct columns reconstruct across buckets because both dims are in the
     // domain metric grain (url_domain,src); the "(none)" fillnull sentinel is nulled.
@@ -113,18 +116,18 @@ const Q_BASE = {
     topClients: `${R_DOMAIN} | search src!="(none)" | stats sum(count) as Requests, sum(bytes_sum) as "Total Bytes", dc(eval(if(url_domain="(none)",null(),url_domain))) as "Unique Domains" by src | sort -Requests | rename src as "Client IP"`,
     clientDomainDiversity: `${R_DOMAIN} | search src!="(none)" | stats dc(eval(if(url_domain="(none)",null(),url_domain))) as "Unique Domains" by src | sort -"Unique Domains" | rename src as "Client IP"`,
 
-    bandwidthTimeline: `${R_CORE} | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) as "Bytes Out" | fillnull value=0`,
+    bandwidthTimeline: `${R_CORE} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(bytes_sum) as "Bytes Out" | fillnull value=0`,
     topDomainsByBytes: `${R_DOMAIN} | search url_domain!="(none)" | stats sum(bytes_sum) as bytes_out by url_domain | eval mb_out = round(bytes_out/1048576, 2) | sort -mb_out | rename url_domain as "Domain", mb_out as "MB Out" | table "Domain", "MB Out"`,
-    bandwidthByDomain: `${R_DOMAIN} | search url_domain!="(none)" | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) by url_domain limit=5 useother=f`,
+    bandwidthByDomain: `${R_DOMAIN} | search url_domain!="(none)" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(bytes_sum) by url_domain limit=5 useother=f`,
 
     // --- KV-Store rollup: cacheaction ---------------------------------------
     contentTypes: `${R_CACHE} | search vendor_action!="(none)" | stats sum(count) as Events by vendor_action | sort -Events | rename vendor_action as "Cache Action"`,
 
     // --- KV-Store rollup: dur / destdur (was RAW percentiles -> Avg+Max) -----
-    // The Squid pretrained `duration` field exists only on the access.log subset
-    // (store.log shares the sourcetype with no duration); aggregate scope mirrors that.
+    // Every metric of this collection counts access-log lines only (source="*access.log*"):
+    // store.log and cache.log lines share the sourcetype but carry no request (session 139).
     slowDestinations: `${R_DESTDUR} | search dest!="(none)" | stats sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as max_ms, sum(count) as Requests by dest | eval "Avg (ms)" = round(if(c>0, s/c, 0), 0), "Max (ms)" = round(max_ms, 0) | sort -"Max (ms)" | head 20 | rename dest AS Destination | table Destination, Requests, "Avg (ms)", "Max (ms)"`,
-    responseTimeTrend: `${R_DUR} | eval _time=bucket_ts | timechart span=1d sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 0), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
+    responseTimeTrend: `${R_DUR} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(sum_dur) as s, sum(cnt_dur) as c, max(max_dur) as "Max (ms)" | eval "Avg (ms)" = if(c>0, round(s/c, 0), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
 /* ---------------------------------------------------------------------------
@@ -138,20 +141,20 @@ const Q_BASE = {
  * the ROLLUP reads are hybridised; kpiTotal/requestVolume (tstats) are already
  * correct at any range and the sparklines stay cached (cosmetic).
  * ------------------------------------------------------------------------- */
-const SQRAW = '`sap_logserv_idx_macro` sourcetype="squid:access"';
+const SQRAW = '`sap_logserv_idx_macro` sourcetype="squid:access" source="*access.log*"';
 const QRAW_BASE = {
     kpiBandwidth: `${SQRAW} | stats count as n, sum(bytes_out) as total_bytes | fillnull value=0 total_bytes | eval total = case(total_bytes >= 1073741824, round(total_bytes/1073741824, 1) . " GB", total_bytes >= 1048576, round(total_bytes/1048576, 1) . " MB", total_bytes >= 1024, round(total_bytes/1024, 1) . " KB", 1=1, tostring(total_bytes) . " B")`,
     kpiDenied: `${SQRAW} action="denied" | stats count`,
-    statusCodes: `${SQRAW} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "2xx", tonumber(status)>=300 AND tonumber(status)<400, "3xx", tonumber(status)>=400 AND tonumber(status)<500, "4xx", tonumber(status)>=500, "5xx", 1=1, "Other") | timechart span=1d count by status_cat | fillnull value=0`,
+    statusCodes: `${SQRAW} | eval status_cat=case(tonumber(status)>=200 AND tonumber(status)<300, "2xx", tonumber(status)>=300 AND tonumber(status)<400, "3xx", tonumber(status)>=400 AND tonumber(status)<500, "4xx", tonumber(status)>=500, "5xx", 1=1, "Other") | timechart span=__LSV_SPAN__ count by status_cat | fillnull value=0`,
     topDomains: `${SQRAW} url_domain=* | stats count as Requests, sum(bytes_out) as "Total Bytes", dc(src) as "Unique Clients" by url_domain | sort -Requests | rename url_domain as Domain`,
     topClients: `${SQRAW} src=* | stats count as Requests, sum(bytes_out) as "Total Bytes", dc(url_domain) as "Unique Domains" by src | sort -Requests | rename src as "Client IP"`,
     clientDomainDiversity: `${SQRAW} src=* | stats dc(url_domain) as "Unique Domains" by src | sort -"Unique Domains" | rename src as "Client IP"`,
     contentTypes: `${SQRAW} vendor_action=* | stats count as Events by vendor_action | sort -Events | rename vendor_action as "Cache Action"`,
     topDomainsByBytes: `${SQRAW} url_domain=* | stats sum(bytes_out) as bytes_out by url_domain | eval mb_out = round(bytes_out/1048576, 2) | sort -mb_out | rename url_domain as "Domain", mb_out as "MB Out" | table "Domain", "MB Out"`,
-    slowDestinations: `${SQRAW} source="*access.log*" duration=* | stats sum(duration) as s, count(duration) as c, max(duration) as max_ms, count as Requests by dest | eval "Avg (ms)" = round(if(c>0, s/c, 0), 0), "Max (ms)" = round(max_ms, 0) | sort -"Max (ms)" | head 20 | rename dest AS Destination | table Destination, Requests, "Avg (ms)", "Max (ms)"`,
-    bandwidthTimeline: `${SQRAW} | timechart span=1d sum(bytes_out) as "Bytes Out" | fillnull value=0`,
-    bandwidthByDomain: `${SQRAW} url_domain=* | timechart span=1d sum(bytes_out) by url_domain limit=5 useother=f`,
-    responseTimeTrend: `${SQRAW} source="*access.log*" duration=* | timechart span=1d avg(duration) as "Avg (ms)", max(duration) as "Max (ms)" | eval "Avg (ms)"=round('Avg (ms)',0), "Max (ms)"=round('Max (ms)',0) | fields _time, "Avg (ms)", "Max (ms)"`,
+    slowDestinations: `${SQRAW} duration=* | stats sum(duration) as s, count(duration) as c, max(duration) as max_ms, count as Requests by dest | eval "Avg (ms)" = round(if(c>0, s/c, 0), 0), "Max (ms)" = round(max_ms, 0) | sort -"Max (ms)" | head 20 | rename dest AS Destination | table Destination, Requests, "Avg (ms)", "Max (ms)"`,
+    bandwidthTimeline: `${SQRAW} | timechart span=__LSV_SPAN__ sum(bytes_out) as "Bytes Out" | fillnull value=0`,
+    bandwidthByDomain: `${SQRAW} url_domain=* | timechart span=__LSV_SPAN__ sum(bytes_out) by url_domain limit=5 useother=f`,
+    responseTimeTrend: `${SQRAW} duration=* | timechart span=__LSV_SPAN__ avg(duration) as "Avg (ms)", max(duration) as "Max (ms)" | eval "Avg (ms)"=round('Avg (ms)',0), "Max (ms)"=round('Max (ms)',0) | fields _time, "Avg (ms)", "Max (ms)"`,
 };
 
 interface FirstRow {
@@ -211,11 +214,16 @@ const SLOW_DEST_COLS: ColumnDef[] = [
 ];
 
 const Proxy: React.FC = () => {
+    const { timeRange } = useTimeRange();
+    const span = React.useMemo(
+        () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
+        [timeRange.earliest, timeRange.latest],
+    );
     const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
     // RAW fallbacks for the sub-hour hybrid (session 085/086); same cloud mapping
     // so both arms filter identically.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowField(Q.kpiTotal, 'count');
     const bandwidth = useFirstRowFieldHybrid(Q.kpiBandwidth, QRAW.kpiBandwidth, 'total');
     const denied = useFirstRowFieldHybrid(Q.kpiDenied, QRAW.kpiDenied, 'count');
@@ -236,7 +244,6 @@ const Proxy: React.FC = () => {
     const deniedTone = Number(denied.value ?? 0) > 0 ? 'warning' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
-    const { timeRange } = useTimeRange();
     const goDomainRow = (row: Record<string, unknown>): void => {
         const dom = String(row.Domain ?? '');
         if (!dom) return;
