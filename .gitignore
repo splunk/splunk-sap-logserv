@@ -40,15 +40,10 @@ Thumbs.db
 # in full: a wildcard negation would let a build-suffixed tarball slip in
 # if one ever landed in release_binaries/ by accident (mandate 7).
 #
-# v0.1.2 is the current canonical set. The v0.1.1 set is retained alongside
-# it by product decision (2026-09-20), so it needs negations of its own --
-# without them the broad ignore above would swallow the very files we kept.
+# v0.1.2 is the canonical set. The v0.1.1 set, kept beside it from 2026-09-20,
+# was removed from release_binaries/ on 2026-10-22, and its negations with it.
 *.tar.gz
 !release_binaries/splunk_app_sap_logserv-0.1.2.tar.gz
 !release_binaries/splunk_ta_sap_logserv-0.1.2.tar.gz
 !release_binaries/splunk_ta_sap_logserv_azure-0.1.2.tar.gz
 !release_binaries/splunk_ta_sap_logserv_gcp-0.1.2.tar.gz
-!release_binaries/splunk_app_sap_logserv-0.1.1.tar.gz
-!release_binaries/splunk_ta_sap_logserv-0.1.1.tar.gz
-!release_binaries/splunk_ta_sap_logserv_azure-0.1.1.tar.gz
-!release_binaries/splunk_ta_sap_logserv_gcp-0.1.1.tar.gz
