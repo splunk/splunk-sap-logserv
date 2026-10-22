@@ -207,7 +207,7 @@ const HourlyBars: React.FC<{ data: number[] }> = ({ data }) => {
     const barW = W / data.length;
     const teal = tokens.teal;
     return (
-        <svg width={W} height={H} role="img" aria-label="Calls per hour, last 24h">
+        <svg width={W} height={H} role="img" aria-label="Count per hour, last 24h">
             <defs>
                 <linearGradient id="bottom-grad" x1="0" x2="0" y1="0" y2="1">
                     <stop offset="0%" stopColor={teal} stopOpacity="1" />
@@ -266,7 +266,7 @@ const TopologyBottomPanel: React.FC<TopologyBottomPanelProps> = ({
             <Wrap>
                 <HeaderRow>
                     <TitleSubtitle>
-                        {`Top ${rows.length} busiest edges · ${formatCallCount(totalCalls)} calls · ${rangeLabel}`}
+                        {`Top ${rows.length} busiest edges · ${formatCallCount(totalCalls)} calls + connections · ${rangeLabel}`}
                     </TitleSubtitle>
                     <Controls>
                         <span style={{ color: logservTheme.colors.textMuted, fontSize: 11 }}>auto-refresh</span>
@@ -287,7 +287,7 @@ const TopologyBottomPanel: React.FC<TopologyBottomPanelProps> = ({
                                     <th>Source</th>
                                     <th>Direction</th>
                                     <th>Remote partner</th>
-                                    <th style={{ textAlign: 'right' }}>Calls</th>
+                                    <th style={{ textAlign: 'right' }}>Count</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -307,7 +307,7 @@ const TopologyBottomPanel: React.FC<TopologyBottomPanelProps> = ({
                         </Table>
                     </TableScroll>
                     <ChartCol>
-                        <ChartCaption>Calls / hour · last 24h</ChartCaption>
+                        <ChartCaption>Count / hour · last 24h</ChartCaption>
                         <HourlyBars data={callsPerHour} />
                         <ChartFooter>
                             {`peak ${formatCallCount(peakHour)} · low ${formatCallCount(lowHour)}`}

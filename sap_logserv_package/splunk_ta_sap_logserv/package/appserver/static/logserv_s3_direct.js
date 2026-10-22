@@ -77,6 +77,10 @@
     var S3_EP = AWS_NS + '/splunk_ta_aws_aws_s3';
     var SQS_EP = AWS_NS + '/splunk_ta_aws_aws_sqs_based_s3';
     var ACCOUNTS_EP = AWS_NS + '/splunk_ta_aws_aws_all_accounts';
+    /* The account endpoint the add-on's API reference documents (it no
+     * longer lists the combined one above); with 8.1.0 both answer the same
+     * accounts, and the probe falls back to this one (readAccounts). */
+    var ACCOUNTS_DOC_EP = AWS_NS + '/splunk_ta_aws_aws_account';
     var ROLES_EP = AWS_NS + '/splunk_ta_aws_iam_roles';
     /* The cloud_provider stamp goes through this TA's own endpoint (section
      * 18.11). Measured on hf-01 in session 136: the browser cannot reach the
@@ -97,14 +101,14 @@
     var FILTER_SETTINGS =
         TA_NS + '/splunk_ta_sap_logserv_settings/filter_settings';
 
-    /* Validated against this exact add-on version. A minor release can move
-     * field names, defaults and handler behaviour, and three of the four
-     * create/update asymmetries actually originate in splunktaucclib, which
-     * the add-on upgrades independently (L1-07, L1-08). Exact-version
-     * allowlist, advisory banner on anything else. The whitelist semantics
-     * and the terminal-time behaviour section 18 relies on were read from
-     * 8.1.0's source. */
-    var VALIDATED_TA_AWS_VERSIONS = ['8.1.0'];
+    /* The add-on version this screen was validated against: the whitelist
+     * semantics and the terminal-time behaviour section 18 relies on were
+     * read from 8.1.0's source. A MINIMUM, not an allowlist (2026-10-20): a
+     * newer add-on is accepted without a banner - the former exact-version
+     * list turned a customer on 8.3.0 away - and only an older one gets the
+     * advisory banner. A read the add-on answers with an error is reported
+     * as such (readFailure) and never reads as "nothing configured". */
+    var MIN_TA_AWS_VERSION = '8.1.0';
 
     var NAME_PREFIX = 'logserv_backfill_';
     var KEY_ROOT = 'logserv/';
@@ -199,13 +203,13 @@
         {"key": "pipeline", "label": "Data Pipeline Overview", "folders": ["abap/audit", "abap/dispatcher", "abap/enqueueserver", "abap/event", "abap/gateway", "abap/icm", "abap/messageserver", "abap/sapstartsrv", "abap/workprocess", "dns/binddns", "hana/hanaaudit", "hana/tracelogs", "linux/cron", "linux/linux_secure", "linux/localmessages", "linux/messages", "linux/pacemaker", "linux/proxy", "linux/slapd", "linux/sudolog", "linux/warn", "proxy/squid", "sap/saphostexec", "sap/saprouter", "sap/sapstartsrv", "scc/audit", "scc/tracelogs", "webdispatcher/accesslog", "windows/WinEventLog:Application", "windows/WinEventLog:Powershell", "windows/WinEventLog:Security", "windows/WinEventLog:System"]},
         {"key": "dns", "label": "DNS Analytics", "folders": ["dns/binddns"]},
         {"key": "severity", "label": "Environment Health", "folders": ["abap/dispatcher", "abap/gateway", "abap/icm", "hana/hanaaudit", "hana/tracelogs", "linux/linux_secure", "linux/proxy", "proxy/squid", "sap/saprouter", "sap/sapstartsrv", "scc/audit", "scc/tracelogs", "webdispatcher/accesslog", "windows/WinEventLog:Application", "windows/WinEventLog:Powershell", "windows/WinEventLog:Security", "windows/WinEventLog:System"]},
-        {"key": "topology_detail", "label": "Environment Topology (detail tabs)", "folders": ["abap/gateway", "abap/icm", "hana/hanaaudit", "hana/tracelogs", "webdispatcher/accesslog"]},
-        {"key": "topology_graph", "label": "Environment Topology (graph)", "folders": ["abap/gateway", "abap/icm", "hana/hanaaudit", "hana/tracelogs", "linux/linux_secure", "linux/localmessages", "linux/messages", "linux/proxy", "sap/sapstartsrv", "webdispatcher/accesslog", "windows/WinEventLog:Application", "windows/WinEventLog:Powershell", "windows/WinEventLog:Security", "windows/WinEventLog:System"]},
+        {"key": "topology_detail", "label": "Environment Topology (detail tabs)", "folders": ["abap/gateway", "abap/icm", "hana/hanaaudit", "hana/tracelogs", "sap/saprouter", "webdispatcher/accesslog"]},
+        {"key": "topology_graph", "label": "Environment Topology (graph)", "folders": ["abap/gateway", "abap/icm", "hana/hanaaudit", "hana/tracelogs", "linux/linux_secure", "linux/localmessages", "linux/messages", "linux/proxy", "sap/saprouter", "sap/sapstartsrv", "webdispatcher/accesslog", "windows/WinEventLog:Application", "windows/WinEventLog:Powershell", "windows/WinEventLog:Security", "windows/WinEventLog:System"]},
         {"key": "hana", "label": "HANA Audit", "folders": ["hana/hanaaudit"]},
         {"key": "hana_trace", "label": "HANA Trace", "folders": ["hana/tracelogs"]},
         {"key": "hostdetails", "label": "Host Details", "folders": ["abap/audit", "abap/dispatcher", "abap/enqueueserver", "abap/event", "abap/gateway", "abap/icm", "abap/messageserver", "abap/sapstartsrv", "abap/workprocess", "dns/binddns", "hana/hanaaudit", "hana/tracelogs", "linux/cron", "linux/linux_secure", "linux/localmessages", "linux/messages", "linux/pacemaker", "linux/proxy", "linux/slapd", "linux/sudolog", "linux/warn", "proxy/squid", "sap/saphostexec", "sap/saprouter", "sap/sapstartsrv", "scc/audit", "scc/tracelogs", "webdispatcher/accesslog", "windows/WinEventLog:Application", "windows/WinEventLog:Powershell", "windows/WinEventLog:Security", "windows/WinEventLog:System"]},
         {"key": "hostrole", "label": "Host Role Activity (Host Details)", "folders": ["abap/workprocess", "dns/binddns", "hana/hanaaudit", "linux/localmessages", "linux/messages", "linux/proxy", "sap/saprouter", "webdispatcher/accesslog", "windows/WinEventLog:Application", "windows/WinEventLog:Powershell", "windows/WinEventLog:Security", "windows/WinEventLog:System"]},
-        {"key": "linux", "label": "Linux System & Security", "folders": ["linux/cron", "linux/linux_secure", "linux/localmessages", "linux/messages", "linux/pacemaker", "linux/proxy", "linux/slapd", "linux/sudolog", "linux/warn"]},
+        {"key": "linux", "label": "Linux System & Security / Network Perimeter", "folders": ["linux/cron", "linux/linux_secure", "linux/localmessages", "linux/messages", "linux/pacemaker", "linux/proxy", "linux/slapd", "linux/sudolog", "linux/warn"]},
         {"key": "mc", "label": "Multi-Cloud Overview", "folders": ["abap/audit", "abap/dispatcher", "abap/enqueueserver", "abap/event", "abap/gateway", "abap/icm", "abap/messageserver", "abap/sapstartsrv", "abap/workprocess", "dns/binddns", "hana/hanaaudit", "hana/tracelogs", "linux/cron", "linux/linux_secure", "linux/localmessages", "linux/messages", "linux/pacemaker", "linux/proxy", "linux/slapd", "linux/sudolog", "linux/warn", "proxy/squid", "sap/saphostexec", "sap/saprouter", "sap/sapstartsrv", "scc/audit", "scc/tracelogs", "webdispatcher/accesslog", "windows/WinEventLog:Application", "windows/WinEventLog:Powershell", "windows/WinEventLog:Security", "windows/WinEventLog:System"]},
         {"key": "perimeter", "label": "Network Perimeter", "folders": ["dns/binddns", "linux/linux_secure", "linux/proxy", "proxy/squid"]},
         {"key": "proxy", "label": "Proxy Analytics", "folders": ["linux/proxy", "proxy/squid"]},
@@ -220,7 +224,6 @@
     /* END ROLLUP_FOLDERS */
 
     var SOURCETYPE = 'sap_logserv_logs';
-    var ACK_KEY_BASE = 'logserv.s3direct.tierAck.';
 
     /* The panel div declared by the view. Splunk inserts it asynchronously,
      * so start() polls for it — see the note there. 20 s of headroom. */
@@ -376,6 +379,50 @@
         return (resp && resp.json && resp.json.entry) ? resp.json.entry : [];
     }
 
+    /* App versions compared as major.minor.patch numbers; anything that does
+     * not start with three numbers is unknown, and an unknown version is
+     * never reported as older. */
+    function versionParts(v) {
+        var m = /^(\d+)\.(\d+)\.(\d+)/.exec(v === undefined || v === null ? '' : String(v));
+        return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+    }
+    function versionBelow(v, min) {
+        var a = versionParts(v);
+        var b = versionParts(min);
+        if (!a || !b) { return false; }
+        for (var i = 0; i < 3; i += 1) {
+            if (a[i] !== b[i]) { return a[i] < b[i]; }
+        }
+        return false;
+    }
+
+    /* A read the add-on answered with an error, without a list of entries, or
+     * not at all - as against an empty list, which comes back as "entry": []
+     * (Splunk_TA_aws 8.1.0). An add-on version that moved or renamed an
+     * endpoint answers 404 here, and that must not read as "no account is
+     * configured". */
+    function readFailure(resp, url) {
+        if (resp && resp.ok && resp.json && Array.isArray(resp.json.entry)) { return null; }
+        return {
+            url: url.indexOf(PROXY) === 0 ? url.slice(PROXY.length) : url,
+            status: resp ? resp.status : null,
+            noList: !!(resp && resp.ok)
+        };
+    }
+
+    /* One line per failed read, with what its status most likely means. A core
+     * Splunk endpoint (core) gets no add-on-version hint on a 404. */
+    function readErrorLine(f, version, core) {
+        var s = 'GET ' + f.url + (f.status ? ' returned HTTP ' + f.status : ' got no response');
+        if (f.noList) { return s + ' without a list of entries.'; }
+        if (f.status === 401) { return s + ': your session may have expired; reload the page.'; }
+        if (f.status === 403) { return s + ': your account may not be allowed to read it.'; }
+        if (f.status === 404 && !core) {
+            return s + ': add-on version ' + (version || '(unknown)') + ' may serve it at another endpoint.';
+        }
+        return s + '.';
+    }
+
     /**
      * Translate a failure into something true and useful, without reflecting
      * raw vendor bodies or tracebacks to the viewer (L2-14, and section 9 of
@@ -422,6 +469,9 @@
     var RE_JOB = /^[a-z0-9][a-z0-9-]{0,23}$/;
     var RE_FULL_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/;
     var RE_BUCKET = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
+    /* Splunk's index naming rule (indexes.conf): lower-case letters, digits,
+     * "_" and "-", not starting with "_" or "-" (and never "kvstore"). */
+    var RE_INDEX_NAME = /^[a-z0-9][a-z0-9_-]*$/;
     var RE_DATETIME = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/;
     var RE_DATE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/;
 
@@ -693,24 +743,279 @@
      * The Data TA's own index-time filter (B7, reworked in section 18.5)
      * ---------------------------------------------------------------- */
 
+    /*
+     * The preview follows the filter the Data TA generates (session 154), so it
+     * predicts what the forwarder will do instead of guessing:
+     *
+     *  - Include Filters and Exclude Filters hold dir/subdir patterns. Each half
+     *    is matched against the folder's own half as a whole value,
+     *    case-sensitively, and only * (any run of characters) and ? (one
+     *    character) are special - so a * never reaches across the / between
+     *    dir and subdir. A pattern with no / matches no folder.
+     *  - Include Filters pass everything - no include gate is generated - when
+     *    they are empty or hold a lone * or an entry that is only * on both
+     *    sides of its / (is_pass_all_include). Otherwise they are a gate, and
+     *    the exclude filter wins over it. (A list with no dir/subdir pattern
+     *    at all is refused by the Data TA; it is previewed as pass-all, as the
+     *    App's Data Doctor models it, and reported - see below.)
+     *  - Include Sources and Exclude Sources match each event's source (its
+     *    file), which this screen cannot see. An entry reaches a folder when it
+     *    is plain (no folder part) or its dir/subdir= part matches the folder.
+     *    They never change a folder's verdict, only add a note to it, as the
+     *    Data Doctor does: a folder the include gate drops stays left out,
+     *    noted "some files may be kept by Include Sources" (unless the exclude
+     *    filter drops it too - it runs after them), and a kept folder is
+     *    planned, noted "some files may be dropped by Exclude Sources".
+     *    Whether one list's entries cover the other's is not decided here.
+     *  - The settings are the ones stored on this instance. A value the Data
+     *    TA's generator refuses (design section 4, and its per-entry REGEX
+     *    limit) is reported: the Data TA then keeps the filter it generated
+     *    before, which this screen cannot see.
+     */
+
+    /** Whole-value match with only * (any run) and ? (one character) special,
+     *  case-sensitive: what the Data TA's REGEX matches over a value that
+     *  holds no quote (its linear form of each run of * and its [^"] for ?
+     *  match exactly this). */
+    function globHit(value, pat) {
+        var v = 0, p = 0, star = -1, mark = 0;
+        while (v < value.length) {
+            if (p < pat.length && pat.charAt(p) === '*') {
+                star = p;
+                p++;
+                mark = v;
+            } else if (p < pat.length && (pat.charAt(p) === '?' || pat.charAt(p) === value.charAt(v))) {
+                p++;
+                v++;
+            } else if (star !== -1) {
+                p = star + 1;
+                mark++;
+                v = mark;
+            } else {
+                return false;
+            }
+        }
+        while (p < pat.length && pat.charAt(p) === '*') { p++; }
+        return p === pat.length;
+    }
+
+    /** Does a dir/subdir pattern match this dir/subdir folder? Each is split
+     *  at its first /, as the generator splits a pattern. */
+    function folderHit(pat, folder) {
+        var pi = pat.indexOf('/');
+        var fi = folder.indexOf('/');
+        if (pi === -1 || fi === -1) { return false; }
+        return globHit(folder.slice(0, fi), pat.slice(0, pi)) &&
+            globHit(folder.slice(fi + 1), pat.slice(pi + 1));
+    }
+
+    /** Is this character code one Python's str.strip() removes (str.isspace)?
+     *  The Data TA's parse_comma_patterns strips those: JavaScript's trim()
+     *  set without U+FEFF, plus U+001C..U+001F and U+0085. */
+    function isPySpace(c) {
+        return (c >= 9 && c <= 13) || (c >= 28 && c <= 32) || c === 133 || c === 160 ||
+            c === 5760 || (c >= 8192 && c <= 8202) || c === 8232 || c === 8233 || c === 8239 ||
+            c === 8287 || c === 12288;
+    }
+
+    function pyStrip(s) {
+        var i = 0, j = s.length;
+        while (i < j && isPySpace(s.charCodeAt(i))) { i++; }
+        while (j > i && isPySpace(s.charCodeAt(j - 1))) { j--; }
+        return s.slice(i, j);
+    }
+
+    /** A comma-separated Filters-tab list as the Data TA reads Include and
+     *  Exclude Filters (parse_comma_patterns): entries stripped, empty ones
+     *  dropped. */
+    function listOf(value) {
+        return String(value || '').split(',').map(pyStrip)
+            .filter(function (p) { return p !== ''; });
+    }
+
     function patternHit(list, pair) {
-        return String(list || '').split(',').some(function (p) {
-            p = p.trim();
-            if (!p) { return false; }
-            if (p.slice(-1) === '*') { return pair.indexOf(p.slice(0, -1)) === 0; }
-            return p === pair;
+        return listOf(list).some(function (p) { return folderHit(p, pair); });
+    }
+
+    /** True when Include Filters let every folder through (no include gate). */
+    function includePassAll(list) {
+        var l = listOf(list);
+        return l.some(function (p) { return p === '*' || /^\*+\/\*+$/.test(p); }) ||
+            !l.some(function (p) { return p.indexOf('/') !== -1; });
+    }
+
+    function includeCovers(f, folder) {
+        return includePassAll(f.include_filters) || patternHit(f.include_filters, folder);
+    }
+
+    /** The entries of Include Sources or Exclude Sources as { folder, source }:
+     *  dir/subdir=source when the entry has exactly one = and the text before
+     *  it holds a /, otherwise a plain source pattern (folder ''). */
+    function sourceRules(value) {
+        return listOf(value).map(function (e) {
+            var parts = e.split('=');
+            if (parts.length === 2 && parts[0].indexOf('/') !== -1) {
+                return { folder: parts[0].trim(), source: parts[1].trim() };
+            }
+            return { folder: '', source: e };
         });
     }
 
-    /** Why this forwarder's include/exclude filter drops a folder, or ''. */
+    /** Can an entry of this source list reach events of this folder? A plain
+     *  entry can (it matches on the source alone, in any folder); a combined
+     *  one only where its folder part matches. */
+    function sourceRulesReach(value, folder) {
+        return sourceRules(value).some(function (r) {
+            return r.folder === '' || folderHit(r.folder, folder);
+        });
+    }
+
+    var WHY_INCLUDE = 'this instance’s include filter does not cover it';
+    var WHY_EXCLUDE = 'this instance’s exclude filter drops it';
+
+    /** Why this instance's include/exclude filter drops a folder, or ''.
+     *  Source rules never change it (see folderSourceNotes). */
     function folderDropReason(folder, f) {
         if (!f || f.filter_enabled !== '1') { return ''; }
-        var inc = String(f.include_filters || '*').trim();
-        if (inc && inc !== '*' && !patternHit(inc, folder)) {
-            return 'this forwarder’s include filter does not cover it';
+        if (!includeCovers(f, folder)) { return WHY_INCLUDE; }
+        if (patternHit(f.exclude_filters, folder)) { return WHY_EXCLUDE; }
+        return '';
+    }
+
+    /** What this instance's source filters may do to a folder: they decide
+     *  file by file, so these are notes on its verdict, never the verdict.
+     *  Include Sources may keep files of a folder the include gate drops -
+     *  unless the exclude filter drops the folder too, as it runs after them -
+     *  and Exclude Sources may drop files of a folder that is kept. */
+    function folderSourceNotes(folder, f) {
+        if (!f || f.filter_enabled !== '1') { return []; }
+        var excluded = patternHit(f.exclude_filters, folder);
+        if (!includeCovers(f, folder)) {
+            return !excluded && sourceRulesReach(f.include_sources, folder) ?
+                ['some files may be kept by Include Sources'] : [];
         }
-        if (String(f.exclude_filters || '').trim() && patternHit(f.exclude_filters, folder)) {
-            return 'this forwarder’s exclude filter drops it';
+        if (excluded) { return []; }
+        return sourceRulesReach(f.exclude_sources, folder) ?
+            ['some files may be dropped by Exclude Sources'] : [];
+    }
+
+    /* The Data TA's own checks of the four fields, so a value it refuses is
+     * reported instead of previewed as if it were in force. */
+    var RE_FILTER_SEGMENT = /^[A-Za-z0-9*?._:\-]+$/;
+    var RE_SOURCE_PATTERN = /^[A-Za-z0-9\/._:*?+@~\-]+$/;
+    var SOURCE_PATTERN_MAX = 512;
+    /* Lengths in the generated REGEX (design sections 5a and 5b): a REGEX is
+     * SKIP + "(?:" + entries + ")" and one condition is
+     * "(?=" + GAP + '"key"\s*:\s*"' + f(p) + '")'. The generator refuses an
+     * entry whose REGEX alone would pass REGEX_MAX_CHARS. */
+    var REGEX_SKIP_LEN = 39;
+    var REGEX_GAP_LEN = 21;
+    var REGEX_MAX_CHARS = 8000;
+
+    /** validate_single_pattern: a lone * or dir/subdir, each half of letters,
+     *  digits and * ? . _ : - only. */
+    function folderPatternOk(p) {
+        if (p === '*') { return true; }
+        var parts = p.split('/');
+        return parts.length === 2 && RE_FILTER_SEGMENT.test(parts[0]) && RE_FILTER_SEGMENT.test(parts[1]);
+    }
+
+    /** validate_source_entry: srcpat or dir/subdir=srcpat (no bare * folder),
+     *  srcpat 1..512 of letters, digits and / . _ : * ? + @ ~ - with at least
+     *  one character other than * ? and /. */
+    function sourceEntryOk(e) {
+        var parts = e.split('=');
+        var pat = e;
+        if (parts.length > 2) { return false; }
+        if (parts.length === 2) {
+            if (parts[0] === '*' || !folderPatternOk(parts[0])) { return false; }
+            pat = parts[1];
+        }
+        return pat.length <= SOURCE_PATTERN_MAX && RE_SOURCE_PATTERN.test(pat) && /[^*?\/]/.test(pat);
+    }
+
+    /** Include Sources / Exclude Sources as the Data TA reads them
+     *  (parse_source_patterns): only spaces are stripped and empty entries
+     *  are kept, so that a doubled comma is refused, not ignored. */
+    function sourceEntriesOf(value) {
+        var v = value === undefined || value === null ? '' : String(value);
+        if (v.replace(/^ +| +$/g, '') === '') { return []; }
+        return v.split(',').map(function (e) { return e.replace(/^ +| +$/g, ''); });
+    }
+
+    /** The length of seg(S): ? -> [^"], [A-Za-z0-9_] itself, anything else
+     *  backslash-escaped. */
+    function segmentLen(s) {
+        var n = 0;
+        for (var i = 0; i < s.length; i++) {
+            var c = s.charAt(i);
+            n += c === '?' ? 4 : /[A-Za-z0-9_]/.test(c) ? 1 : 2;
+        }
+        return n;
+    }
+
+    /** The length of f(p), the linear '*' translation (design section 5b):
+     *  p split on its runs of * into S0..Sk (** counts as one *); k = 0 gives
+     *  seg(S0), k >= 1 gives seg(S0), then (?>[^"]*?seg(Si)) for each middle
+     *  segment, then [^"]* and seg(Sk). */
+    function fragmentLen(p) {
+        var segs = p.split(/\*+/);
+        var n = 0;
+        for (var i = 0; i < segs.length; i++) {
+            n += segmentLen(segs[i]);
+            if (i > 0 && i < segs.length - 1) { n += 10; }    // (?>[^"]*? and )
+        }
+        return segs.length > 1 ? n + 5 : n;                    // the last [^"]*
+    }
+
+    function lookaheadLen(key, p) { return 36 + key.length + fragmentLen(p); }
+
+    function folderRegexLen(p) {
+        var i = p.indexOf('/');
+        return lookaheadLen('clz_dir', p.slice(0, i)) + lookaheadLen('clz_subdir', p.slice(i + 1));
+    }
+
+    function sourceRegexLen(e) {
+        var i = e.indexOf('=');
+        return i === -1 ? lookaheadLen('source', e) :
+            folderRegexLen(e.slice(0, i)) + lookaheadLen('source', e.slice(i + 1));
+    }
+
+    /** The first value in these Filters settings the Data TA's generator
+     *  refuses, as '<field>: <what>', or ''. In the generator's order: each
+     *  entry of Include Filters, Exclude Filters, Include Sources, Exclude
+     *  Sources, then the per-entry REGEX length (the include lists only
+     *  behind an include gate). Days in the Past is not checked here. */
+    function filterSettingsProblem(f) {
+        if (!f || f.filter_enabled !== '1') { return ''; }
+        function show(e) {
+            return e === '' ? 'an empty entry (a doubled, leading or trailing comma)' :
+                '"' + (e.length > 60 ? e.slice(0, 60) + '…' : e) + '"';
+        }
+        var inc = listOf(f.include_filters);
+        var exc = listOf(f.exclude_filters);
+        var isrc = sourceEntriesOf(f.include_sources);
+        var esrc = sourceEntriesOf(f.exclude_sources);
+        var checks = [['Include Filters', inc, folderPatternOk], ['Exclude Filters', exc, folderPatternOk],
+            ['Include Sources', isrc, sourceEntryOk], ['Exclude Sources', esrc, sourceEntryOk]];
+        var i, j;
+        for (i = 0; i < checks.length; i++) {
+            for (j = 0; j < checks[i][1].length; j++) {
+                if (!checks[i][2](checks[i][1][j])) { return checks[i][0] + ': ' + show(checks[i][1][j]); }
+            }
+        }
+        var gate = !includePassAll(f.include_filters);
+        var sized = [['Include Filters', gate ? inc : [], folderRegexLen],
+            ['Include Sources', gate ? isrc : [], sourceRegexLen],
+            ['Exclude Filters', exc, folderRegexLen], ['Exclude Sources', esrc, sourceRegexLen]];
+        for (i = 0; i < sized.length; i++) {
+            for (j = 0; j < sized[i][1].length; j++) {
+                var e = sized[i][1][j];
+                if (e !== '*' && REGEX_SKIP_LEN + 4 + sized[i][2](e) > REGEX_MAX_CHARS) {
+                    return sized[i][0] + ': ' + show(e) + ' (its rule would pass ' + REGEX_MAX_CHARS +
+                        ' characters)';
+                }
+            }
         }
         return '';
     }
@@ -773,13 +1078,19 @@
 
         var cov = coverage(env.inputs);
         var cutoff = cutoffMs(env.filterSettings, Date.now());
-        var dropped = [];
+        var problem = filterSettingsProblem(env.filterSettings);
+        var dropped = [];       // { folder, why, notes }
+        var partial = [];       // { folder, notes }: planned, with a source-filter note
+        var plannedCount = 0;
         var coveredNotes = [];
         var cutoffDays = 0;
 
         folders.forEach(function (folder) {
             var why = folderDropReason(folder, env.filterSettings);
-            if (why) { dropped.push(folder + ' (' + why + ')'); return; }
+            if (why) {
+                dropped.push({ folder: folder, why: why, notes: folderSourceNotes(folder, env.filterSettings) });
+                return;
+            }
 
             var keep = [];
             var coveredBy = {};
@@ -814,6 +1125,12 @@
                 }
             });
 
+            /* Only for a folder that gets an input: a note on one that reads
+             * nothing would say nothing. */
+            var notes = keep.length ? folderSourceNotes(folder, env.filterSettings) : [];
+            if (keep.length) { plannedCount++; }
+            if (notes.length) { partial.push({ folder: folder, notes: notes }); }
+
             var byYear = {};
             var years = [];
             keep.forEach(function (d) {
@@ -834,16 +1151,54 @@
             });
         });
 
+        if (problem) {
+            warnings.push('The Configuration → Filters settings stored on this instance hold a value ' +
+                'the Data TA refuses — ' + problem + ' — so it keeps the filter it generated before, ' +
+                'which this screen cannot see. The filter notes here may not match that filter until ' +
+                'the value is corrected on the Filters tab.');
+        }
         if (dropped.length) {
+            /* Only a folder the include filter leaves out can carry a note (the
+             * Include Sources one); when every such folder does, it is said
+             * once rather than after each. */
+            var byInclude = dropped.filter(function (d) { return d.why === WHY_INCLUDE; }).length;
+            var mayKeep = dropped.filter(function (d) { return d.notes.length; }).length;
+            var keepEvery = mayKeep > 1 && mayKeep === byInclude;
             warnings.push('Left out, because their events would be dropped at index time: ' +
-                dropped.join('; ') + '. Change the Configuration → Filters tab to include them.');
+                dropped.map(function (d) {
+                    return d.folder + ' (' + [d.why].concat(keepEvery ? [] : d.notes).join('; ') + ')';
+                }).join('; ') + '. Change the Configuration → Filters tab to include them.' +
+                (mayKeep ? ' ' + (keepEvery ? 'Some files of every folder the include filter leaves ' +
+                    'out may be kept by Include Sources' : 'Include Sources may keep some files of ' +
+                    'the folders noted so') + ': it matches each event’s source (its file), which ' +
+                    'this screen cannot see, so they stay left out — add a folder to Include Filters ' +
+                    'to backfill it.' : ''));
+        }
+        if (partial.length) {
+            var noteEvery = partial.length > 1 && partial.length === plannedCount &&
+                partial.every(function (p) { return p.notes.join('; ') === partial[0].notes.join('; '); });
+            warnings.push('Planned, but this instance’s source filters decide file by file which ' +
+                'of their events reach the index: ' + (noteEvery ? 'every planned folder (' +
+                partial[0].notes.join('; ') + ')' : partial.map(function (p) {
+                    return p.folder + ' (' + p.notes.join('; ') + ')';
+                }).join('; ')) + '. They match each event’s source (its file), which this screen ' +
+                'cannot see — check Exclude Sources on the Configuration → Filters tab.');
         }
         if (cutoffDays) {
             warnings.push(cutoffDays + ' of the ' + days.length + ' day(s) are left out: they are ' +
-                'older than this forwarder’s days_in_past = ' + env.filterSettings.days_in_past +
+                'older than this instance’s days_in_past = ' + env.filterSettings.days_in_past +
                 ' cutoff (' + utcDateString(cutoff) + ' UTC), so every event in them would be ' +
                 'dropped to nullQueue at index time. Raise days_in_past on the Configuration → ' +
                 'Filters tab first to include them.');
+        }
+        if (problem || dropped.length || partial.length || cutoffDays) {
+            /* The settings endpoint answers with THIS instance's stored copy.
+             * A deployment server pushes the generated filter, not these
+             * settings, so on a forwarder it manages they can lag behind. */
+            warnings.push('These filter notes come from the Configuration → Filters settings stored on ' +
+                'this instance. If a deployment server manages its Data TA, the filter it runs comes ' +
+                'from the deployment server, and the settings stored here can be older than that ' +
+                'filter — check the Filters tab on the deployment server before relying on them.');
         }
         Array.prototype.push.apply(warnings, coveredNotes);
 
@@ -861,7 +1216,7 @@
 
         if (!plan.inputs.length) {
             errors.push('Nothing is left to backfill: every folder-day in this selection is ' +
-                'dropped by this forwarder’s filters or already covered — see the notes below.');
+                'dropped by this instance’s filters or already covered — see the notes below.');
         }
         return plan;
     }
@@ -923,6 +1278,15 @@
             errors.push('A backfill named "' + form.suffix + '" already exists on this instance. ' +
                 'Pick another job name.');
         }
+        /* A failed read is not an empty list (readFailure): with the input list
+         * unread, neither the name check above nor the covered-day skip in
+         * buildPlan saw the inputs that exist. */
+        if (env.inputsUnread) {
+            warnings.push('The Generic S3 input list could not be read, so the job name was not ' +
+                'checked against existing inputs and days an existing backfill already covers are ' +
+                'not skipped. Check the inputs of the Splunk Add-on for AWS on this instance before ' +
+                'applying this, so that no input name is reused and no day is read twice.');
+        }
         if (!RE_BUCKET.test(form.bucket_name || '')) {
             errors.push('Bucket name is not a valid S3 bucket name.');
         }
@@ -943,10 +1307,21 @@
          * "Required field is missing: index" - verified by invoking
          * RestField.validate directly on splunk-hf-01. Nothing is created and
          * no events move, but without this check the screen offers a Create
-         * that can only ever 400. Reachable when the indexes probe fails,
-         * since every probe is .catch(() => null) and newForm then falls
-         * through to ''. */
-        if (!form.index) { errors.push('An index is required.'); }
+         * that can only ever 400. An index list that could not be read, or
+         * that is empty, is reported and makes the field a typed one, filled
+         * in as sap_logserv_logs (newForm), so this fires only on an emptied
+         * field. */
+        if (!form.index) {
+            errors.push('An index is required.');
+        } else if ((env.indexesError || !env.indexes.length) &&
+                (!RE_INDEX_NAME.test(form.index) || form.index.indexOf('kvstore') !== -1)) {
+            /* A typed name (the list could not be read, or is empty) that
+             * cannot be an index would send every event to an index that is
+             * not there. */
+            errors.push('"' + form.index + '" is not a valid index name: use lower-case letters, ' +
+                'digits, underscores and hyphens, not starting with an underscore or a hyphen and not ' +
+                'containing "kvstore".');
+        }
 
         var plan = buildPlan(form, env);
         Array.prototype.push.apply(errors, plan.errors);
@@ -973,8 +1348,24 @@
     }
 
     /* ---------------------------------------------------------------- *
-     * Environment probe and tier gating
+     * Environment probe
      * ---------------------------------------------------------------- */
+
+    /* The account list: the add-on's combined list first - the one
+     * validated with 8.1.0 - then the endpoint its API reference documents.
+     * Resolves to the response to use and the failures to report: none
+     * when either list answers, both when neither does. */
+    function readAccounts() {
+        return req(ACCOUNTS_EP + '?count=0').catch(function () { return null; }).then(function (first) {
+            var f1 = readFailure(first, ACCOUNTS_EP);
+            if (!f1) { return { resp: first, failures: [] }; }
+            return req(ACCOUNTS_DOC_EP + '?count=0').catch(function () { return null; })
+                .then(function (second) {
+                    var f2 = readFailure(second, ACCOUNTS_DOC_EP);
+                    return f2 ? { resp: first, failures: [f1, f2] } : { resp: second, failures: [] };
+                });
+        });
+    }
 
     function probe() {
         var env = {
@@ -982,7 +1373,9 @@
             awsTa: null, awsTaPresent: false, awsTaDisabled: false, awsTaVersion: null,
             isCloud: false, isDS: false, guid: '',
             accounts: [], roles: [], indexes: [], inputs: [], sqsInputs: [],
-            filterSettings: null, dsManagedAwsTa: null, probeFailed: false
+            filterSettings: null, dsManagedAwsTa: null, probeFailed: false,
+            readErrors: [], accountsUnread: false, rolesUnread: false,
+            inputsUnread: false, sqsUnread: false, appsError: null, indexesError: null
         };
 
         return Promise.all([
@@ -1005,6 +1398,9 @@
             }
             env.mode = env.capabilities.indexOf('admin_all_objects') !== -1 ? 'managed' : 'assisted';
 
+            /* A failed read of the app list is not an empty one (readFailure):
+             * the add-on's own reads below then decide whether it is there. */
+            env.appsError = readFailure(apps, APPS_LOCAL);
             var appEntry = entries(apps)[0];
             if (appEntry) {
                 env.awsTa = appEntry;
@@ -1039,21 +1435,32 @@
                 env.dsManagedAwsTa = JSON.stringify(dc.json || {}).indexOf('Splunk_TA_aws') !== -1;
             }
 
+            /* include_sources and exclude_sources arrive in the same content;
+             * a Data TA without those fields leaves them out, which reads as
+             * empty. */
             if (fs && fs.ok) {
                 var fe = entries(fs)[0];
                 env.filterSettings = (fe && fe.content) || null;
             }
 
-            if (!env.awsTaPresent) { return env; }
+            if (!env.awsTaPresent && !env.appsError) { return env; }
 
             return Promise.all([
-                req(ACCOUNTS_EP + '?count=0').catch(function () { return null; }),
+                readAccounts(),
                 req(ROLES_EP + '?count=0').catch(function () { return null; }),
                 req(INDEXES_EP + '?count=0&search=' + enc('disabled=0')).catch(function () { return null; }),
                 req(S3_EP + '?count=0').catch(function () { return null; }),
                 req(SQS_EP + '?count=0').catch(function () { return null; })
             ]).then(function (rr) {
-                env.accounts = entries(rr[0]).map(function (e) {
+                var acc = rr[0];
+                env.accountsUnread = acc.failures.length > 0;
+                env.rolesUnread = readFailure(rr[1], ROLES_EP) !== null;
+                env.inputsUnread = readFailure(rr[3], S3_EP) !== null;
+                env.sqsUnread = readFailure(rr[4], SQS_EP) !== null;
+                env.readErrors = acc.failures.concat([
+                    readFailure(rr[1], ROLES_EP), readFailure(rr[3], S3_EP), readFailure(rr[4], SQS_EP)
+                ].filter(function (f) { return f !== null; }));
+                env.accounts = entries(acc.resp).map(function (e) {
                     return { name: e.name, account_id: (e.content || {}).account_id || '' };
                 });
                 env.roles = entries(rr[1]).map(function (e) { return { name: e.name }; });
@@ -1065,6 +1472,14 @@
                     entries(rr[3]).concat(entries(rr[4])).some(function (e) {
                         return e.content && e.content.disabled === false;
                     });
+                env.indexesError = readFailure(rr[2], INDEXES_EP);
+                if (env.appsError) {
+                    /* An app serves its endpoints only while it is enabled, so
+                     * any of the add-on's lists answering means it is there. */
+                    env.awsTaPresent = !acc.failures.length || [rr[1], rr[3], rr[4]].some(function (x) {
+                        return readFailure(x, '') === null;
+                    });
+                }
                 return env;
             });
         });
@@ -1297,7 +1712,8 @@
             bucket_name: '', rows: [],
             scan_from: utcDateString(t - 9 * DAY_MS),
             scan_until: utcDateString(t - 3 * DAY_MS),
-            index: env.indexes.indexOf(SOURCETYPE) !== -1 ? SOURCETYPE : (env.indexes[0] || '')
+            index: env.indexesError || !env.indexes.length || env.indexes.indexOf(SOURCETYPE) !== -1
+                ? SOURCETYPE : env.indexes[0]
         };
     }
 
@@ -1373,8 +1789,9 @@
         }
         /* A date control's value is already 'YYYY-MM-DD' (or '' when it holds
          * nothing it can represent), which is the form's own format - so every
-         * control reads back verbatim and validate() decides. */
-        function readBack() { state.form[key] = input.value; }
+         * control reads back verbatim and validate() decides; only a typed
+         * account, IAM role or index name (opts.trim) loses surrounding spaces. */
+        function readBack() { state.form[key] = opts.trim ? input.value.trim() : input.value; }
         input.addEventListener('change', readBack);
         input.addEventListener('input', readBack);
         wrap.appendChild(input);
@@ -1461,12 +1878,18 @@
         section.appendChild(field('Job name', 'suffix', {
             help: 'Names this backfill. Lower-case letters, digits and hyphens, up to 24.'
         }));
-        section.appendChild(field('AWS account', 'aws_account',
-            { choices: env.accounts.map(function (a) { return a.name; }) }));
+        /* A typed name when the add-on's list could not be read (readFailure),
+         * instead of an empty list that blocks the form (2026-10-20). */
+        section.appendChild(field('AWS account', 'aws_account', env.accountsUnread
+            ? { trim: true, help: 'The account list could not be read (see above): type the account ' +
+                'name as the add-on shows it under Configuration → Account.' }
+            : { choices: env.accounts.map(function (a) { return a.name; }) }));
         section.appendChild(field('IAM role', 'aws_iam_role',
             {
-                choices: env.roles.map(function (r) { return r.name; }),
-                help: 'Required. Without it the input authenticates as the bare IAM user and ' +
+                trim: true,
+                choices: env.rolesUnread ? undefined : env.roles.map(function (r) { return r.name; }),
+                help: (env.rolesUnread ? 'The IAM role list could not be read (see above): type the role ' +
+                    'name. ' : '') + 'Required. Without it the input authenticates as the bare IAM user and ' +
                     'returns an AccessDenied that looks like a bucket problem.'
             }));
         section.appendChild(field('AWS region', 'aws_s3_region', {
@@ -1493,7 +1916,12 @@
                 'most ' + MAX_SPAN_DAYS + ' days counting Scan from. Today and the two days ' +
                 'before it are probably still being delivered by the SQS-Based S3 input.'
         }));
-        section.appendChild(field('Index', 'index', { choices: env.indexes }));
+        /* A typed name when the index list could not be read (readFailure)
+         * or lists nothing this account can choose. */
+        section.appendChild(field('Index', 'index', env.indexesError || !env.indexes.length
+            ? { trim: true, help: 'The index list ' + (env.indexesError ? 'could not be read' : 'is empty') +
+                ' (see above): type the name of an index that exists on your indexers.' }
+            : { choices: env.indexes }));
 
         /*
          * The gate has to be LIVE, not drawn once (17c, B9): nothing re-renders
@@ -1547,14 +1975,34 @@
         container.appendChild(section);
     }
 
+    /* Why the screen generates configuration instead of creating inputs:
+     * every reason that applies, not only the capability one. */
+    function assistedReasons(env) {
+        var why = [];
+        if (env.accountsUnread || env.rolesUnread || env.inputsUnread) {
+            why.push('Part of the add-on’s configuration could not be read (see above).');
+        }
+        if (env.dsManagedAwsTa === true) {
+            why.push('Your deployment server manages the AWS add-on here, and its next push would ' +
+                'destroy inputs created on this instance.');
+        }
+        if (env.probeFailed) {
+            why.push('Your capabilities could not be confirmed.');
+        } else if (env.capabilities.indexOf('admin_all_objects') === -1) {
+            why.push('Your account lacks the admin_all_objects capability that Splunk requires to ' +
+                'create an input.');
+        }
+        return why;
+    }
+
     function renderAssisted(env, plan, blocked) {
         var box = el('div', { cls: 'logserv-s3-section logserv-s3-assisted' });
         box.appendChild(el('h3', { text: 'Apply this as an administrator' }));
+        var why = assistedReasons(env);
         box.appendChild(el('p', {
-            text: 'Your account lacks the admin_all_objects capability that Splunk requires to ' +
-                'create an input, so this screen generates the exact configuration instead: one ' +
-                'input per S3 folder and year. An administrator must review the parameters below ' +
-                'and apply it.'
+            text: (why.length ? why.join(' ') + ' So this' : 'This') + ' screen generates the exact ' +
+                'configuration instead of creating the inputs: one input per S3 folder and year. An ' +
+                'administrator must review the parameters below and apply it.'
         }));
         if (blocked) {
             box.appendChild(banner('error', 'Nothing generated',
@@ -1571,10 +2019,15 @@
                 'asked for this before applying it. These inputs stop by themselves at ' +
                 terminalFor(nowMs) + ' UTC; if you apply them after that, generate them again.'
         }));
+        /* In the copied text too: it is often applied far from this page. */
+        var head = env.inputsUnread
+            ? '# Generated without reading the existing Generic S3 inputs: before applying, check\n' +
+              '# that no input name is reused and no day is read twice.\n\n'
+            : '';
         try {
             box.appendChild(copyable('inputs.conf stanzas (Splunk_TA_aws/local/inputs.conf)',
-                buildStanzas(state.form, plan, nowMs)));
-            box.appendChild(copyable('REST calls', buildCurls(state.form, plan, nowMs)));
+                head + buildStanzas(state.form, plan, nowMs)));
+            box.appendChild(copyable('REST calls', head + buildCurls(state.form, plan, nowMs)));
             /* Not "equivalent": the native endpoint refuses _meta (HTTP 400,
              * measured on hf-01, session 136), so these calls cannot stamp. */
             box.appendChild(el('p', {
@@ -1627,7 +2080,10 @@
         var g = groupInputs(env.inputs);
         if (!g.order.length && !g.singles.length) {
             section.appendChild(el('p', {
-                text: 'No LogServ-scoped Generic S3 inputs are configured here.'
+                text: env.inputsUnread
+                    ? 'The Generic S3 input list could not be read (see above), so the inputs on ' +
+                        'this instance cannot be listed here.'
+                    : 'No LogServ-scoped Generic S3 inputs are configured here.'
             }));
             container.appendChild(section);
             return;
@@ -1816,7 +2272,19 @@
         var labels = rowLabels(form.rows);
 
         inFlight = true;
-        req(S3_EP + '?count=0').then(function (resp) {
+        req(S3_EP + '?count=0').catch(function () { return null; }).then(function (resp) {
+            /* A failed re-list is not an empty one (readFailure): it would let
+             * the create reuse a name that exists. No response at all lands
+             * here too (null), not in the catch below. */
+            var unread = readFailure(resp, S3_EP);
+            if (unread) {
+                inFlight = false;
+                return flash('error', 'Could not re-check the existing inputs',
+                    [readErrorLine(unread, state.env.awsTaVersion),
+                     'Nothing was created. Creating over an existing name would reset that input\'s ' +
+                     'checkpoint and re-ingest everything it has read. Try again; if it keeps failing, ' +
+                     'reload the page.']);
+            }
             var names = entries(resp).map(function (e) { return e.name; });
             if (jobInUse(form.suffix, names)) {
                 inFlight = false;
@@ -2035,41 +2503,32 @@
         paintFlash();
     }
 
-    function ackKey(env) { return ACK_KEY_BASE + (env.guid || 'unknown'); }
-
-    function tierGate(container, env) {
-        /* Gate A — Splunk-managed instance. Never write from here. */
+    /* Where an input runs (2026-10-20): any instance that holds the Splunk
+     * Add-on for AWS - a heavy forwarder (recommended), a search head or
+     * Splunk Cloud (strongly recommended against, NOT blocked: a customer runs
+     * the TAs on a search head). This used to make the screen read-only on
+     * Splunk Cloud and to hold the form behind a confirmation click on an
+     * instance with no enabled AWS input; both are now notes. */
+    function placementNote(container, env) {
         if (env.isCloud) {
             container.appendChild(banner('warn', 'This is a Splunk-managed instance',
-                ['Direct S3 polling runs on the instance that holds the input, so it belongs on ' +
-                 'a heavy forwarder you manage. This screen will not write here; use the ' +
-                 'generated configuration below on your forwarder.']));
-            env.mode = 'assisted';
-            return true;
+                ['We strongly recommend running Direct S3 polling on a heavy forwarder you manage, ' +
+                 'not here: an input created on this screen polls S3 from this instance and adds ' +
+                 'that ingest load to the tier your users search on. The screen does not prevent it.']));
         }
-        /* Gate B — positive evidence this instance already ingests from AWS. */
-        if (env.hasEnabledAwsInput) { return true; }
-        /* Gate C — no evidence either way; acknowledge once per instance. */
-        var acked = false;
-        try { acked = window.localStorage.getItem(ackKey(env)) === '1'; } catch (e) { acked = false; }
-        if (acked) { return true; }
-
-        container.appendChild(banner('warn', 'No AWS inputs are configured on this instance',
-            ['An input created here polls S3 from THIS instance and forwards from here. On a ' +
-             'search head or an indexer that is usually not what you want — create it on the ' +
-             'heavy forwarder that already collects your LogServ data.',
-             'If another instance already polls this bucket and prefix, both will ingest it and ' +
-             'you will get duplicate events. Nothing on this screen can detect that.']));
-        var bar = el('div', { cls: 'logserv-s3-actions' });
-        bar.appendChild(el('button', {
-            type: 'button', cls: 'btn btn-primary', text: 'Create inputs here anyway',
-            onclick: function () {
-                try { window.localStorage.setItem(ackKey(env), '1'); } catch (e) { /* ignore */ }
-                render();
-            }
-        }));
-        container.appendChild(bar);
-        return false;
+        if (!env.hasEnabledAwsInput) {
+            /* With an input list unread (readFailure), "none" would be a guess. */
+            var unread = env.inputsUnread || env.sqsUnread;
+            container.appendChild(banner('warn', unread
+                ? 'Could not tell whether this instance runs AWS inputs'
+                : 'No AWS inputs are configured on this instance',
+                [(unread ? 'Not all of its AWS input lists could be read (see above). ' : '') +
+                 'An input created here polls S3 from THIS instance and forwards from here. We ' +
+                 'strongly recommend creating it on the heavy forwarder that already collects your ' +
+                 'LogServ data, not on a search head or an indexer. The screen does not prevent it.',
+                 'If another instance already polls this bucket and prefix, both will ingest it and ' +
+                 'you will get duplicate events. Nothing on this screen can detect that.']));
+        }
     }
 
     function render() {
@@ -2098,24 +2557,69 @@
                     ['Direct S3 polling runs on the instance that holds the input, so this screen ' +
                      'belongs on your heavy forwarders. Open it there.',
                      'Do not install the Splunk Add-on for AWS here to make this screen work.']));
+            } else if (env.appsError) {
+                root.appendChild(banner('error', 'Could not check for the Splunk Add-on for AWS',
+                    [readErrorLine(env.appsError, null, true)]
+                        .concat(env.readErrors.map(function (f) { return readErrorLine(f, null); }))
+                        .concat(['Neither the list of apps nor the add-on’s own configuration could be ' +
+                            'read, so this screen cannot tell whether the add-on is installed. Reload the ' +
+                            'page; if it keeps failing, check that your account can list apps.'])));
             } else if (env.awsTaDisabled) {
                 root.appendChild(banner('warn', 'The Splunk Add-on for AWS is disabled',
-                    ['Enable it on this instance, then reload this page.']));
+                    ['An input runs on the instance that holds it, and we strongly recommend holding ' +
+                     'inputs on a heavy forwarder: install or enable the add-on there and open this ' +
+                     'screen there. If this instance is where the inputs should run, enable the add-on ' +
+                     'here, then reload this page.']));
             } else {
                 root.appendChild(banner('warn', 'The Splunk Add-on for AWS is not installed',
-                    ['This screen configures inputs that belong to that add-on. Install it on ' +
-                     'this instance, then reload this page.']));
+                    ['This screen configures inputs that belong to that add-on, and an input runs on ' +
+                     'the instance that holds it. We strongly recommend holding them on a heavy ' +
+                     'forwarder: install the add-on there and open this screen there. If this ' +
+                     'instance is where the inputs should run, install the add-on here, then reload ' +
+                     'this page.']));
             }
             return;
         }
 
-        if (env.awsTaVersion && VALIDATED_TA_AWS_VERSIONS.indexOf(env.awsTaVersion) === -1) {
+        if (env.appsError) {
+            root.appendChild(banner('warn', 'Could not read the list of apps',
+                [readErrorLine(env.appsError, null, true),
+                 'The Splunk Add-on for AWS answered, so this screen works as usual, but it cannot ' +
+                 'check the add-on’s version.']));
+        }
+        if (env.indexesError || !env.indexes.length) {
+            root.appendChild(banner('warn', env.indexesError ? 'Could not read the list of indexes'
+                : 'No indexes are listed for your account',
+                (env.indexesError ? [readErrorLine(env.indexesError, null, true)] : []).concat([
+                    'Type the index below: sap_logserv_logs unless your LogServ data goes to another ' +
+                    'one. It must exist on your indexers: events sent to an index that does not exist ' +
+                    'are dropped.'])));
+        }
+
+        if (env.awsTaVersion && versionBelow(env.awsTaVersion, MIN_TA_AWS_VERSION)) {
             root.appendChild(banner('warn',
-                'Splunk Add-on for AWS ' + env.awsTaVersion + ' is not a validated version',
-                ['This screen was validated against ' + VALIDATED_TA_AWS_VERSIONS.join(', ') + '. ' +
-                 'Field names, the create rules and — most importantly — how the whitelist and ' +
-                 'the scan window select objects may differ in this version. Verify before relying ' +
-                 'on a backfill.']));
+                'Splunk Add-on for AWS ' + env.awsTaVersion + ' is older than ' + MIN_TA_AWS_VERSION,
+                ['This screen was validated against ' + MIN_TA_AWS_VERSION + '. In older versions ' +
+                 'field names, the create rules and — most importantly — how the whitelist and ' +
+                 'the scan window select objects may differ. Verify before relying on a backfill, ' +
+                 'or upgrade the add-on.']));
+        }
+
+        if (env.readErrors.length) {
+            /* Only the reads a create depends on force Assisted mode: the SQS
+             * list feeds a warning and the placement note, nothing more. */
+            var blocking = env.accountsUnread || env.rolesUnread || env.inputsUnread;
+            var typed = env.accountsUnread && env.rolesUnread ? 'the AWS account and the IAM role'
+                : env.accountsUnread ? 'the AWS account' : env.rolesUnread ? 'the IAM role' : '';
+            root.appendChild(banner(blocking ? 'error' : 'warn',
+                'Could not read part of the Splunk Add-on for AWS configuration',
+                env.readErrors.map(function (f) { return readErrorLine(f, env.awsTaVersion); })
+                    .concat(['This does not mean nothing is configured.' + (blocking
+                        ? ' The screen shows the configuration to apply instead of creating inputs' +
+                            (typed ? '; type ' + typed + ' below.' : '.')
+                        : ' The SQS-Based S3 inputs could not be listed, so the warning about days ' +
+                            'they may still be delivering cannot name them.')])));
+            if (blocking) { env.mode = 'assisted'; }
         }
 
         if (env.dsManagedAwsTa === true) {
@@ -2137,7 +2641,7 @@
                  'write that would fail.']));
         }
 
-        if (!env.accounts.length) {
+        if (!env.accounts.length && !env.accountsUnread) {
             root.appendChild(banner('warn', 'No AWS accounts are configured',
                 ['The Splunk Add-on for AWS is installed but has no account configured, so an ' +
                  'input cannot be created. Add one in that add-on’s Configuration → Account, ' +
@@ -2146,7 +2650,7 @@
             return;
         }
 
-        if (!tierGate(root, env)) { renderList(root, env); return; }
+        placementNote(root, env);
 
         renderList(root, env);
         if (!state.form) { state.form = newForm(env); }

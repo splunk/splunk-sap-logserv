@@ -80,14 +80,23 @@ Refer to the [Architecture](../getting-started/architecture.md) page for the ful
 | Your Topology | Install the Data TA On | Create the indexes On |
 |---|---|---|
 | **Single instance** | The single Splunk instance | Auto-created by the Data TA — nothing to do |
-| **Deployment Server + HFs + on-prem indexer(s)** | The Deployment Server (manages filter rules + distributes to HFs) **and the indexer(s)** (provides `indexes.conf`). Not on a dedicated search head. | Auto-created by the Data TA on the indexer tier — or manually, see [Creating the indexes on a separate indexer tier](#creating-the-indexes-on-a-separate-indexer-tier) |
+| **Deployment Server + HFs + on-prem indexer(s)** | The Deployment Server (manages filter rules + distributes to HFs) **and the indexer(s)** (provides `indexes.conf`). Not recommended on a dedicated search head (see [Running the TAs on a search head](#running-the-tas-on-a-search-head)). | Auto-created by the Data TA on the indexer tier — or manually, see [Creating the indexes on a separate indexer tier](#creating-the-indexes-on-a-separate-indexer-tier) |
 | **Splunk Cloud** | A **customer-managed Heavy Forwarder** in your own environment — not the Inputs Data Manager (IDM); see the note below. The Cloud indexer tier is Splunk-managed. | Via the Splunk Cloud console / ACS — see below |
+
+:material-lightning-bolt:{ .taiconcolor } The Data TA parses every LogServ event on the Heavy Forwarders (or the single instance), so its cost per event decides how many Heavy Forwarders your volume needs; see [Heavy Forwarder Sizing](hf-sizing.md).
 
 !!! warning
     If you are using a **Deployment Server** to manage Heavy Forwarders, install the TA on the Deployment Server only. Do **not** install the TA directly on the Heavy Forwarders — the DS will distribute it automatically when you configure filters. See [Configuring Filters](configure-filters.md) for details. On a dedicated **search head** the Data TA is not needed (the LogServ App carries the search-time content); the **indexer tier** is the exception — install the Data TA there so its `indexes.conf` provisions the indexes.
 
 !!! note "Why not the Inputs Data Manager (IDM)?"
-    The Data TA's `app.manifest` declares `targetWorkloads` of `_search_heads` and `_indexers` only — it does not declare `_forwarders`. An IDM is a forwarder-class workload, so Splunk Cloud's placement tooling will not install the Data TA there. Use a Heavy Forwarder you manage yourself. (Our Azure and GCP add-ons do declare `_forwarders`, which is why they install on a forwarder normally.)
+    The Data TA's `app.manifest` declares `targetWorkloads` of `_search_heads` and `_indexers` only — it does not declare `_forwarders`. An IDM is a forwarder-class workload, so Splunk Cloud's placement tooling will not install the Data TA there. Use a Heavy Forwarder you manage yourself. (Our Azure and GCP add-ons declare `_forwarders`, which is why they install on a forwarder normally — and `_search_heads`, so Splunk Cloud does not refuse them on a search head either, although a heavy forwarder is strongly recommended.)
+
+### :material-circle-box:{ .taiconcolor } Running the TAs on a search head
+
+We strongly recommend against installing the Data TA, the LogServ Azure add-on or the LogServ GCP add-on on a search head, Splunk Cloud included: ingest belongs on the heavy forwarders, and inputs on a search head put that load on the tier your users search on. Nothing blocks it, though. On a search head that runs the inputs itself (with the Splunk Add-on for AWS, or with the Azure or GCP add-on), the Data TA parses and filters there as it does on a heavy forwarder, and the [AWS S3 Direct screen](aws-direct-s3-polling.md) works there too; on Splunk Cloud, and on an instance with no enabled AWS input, it shows a warning that recommends a heavy forwarder. Two things work differently there:
+
+- **Search head clusters.** A search head cluster does not replicate inputs, so an input created on a member (on the Azure or GCP add-on's Inputs page, or on the AWS S3 Direct screen) runs only on that member. An input the deployer pushes to every member runs on every member: a Generic S3 input then reads every object on each member, so each object is indexed once per member; the Azure and GCP add-ons share their queue or subscription between the members, and a message goes to one member, but each member keeps its own dedup record, so a redelivered message can be indexed twice. The filter rules and the Cloud Provider stamp that the Data TA's Configuration page generates are written only on the member where you save them. The saved Filters settings normally reach the other members (not when the save falls back to writing the settings file, as it does for an account without `admin_all_objects`), and another member rebuilds its rules from them at its own daily filter refresh, but only while Enable Filtering is checked and Days in the Past is greater than 0: turning filtering off, and rules saved with Days in the Past at 0, never reach the other members. Save the Filters and Cloud Provider tabs on every member that runs inputs.
+- **Deployment clients.** On a search head that is a deployment client for other apps but holds the Data TA directly, the daily filter refresh runs as it does on a single instance. It is skipped only where the deployment server delivers the Data TA, or where the instance's record of what its deployment server sent (`$SPLUNK_HOME/var/run/serverclass.xml`) is missing, unreadable or lists no app.
 
 ### :material-circle-box:{ .taiconcolor } Creating the indexes on a separate indexer tier
 
@@ -160,6 +169,9 @@ Install the Data TA to your instance of Splunk Enterprise:
 5.<b class="taiconcolor">d</b> If Splunk Enterprise prompts you to restart, do so.
 
 5.<b class="taiconcolor">e</b> Verify that the add-on appears in the list of apps and add-ons. You can also find it on the server at `$SPLUNK_HOME/etc/apps/splunk_ta_sap_logserv`.
+
+!!! note "If splunkd runs with a proxy variable, exempt its own management port"
+    The add-on's configuration pages (and the Azure and GCP add-ons' inputs) talk to the local splunkd management port, by default `127.0.0.1:8089`, through Splunk's Python HTTP client, which honours the `HTTP_PROXY` / `HTTPS_PROXY` environment variables. If the environment splunkd runs in sets either of them, for example in `splunk-launch.conf` or the systemd unit, also set `NO_PROXY=127.0.0.1,localhost` (plus the host name in `mgmtHostPort`, if it is not a loopback address). Otherwise those calls, with their session key, are sent to the proxy instead of to splunkd.
 
 <br>
 

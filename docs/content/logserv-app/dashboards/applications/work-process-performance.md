@@ -17,13 +17,13 @@ All panels except the raw-event tables read the hourly summary layer, so figures
 - **Active SIDs** -- Count of distinct SAP System IDs reporting work process data
 - **Dispatcher Errors** -- Count of dispatcher events with severity ERROR
 - **Active WP Functions** -- Count of distinct work process function codes observed
-- **Work Process Category Trend** -- Stacked column chart showing daily activity by category, with friendly-named codes (uses the shared `wp_category_name` field)
+- **Work Process Category Trend** -- Stacked column chart showing activity over time by category, with friendly-named codes (uses the shared `wp_category_name` field)
 - **Category Distribution** -- Donut chart showing the overall category mix across the time range (same friendly-named legend)
 - **Work Process Functions** -- Table of function codes ranked by event volume
 - **Dispatcher Severity Over Time** -- Stacked column of dispatcher severity levels over time
 - **Activity by SID / Instance** -- Table ranking each SAP system/instance by event count, with drilldown to filter
 - **Recent Dispatcher Errors** -- Table of the most recent dispatcher ERROR events (up to 200) with SID, function, reason, and host; click a row to open Host Details for that host. This panel always reads raw events.
-- **Async RFC Queue Depth** -- Daily average and peak ICM `ASYNC_RFC` tasks-in-queue per dispatch (from `sap:abap:icm`)
+- **Async RFC Queue Depth** -- Average and peak ICM `ASYNC_RFC` tasks-in-queue per dispatch over time (from `sap:abap:icm`)
 - **Top Programs by Queue Depth** -- Table of ICM programs ranked by their async-RFC queue depth
 
 ## :material-circle-box:{ .taiconcolor } Where the Data Comes From
@@ -42,8 +42,8 @@ Summary-backed panels switch automatically to their exact raw-equivalent search 
 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 
-- **Category saturation** -- If a single category (e.g., `B = Database Interface` or `M = Memory Management`) dominates the Category Distribution donut when it historically didn't, that subsystem may be a bottleneck. Check the associated detail dashboards (HANA Audit/Trace for database; Linux/ABAP Operations for memory).
-- **Trend shifts between categories** -- A gradual increase in `N = Network (NI)` or `C = Communication` events can indicate network degradation between the ABAP server and HANA/other SAP systems.
+- **Category saturation** -- If a single category (e.g., `B = Database Interface` or `C = Database (DBSL)`, the two database layers, or `X = Extended Memory`) dominates the Category Distribution donut when it historically didn't, that subsystem may be a bottleneck. Check the associated detail dashboards (HANA Audit/Trace for the database layers; Linux/ABAP Operations for memory).
+- **Trend shifts between categories** -- A gradual increase in `C = Database (DBSL)` lines, the database client layer, can point at trouble between the ABAP server and its database; `N = Security (SNC/SSF)` lines rise with SNC, SSO and logon-ticket activity, and `E = Enqueue (Lock Mgmt)` lines with lock activity.
 - **Dispatcher error bursts** -- Spikes in the Dispatcher Severity Over Time chart are often the first user-visible symptom of work process exhaustion. Correlate with Category Distribution to identify which category filled up first.
 - **Instance imbalance** -- If one instance's WP activity is an order of magnitude higher than its peers in the Activity by SID/Instance table, investigate whether that instance is handling disproportionate load or experiencing a local issue.
 - **Function-code hotspots** -- The Work Process Functions table surfaces which ABAP functions are running most often; an unexpected code at the top can indicate a runaway background job or custom transaction generating excessive traces.

@@ -13,7 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * Cloud Connector — honest port of v0.0.4.2 logserv_cloud_connector.xml.
@@ -246,10 +246,10 @@ const CloudConnector: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Request Volume Over Time" subtitle="Daily SCC HTTP request count">
+                <FramedPanel title="Request Volume Over Time" subtitle={spanSubtitle('SCC HTTP request count', Q.requestVolume)}>
                     <TimeSeriesChart query={Q.requestVolume} height={280} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="Status Code Distribution" subtitle="Daily volume bucketed 2xx/3xx/4xx/5xx">
+                <FramedPanel title="Status Code Distribution" subtitle={spanSubtitle('Volume bucketed 2xx/3xx/4xx/5xx', qStatusCodes)}>
                     <TimeSeriesChart query={qStatusCodes} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
@@ -272,7 +272,7 @@ const CloudConnector: React.FC = () => {
             </PanelGrid3>
 
             <PanelGrid2>
-                <FramedPanel title="Average Response Time" subtitle="Daily mean response time (ms)">
+                <FramedPanel title="Average Response Time" subtitle={spanSubtitle('Mean response time (ms)', qResponseTime)}>
                     <TimeSeriesChart query={qResponseTime} height={280} palette="volume" />
                 </FramedPanel>
                 <FramedPanel search={auditLog} title="Cloud Connector Audit Log" subtitle="SCC audit events, most-recent first">

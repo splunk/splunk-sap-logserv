@@ -22,7 +22,7 @@ import {
 } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useThemeMode } from '../state/ThemeModeProvider';
-import { chooseTimechartSpan } from '../utils/timechartSpan';
+import { chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 import { shouldUseRawSource } from '../utils/hybridRouting';
 import { buildStmapRawQuery } from '../utils/stmapRaw';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
@@ -325,15 +325,16 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, 
         return (HOST_RAW === '' && !span.endsWith('m')) ? cachedQ : rawQ;
     }, [span, topN, selectedHosts, HOST_RAW, provider]);
 
+    // The span printed is the dispatched one (spanSubtitle reads the query).
     const chartSubtitle = useMemo<string>(() => {
         if (selectedHosts.length > 0) {
-            return `${selectedHosts.length} of ${totalHostCount} hosts selected — span ${span}`;
+            return spanSubtitle(`${selectedHosts.length} of ${totalHostCount} hosts selected`, eventsByHostQuery);
         }
         if (topN === 'all') {
-            return `All hosts (${totalHostCount}) by event count — span ${span}`;
+            return spanSubtitle(`All hosts (${totalHostCount}) by event count`, eventsByHostQuery);
         }
-        return `Top ${topN} hosts by event count — span ${span}`;
-    }, [span, topN, selectedHosts, totalHostCount]);
+        return spanSubtitle(`Top ${topN} hosts by event count`, eventsByHostQuery);
+    }, [eventsByHostQuery, topN, selectedHosts, totalHostCount]);
 
     const sourcetypeSummary = useSearch({ query: Q.sourcetypeSummary });
     const hostLatest = useSearch({ query: Q.hostLatestActivity });

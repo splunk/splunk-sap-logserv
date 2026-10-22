@@ -240,6 +240,8 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-05.png "Input Fields")
 
+:material-lightning-bolt:{ .taiconcolor } One SQS-Based S3 input on one Heavy Forwarder parses its events through one pipeline set, which limits how many events a second it can take. For high LogServ volumes, see [Heavy Forwarder Sizing](hf-sizing.md) before you add inputs or forwarders.
+
 <br>
 
 ### :material-circle-box:{ .taiconcolor } 8. Confirm LogServ Logs are Being Ingested

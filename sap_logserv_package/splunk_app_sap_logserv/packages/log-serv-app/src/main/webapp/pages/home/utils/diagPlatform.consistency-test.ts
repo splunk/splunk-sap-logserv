@@ -292,7 +292,7 @@ export const run = async (): Promise<number> => {
     check(
         'provenance.namesWritability',
         typeof plat.SNAPSHOT_PROVENANCE === 'string' &&
-            plat.SNAPSHOT_PROVENANCE.indexOf('any authenticated Splunk user can write') !== -1,
+            plat.SNAPSHOT_PROVENANCE.indexOf('only Splunk administrators can write') !== -1,
         'the provenance badge does not state the write surface',
     );
 

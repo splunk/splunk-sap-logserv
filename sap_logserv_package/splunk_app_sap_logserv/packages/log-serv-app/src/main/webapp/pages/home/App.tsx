@@ -55,16 +55,22 @@ const App: React.FC = () => {
      * required).
      *
      * The HEC token lives in passwords.conf; admin-only readable. For
-     * non-admin users the read returns empty string, and forwarding
-     * silently no-ops (audit events still hit the local index).
+     * non-admin users the read returns empty string, so with the
+     * forwarder enabled each flush's forward attempt fails with reason
+     * `no_token` (a console warning plus a local-only
+     * `audit_forwarder_failure` event). The local write itself needs
+     * the edit_tcp or the edit_log_alert_event capability (see
+     * auditWriter.ts): a user without either writes no audit events at
+     * all, and the chat panel says so.
      * Build 98 / 99 / 100 / 101.
      */
     const applyAIConfig = useCallback(async (cfg: AIAssistantConfig): Promise<void> => {
         setAiConfig(cfg);
         // Update the AuditWriter's destination-index name. Subsequent
-        // flush() / postOneOff() calls target the new index. Empty /
-        // missing values fall back to the default `ai_assistant_audit`
-        // (handled inside `setLocalAuditIndex`).
+        // flush() / postOneOff() calls target the new index. An empty /
+        // missing stored value never reaches here as empty: aiConfigApi
+        // substitutes the default `logserv_ai_assistant_audit`, and
+        // `setLocalAuditIndex` ignores an empty name.
         setLocalAuditIndex(cfg.auditIndexName);
         const hecToken = cfg.auditForwarderEnabled
             ? await readCredentialClear(

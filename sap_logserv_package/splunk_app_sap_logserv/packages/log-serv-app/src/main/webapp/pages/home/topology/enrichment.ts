@@ -99,8 +99,9 @@ export const enrichmentSourceLabel = (source: string): string =>
     ENRICHMENT_SOURCE_LABELS[source] ?? source;
 
 /* ------------------------------------------------------------------ */
-/* Sanitize-on-read. The collection is world-writable (the standard    */
-/* topology ACL), so every string that reaches the DOM is length-      */
+/* Sanitize-on-read. The collection was world-writable until build     */
+/* 384 (and a local.meta can reopen it), so every string that          */
+/* reaches the DOM is length-                                          */
 /* capped and control-character-checked here. React escapes markup     */
 /* anyway; the angle-bracket check is belt-and-suspenders. NOTE: the   */
 /* control check uses charCodeAt on purpose — no escape sequences.     */

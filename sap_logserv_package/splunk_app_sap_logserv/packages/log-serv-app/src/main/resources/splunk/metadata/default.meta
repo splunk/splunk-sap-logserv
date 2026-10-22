@@ -3,6 +3,13 @@ owner = nobody
 access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
+# Build 384: every KV collection below is written by the admin tier only (admin,
+# sc_admin, sc_subadmin), except six that ordinary users write by design: the four
+# per-user preference collections (topology layouts, layout defaults, active mode,
+# dashboard refresh) and two Data Doctor collections (reports, ingest facts). Read
+# stays open everywhere. utils/kvAcl.consistency-test.ts holds this list equal to the
+# code's writers.
+
 # Per-user named topology layouts (build 120 / A.4). All authenticated users
 # need write access so they can save their own layouts. Records are keyed
 # by `<username>::<slug>` as a convention — server-side ACL does NOT enforce
@@ -39,13 +46,15 @@ export = system
 # Time-bucketed topology nodes + edges (session 035 / build 188). Read by
 # the React app's authenticated session at view-render time; written by the
 # scheduled saved searches running as nobody/admin. All authenticated users
-# need read access; write access via the saved search runs in admin context.
+# need read access. Since build 384 only the admin tier writes them: the scheduled
+# searches run as splunk-system-user and the Settings > Dashboard Data backfill as
+# the signed-in admin (every role could write them before).
 [collections/logserv_topology_nodes]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 [collections/logserv_topology_edges]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # IP/host -> SID inventory (session 035 / build 188). Read by the React
@@ -53,7 +62,7 @@ export = system
 # endpoints to their owning SID node; written by the
 # logserv_topology_aggregate_inventory saved search.
 [collections/logserv_topology_inventory]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # IP-node enrichment (session 112 / build 329). Read by the topology view's
@@ -63,34 +72,39 @@ export = system
 # searches. Same collection-level ACL convention as the other topology
 # collections.
 [collections/logserv_topology_ip_enrichment]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Environment Topology detail-tab rollup (session 060 / build 240). Read by the
 # topology view's right-pane detail tabs (via | inputlookup) on node/edge
 # selection; written by the logserv_topology_detail_aggregate / _backfill saved
-# searches. Same all-authenticated read+write ACL as the other topology + rollup
-# collections — KV-Store endpoints check only this collection-level ACL.
+# searches. Read by every role; since build 384 written by the admin tier only, like
+# the other topology + rollup collections — KV-Store endpoints check only this
+# collection-level ACL.
 [collections/logserv_topology_detail_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # AI Assistant admin-managed settings (session 042 / Option D). Read by all
 # authenticated users (the React app needs this on every page load to know
 # whether the AI Assistant button should render); admin-tier users write
-# from the Settings page. ACL allows all authenticated writes so the
-# capability-gate workaround works regardless of role mix on the deployment.
-# Server-side single-row convention: _key = "defaults".
+# from the Settings page. Server-side single-row convention: _key = "defaults".
+# Build 380: written by admin-tier roles only. The row decides where an
+# admin's browser sends secrets and data - the audit forwarder URL (with the
+# HEC token), the MCP server URL (with its bearer token), the privacy tier -
+# so a write open to every role let any user redirect them. A non-admin's
+# conf-to-KV migration write at page load now fails quietly (best-effort).
 [collections/logserv_ai_assistant_settings]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # AI Assistant per-stanza T&C acknowledgements (session 042 / Option D).
-# Same ACL pattern: all authenticated read + write. Each row is keyed by
-# the stanza name (e.g. "logserv-ai-assistant-enable-tc") and the React
-# app writes on every modal Submit / Cancel interaction.
+# Each row is keyed by the stanza name (e.g. "logserv-ai-assistant-enable-tc");
+# the Settings page writes it on every T&C modal Submit / Cancel. Build 380:
+# written by admin-tier roles only, like the settings (a user could otherwise
+# record an acceptance an admin never gave); read stays open.
 [collections/logserv_ai_assistant_acks]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # AI Assistant discovered-model cache (session 079 / build 275). Read by
@@ -98,152 +112,162 @@ export = system
 # the model-discovery refresh triggers (Settings refresh button, provider
 # credential save, 24h lazy TTL). One row per provider, ids/labels
 # allowlist-sanitized on write AND read; the static baseline always
-# survives the merge so a poisoned row can't break chat.
+# survives the merge so a poisoned row can't break chat. Build 380: written by
+# admin-tier roles only - discovery needs the provider key, which only admins
+# can read, and a non-admin's failed refresh no longer overwrites the row.
 [collections/logserv_ai_models]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Work Process Performance dashboard rollup (session 050 / build 206). Read by
 # the dashboard's panels (via | inputlookup) at render time; written by the
-# logserv_wp_perf_aggregate / _backfill saved searches. Same all-authenticated
-# read+write ACL as the topology collections — KV-Store endpoints check only
-# this collection-level ACL, no admin_all_objects capability gate.
+# logserv_wp_perf_aggregate / _backfill saved searches. Read by every role;
+# since build 384 written by the admin tier only, like every rollup and topology
+# collection — KV-Store endpoints check only this collection-level ACL, no
+# admin_all_objects capability gate.
 [collections/logserv_wp_perf_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Environment Health cross-cutting error/severity rollup (session 050 cont.).
 [collections/logserv_severity_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # HANA Audit dashboard rollup (session 050 cont.).
 [collections/logserv_hana_category_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Change & Configuration Activity dashboard rollup (session 051).
 [collections/logserv_compliance_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # SAP Router dashboard rollup (session 052).
 [collections/logserv_saprouter_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # ABAP Network & Security dashboard rollup (session 052).
 [collections/logserv_abapnet_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Cross-Stack Authentication dashboard rollup (session 052).
 [collections/logserv_xstack_auth_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Network Perimeter dashboard rollup (session 052).
 [collections/logserv_perimeter_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Linux System & Security dashboard rollup (session 052).
 [collections/logserv_linux_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Web & API Performance dashboard rollup (session 052).
 [collections/logserv_web_timing_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # HANA Trace dashboard rollup (session 053).
 [collections/logserv_hana_trace_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Windows dashboard rollup (session 053).
 [collections/logserv_windows_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # SAP Services dashboard rollup (session 053).
 [collections/logserv_sapservices_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Multi-Cloud Overview dashboard rollup (session 053).
 [collections/logserv_mc_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 [collections/logserv_beaconing_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Cloud Connector dashboard rollup (build 232).
 [collections/logserv_cloudconn_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Proxy Analytics dashboard rollup (build 232).
 [collections/logserv_proxy_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # DNS Analytics dashboard rollup (build 232).
 [collections/logserv_dns_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Data Pipeline Overview dashboard rollup (build 232).
 [collections/logserv_pipeline_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Host Details dashboard rollup (build 233).
 [collections/logserv_hostdetails_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Web Dispatcher Slowest Traces rollup (build 236).
 [collections/logserv_webdisp_slowtrace_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Beaconing detail rollup (build 237).
 [collections/logserv_beaconing_detail_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Sourcetype Mapping rollup (build 243).
 [collections/logserv_stmap_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
 # Host Role Activity rollup (build 243).
 [collections/logserv_hostrole_rollup]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
-# LogServ Data Doctor reports (build 311 / session 096). Same deliberately
-# permissive ACL as every other logserv_* collection: any authenticated user
-# must be able to persist + list diagnostic reports (the #/diagnostics page is
-# NOT admin-gated). Consequence: rows are untrusted — the app validates on
-# read (diagPersistence) and the page carries NO destructive controls. Stored
-# reports are shared, unauthenticated-integrity artifacts; the authoritative
-# copy is the one downloaded at generation time.
+# Settings > Dashboard Data backfill stage (build 378): written only by the
+# admin-gated panel. Explicit since build 384 (it inherited [] before), so a change
+# to [] can neither open nor close it.
+[collections/logserv_backfill_stage]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
+export = system
+
+# LogServ Data Doctor reports (build 311 / session 096). Deliberately permissive
+# ACL (it stays writable by every role - since build 384 one of only six such
+# collections): any authenticated user must be able to persist + list diagnostic
+# reports (the #/diagnostics page is NOT admin-gated). Consequence: rows are
+# untrusted — the app validates on read (diagPersistence) and the page carries
+# NO destructive controls. Stored reports are shared, unauthenticated-integrity
+# artifacts; the authoritative copy is the one downloaded at generation time.
 [collections/logserv_diag_reports]
 access = read : [ * ], write : [ * ]
 export = system
 
 # Operator-supplied ingest evidence (build 314 / session 099, design SS15).
-# World read/write like every other logserv_* collection: the design requires
+# World read/write (it stays so - since build 384 one of only six such collections): the design requires
 # a NON-admin to be able to paste the filter configuration an administrator
 # ran for them (decision 8). Consequence: the row is untrusted — the app
 # validates every field on read (diagIngestFacts.looksLikeIngestFacts), only
 # ever reads the fixed key "latest", and every verdict built on it carries a
-# "Supplied by operator — <user>, <when>" provenance line so a wrong or stale
+# "Recorded as supplied by <user> (name not verified), <when>" provenance line so a wrong or stale
 # paste is traceable and re-suppliable.
 [collections/logserv_diag_ingest_facts]
 access = read : [ * ], write : [ * ]
@@ -251,9 +275,10 @@ export = system
 
 # Data Doctor platform snapshot (build 315, design SS16). World-READABLE is
 # the point of Tier B (one nobody-owned scheduled search makes _internal
-# evidence readable by every role); world-writable is the standing logserv_*
-# hazard, so the app sanitizes every row on read AND snapshot rows can never
-# raise a verdict's confidence grade (SS16.8a-1).
+# evidence readable by every role). Since build 384 only the admin tier (and the
+# nobody-owned scheduled search) writes it; the app still sanitizes every row on
+# read AND snapshot rows can never raise a verdict's confidence grade (SS16.8a-1),
+# because rows from before build 384 or under a local.meta override may be forged.
 [collections/logserv_diag_platform_snapshot]
-access = read : [ * ], write : [ * ]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system

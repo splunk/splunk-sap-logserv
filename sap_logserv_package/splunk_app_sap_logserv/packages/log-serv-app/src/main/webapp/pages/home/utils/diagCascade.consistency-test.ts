@@ -305,7 +305,8 @@ const TAG_SCOPED = '`sap_logserv_idx_macro` tag=dns message_type="Query" | stats
 // =========================================================================
 // §12.8 — the staleness threshold is 3h, not 2h.
 //
-// Hourly aggregates run at staggered minutes over -1h@h..@h, so a HEALTHY
+// Hourly aggregates run at staggered minutes over -2h@h..@h (the newest bucket
+// is still the previous hour - session 147), so a HEALTHY
 // collection sits between 1h+M and 2h+M of lag at all times. A >2h rule would
 // flag every collection with M > 0, every hour.
 // =========================================================================
@@ -1807,7 +1808,7 @@ const WINCACHED =
     const CUT7 = cutoffFromDays(7, NOW);
     const ctxFx = ingestFx({ cutoffEpoch: CUT7, daysInPast: 7 });
     const ctxWin = { earliest: String(CUT7 - 12 * 86400), latest: String(CUT7 - 2 * 86400) };
-    const CTX_LINE = /ends before the ingest cutoff recorded as supplied/;
+    const CTX_LINE = /ends before the ingest cutoff of .+ \(recorded as supplied by /;
     // stale (+ the line), never-seen (+ the line), outside-window (+ the line)
     const dCtxStale = diagnose(
         facts({ spl: RAW, ...ctxWin }),

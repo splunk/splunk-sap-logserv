@@ -83,7 +83,7 @@ There are two ways round it, and neither needs `s3:ListAllMyBuckets`:
 
 The Data TA ships a screen for this job: **Splunk Web → *Splunk TA for SAP LogServ* → AWS S3 Direct**. It creates and manages LogServ-scoped Generic S3 inputs inside the AWS add-on from your browser, as the signed-in user, and adds no new Python, REST handler or capability of its own.
 
-Run it on the **heavy forwarder that will hold the inputs**. A Generic S3 input collects from the instance it is defined on, so creating one on a search head or indexer means that instance starts polling S3 — usually not what you want. The screen checks where it is running: on Splunk Cloud it will not write at all, and on an instance with no enabled AWS inputs it asks you to confirm before the first create.
+Run it on the **heavy forwarder that will hold the inputs** — strongly recommended. A Generic S3 input collects from the instance it is defined on, so creating one on a search head or indexer means that instance starts polling S3, which puts ingest load on the tier your users search on. The screen does not prevent it: on Splunk Cloud, and on an instance with no enabled AWS inputs, it shows a warning that recommends a heavy forwarder, and works as usual. It accepts the Splunk Add-on for AWS 8.1.0, the version it was validated against, and any later version without a warning; an older version gets an advisory banner. It reads the add-on's accounts from its combined account list and, when that cannot be read, from the account endpoint the add-on's API reference documents. When it cannot read the add-on's accounts, IAM roles or Generic S3 inputs, it names each request that failed and shows the configuration to apply instead of creating inputs; the account or the IAM role is typed in where its list could not be read. An SQS-Based S3 input list it cannot read is reported too and does not stop a create, but the warning about days those inputs may still be delivering cannot name them, and unless it read an enabled Generic S3 input, the screen cannot tell whether this instance already runs AWS inputs. When it cannot read Splunk's list of apps, it reads the add-on's own lists instead: if they answer, it works as usual without the version check; if not, it says it cannot tell whether the add-on is installed. When it cannot read the list of indexes, or the list is empty, it says so, and the Index field takes a typed name, filled in as `sap_logserv_logs`; a typed name must follow Splunk's index naming rule (lower-case letters, digits, underscores and hyphens, not starting with an underscore or a hyphen and not containing `kvstore`).
 
 ??? note "Example — three rows chosen, and the plan the screen builds from them"
     ![AWS S3 Direct — the form and its plan](../../images/aws-s3-direct-form.png)
@@ -112,13 +112,13 @@ From those the screen creates **one input per S3 folder and calendar year**:
     | Data Pipeline Overview | all 32 |
     | DNS Analytics | `dns/binddns` |
     | Environment Health | `abap/dispatcher`, `abap/gateway`, `abap/icm`, `hana/hanaaudit`, `hana/tracelogs`, `linux/linux_secure`, `linux/proxy`, `proxy/squid`, `sap/saprouter`, `sap/sapstartsrv`, `scc/audit`, `scc/tracelogs`, `webdispatcher/accesslog`, the four `windows/WinEventLog:*` channels |
-    | Environment Topology (detail tabs) | `abap/gateway`, `abap/icm`, `hana/hanaaudit`, `hana/tracelogs`, `webdispatcher/accesslog` |
-    | Environment Topology (graph) | `abap/gateway`, `abap/icm`, `hana/hanaaudit`, `hana/tracelogs`, `linux/linux_secure`, `linux/localmessages`, `linux/messages`, `linux/proxy`, `sap/sapstartsrv`, `webdispatcher/accesslog`, the four `windows/WinEventLog:*` channels |
+    | Environment Topology (detail tabs) | `abap/gateway`, `abap/icm`, `hana/hanaaudit`, `hana/tracelogs`, `sap/saprouter`, `webdispatcher/accesslog` |
+    | Environment Topology (graph) | `abap/gateway`, `abap/icm`, `hana/hanaaudit`, `hana/tracelogs`, `linux/linux_secure`, `linux/localmessages`, `linux/messages`, `linux/proxy`, `sap/saprouter`, `sap/sapstartsrv`, `webdispatcher/accesslog`, the four `windows/WinEventLog:*` channels |
     | HANA Audit | `hana/hanaaudit` |
     | HANA Trace | `hana/tracelogs` |
     | Host Details | all 32 |
     | Host Role Activity | `abap/workprocess`, `dns/binddns`, `hana/hanaaudit`, `linux/localmessages`, `linux/messages`, `linux/proxy`, `sap/saprouter`, `webdispatcher/accesslog`, the four `windows/WinEventLog:*` channels |
-    | Linux System & Security | `linux/cron`, `linux/linux_secure`, `linux/localmessages`, `linux/messages`, `linux/pacemaker`, `linux/proxy`, `linux/slapd`, `linux/sudolog`, `linux/warn` |
+    | Linux System & Security / Network Perimeter | `linux/cron`, `linux/linux_secure`, `linux/localmessages`, `linux/messages`, `linux/pacemaker`, `linux/proxy`, `linux/slapd`, `linux/sudolog`, `linux/warn` |
     | Multi-Cloud Overview | all 32 |
     | Network Perimeter | `dns/binddns`, `linux/linux_secure`, `linux/proxy`, `proxy/squid` |
     | Proxy Analytics | `linux/proxy`, `proxy/squid` |
@@ -130,7 +130,7 @@ From those the screen creates **one input per S3 folder and calendar year**:
     | Windows | the four `windows/WinEventLog:*` channels |
     | Work Process Performance / ABAP Operations | `abap/dispatcher`, `abap/enqueueserver`, `abap/event`, `abap/icm`, `abap/messageserver`, `abap/sapstartsrv`, `abap/workprocess` |
 
-    A row is not always a whole dashboard. **Environment Health**, **DNS Analytics** and **Network Perimeter** also read the **Beaconing detection** row, **ABAP Operations** is built from the *Work Process Performance / ABAP Operations* row, and **Web Dispatcher** reads both *Web & API Performance / Web Dispatcher* and *Web Dispatcher Slowest Traces* — tick all the rows a dashboard uses. The Windows event logs are one sourcetype fed by four channel folders, so a row that reads Windows events reads all four.
+    A row is not always a whole dashboard. **Environment Health**, **DNS Analytics** and **Network Perimeter** also read the **Beaconing detection** row, the **Firewall Drops in Transit** count on **Network Perimeter** reads the *Linux System & Security / Network Perimeter* row, **ABAP Operations** is built from the *Work Process Performance / ABAP Operations* row, and **Web Dispatcher** reads both *Web & API Performance / Web Dispatcher* and *Web Dispatcher Slowest Traces* — tick all the rows a dashboard uses. The Windows event logs are one sourcetype fed by four channel folders, so a row that reads Windows events reads all four.
 
 #### The write-time window is set for you
 
@@ -141,11 +141,15 @@ Every input the screen creates selects objects **whatever their write time** (`i
 - **Days already covered.** A folder-day that an earlier backfill from this screen already covers — enabled *or* disabled — is skipped, and the plan says which backfill covers it. Inputs made another way select by write time, so the screen cannot tell which days they read: where they overlap, it **warns but does not skip**.
 - **The SQS window.** A range that reaches today or either of the two days before it (UTC) warns that the SQS-Based S3 input is probably still delivering those days, and objects it has already delivered would be ingested a second time.
 - **This forwarder's own filters.** A folder the Configuration → Filters include or exclude patterns drop is left out, and days older than the `days_in_past` cutoff are left out of the whitelist — their events would be sent to `nullQueue` on arrival — each with a warning that names the setting to change. If nothing is left, the screen refuses.
+    - **Source rules are notes, not verdicts.** Include Sources and Exclude Sources match each event's `source` (its file), which the screen cannot see from a folder, so they never change whether a folder is planned. A folder the include filter leaves out is noted *some files may be kept by Include Sources* and stays left out — add it to Include Filters to backfill it; a planned folder is noted *some files may be dropped by Exclude Sources*. See [Configuring Filters](configure-filters.md#how-the-rules-combine).
+    - **A refused stored value is reported first.** If a stored filter setting holds a value the Data TA refuses (after a hand edit of its settings file, for example), the forwarder keeps the filter it generated before, which the screen cannot see, so the screen says its filter notes may not match that filter until the value is corrected on the Filters tab.
+    - **On a forwarder a deployment server manages,** the filter it runs comes from the deployment server, which pushes the generated rules but not the settings; the settings stored on the forwarder, which the screen reads, can be older than those rules. Whenever it shows a filter note, the screen says so: check the Filters tab on the deployment server before relying on the notes.
 - **The basics.** A job name not already in use, an AWS account, an IAM role, a region, a valid bucket name and an index.
+- **When the Generic S3 input list cannot be read,** the screen cannot see which days earlier backfills cover or which job names are taken, so it skips those two checks and says so, in the form and as a comment at the top of the generated stanzas and REST calls.
 
 #### Creating and managing backfills
 
-A **plan** below the form lists every input to be created with its key prefix and days, and updates as you type. **Create backfill (N inputs)** re-lists the existing inputs first, then creates the plan's inputs one at a time. It stops at the first failure and reports what was and was not created, and it never retries a create. To finish a partial run, create the same selection again under a new job name: the days the created inputs cover are skipped.
+A **plan** below the form lists every input to be created with its key prefix and days, and updates as you type. **Create backfill (N inputs)** re-lists the existing inputs first, and creates nothing if that list cannot be read; then it creates the plan's inputs one at a time. It stops at the first failure and reports what was and was not created, and it never retries a create. To finish a partial run, create the same selection again under a new job name: the days the created inputs cover are skipped.
 
 Each input is stamped `_meta = cloud_provider::aws`, like the SQS-Based S3 inputs, so the Multi-Cloud dashboard attributes the backfilled events the same way. The add-on's create cannot carry that field, so the screen writes it into the new input's stanza through the Data TA straight after the create and restarts the input, before its first scan. If a stamp does not complete, the confirmation names the input and the reason.
 
@@ -267,7 +271,7 @@ In the **LogServ App**, go to **Settings -> Dashboard Data**, choose a **Custom 
 The backfill is idempotent, so re-running it over a range you have already built is safe. Long windows are dispatched a month at a time, and you can leave the page while it runs.
 
 !!! note "Two topology collections always use the last 30 days"
-    The Environment Topology **inventory** and **IP enrichment** collections describe current state rather than history — they have no time dimension — so they always refresh over the last 30 days whatever window you choose. A longer window would resolve *fewer* partner IPs to SIDs, not more, because an IP reassigned during the window stops mapping to a single SID.
+    The Environment Topology **inventory** and **IP enrichment** collections describe current state rather than history — they have no time dimension — so they always refresh over the last 30 days whatever window you choose. The inventory records each IP address or host under its most recent SID (of the SIDs seen in its newest hour of activity, the one with the most events; an exact tie keeps the previous row), so an IP reassigned during the window maps to its new SID once its newest hour names only that one.
 
 <br>
 

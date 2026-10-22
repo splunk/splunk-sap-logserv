@@ -10,7 +10,7 @@
     "pages": {
         "inputs": {
             "title": "Inputs",
-            "description": "Azure Storage Queue inputs that ingest SAP LogServ blobs from Azure via Event Grid blob-created notifications — the Azure counterpart to the AWS SQS-based S3 input. Install on Heavy Forwarders.",
+            "description": "Azure Storage Queue inputs for SAP LogServ blobs (Event Grid blob-created notifications), the Azure twin of the AWS SQS-based S3 input. Heavy Forwarders strongly recommended over search heads.",
             "table": {
                 "actions": ["edit", "delete", "clone", "search"],
                 "header": [

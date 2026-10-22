@@ -13,22 +13,45 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
+import {
+    KERNEL_REX,
+    FW_AT_HOST,
+    FW_IN_TRANSIT,
+    FW_AT_HOST_SUB,
+    FW_IN_TRANSIT_SUB,
+    FW_SERIES_AT_HOST,
+    FW_SERIES_IN_TRANSIT,
+} from '../utils/firewallChains';
 
 /**
  * Linux System & Security — honest port of v0.0.4.2 logserv_linux.xml.
  *
- * 4-KPI row: Total Events / Firewall Drops / Top Drop Source / Active Hosts.
+ * 5-KPI row: Total Events / Firewall Drops at Host / Firewall Drops in Transit /
+ * Top Drop Source / Active Hosts.
  * Row 2 (2 panels): Event Volume by Sourcetype | SAP Application Activity (stacked).
- * Row 3 (3 panels): SAP Instance Distribution | Firewall Drops Over Time | Kernel Event Types (donut).
+ * Row 3 (3 panels): SAP Instance Distribution | Firewall Drops Over Time (by chain) | Kernel Event Types (donut).
  * Row 4 (2 panels): Top Blocked Sources | Top Blocked Destination Ports.
+ *
+ * Firewall chains (build 374, session 146): the kernel firewall log tags a drop
+ * IN_DROP (INPUT chain, a packet addressed to the host itself) or FWD_DROP
+ * (FORWARD chain, a packet the host was routing onward; only forwarding hosts
+ * such as VPN / IPsec gateways log it). The two never describe the same packet.
+ * The at-host KPI still counts fw_action="IN_DROP" from the `fw` metric; the
+ * in-transit KPI, its sparkline and the timeline read the `kernel` metric, which
+ * stores both tags exactly (no host dimension). The Blocked tables count every
+ * SRC / DPT-bearing line as before and split it into AtHost (IN_DROP) and
+ * InTransit (the rest: FWD_DROP plus any other such line). Labels, captions and
+ * series names come from utils/firewallChains.ts; no stored rollup value is
+ * renamed.
  */
 
 const KpiRow = styled.div`
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: ${logservTheme.elevation.panelGap};
     margin-bottom: ${logservTheme.elevation.panelGap};
+    @media (max-width: 1500px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     @media (max-width: 1100px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 `;
 const PanelGrid2 = styled.div`
@@ -56,13 +79,17 @@ const PanelGrid3 = styled.div`
  * [logserv_linux_aggregate] (one-time [logserv_linux_backfill]). 0 RAW panels.
  *
  * 8 metrics (design adversarially reviewed pre-build; verdict: ship). `total`
- * (sourcetype, host) over ST_ALL — kpiTotal/kpiHosts + sparks + volumeByType +
- * fwTimeline (derived via sourcetype="linux_secure"). `fw` (fw_action/src/dst/
- * dpt/proto/host over linux_secure, rex from _raw) — IDENTICAL shape to the
- * Network Perimeter `fw` metric; serves kpiFwDrops (fw_action=IN_DROP),
- * kpiTopDropSrc / fwTopSources (all-secure-with-src, NO IN_DROP filter), fwTopPorts.
+ * (sourcetype, host) over ST_ALL — kpiTotal/kpiHosts + sparks + volumeByType
+ * (fwTimeline read it via sourcetype="linux_secure" until build 374). `fw`
+ * (fw_action/src/dst/dpt/proto/host over linux_secure, rex from _raw) — IDENTICAL
+ * shape to the Network Perimeter `fw` metric; serves kpiFwDrops (fw_action=IN_DROP),
+ * kpiTopDropSrc / fwTopSources (all-secure-with-src, NO IN_DROP filter), fwTopPorts;
+ * the two tables split Drops into AtHost (fw_action=IN_DROP) and InTransit =
+ * Drops - AtHost (build 374). FWD_DROP lines are stored under fw_action="(none)".
  * The Linux DataTables key on the RAW field names (fw_src/fw_dpt/fw_proto/Targets/
- * Protocol) so these reads must NOT apply NP's renames. `kernel` (kernel_event).
+ * Protocol) so these reads must NOT apply NP's renames. `kernel` (kernel_event) —
+ * kernelEvents, and since build 374 kpiFwdDrops / sparkFwdDrops (FWD_DROP) and
+ * fwTimeline (IN_DROP vs FWD_DROP by chain).
  * `sapapp` (sap_app, sap_sid) — plain stats, NOT a timechart. `sapinst` (sap_sid,
  * sap_inst, sap_cid, host). `oom`/`lockup`/`tcpoom` (resource pressure; max-of-max
  * + avg-from-sum/count reconstruction; group-by host fillnull'd → reads add
@@ -93,12 +120,14 @@ const Q_BASE = {
     // reconstructs the "ip (N,NNN)" display string char-for-char).
     kpiTotal: `${TOTAL} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiFwDrops: `${FW} | search fw_action="IN_DROP" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiFwdDrops: `${KERNEL} | search kernel_event="FWD_DROP" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiTopDropSrc: `${FW} | search fw_src!="(none)" | stats sum(count) as drops by fw_src | sort -drops | head 1 | eval display = fw_src . " (" . tostring(drops, "commas") . ")" | table display`,
     kpiHosts: `${HOSTS} | stats dc(eval(if(host="(none)",null(),host))) as hosts`,
 
     // Sparklines (COUNT + dc timecharts 0-fill empty bins via fillnull-0)
     sparkTotal: `${TOTAL} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkFwDrops: `${FW} | search fw_action="IN_DROP" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkFwdDrops: `${KERNEL} | search kernel_event="FWD_DROP" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkHosts: `${HOSTS} | eval _time=bucket_ts | timechart span=1d dc(eval(if(host="(none)",null(),host))) AS hosts | fillnull value=0`,
 
     // Charts
@@ -110,15 +139,19 @@ const Q_BASE = {
     // long x-axis labels to "…". `sort count` (ascending) after the top-15 cut
     // puts the largest bar at the top of the chart.
     sapAppActivity: `${SAPAPP} | search sap_sid!="(none)" | stats sum(count) as count by sap_app, sap_sid | eval combo=sap_app." / ".sap_sid | sort -count | head 15 | sort count | fields combo count`,
-    // fwTimeline counts ALL linux_secure (no IN_DROP filter) — derived from `total`.
-    fwTimeline: `${TOTAL} | search sourcetype="linux_secure" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) AS "Firewall Events" | fillnull value=0`,
+    // fwTimeline splits kernel firewall drops by chain (build 374), read from
+    // `kernel`; until then it charted every linux_secure line from `total`,
+    // firewall or not.
+    fwTimeline: `${KERNEL} | search kernel_event="IN_DROP" OR kernel_event="FWD_DROP" | eval chain=if(kernel_event="FWD_DROP", "${FW_SERIES_IN_TRANSIT}", "${FW_SERIES_AT_HOST}") | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by chain | fillnull value=0`,
     kernelEvents: `${KERNEL} | stats sum(count) as count by kernel_event | sort -count`,
 
     // Tables (sapInstances restores raw's null-group drop on sap_inst AND sap_cid;
     // fwTopSources/fwTopPorts keep the RAW field keys — no NP-style renames).
     sapInstances: `${SAPINST} | search sap_inst!="(none)" sap_cid!="(none)" | stats sum(count) as Events, dc(eval(if(host="(none)",null(),host))) as Hosts by sap_sid, sap_inst, sap_cid | sort -Events`,
-    fwTopSources: `${FW} | search fw_src!="(none)" | stats sum(count) as Drops, dc(eval(if(fw_dst="(none)",null(),fw_dst))) as Targets, values(eval(if(fw_proto="(none)",null(),fw_proto))) as Protocol by fw_src | sort -Drops`,
-    fwTopPorts: `${FW} | search fw_dpt!="(none)" fw_proto!="(none)" | stats sum(count) as Drops, dc(eval(if(host="(none)",null(),host))) as Hosts by fw_dpt, fw_proto | sort -Drops`,
+    // fwTopSources/fwTopPorts split Drops by chain (build 374): AtHost = IN_DROP,
+    // InTransit = the rest (FWD_DROP is stored under fw_action="(none)").
+    fwTopSources: `${FW} | search fw_src!="(none)" | stats sum(count) as Drops, sum(eval(if(fw_action="IN_DROP",count,0))) as AtHost, dc(eval(if(fw_dst="(none)",null(),fw_dst))) as Targets, values(eval(if(fw_proto="(none)",null(),fw_proto))) as Protocol by fw_src | eval InTransit=Drops-AtHost | sort -Drops`,
+    fwTopPorts: `${FW} | search fw_dpt!="(none)" fw_proto!="(none)" | stats sum(count) as Drops, sum(eval(if(fw_action="IN_DROP",count,0))) as AtHost, dc(eval(if(host="(none)",null(),host))) as Hosts by fw_dpt, fw_proto | eval InTransit=Drops-AtHost | sort -Drops`,
 
     // Resource Pressure (build 186 / session 034). max-of-max + avg-from-sum/count
     // reconstruction; oomByHost/cpuLockups/tcpOomTimeline group by host (fillnull'd)
@@ -133,7 +166,8 @@ const Q_BASE = {
  * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw linux
  * scan its rollup metric precomputes, reconciled to the cached read's exact
  * output columns (byte-verified equal at wide windows — the lx_v_* staged
- * pairs). fw_* / kernel_event are rex'd from _raw (same patterns). COUNT/dc
+ * pairs). fw_* / kernel_event are rex'd from _raw (same patterns; kernel_event
+ * through KERNEL_REX, the UI's one copy of the aggregate's rex). COUNT/dc
  * split timecharts append `| fillnull value=0`; the "(none)" fillnull sentinels
  * map to raw `field=*` / stats-by null-drop. Only sparklines stay cached.
  * ------------------------------------------------------------------------- */
@@ -145,15 +179,16 @@ const RAW_OOM = '`sap_logserv_idx_macro` (sourcetype="linux:warn" OR sourcetype=
 const QRAW_BASE = {
     kpiTotal: `${RAW_ALL} | stats count`,
     kpiFwDrops: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | stats count`,
+    kpiFwdDrops: `${RAW_LSEC} | ${KERNEL_REX} | where kernel_event="FWD_DROP" | stats count`,
     kpiTopDropSrc: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | where isnotnull(fw_src) AND fw_src!="" | stats count as drops by fw_src | sort -drops | head 1 | eval display = fw_src . " (" . tostring(drops, "commas") . ")" | table display`,
     kpiHosts: `${RAW_ALL} | stats dc(host) as hosts`,
     volumeByType: `${RAW_ALL} | timechart span=__LSV_SPAN__ count by sourcetype | fillnull value=0`,
     sapAppActivity: `${RAW_LMSG} sap_app=* | stats count by sap_app, sap_sid | eval combo=sap_app." / ".sap_sid | sort -count | head 15 | sort count | fields combo count`,
-    fwTimeline: `${RAW_LSEC} | timechart span=__LSV_SPAN__ count AS "Firewall Events" | fillnull value=0`,
-    kernelEvents: `${RAW_LSEC} | rex field=_raw "kernel:.*?\\]\\s+(?<kernel_event>[A-Z]{2}[A-Z0-9_]*)(?=[\\s:\\-/(\\[,.#]|$)" | where isnotnull(kernel_event) | stats count by kernel_event | sort -count`,
+    fwTimeline: `${RAW_LSEC} | ${KERNEL_REX} | where kernel_event="IN_DROP" OR kernel_event="FWD_DROP" | eval chain=if(kernel_event="FWD_DROP", "${FW_SERIES_IN_TRANSIT}", "${FW_SERIES_AT_HOST}") | timechart span=__LSV_SPAN__ count by chain | fillnull value=0`,
+    kernelEvents: `${RAW_LSEC} | ${KERNEL_REX} | where isnotnull(kernel_event) | stats count by kernel_event | sort -count`,
     sapInstances: `${RAW_LMSG} sap_sid=* | stats count as Events dc(host) as Hosts by sap_sid, sap_inst, sap_cid | sort -Events`,
-    fwTopSources: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops dc(fw_dst) as Targets values(fw_proto) as Protocol by fw_src | sort -Drops`,
-    fwTopPorts: `${RAW_LSEC} | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops`,
+    fwTopSources: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops count(eval(fw_action="IN_DROP")) as AtHost dc(fw_dst) as Targets values(fw_proto) as Protocol by fw_src | eval InTransit=Drops-AtHost | sort -Drops`,
+    fwTopPorts: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops count(eval(fw_action="IN_DROP")) as AtHost dc(host) as Hosts by fw_dpt, fw_proto | eval InTransit=Drops-AtHost | sort -Drops`,
     oomByHost: `${RAW_OOM} "Out of memory: Killed process" | stats count AS Kills, values(oom_proc) AS Victims, max(oom_rss_kb) AS MaxRssKb, max(oom_vm_kb) AS MaxVmKb by host | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | eval "Max VM (MB)" = round(MaxVmKb / 1024, 0) | fields - MaxRssKb, MaxVmKb | sort -Kills`,
     oomByVictim: `${RAW_OOM} "Out of memory: Killed process" oom_proc=* | stats count AS Kills, dc(host) AS Hosts, max(oom_rss_kb) AS MaxRssKb by oom_proc | eval "Max RSS (MB)" = round(MaxRssKb / 1024, 0) | fields - MaxRssKb | sort -Kills`,
     cpuLockups: `${RAW_OOM} "soft lockup" | stats count AS Lockups, dc(lockup_cpu) AS "CPUs", max(lockup_duration_s) AS "Max (sec)", avg(lockup_duration_s) AS avg_s by host | eval "Avg (sec)" = round(avg_s, 1) | fields - avg_s | sort -Lockups`,
@@ -190,9 +225,13 @@ const SAP_INSTANCE_COLS: ColumnDef[] = [
     { key: 'Hosts', label: 'Hosts', align: 'right', render: (v) => formatInteger(v) },
 ];
 
+// Blocked tables (build 374): Total = every line carrying the source / port;
+// At Host = IN_DROP; In Transit / Other = the rest (FWD_DROP and any other line).
 const FW_SRC_COLS: ColumnDef[] = [
     { key: 'fw_src', label: 'Source IP' },
-    { key: 'Drops', label: 'Drops', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Drops', label: 'Total', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'AtHost', label: 'At Host', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'InTransit', label: 'In Transit / Other', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Targets', label: 'Targets', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Protocol', label: 'Protocol' },
 ];
@@ -200,7 +239,9 @@ const FW_SRC_COLS: ColumnDef[] = [
 const FW_PORT_COLS: ColumnDef[] = [
     { key: 'fw_dpt', label: 'Dest Port' },
     { key: 'fw_proto', label: 'Protocol' },
-    { key: 'Drops', label: 'Drops', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Drops', label: 'Total', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'AtHost', label: 'At Host', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'InTransit', label: 'In Transit / Other', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Hosts', label: 'Hosts', align: 'right', render: (v) => formatInteger(v) },
 ];
 
@@ -240,6 +281,7 @@ const Linux: React.FC = () => {
     const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const fwDrops = useFirstRowFieldHybrid(Q.kpiFwDrops, QRAW.kpiFwDrops, 'count');
+    const fwdDrops = useFirstRowFieldHybrid(Q.kpiFwdDrops, QRAW.kpiFwdDrops, 'count');
     const topDropSrc = useFirstRowFieldHybrid(Q.kpiTopDropSrc, QRAW.kpiTopDropSrc, 'display');
     const hosts = useFirstRowFieldHybrid(Q.kpiHosts, QRAW.kpiHosts, 'hosts');
 
@@ -259,6 +301,8 @@ const Linux: React.FC = () => {
 
     const fwDropsNum = Number(fwDrops.value ?? 0);
     const fwTone = fwDropsNum > 1000 ? 'critical' : fwDropsNum > 0 ? 'warning' : 'neutral';
+    // The in-transit KPI stays neutral (build 374): on a VPN / IPsec gateway a
+    // FWD_DROP is the forwarding policy refusing traffic, not a fault on the host.
     const dropSrcTone = topDropSrc.value ? 'critical' : 'neutral';
 
     /* Drilldowns (build 159 / session 027 task 6). */
@@ -315,7 +359,8 @@ const Linux: React.FC = () => {
                     sparkline={<SparklineFromQuery query={Q.sparkTotal} valueField="count" fill />}
                 />
                 <KpiCard
-                    label="Firewall Drops"
+                    label={FW_AT_HOST}
+                    sub={FW_AT_HOST_SUB}
                     value={fwDrops.value}
                     loading={fwDrops.loading}
                     error={fwDrops.error}
@@ -332,7 +377,25 @@ const Linux: React.FC = () => {
                     }
                 />
                 <KpiCard
+                    label={FW_IN_TRANSIT}
+                    sub={FW_IN_TRANSIT_SUB}
+                    value={fwdDrops.value}
+                    loading={fwdDrops.loading}
+                    error={fwdDrops.error}
+                    search={fwdDrops.search}
+                    formatValue={formatInteger}
+                    sparkline={
+                        <SparklineFromQuery
+                            query={Q.sparkFwdDrops}
+                            valueField="count"
+                            color={logservTheme.colors.orange}
+                            fill
+                        />
+                    }
+                />
+                <KpiCard
                     label="Top Drop Source"
+                    sub="At host and in transit"
                     value={topDropSrc.value}
                     loading={topDropSrc.loading}
                     error={topDropSrc.error}
@@ -351,7 +414,7 @@ const Linux: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Event Volume by Sourcetype" subtitle="Daily count: linux_messages_syslog, syslog, linux_secure">
+                <FramedPanel title="Event Volume by Sourcetype" subtitle={spanSubtitle('Count: linux_messages_syslog, syslog, linux_secure', qVolumeByType)}>
                     <TimeSeriesChart query={qVolumeByType} height={300} palette="volume" />
                 </FramedPanel>
                 <FramedPanel title="SAP Application Activity" subtitle="Top 15 sap_app / sap_sid combinations by event volume">
@@ -370,7 +433,7 @@ const Linux: React.FC = () => {
                         onRowClick={goSapInstanceRow}
                     />
                 </FramedPanel>
-                <FramedPanel title="Firewall Drops Over Time" subtitle="Daily linux_secure event volume">
+                <FramedPanel title="Firewall Drops Over Time" subtitle={spanSubtitle('Kernel firewall drops by chain: at the host (INPUT) and in transit (FORWARD)', qFwTimeline)}>
                     <TimeSeriesChart query={qFwTimeline} height={280} palette="errors" />
                 </FramedPanel>
                 <FramedPanel title="Kernel Event Types" subtitle="Kernel event categories ranked by count">
@@ -379,7 +442,7 @@ const Linux: React.FC = () => {
             </PanelGrid3>
 
             <PanelGrid2>
-                <FramedPanel search={fwTopSources} title="Blocked Sources" subtitle="Source IPs ranked by firewall-drop count — click a row for that source's full firewall log">
+                <FramedPanel search={fwTopSources} title="Blocked Sources" subtitle="Source IPs in the kernel firewall log, ranked by total and split into drops at the host and in transit — click a row for that source's full firewall log">
                     <DataTable
                         columns={FW_SRC_COLS}
                         rows={fwTopSources.results}
@@ -390,7 +453,7 @@ const Linux: React.FC = () => {
                         onRowClick={goFwSrcRow}
                     />
                 </FramedPanel>
-                <FramedPanel search={fwTopPorts} title="Blocked Destination Ports" subtitle="Destination ports being blocked at the firewall, ranked by drop count — click a row for events to that port">
+                <FramedPanel search={fwTopPorts} title="Blocked Destination Ports" subtitle="Destination ports in the kernel firewall log, ranked by total and split into drops at the host and in transit — click a row for events to that port">
                     <DataTable
                         columns={FW_PORT_COLS}
                         rows={fwTopPorts.results}
@@ -440,7 +503,7 @@ const Linux: React.FC = () => {
                         onRowClick={goLockupRow}
                     />
                 </FramedPanel>
-                <FramedPanel title="TCP Memory Pressure Over Time" subtitle="Daily count of TCP socket-buffer exhaustion warnings, by host — sustained activity suggests tcp_mem tuning needed">
+                <FramedPanel title="TCP Memory Pressure Over Time" subtitle={spanSubtitle('Count of TCP socket-buffer exhaustion warnings, by host', qTcpOomTimeline, 'sustained activity suggests tcp_mem tuning needed')}>
                     <TimeSeriesChart query={qTcpOomTimeline} height={280} palette="errors" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>

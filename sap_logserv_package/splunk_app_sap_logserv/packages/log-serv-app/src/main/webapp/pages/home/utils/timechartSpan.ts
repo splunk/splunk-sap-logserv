@@ -157,3 +157,148 @@ const parseRelativeOffsetSeconds = (s: string): number | null => {
     };
     return sign * n * (mult[unit] ?? 0);
 };
+
+/* ---------------------------------------------------------------------------
+ * Span labels (build 377).
+ *
+ * The CLAUDE.md "Dynamic timechart span" rule says every range-following chart
+ * shows its span in the subtitle. The span a chart DRAWS is not always the one
+ * chooseTimechartSpan picked: applySpanToken clamps rollup reads (`bucket_ts`)
+ * to 1h, and the hybrid routing sends windows under 90 minutes to the raw arm.
+ * So the label is read from the SPL that is actually dispatched, never from
+ * the picked span.
+ * ------------------------------------------------------------------------- */
+
+/** The bin width a dispatched query draws at: the span of its LAST `timechart`
+ *  (a `tstats ... BY _time span=` pre-bin comes first), or null when it has
+ *  none or the token is still unsubstituted. */
+export const timechartSpanOf = (spl: string): string | null => {
+    let last: string | null = null;
+    const re = /\btimechart\b[^|]*?\bspan\s*=\s*([0-9]+(?:mon|[smhdwy]))\b/g;
+    for (let m = re.exec(spl); m; m = re.exec(spl)) last = m[1];
+    return last;
+};
+
+/** A range-following chart's subtitle: "<lead> — span <X>[ — <tail>]". The
+ *  span part is left out when the query has no readable timechart span. */
+export const spanSubtitle = (lead: string, spl: string, tail?: string): string => {
+    const s = timechartSpanOf(spl);
+    return [lead, s ? `span ${s}` : null, tail || null].filter(Boolean).join(' — ');
+};
+
+/* ---------------------------------------------------------------------------
+ * Sparkline tooltip times (build 377).
+ *
+ * A KPI sparkline's buckets are days in the dispatching Splunk user's time
+ * zone (`span=1d` bins at that user's local midnight), and Splunk renders each
+ * result's `_time` as ISO-8601 carrying that zone's offset, e.g.
+ * "2026-10-07T00:00:00.000-05:00". Formatting it through `new Date(...)` and
+ * toLocaleString printed the BROWSER's zone instead ("Oct 6, 7:00 PM" for a
+ * Central-time Splunk user on a UTC browser). formatBucketTime prints the wall
+ * clock written in the string, which is the Splunk user's zone.
+ *
+ * The beaconing rollups are stored by UTC day (`day_ts` = 00:00 UTC). Binned
+ * into the user's local days, each UTC day lands under the previous local date
+ * west of UTC. utcDayLabel prints the UTC date each point carries, labelled as
+ * a UTC day. Both are pure functions of their arguments - no Date locale
+ * formatting, no browser time zone; utcDayLabel's clock is a parameter that
+ * defaults to now - so the build-time suite can pin them exactly.
+ * ------------------------------------------------------------------------- */
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const DAY_SECONDS = 86400;
+
+/** "Oct 7, 2026" from the UTC calendar fields of `d`. */
+const dateText = (d: Date): string => `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
+
+/** "12:00 AM" from the UTC clock fields of `d`. */
+const clockText = (d: Date): string => {
+    const h = d.getUTCHours();
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return `${h12}:${String(d.getUTCMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
+};
+
+/** ISO-8601 as Splunk renders `_time`: date, time, optional seconds and
+ *  fraction, optional offset (Z, +hh:mm, +hhmm or +hh). */
+const ISO_TIME_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(Z|[+-]\d{2}(?::?\d{2})?)?$/;
+
+/** The wall clock written in an ISO string (as a Date whose UTC fields ARE
+ *  that wall clock) and its offset in seconds east of UTC (null when the
+ *  string carries none). Null for anything that is not a valid ISO time. */
+const parseIsoWallClock = (s: string): { wall: Date; offsetSec: number | null } | null => {
+    const m = ISO_TIME_RE.exec(s.trim());
+    if (!m) return null;
+    const y = parseInt(m[1], 10);
+    const mo = parseInt(m[2], 10);
+    const d = parseInt(m[3], 10);
+    const h = parseInt(m[4], 10);
+    const mi = parseInt(m[5], 10);
+    const se = m[6] ? parseInt(m[6], 10) : 0;
+    if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59 || se > 59) return null;
+    const wall = new Date(Date.UTC(y, mo - 1, d, h, mi, se));
+    if (wall.getUTCFullYear() !== y || wall.getUTCMonth() !== mo - 1 || wall.getUTCDate() !== d) return null;
+    let offsetSec: number | null = null;
+    if (m[7] === 'Z') offsetSec = 0;
+    else if (m[7]) {
+        const om = /^([+-])(\d{2}):?(\d{2})?$/.exec(m[7]);
+        if (!om) return null;
+        const oh = parseInt(om[2], 10);
+        const omi = om[3] ? parseInt(om[3], 10) : 0;
+        if (oh > 23 || omi > 59) return null;
+        offsetSec = (om[1] === '-' ? -1 : 1) * (oh * 3600 + omi * 60);
+    }
+    return { wall, offsetSec };
+};
+
+/** A sparkline bucket's time for its tooltip, in the Splunk user's zone:
+ *  "Oct 7, 2026, 12:00 AM" read from the wall clock of Splunk's ISO `_time`.
+ *  A bare number (epoch seconds) carries no zone, so it is printed in UTC and
+ *  says so; a string that is not an ISO time is shown as it came. */
+export const formatBucketTime = (raw: unknown): string | null => {
+    if (raw === null || typeof raw === 'undefined' || raw === '') return null;
+    if (typeof raw === 'number') {
+        if (!Number.isFinite(raw)) return null;
+        const d = new Date(raw * 1000);
+        return `${dateText(d)}, ${clockText(d)} UTC`;
+    }
+    const s = String(raw);
+    const p = parseIsoWallClock(s);
+    return p ? `${dateText(p.wall)}, ${clockText(p.wall)}` : s;
+};
+
+/** Seconds since the epoch for a number, a numeric string, or an ISO time
+ *  that carries its offset; null otherwise. */
+const epochSecondsOf = (raw: unknown): number | null => {
+    if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+    if (typeof raw !== 'string') return null;
+    if (/^\s*-?\d+(?:\.\d+)?\s*$/.test(raw)) return parseFloat(raw);
+    const p = parseIsoWallClock(raw);
+    return p && p.offsetSec !== null ? p.wall.getTime() / 1000 - p.offsetSec : null;
+};
+
+/** The label of a UTC day. */
+export const UTC_DAY_SUFFIX = ' (UTC day)';
+
+/** The label of a UTC day that has not ended yet, so no rollup row can hold
+ *  it: the beaconing aggregates write complete UTC days only. */
+export const UTC_DAY_PENDING_SUFFIX = ' (UTC day, not yet computed)';
+
+/** A beaconing sparkline point's tooltip date: the UTC day the point carries
+ *  (`dayTs`, epoch seconds of its 00:00 UTC, as the rollup stores `day_ts`),
+ *  labelled as a UTC day - "Oct 7, 2026 (UTC day)". A point that carries none
+ *  (a day the timechart filled with 0) takes the first UTC midnight at or
+ *  after its bin's start: a local-day bin holds exactly that one UTC day
+ *  start in every fixed-offset zone. When that UTC day has not ended at
+ *  `nowSec` (the in-progress day, and west of UTC the trailing bin's next
+ *  day), its 0 is not a measurement and the label says so: "Oct 10, 2026
+ *  (UTC day, not yet computed)". A carried day is a row the rollup holds and
+ *  is never labelled pending. Null when neither can be read. */
+export const utcDayLabel = (dayTs: unknown, binStart?: unknown, nowSec: number = Date.now() / 1000): string | null => {
+    const carried = epochSecondsOf(dayTs);
+    if (carried !== null && carried > 0) return `${dateText(new Date(carried * 1000))}${UTC_DAY_SUFFIX}`;
+    const b = epochSecondsOf(binStart);
+    if (b === null) return null;
+    const t = Math.ceil(b / DAY_SECONDS) * DAY_SECONDS;
+    const suffix = t + DAY_SECONDS > nowSec ? UTC_DAY_PENDING_SUFFIX : UTC_DAY_SUFFIX;
+    return `${dateText(new Date(t * 1000))}${suffix}`;
+};

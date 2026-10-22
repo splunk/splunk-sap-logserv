@@ -16,11 +16,11 @@ All panels except the raw-event tables read the hourly summary layer, so figures
 - **Total Events** -- Aggregate event count across all ABAP operations sourcetypes
 - **Active SIDs** -- Count of distinct SAP System IDs reporting data
 - **Dispatcher Errors** -- Count of ERROR/FATAL severity dispatcher events
-- **Event Volume by Sourcetype** -- Daily trend across all six sourcetypes
+- **Event Volume by Sourcetype** -- Trend over time across all six sourcetypes
 - **System Uptime (Latest)** -- Table showing the most recent uptime in days and hours per SID/instance
 - **Dispatcher Severity Over Time** -- Stacked column chart of dispatcher log severity levels
 - **Work Process Functions** -- Table of `wp_function` + sub-function combinations ranked by event volume (events with no sub-function are not listed)
-- **Work Process Categories** -- Donut chart showing activity distribution across the SAP work process category codes (e.g., `B = Database Interface`, `A = ABAP Processor`, `S = SQL / Statistics`, `M = Memory Management`, `X = RFC / CPIC`). The donut uses the `wp_category_name` field populated by the app's `props.conf` EVAL so every mapped category code gets a friendly name; unmapped codes render as `<code> = Other`.
+- **Work Process Categories** -- Donut chart showing activity distribution across the SAP trace components of the work process trace: the letter that starts each `dev_w*` line (e.g., `B = Database Interface`, `C = Database (DBSL)`, `M = Task Handler`, `N = Security (SNC/SSF)`, `X = Extended Memory`). The donut uses the `wp_category_name` field populated by the app's `props.conf` EVAL, whose names follow SAP's list of trace components, so every mapped letter gets a name; unmapped letters render as `<letter> = Other`.
 - **Enqueue Lock Activity** -- Timeline of lock management operations
 - **Activity by SID / Sourcetype** -- Table of SID × sourcetype combinations ranked by event volume; click a row to open the raw events in Search
 

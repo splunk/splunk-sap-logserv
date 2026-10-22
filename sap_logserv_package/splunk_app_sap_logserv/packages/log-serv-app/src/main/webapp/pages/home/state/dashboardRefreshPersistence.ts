@@ -33,6 +33,13 @@ const KV_BASE =
     `/en-US/splunkd/__raw/servicesNS/nobody/${APP_NAMESPACE}` +
     `/storage/collections/data/${COLLECTION}`;
 
+/** Build 384 (F2 of the KV-ACL review): the intervals RefreshIntervalPicker offers - collections.conf
+ *  documents the same set. The collection is writable by every role (per-user preference rows), so any user
+ *  could store 1000 ms in another user's row and make every panel on that dashboard re-run each second; a
+ *  stored value outside this set is ignored on read. utils/kvAcl.consistency-test.ts holds it equal to the
+ *  picker. */
+export const ALLOWED_INTERVALS_MS: readonly number[] = [0, 30_000, 60_000, 300_000, 900_000, 1_800_000, 3_600_000];
+
 const safeUser = (): string => {
     try {
         const u = (splunkUsername as unknown as string) || '';
@@ -101,7 +108,7 @@ export const loadDashboardInterval = async (
         if (!resp.ok) return null;
         const record = (await resp.json()) as KvStoreRecord;
         const n = Number(record.interval_ms);
-        return Number.isFinite(n) && n >= 0 ? n : null;
+        return ALLOWED_INTERVALS_MS.indexOf(n) !== -1 ? n : null;
     } catch (_e) {
         return null;
     }

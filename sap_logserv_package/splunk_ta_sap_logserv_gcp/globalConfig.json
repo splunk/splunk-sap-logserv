@@ -10,7 +10,7 @@
     "pages": {
         "inputs": {
             "title": "Inputs",
-            "description": "GCP Pub/Sub inputs that ingest SAP LogServ objects from Google Cloud Storage via OBJECT_FINALIZE notifications — the GCP counterpart to the AWS SQS-based S3 input. Install on Heavy Forwarders.",
+            "description": "GCP Pub/Sub inputs for SAP LogServ objects in GCS (OBJECT_FINALIZE notifications), the GCP twin of the AWS SQS-based S3 input. Heavy Forwarders strongly recommended over search heads.",
             "table": {
                 "actions": ["edit", "delete", "clone", "search"],
                 "header": [

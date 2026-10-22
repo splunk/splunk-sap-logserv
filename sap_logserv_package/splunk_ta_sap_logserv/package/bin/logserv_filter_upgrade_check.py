@@ -61,14 +61,39 @@ STATE_DIR = os.path.join(
 STATE_FILE = os.path.join(STATE_DIR, 'filter_check_state.json')
 
 
+class _BelowLevel(logging.Filter):
+    """Pass only records below ``level`` (the stdout handler's share)."""
+
+    def __init__(self, level):
+        super().__init__()
+        self.level = level
+
+    def filter(self, record):
+        return record.levelno < self.level
+
+
 def setup_logging():
-    """Configure logging to stdout (captured by Splunk as script output)."""
-    handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(logging.Formatter(
-        '%(asctime)s level=%(levelname)s %(message)s'
-    ))
+    """
+    Configure logging for this scripted input.
+
+    INFO goes to stdout, which Splunk indexes as this input's own events
+    (index=_internal sourcetype=splunk_ta_sap_logserv:filter_check, from
+    inputs.conf). WARNING and above go to stderr, which splunkd writes to
+    splunkd.log (component ExecProcessor) as an ERROR line whatever the
+    level - so only real warnings and errors go there. Builds of 2026-10-13
+    and earlier sent every line to stderr: an INFO line every 10 minutes
+    read as an ERROR in splunkd.log.
+    """
+    formatter = logging.Formatter('%(asctime)s level=%(levelname)s %(message)s')
+    out = logging.StreamHandler(sys.stdout)
+    out.addFilter(_BelowLevel(logging.WARNING))
+    out.setFormatter(formatter)
+    err = logging.StreamHandler(sys.stderr)
+    err.setLevel(logging.WARNING)
+    err.setFormatter(formatter)
     root = logging.getLogger()
-    root.addHandler(handler)
+    root.addHandler(out)
+    root.addHandler(err)
     root.setLevel(logging.INFO)
     return logging.getLogger('logserv_filter_upgrade_check')
 

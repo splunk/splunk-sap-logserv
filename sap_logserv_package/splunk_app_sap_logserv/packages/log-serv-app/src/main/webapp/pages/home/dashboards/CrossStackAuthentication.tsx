@@ -12,7 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * Cross-Stack Authentication — honest port of v0.0.4.2 logserv_cross_stack_authentication.xml.
@@ -260,7 +260,7 @@ const CrossStackAuthentication: React.FC = () => {
             </KpiRow>
 
             <FullWidthPanel>
-                <FramedPanel title="Auth Failures Over Time by Layer" subtitle="Daily count split SAP / HANA / Windows">
+                <FramedPanel title="Auth Failures Over Time by Layer" subtitle={spanSubtitle('Count split SAP / HANA / Windows', qFailuresTrend)}>
                     <TimeSeriesChart query={qFailuresTrend} height={300} palette="auth" />
                 </FramedPanel>
             </FullWidthPanel>

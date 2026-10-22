@@ -9,7 +9,12 @@ import {
 } from '../components/ai/modelDiscovery';
 import { MCPClient } from '../components/ai/mcp/MCPClient';
 import { MCPToolResult } from '../components/ai/mcp/MCPClient';
-import { AuditWriter } from '../components/ai/audit/auditWriter';
+import {
+    AuditWriter,
+    AuditWriteProblem,
+    nextAuditWriteProblem,
+    onAuditWriteResult,
+} from '../components/ai/audit/auditWriter';
 import { AuditEvent } from '../components/ai/audit/auditTypes';
 import { ChartPalette } from '../styles/chartPalettes';
 
@@ -177,6 +182,12 @@ export interface AIAssistantContextValue {
     powerMode: boolean;
     /** Toggle Power Mode; persists to sessionStorage per-tab. */
     setPowerMode: (on: boolean) => void;
+    /** Set while writes to the local audit index fail (every write
+     *  reports to `onAuditWriteResult`), null once one succeeds again.
+     *  The chat panel shows a warning from it, and the "Audit this
+     *  session" list a note. For a user who holds neither edit_tcp nor
+     *  edit_log_alert_event every write fails, so it stays set. */
+    auditWriteProblem: AuditWriteProblem | null;
 }
 
 const AIAssistantContext = createContext<AIAssistantContextValue | undefined>(undefined);
@@ -374,6 +385,19 @@ export const AIAssistantProvider: React.FC<ProviderProps> = ({
 
     const audit = useMemo(() => auditOverride ?? new AuditWriter(), [auditOverride]);
 
+    // Audit write health. Every local audit write (this session's
+    // AuditWriter, and AuditWriter.postOneOff from anywhere in the App)
+    // reports its outcome; a failure sets the problem, a success clears
+    // it. The writer stays fail-open: nothing here blocks the assistant.
+    const [auditWriteProblem, setAuditWriteProblem] = useState<AuditWriteProblem | null>(null);
+    useEffect(
+        () =>
+            onAuditWriteResult((result) => {
+                setAuditWriteProblem((prev) => nextAuditWriteProblem(prev, result));
+            }),
+        [],
+    );
+
     const appendMessage = (m: DisplayMessage): void => {
         setMessages((prev) => [...prev, m]);
     };
@@ -475,8 +499,9 @@ export const AIAssistantProvider: React.FC<ProviderProps> = ({
             maybeRefreshModels,
             powerMode,
             setPowerMode,
+            auditWriteProblem,
         }),
-        [messages, vendorMessages, status, error, auditEvents, provider, mcpClient, audit, user, selectedModel, setSelectedModel, effectiveModels, maybeRefreshModels, powerMode, setPowerMode],
+        [messages, vendorMessages, status, error, auditEvents, provider, mcpClient, audit, user, selectedModel, setSelectedModel, effectiveModels, maybeRefreshModels, powerMode, setPowerMode, auditWriteProblem],
     );
 
     return <AIAssistantContext.Provider value={value}>{children}</AIAssistantContext.Provider>;

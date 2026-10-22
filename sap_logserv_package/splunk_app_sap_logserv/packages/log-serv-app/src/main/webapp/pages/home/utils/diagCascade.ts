@@ -59,6 +59,17 @@ import {
     ingestCutoffApplicable,
     factsUsableForBoundary,
     knownStamp,
+    folderVerdictCap,
+    hasSourceRules,
+    includeSourcesMayKeep,
+    sourceRulesLine,
+    SOURCE_RULES_NOTE,
+    TypeDropStatus,
+    NoFolderStatus,
+    noFolderStatus,
+    NOFOLDER_LINES,
+    SOURCETYPE_NOFOLDER_SOURCES,
+    suppliedByText,
 } from './diagIngestFacts';
 
 export interface Diagnosis {
@@ -76,8 +87,9 @@ export interface Diagnosis {
 /** Three hours. The lag threshold is NOT two.
  *
  *  Each hourly aggregate runs at its own staggered minute (`:03` stmap through
- *  `:28` webdisp_slowtrace) over `-1h@h..@h`, and writes a bucket stamped at
- *  the START of the previous hour. So a perfectly healthy collection sits at
+ *  `:28` webdisp_slowtrace) over `-2h@h..@h` (session 147: it re-reads the
+ *  hour before too), and the newest bucket it writes is stamped at the START of
+ *  the previous hour. So a perfectly healthy collection sits at
  *  `1h + M` of lag immediately after its run and `2h + M` just before the next
  *  one — a >2h rule would flag every collection with M > 0, every hour
  *  (design §12.8). */
@@ -620,7 +632,7 @@ const gateIngestCutoff = (ev: PanelEvidence, facts: PanelFacts): Verdict | null 
             'administrator raise the setting in the Data TA’s Configuration -> Filters. Note that the ' +
             'index’s own retention may also limit how far back data exists — raising the ingest setting ' +
             'cannot restore events retention has already removed. Based on the filter configuration ' +
-            `recorded as supplied by ${fx.suppliedBy || 'an unknown user'}.`,
+            `recorded as supplied by ${suppliedByText(fx.suppliedBy)}.`,
         confidence: grade,
         owner: 'user',
         evidence: [
@@ -668,14 +680,43 @@ const typesForPaths = (paths: string[]): string[] => {
  * (`sourcetypeLastSeen !== null`) and negative, the proof-of-life question
  * answerable (`guardEvaluable`), and the supplied-confidence cap at
  * confirmed. Anything less is `possible` (or `likely` via the cap).
+ *
+ * SOURCE RULES (session 154): the statuses stay folder-based; any source rule
+ * in effect caps the verdict at `likely` (`folderVerdictCap`) and adds the
+ * approximate note + an evidence line. Where Include Sources may keep files
+ * of a folder the gate drops (`includeSourcesMayKeep`), present or newer
+ * events of that unit are explained by the configuration, not contradicting
+ * it: present ones stand the gate down, newer ones cap it at `possible`; and
+ * with zero events such a unit is never "fully dropped" — it reads as
+ * partial (`possible`), its paths named as dropped unless Include Sources
+ * keeps them.
+ *
+ * NO-FOLDER ROUTES (session 155, design item j, user decision U41): events
+ * of a type in `SOURCETYPE_NOFOLDER_SOURCES` (sap:hana:tracelogs) can also
+ * arrive WITHOUT folder fields, which folder filters never reach
+ * (`noFolderStatus`). Wherever such a type is judged, the no-folder part
+ * only WITHDRAWS claims it makes false: when that part may survive a folder
+ * drop (kept / may), present or newer events are explained, not
+ * contradicting, and a zero-event unit reads as partial, never as a full
+ * drop. The claims it ADDS are limited to a panel that reads no-folder
+ * types alone (`nfPanel` — a HANA Trace panel, U41): there a unit whose
+ * folders are kept while the include gate drops the folder-less files reads
+ * as partial ("Partly excluded?"), the folder-less drop is named, and every
+ * verdict carries the `NOFOLDER_LINES` evidence line. A verdict that exists
+ * ONLY through that drop is returned as a `lead`, never as the verdict:
+ * the caller lists it after the dispatched verdicts, so it never pre-empts
+ * an observed one (never seen, summary never built, stale), and it becomes
+ * the top only when nothing else concludes. Every status the no-folder part
+ * changes caps the verdict at `possible` (the paste does not say whether the
+ * forwarders route by source).
  */
 const ingestExclusion = (
     requiredTypes: string[],
     tags: string[],
     ev: PanelEvidence,
     guardEvaluable: boolean,
-): { verdict: Verdict | null; contradiction: string | null } => {
-    const none = { verdict: null, contradiction: null };
+): { verdict: Verdict | null; contradiction: string | null; lead: Verdict | null } => {
+    const none = { verdict: null, contradiction: null, lead: null };
     const fx = ingestFactsOf(ev);
     if (!fx) return none;
     if (fx.parseStatus === 'unparsed') return none;
@@ -696,6 +737,26 @@ const ingestExclusion = (
     }
     if (units.length === 0) return none;
 
+    // Session 155 — the unit's no-folder part: 'none' unless one of its
+    // types has a no-folder route (SOURCETYPE_NOFOLDER_SOURCES).
+    const nfOf = (u: ExclusionUnit): NoFolderStatus => {
+        const sts = u.countTypes.map((st) => noFolderStatus(st, fx)).filter((s) => s !== 'none');
+        if (sts.length === 0) return 'none';
+        return sts.every((s) => s === sts[0]) ? sts[0] : 'may';
+    };
+    // Session 155 review (U41 scope) — a panel that reads no-folder types
+    // ALONE (a HANA Trace panel: raw or through its rollup). Only there may
+    // the no-folder part add a claim; on a panel that also reads other types
+    // (Environment Health's critical events, the severity and topology
+    // rollups) the trace unit keeps its folder-only claims.
+    const nfPanel =
+        unmapped.length === 0 &&
+        units.every(
+            (u) =>
+                u.countTypes.length > 0 &&
+                u.countTypes.every((st) => Object.prototype.hasOwnProperty.call(SOURCETYPE_NOFOLDER_SOURCES, st)),
+        );
+
     // B1: observed in-window absence is a PRECONDITION on both tiers. A
     // present type the config claims FULLY dropped is the second
     // contradiction trigger; a present type the config KEEPS simply stands
@@ -707,38 +768,107 @@ const ingestExclusion = (
         const present = u.countTypes.filter((st) => counts[st] > 0);
         if (present.length === 0) continue;
         anyPresent = true;
-        if (pathsDropStatus(u.paths, fx) === 'dropped') {
+        // Session 154 — Include Sources may keep some files of a folder the
+        // include gate drops: present events are then explained by the
+        // configuration itself, not a contradiction (the gate stands down).
+        // Session 155 — so are events that may arrive without folder fields
+        // (no-folder part kept or may): folder filters do not reach them.
+        const nfP = nfOf(u);
+        if (
+            pathsDropStatus(u.paths, fx) === 'dropped' &&
+            !includeSourcesMayKeep(u.paths, fx) &&
+            (nfP === 'none' || nfP === 'dropped')
+        ) {
             return {
                 verdict: null,
                 contradiction:
                     `The supplied filter configuration would drop ${present.map((s) => '\`' + s + '\`').join(', ')}, ` +
                     'but events of that kind exist in this window — the configuration may be from the wrong ' +
                     'instance, or may have changed since it was supplied; re-supply it.',
+                lead: null,
             };
         }
     }
     if (anyPresent) return none;
 
-    const statuses = units.map((u) => ({ u, status: pathsDropStatus(u.paths, fx) }));
+    // Session 154 review — a unit the folder filters drop ENTIRELY but whose
+    // files the Include Sources rules may keep is not fully dropped: it reads
+    // as 'partial' (never the full "Excluded at ingest" verdict, so at most
+    // possible), and its paths are listed apart below as "dropped unless the
+    // Include Sources rules keep them".
+    // Session 155 — the no-folder part moves a status the same way: a unit
+    // whose folders are dropped while its no-folder part may survive (kept /
+    // may) is partial, and — on a no-folder-only panel (`nfPanel`) — so is a
+    // unit whose folders are KEPT while the include gate drops its no-folder
+    // part. `folder` keeps the folder-only status for the wording and the
+    // arrival guards below.
+    const statuses = units.map((u) => {
+        const folder = pathsDropStatus(u.paths, fx);
+        const nf = nfOf(u);
+        let status: TypeDropStatus = folder;
+        if (folder === 'dropped' && (includeSourcesMayKeep(u.paths, fx) || nf === 'kept' || nf === 'may')) {
+            status = 'partial';
+        } else if (nfPanel && folder === 'kept' && nf === 'dropped') {
+            status = 'partial';
+        }
+        return { u, status, folder, nf };
+    });
     const droppedUnits = statuses.filter((s) => s.status === 'dropped');
     const partialUnits = statuses.filter((s) => s.status === 'partial');
     if (droppedUnits.length === 0 && partialUnits.length === 0) return none; // filters keep everything here
+    // (U41) A status the no-folder part changes is always 'partial', and a
+    // partial unit rules out the full "Excluded at ingest" verdict below: the
+    // two partial verdicts are 'possible' by construction, so the cap needs
+    // no extra term in `grade` (the consistency test pins the grades).
+    // Session 155 review — when every unit that fires has its folders KEPT,
+    // the verdict exists only through the folder-less drop: a lead, listed
+    // after the observed verdicts instead of pre-empting them (whether such
+    // files are delivered at all is not in the paste).
+    const leadOnly = partialUnits.length > 0 && droppedUnits.length === 0 && partialUnits.every((s) => s.folder === 'kept');
 
     // Stale-paste contradiction guard (§15.4): events of a "dropped" type
     // arriving AFTER the paste disprove the supplied config. Comparator is
     // event-time lastSeen; it keeps its FULL stand-down.
     const ls = ev.sourcetypeLastSeen;
+    // Session 154 — newer events of a unit whose dropped folders Include
+    // Sources may partly keep are explained by the configuration: no
+    // contradiction, but the verdict is capped at possible with this line.
+    let srcArrivalLine: string | null = null;
     if (ls !== null && typeof ls === 'object') {
         for (const s of droppedUnits.concat(partialUnits)) {
+            // Session 155 — a unit whose folders the filters KEEP (partial only
+            // through its no-folder part) expects new events: nothing to test.
+            if (s.folder === 'kept') continue;
             for (const st of s.u.countTypes) {
                 const seen = (ls as Record<string, number>)[st];
                 if (typeof seen === 'number' && seen > fx.suppliedAt) {
+                    if (includeSourcesMayKeep(s.u.paths, fx)) {
+                        if (srcArrivalLine === null) {
+                            srcArrivalLine =
+                                `\`${st}\` events arrived after the configuration was supplied (by event ` +
+                                'timestamp) — the include-source rules may keep some of its files, so they ' +
+                                'do not contradict it.';
+                        }
+                        continue;
+                    }
+                    // Session 155 — events that may arrive without folder
+                    // fields are not reached by the folder filters either.
+                    if (s.nf === 'kept' || s.nf === 'may') {
+                        if (srcArrivalLine === null) {
+                            srcArrivalLine =
+                                `\`${st}\` events arrived after the configuration was supplied (by event ` +
+                                'timestamp) — events of that kind can arrive without folder fields, which the ' +
+                                'folder filters do not reach, so they do not contradict it.';
+                        }
+                        continue;
+                    }
                     return {
                         verdict: null,
                         contradiction:
                             `The supplied filter configuration says \`${st}\` is dropped at ingest, but newer ` +
                             `events (by event timestamp) arrived after it was supplied — the configuration may ` +
                             'have changed since; re-supply it.',
+                        lead: null,
                     };
                 }
             }
@@ -759,6 +889,7 @@ const ingestExclusion = (
     let recentContradictionLine: string | null = null;
     if (rs && typeof rs === 'object') {
         for (const s of droppedUnits.concat(partialUnits)) {
+            if (s.folder === 'kept') continue; // session 155: its folders are kept
             for (const st of s.u.countTypes) {
                 const rseen = (rs as Record<string, number>)[st];
                 if (
@@ -776,37 +907,84 @@ const ingestExclusion = (
     }
 
     const nowSec = Math.floor(Date.now() / 1000);
-    const cap = suppliedConfidenceCap(fx, nowSec);
+    // Session 154 — the per-type cap: the supplied cap, and at most likely
+    // while a source rule is in effect (source rules may drop or keep some
+    // files of a folder, which the folder-based statuses above cannot see).
+    const cap = folderVerdictCap(fx, nowSec);
     const guardOk = ls !== null && guardEvaluable;
     const fullDrop =
         droppedUnits.length === statuses.length && unmapped.length === 0 && partialUnits.length === 0;
     const grade: SuppliedConfidence =
-        recentContradictionLine !== null
+        recentContradictionLine !== null || srcArrivalLine !== null
             ? 'possible'
             : fullDrop && guardOk
               ? minConfidence(cap, 'confirmed')
               : 'possible';
 
     const stale = staleCaveatLine(fx, nowSec);
-    const approxLabel = fx.filtersApproximate
-        ? ' (reconstructed from the generated filter — approximate)'
-        : '';
+    const srcRules = hasSourceRules(fx);
+    const approxParts: string[] = [];
+    if (fx.filtersApproximate) approxParts.push('reconstructed from the generated filter — approximate');
+    if (srcRules) approxParts.push((fx.filtersApproximate ? '' : 'approximate — ') + SOURCE_RULES_NOTE);
+    const approxLabel = approxParts.length > 0 ? ` (${approxParts.join('; ')})` : '';
+    const srcLine = sourceRulesLine(fx);
+    // The dropped paths, split: dropped for certain, and dropped by the folder
+    // filters unless the Include Sources rules keep some of their files.
     const droppedPathsAll: string[] = [];
+    const mayKeepPaths: string[] = [];
     for (const s of droppedUnits.concat(partialUnits)) {
         for (const path of s.u.paths) {
-            if (droppedPathsAll.indexOf(path) === -1 && !clzSurvivesForVerdict(path, fx)) {
-                droppedPathsAll.push(path);
-            }
+            if (clzSurvivesForVerdict(path, fx)) continue;
+            const bucket = includeSourcesMayKeep([path], fx) ? mayKeepPaths : droppedPathsAll;
+            if (bucket.indexOf(path) === -1) bucket.push(path);
         }
     }
+    const mayKeepList = mayKeepPaths.join(', ');
     const names = statuses.map((s) => '`' + s.u.name + '`').join(', ');
+    // Session 155 — the no-folder part of the units this verdict is about:
+    // able to survive a folder drop (one more sentence, wherever the type is
+    // judged); and, on a no-folder-only panel only (U41), dropped for certain
+    // while something else may survive (named with the certain drops) plus
+    // the evidence line of every such type.
+    const nfDroppedTypes: string[] = [];
+    const nfMayArriveTypes: string[] = [];
+    const nfLines: string[] = [];
+    for (const s of droppedUnits.concat(partialUnits)) {
+        if (s.nf === 'none') continue;
+        for (const st of s.u.countTypes) {
+            if (!Object.prototype.hasOwnProperty.call(SOURCETYPE_NOFOLDER_SOURCES, st)) continue;
+            if (s.nf === 'dropped' && s.status === 'partial') {
+                if (nfPanel && nfDroppedTypes.indexOf(st) === -1) nfDroppedTypes.push(st);
+            } else if (s.nf === 'kept' || s.nf === 'may') {
+                // (a fired unit with this part kept / may has dropped folders)
+                if (nfMayArriveTypes.indexOf(st) === -1) nfMayArriveTypes.push(st);
+            }
+            const line = NOFOLDER_LINES[st];
+            if (nfPanel && line && nfLines.indexOf(line) === -1) nfLines.push(line);
+        }
+    }
+    const certainDropped = droppedPathsAll.concat(
+        nfDroppedTypes.map((st) => `\`${st}\` events without folder fields`),
+    );
+    const droppedShown =
+        certainDropped.join(', ') || (mayKeepPaths.length > 0 ? '(none for certain)' : '(none fully)');
     const evidence = [
-        `Dropped at ingest by the supplied filters: ${droppedPathsAll.join(', ') || '(none fully)'}${approxLabel}`,
-        `Events of the affected kind(s) in this window: 0`,
-        provenanceLine(fx),
+        `Dropped at ingest by the supplied filters: ${droppedShown}${approxLabel}`,
     ]
+        .concat(
+            mayKeepPaths.length > 0
+                ? [
+                      'Dropped by the supplied folder filters unless the Include Sources rules keep ' +
+                          `some of their files: ${mayKeepList}`,
+                  ]
+                : [],
+        )
+        .concat([`Events of the affected kind(s) in this window: 0`, provenanceLine(fx)])
         .concat(guardOk ? [] : ['Arrival history for the affected kind(s) could not be established.'])
         .concat(recentContradictionLine !== null ? [recentContradictionLine] : [])
+        .concat(srcArrivalLine !== null ? [srcArrivalLine] : [])
+        .concat(srcLine !== null ? [srcLine] : [])
+        .concat(nfLines)
         .concat(stale ? [stale] : []);
 
     if (fullDrop) {
@@ -819,32 +997,81 @@ const ingestExclusion = (
                     'If this exclusion is intentional, nothing is broken; otherwise a Splunk administrator ' +
                     'changes the include/exclude rules in the Data TA’s Configuration -> Filters — on the ' +
                     'deployment server for a distributed install. Based on the filter configuration ' +
-                    `recorded as supplied by ${fx.suppliedBy || 'an unknown user'}.`,
+                    `recorded as supplied by ${suppliedByText(fx.suppliedBy)}.`,
                 confidence: grade,
                 owner: 'splunk-admin',
                 evidence,
             },
             contradiction: null,
+            lead: null,
         };
     }
-    return {
-        verdict: {
-            id: 'ingest-type-excluded',
-            short: 'Partly excluded?',
-            headline:
-                `Some of the sources that feed this view are excluded at ingest by the supplied filter ` +
-                `configuration: ${droppedPathsAll.join(', ')}${approxLabel}.`,
-            detail:
-                'The other sources may simply have no events in this range. If the exclusion is intentional, ' +
-                'nothing is broken; otherwise a Splunk administrator changes the include/exclude rules in the ' +
-                'Data TA’s Configuration -> Filters. Based on the filter configuration recorded as supplied ' +
-                `by ${fx.suppliedBy || 'an unknown user'}.`,
-            confidence: 'possible',
-            owner: 'splunk-admin',
-            evidence,
-        },
-        contradiction: null,
+    // Session 154 review — when every dropped path is one the Include Sources
+    // rules may keep, nothing is excluded for certain: say "may be dropped".
+    // (Session 155: a no-folder part dropped for certain is named below.)
+    if (certainDropped.length === 0 && mayKeepPaths.length > 0) {
+        return {
+            verdict: {
+                id: 'ingest-type-excluded',
+                short: 'Possibly excluded?',
+                headline:
+                    `The sources that feed this view may be dropped at ingest by the supplied filter ` +
+                    `configuration unless its Include Sources rules keep them: ${mayKeepList}${approxLabel}.`,
+                detail:
+                    'Their folders are not in the include list; Include Sources rules keep events by file ' +
+                    'path, which this check cannot map to folders, so whether these files are kept cannot be ' +
+                    'decided here. If the exclusion is intentional, nothing is broken; otherwise a Splunk ' +
+                    'administrator changes the include rules in the Data TA’s Configuration -> Filters. Based ' +
+                    `on the filter configuration recorded as supplied by ${suppliedByText(fx.suppliedBy)}.`,
+                confidence: 'possible',
+                owner: 'splunk-admin',
+                evidence,
+            },
+            contradiction: null,
+            lead: null,
+        };
+    }
+    const partly: Verdict = {
+        id: 'ingest-type-excluded',
+        short: 'Partly excluded?',
+        headline:
+            `Some of the sources that feed this view are excluded at ingest by the supplied filter ` +
+            `configuration: ${certainDropped.join(', ')}${approxLabel}.` +
+            (mayKeepPaths.length > 0
+                ? ` Others may be dropped too unless the Include Sources rules keep them: ${mayKeepList}.`
+                : '') +
+            (nfDroppedTypes.length > 0
+                ? ' The include list drops events that arrive without folder fields, and no Include ' +
+                  'Sources entry without a folder is supplied to keep them.'
+                : '') +
+            (nfMayArriveTypes.length > 0
+                ? ` ${nfMayArriveTypes.map((st) => '`' + st + '`').join(', ')} events that arrive without ` +
+                  'folder fields are not reached by folder filters and may still be kept.'
+                : ''),
+        detail:
+            (leadOnly
+                ? 'This matters only where SAP delivers some of these files without folder fields, which ' +
+                  'the supplied configuration does not show; the files that carry folder fields are kept.'
+                : 'The other sources may simply have no events in this range.') +
+            ' If the exclusion is intentional, ' +
+            'nothing is broken; otherwise a Splunk administrator changes the include/exclude rules in the ' +
+            'Data TA’s Configuration -> Filters' +
+            (nfDroppedTypes.length > 0
+                ? ', where an Include Sources entry such as ' +
+                  nfDroppedTypes.map((st) => (SOURCETYPE_NOFOLDER_SOURCES[st] || []).join(' or ')).join(', ') +
+                  ' keeps the files that arrive without folder fields'
+                : '') +
+            '. Based on the filter configuration recorded as supplied ' +
+            `by ${suppliedByText(fx.suppliedBy)}.`,
+        confidence: 'possible',
+        owner: 'splunk-admin',
+        evidence,
     };
+    // Session 155 review — a verdict that exists only through the folder-less
+    // drop is a lead: the caller lists it after the dispatched verdicts.
+    return leadOnly
+        ? { verdict: null, contradiction: null, lead: partly }
+        : { verdict: partly, contradiction: null, lead: null };
 };
 
 /** Wrapper so the evidence-line builder above can reuse the module's
@@ -886,8 +1113,8 @@ const cutoffContextLines = (
     if (!(typeof ev.indexRowsInWindow === 'number' && ev.indexRowsInWindow > 0)) return [];
     if (!ingestCutoffApplicable(fx, winEnd, nowSec)) return [];
     const lines = [
-        `Your range also ends before the ingest cutoff recorded as supplied by ` +
-            `${fx.suppliedBy || 'an unknown user'} (${fmtDate(fx.cutoffEpoch as number)}) — events of ` +
+        `Your range also ends before the ingest cutoff of ${fmtDate(fx.cutoffEpoch as number)} (recorded as ` +
+            `supplied by ${suppliedByText(fx.suppliedBy)}) — events of ` +
             'this age arriving now would be dropped at ingest; the cutoff slides forward daily.',
     ];
     const stale = staleCaveatLine(fx, nowSec);
@@ -1014,6 +1241,7 @@ const gateSourcetype = (
             const exT = ingestExclusion([], probe.tags, ev, winEndG !== null);
             if (exT.contradiction) extras.push(contradictionEntry(exT.contradiction));
             else if (exT.verdict) return exT.verdict;
+            else if (exT.lead) extras.push(exT.lead);
             return notEvaluated(
                 'sourcetype-presence',
                 'This view is selected by tag rather than by sourcetype, so a missing sourcetype cannot explain it.',
@@ -1114,6 +1342,9 @@ const gateSourcetype = (
         const exS = ingestExclusion(probe.sourcetypes, [], ev, winEnd !== null);
         if (exS.contradiction) extras.push(contradictionEntry(exS.contradiction));
         else if (exS.verdict) return exS.verdict;
+        // Session 155 review — a lead (the folder-less drop alone) never
+        // pre-empts the observed verdicts below; it is listed after them.
+        else if (exS.lead) extras.push(exS.lead);
 
         /* §14.2 — the routing question, AFTER outside-window has had its say:
          * events arriving unparsed beat both "never arrived" (misdirects to
@@ -1176,6 +1407,7 @@ const gateSourcetype = (
     const exU = ingestExclusion(probe.sourcetypes, [], ev, false);
     if (exU.contradiction) extras.push(contradictionEntry(exU.contradiction));
     else if (exU.verdict) return exU.verdict;
+    else if (exU.lead) extras.push(exU.lead);
 
     const routingU = routingNearMiss(names, ev, 'unknown', null);
     if (routingU) return routingU;
@@ -1364,6 +1596,8 @@ const gateCached = (
             );
             if (exC.contradiction) extras.push(contradictionEntry(exC.contradiction));
             else if (exC.verdict) return exC.verdict;
+            // Session 155 review — a lead never pre-empts never-seen / never-built.
+            else if (exC.lead) extras.push(exC.lead);
         }
         if (scopeNames) {
             const routing = routingNearMiss(scopeNames, ev, hist.history, hist.newest);
@@ -1447,6 +1681,7 @@ const gateCached = (
                 );
                 if (exStale.contradiction) extras.push(contradictionEntry(exStale.contradiction));
                 else if (exStale.verdict) return exStale.verdict;
+                else if (exStale.lead) extras.push(exStale.lead);
             }
             if (!allDisabled && scopeNamesS) {
                 const routingS = routingNearMiss(scopeNamesS, ev, histS.history, histS.newest);
@@ -1481,8 +1716,8 @@ const gateCached = (
                     .concat(
                         /* SS16.8a-1/2 — the platform snapshot may only ever ADD
                          * this provenance-badged line. It NEVER changes the
-                         * confidence above: the snapshot collection is
-                         * world-writable, so a forged skip row must not be able
+                         * confidence above: the snapshot collection was
+                         * world-writable before build 384 (a local.meta can reopen it), so a forged skip row must not be able
                          * to raise a grade (the SS15.8a doctrine). The matches
                          * were already restricted upstream to status=skipped,
                          * exact producer-name equality, buckets inside the
@@ -1579,7 +1814,7 @@ const gateCached = (
             /* METRIC-ARM AMBIGUITY (session 095, finding 4c). The trace is
              * sourcetype-level and deliberately over-collected, while many
              * panels read one METRIC ARM whose predicate is far narrower (ICM
-             * errors = status>=400; HANA password ops = a regex). Sibling-
+             * errors = a dev_icm ERROR line; HANA password ops = a regex). Sibling-
              * metric rows in the window prove the aggregate RAN and only this
              * arm wrote nothing — which is ambiguous between "no qualifying
              * events occurred" (healthy; the live icmerr case) and "this arm

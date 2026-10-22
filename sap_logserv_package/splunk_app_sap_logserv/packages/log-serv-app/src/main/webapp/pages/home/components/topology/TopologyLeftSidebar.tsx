@@ -253,7 +253,7 @@ const TopologyLeftSidebar: React.FC<TopologyLeftSidebarProps> = ({
                 ) : undefined}
             >
                 <StatLine>
-                    {`${sidNodes.length} systems · ${totalCalls.toLocaleString()} calls · ${nodes.length - sidNodes.length} partners`}
+                    {`${sidNodes.length} systems · ${totalCalls.toLocaleString()} calls + connections · ${nodes.length - sidNodes.length} partners`}
                 </StatLine>
                 <SystemList>
                     {sidNodes.map((n) => {

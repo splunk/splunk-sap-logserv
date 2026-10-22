@@ -11,8 +11,8 @@
  *      credential, exactly the trust envelope of the existing
  *      `validateConfig` probe. Metadata only; no message content, no
  *      event data, nothing through `buildOutboundPayload`.
- *   2. The discovered rows are SANITIZED (id/label allowlists — the KV
- *      collection is world-writable, so sanitize on write AND on read)
+ *   2. The discovered rows are SANITIZED (id/label allowlists, on write
+ *      AND on read - the collection was world-writable before build 380)
  *      and cached in KV Store collection `logserv_ai_models`, one row
  *      per provider (`_key = <provider name>`).
  *   3. `mergeModels(baseline, discovered)` produces the `effectiveModels`
@@ -155,9 +155,9 @@ const overlayFor = (id: string): Omit<OverlayEntry, 'prefix'> => {
 };
 
 /**
- * Sanitize an untrusted descriptor array (vendor response OR KV row —
- * the collection ACL is `write : [ * ]`, so rows are re-sanitized on
- * every read, not just on write). Rejects rows whose id fails the
+ * Sanitize an untrusted descriptor array (vendor response OR KV row -
+ * rows written while the collection ACL was `write : [ * ]`, before
+ * build 380, may still be there, so rows are re-sanitized on every read). Rejects rows whose id fails the
  * allowlist; dedupes by id; enriches missing/invalid contextWindow and
  * supportsTools from the overlay.
  */

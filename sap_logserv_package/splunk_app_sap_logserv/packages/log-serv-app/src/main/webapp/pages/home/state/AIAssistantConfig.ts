@@ -60,8 +60,8 @@ export interface AIAssistantConfig {
      *  Build 94 / session 022. */
     tier2RedactHostnames: boolean;
     /** Local Splunk index that receives every audit event the AI Assistant
-     *  writes. Default `ai_assistant_audit` matches the LogServ Index App's
-     *  default indexes.conf and the `sap_logserv_audit_idx_macro` definition.
+     *  writes. Default `logserv_ai_assistant_audit` matches the index the
+     *  Data TA's indexes.conf defines and the `sap_logserv_audit_idx_macro` definition.
      *  Customers who rename the audit index must also update the macro
      *  definition for in-app + user-written queries to find the events. */
     auditIndexName: string;
@@ -121,7 +121,7 @@ export const DEFAULT_AI_ASSISTANT_CONFIG: AIAssistantConfig = {
     dailySpendCapUsd: 50.0,
     tier2PiiRedaction: true,
     tier2RedactHostnames: false,
-    auditIndexName: 'ai_assistant_audit',
+    auditIndexName: 'logserv_ai_assistant_audit',
     auditForwarderEnabled: false,
     auditForwarderUrl: '',
     auditForwarderIndex: '',

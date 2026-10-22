@@ -18,7 +18,7 @@ import {
     splQuote,
 } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * HANA Audit — honest port of v0.0.4.2 logserv_hana_audit.xml.
@@ -60,6 +60,15 @@ const ST = 'sourcetype=sap:hana:audit';
  * "(none)" to match the raw `stats by`'s implicit null-drop. highRiskEvents +
  * afterHoursAdmin stay RAW (event listings). afterHours hour / healthScore day
  * derive from bucket_ts (exact on whole-hour-offset TZ).
+ *
+ * Hosts (build 378): `host` is the indexed LogServ host that wrote the audit
+ * record - the HANA host - on raw events and in the main grain alike. The
+ * client's host name (CSV field 9, Client Name; extracted as audit_hostname)
+ * is `src_host`, the twin of `dest_host` = db_hostname. Until build 377 a
+ * props FIELDALIAS put the client name into `host`, so failedByHost listed
+ * client machines and its Host Details drilldown opened hosts with no events.
+ * The rollup keys on host: rows written before the upgrade keep the client
+ * name until the HANA Audit row is cleared and backfilled (upgrading.md).
  */
 const ROLL = 'logserv_hana_category_rollup';
 const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
@@ -112,8 +121,8 @@ const Q_BASE = {
     // Missing #4 is the dangerous one: the backfill repopulates 30 days of
     // historical rollup rows, so a stale copy silently overwrites corrected
     // history and only shows up as a wide-window vs sub-hour disagreement.
-    highRiskEvents: `\`sap_logserv_idx_macro\` ${ST} is_critical=true | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, action_type, action_category, risk_level, status, host, client_ip, sql_statement`,
-    afterHoursAdmin: `\`sap_logserv_idx_macro\` ${ST} is_admin_user=true | eval is_weekend=if(strftime(_time,"%w") IN ("0","6"), 1, 0) | eval is_after_hours=if(tonumber(strftime(_time,"%H")) < 8 OR tonumber(strftime(_time,"%H")) > 18, 1, 0) | where is_after_hours=1 OR is_weekend=1 | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Day=strftime(_time, "%a") | eval Hour=strftime(_time, "%H:%M") | eval Period=case(is_weekend=1 AND is_after_hours=1, "Weekend / After Hours", is_weekend=1, "Weekend", 1=1, "After Hours") | sort -_time | table Time, Day, Period, executing_user, action_type, status, host, client_ip`,
+    highRiskEvents: `\`sap_logserv_idx_macro\` ${ST} is_critical=true | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, action_type, action_category, risk_level, status, host, src_host, client_ip, sql_statement`,
+    afterHoursAdmin: `\`sap_logserv_idx_macro\` ${ST} is_admin_user=true | eval is_weekend=if(strftime(_time,"%w") IN ("0","6"), 1, 0) | eval is_after_hours=if(tonumber(strftime(_time,"%H")) < 8 OR tonumber(strftime(_time,"%H")) > 18, 1, 0) | where is_after_hours=1 OR is_weekend=1 | head 500 | eval Time=strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Day=strftime(_time, "%a") | eval Hour=strftime(_time, "%H:%M") | eval Period=case(is_weekend=1 AND is_after_hours=1, "Weekend / After Hours", is_weekend=1, "Weekend", 1=1, "After Hours") | sort -_time | table Time, Day, Period, executing_user, action_type, status, host, src_host, client_ip`,
 };
 
 /* ---------------------------------------------------------------------------
@@ -189,7 +198,7 @@ const PASSWORD_COLS: ColumnDef[] = [
     { key: 'count', label: 'Count', align: 'right', render: (v) => formatInteger(v) },
 ];
 const HOST_COLS: ColumnDef[] = [
-    { key: 'host', label: 'Host' },
+    { key: 'host', label: 'HANA Host' },
     { key: 'count', label: 'Failed Ops', align: 'right', render: (v) => formatInteger(v) },
 ];
 const TOP_USER_COLS: ColumnDef[] = [
@@ -212,7 +221,8 @@ const HIGH_RISK_COLS: ColumnDef[] = [
     { key: 'action_category', label: 'Category', width: '140px' },
     { key: 'risk_level', label: 'Risk', width: '90px' },
     { key: 'status', label: 'Status', width: '120px' },
-    { key: 'host', label: 'Host', width: '160px' },
+    { key: 'host', label: 'HANA Host', width: '160px' },
+    { key: 'src_host', label: 'Client Host', width: '160px' },
     { key: 'client_ip', label: 'Client IP', width: '120px' },
     { key: 'sql_statement', label: 'SQL Statement' },
 ];
@@ -223,7 +233,8 @@ const AFTER_HOURS_COLS: ColumnDef[] = [
     { key: 'executing_user', label: 'User', width: '140px' },
     { key: 'action_type', label: 'Action' },
     { key: 'status', label: 'Status', width: '120px' },
-    { key: 'host', label: 'Host', width: '160px' },
+    { key: 'host', label: 'HANA Host', width: '160px' },
+    { key: 'src_host', label: 'Client Host', width: '160px' },
     { key: 'client_ip', label: 'Client IP', width: '120px' },
 ];
 
@@ -260,11 +271,12 @@ const HanaAudit: React.FC = () => {
 
     /* Drilldowns (build 159 / session 027 task 6).
      * Patterns:
-     *   - Failed Ops by Host row → Host Details with ?host=<row.host>
+     *   - Failed Ops by HANA Host row → Host Details with ?host=<row.host>
+     *     (the HANA host since build 378, so the page it opens has events)
      *   - Users by Activity row → Cross-Stack Authentication dashboard
      *   - Client IP Analysis row → splunk-search filtered to that client_ip
      *   - High-Risk Events row → splunk-search filtered to user + action
-     *   - After-Hours Admin row → splunk-search filtered to user + host
+     *   - After-Hours Admin row → splunk-search filtered to user + HANA host
      *   - Password Management row → Cross-Stack Authentication dashboard
      */
     const goFailedHost = useCallback((row: Record<string, unknown>) => {
@@ -286,7 +298,7 @@ const HanaAudit: React.FC = () => {
         const action = String(row.action_type ?? '');
         if (!user) return;
         const actionClause = action ? ` action_type="${splQuote(action)}"` : '';
-        const spl = `\`sap_logserv_idx_macro\` sourcetype=sap:hana:audit is_critical=true executing_user="${splQuote(user)}"${actionClause} | sort -_time | table _time action_type risk_level status host client_ip sql_statement`;
+        const spl = `\`sap_logserv_idx_macro\` sourcetype=sap:hana:audit is_critical=true executing_user="${splQuote(user)}"${actionClause} | sort -_time | table _time action_type risk_level status host src_host client_ip sql_statement`;
         openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
     }, [timeRange.earliest, timeRange.latest]);
     const goAfterHoursRow = useCallback((row: Record<string, unknown>) => {
@@ -294,7 +306,7 @@ const HanaAudit: React.FC = () => {
         const host = String(row.host ?? '');
         if (!user) return;
         const hostClause = host ? ` host="${splQuote(host)}"` : '';
-        const spl = `\`sap_logserv_idx_macro\` sourcetype=sap:hana:audit executing_user="${splQuote(user)}"${hostClause} | sort -_time | table _time action_type status host client_ip`;
+        const spl = `\`sap_logserv_idx_macro\` sourcetype=sap:hana:audit executing_user="${splQuote(user)}"${hostClause} | sort -_time | table _time action_type status host src_host client_ip`;
         openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
     }, [timeRange.earliest, timeRange.latest]);
 
@@ -314,10 +326,10 @@ const HanaAudit: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="User Administration Activity Timeline" subtitle="Password resets, activations, deactivations, policy changes">
+                <FramedPanel title="User Administration Activity Timeline" subtitle={spanSubtitle('Password resets, activations, deactivations, policy changes', qUserAdminTimeline)}>
                     <TimeSeriesChart query={qUserAdminTimeline} height={260} palette="auth" />
                 </FramedPanel>
-                <FramedPanel title="Security Events Timeline" subtitle="Failures + grants/revokes/DDL by event type">
+                <FramedPanel title="Security Events Timeline" subtitle={spanSubtitle('Failures + grants/revokes/DDL by event type', qSecurityEventsTimeline)}>
                     <TimeSeriesChart
                         query={qSecurityEventsTimeline}
                         height={260}
@@ -334,7 +346,7 @@ const HanaAudit: React.FC = () => {
                 <FramedPanel search={auditCategory} title="Audit Category Breakdown" subtitle="Distribution by action_category">
                     <DataTable columns={CATEGORY_COLS} rows={auditCategory.results} loading={auditCategory.loading} error={auditCategory.error} emptyMessage="No HANA audit events in this time range." />
                 </FramedPanel>
-                <FramedPanel title="Risk-Tiered Event Timeline" subtitle="Daily volume by risk_level">
+                <FramedPanel title="Risk-Tiered Event Timeline" subtitle={spanSubtitle('Volume by risk_level', qRiskTimeline)}>
                     <TimeSeriesChart query={qRiskTimeline} height={260} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
@@ -349,7 +361,7 @@ const HanaAudit: React.FC = () => {
                 <FramedPanel search={passwordMgmt} title="Password Management Activities" subtitle="Password changes, lifetime disables, reset-attempts — click a row to open Cross-Stack Authentication">
                     <DataTable columns={PASSWORD_COLS} rows={passwordMgmt.results} loading={passwordMgmt.loading} error={passwordMgmt.error} emptyMessage="No password-management activity in this time range." onRowClick={goCrossStackAuth} />
                 </FramedPanel>
-                <FramedPanel search={failedByHost} title="Failed Operations by Host" subtitle="Where failures are concentrated — click a row to open Host Details">
+                <FramedPanel search={failedByHost} title="Failed Operations by HANA Host" subtitle="HANA hosts where failed operations were audited — click a row to open Host Details">
                     <DataTable columns={HOST_COLS} rows={failedByHost.results} loading={failedByHost.loading} error={failedByHost.error} emptyMessage="No failed operations in this time range." onRowClick={goFailedHost} />
                 </FramedPanel>
             </PanelGrid2>

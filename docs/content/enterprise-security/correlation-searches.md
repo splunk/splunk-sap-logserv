@@ -107,8 +107,8 @@ Customers + community can layer additional ES correlation searches on top — se
 ```spl
 `sap_logserv_idx_macro` sourcetype="sap:hana:audit" action_type=CONNECT status=UNSUCCESSFUL
    earliest=-1h@h latest=now
-| stats count, latest(_time) AS last_seen, values(client_ip) AS client_ips
-        by executing_user host
+| stats count, latest(_time) AS last_seen, values(client_ip) AS client_ips,
+        values(src_host) AS src_hosts by executing_user host
 | where count >= 5
 | sort -count
 ```
@@ -215,6 +215,8 @@ Each of the 19 detection searches carries `action.risk = 1` annotations so event
 | Anomaly: webdispatcher response | `host` | system | 30 |
 | Anomaly: topology edge volume | `source` | system | 30 |
 | Anomaly: after-hours admin | `auth_user` | user | 40 |
+
+For the HANA searches, `host` is the HANA host that wrote the audit record (the client's host name is `src_host`), so their system risk lands on the database host. The failed-CONNECT spike and after-hours admin searches list client host names in `src_hosts`.
 
 ### :material-circle-box:{ .taiconcolor } Multi-object risk per event
 

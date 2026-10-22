@@ -15,9 +15,15 @@ Two scheduled saved searches that emit CSV lookups every 4 hours:
 
 The two feeds are scheduled one minute apart (`:00` and `:01`) so they do not dispatch simultaneously.
 
+Each feed reads all of its sources in **one pass** — a single search over the last 7 days, with no subsearch that Splunk could stop early — and replaces its CSV with the result:
+
+- **An empty run keeps the last CSV.** A run that finds no rows (an ingest outage, for example) writes nothing, so the previous inventory stays in place (`outputlookup override_if_empty=false`).
+- **No row cap.** The rows are sorted without a limit (`sort 0`), so an inventory larger than Splunk's default sort limit of 10,000 rows is written whole.
+- **A short-window run writes nothing.** A run whose search window starts later than midnight six days ago (`-6d@d`) leaves the CSV as it is, so an ad-hoc run over the last hour cannot replace the 7-day inventory with a partial one. This applies to the scheduled runs too: if you override `dispatch.earliest_time` for either feed in `local/savedsearches.conf`, keep the window starting at or before `-6d@d` (the default is `-7d@d`), or every run writes nothing and the CSV stops updating without an error. To make a feed cheaper, run it less often (change its cron) instead.
+
 ## :material-circle-box:{ .taiconcolor } Asset feed
 
-The Asset feed unions 6 inventory subsearches and consolidates by IP (when present) or DNS hostname:
+The Asset feed reads 6 inventory sources in one pass and consolidates by IP (when present) or DNS hostname:
 
 1. `sap:abap:gateway` events with `local_ip=*` → IP+host+SID
 2. `sap:hana:tracelogs` with `hana_host=*` → hostname+SID (no IP)
@@ -49,7 +55,7 @@ Two extra columns for SOC analyst readability (ES merger ignores unknown columns
 
 ## :material-circle-box:{ .taiconcolor } Identity feed
 
-The Identity feed unions 5 user-source subsearches and consolidates by identity:
+The Identity feed reads 5 user sources in one pass and consolidates by identity:
 
 1. `sap:hana:audit` `executing_user` → tagged `hana_admin`
 2. `sap:hana:audit` `target_user` → tagged `hana_target`
@@ -74,7 +80,7 @@ One extra column:
 
 ## :material-circle-box:{ .taiconcolor } Customer wire-up
 
-After the App installs, the lookups don't exist until the saved searches first run (within 4h of install). To populate immediately:
+After the App installs, the lookups don't exist until the saved searches first run (within 4h of install). The same applies after an App upgrade if your upgrade method does not keep the App's `lookups/` directory: the two CSVs are written there at run time and are not part of the package, so they exist again after the feeds' next run. To populate immediately:
 
 ```bash
 # Dispatch the asset feed
@@ -88,7 +94,7 @@ curl -sk -u admin:<pw> -X POST \
   https://<splunk-host>:8089/servicesNS/nobody/splunk_app_sap_logserv/saved/searches/splunk_sap_logserv_es_identity_feed/dispatch
 ```
 
-The explicit `dispatch.earliest_time` / `dispatch.latest_time` arguments matter: a REST dispatch does **not** apply the stanza's own dispatch window, and each run fully **overwrites** the CSV — a short-window ad-hoc run would replace the inventory with a truncated one. Wait for both jobs to complete (seconds on a small dataset; longer at customer volume — the feeds union several sourcetypes over 7 days), then verify:
+The explicit `dispatch.earliest_time` / `dispatch.latest_time` arguments matter: a REST dispatch does **not** apply the stanza's own dispatch window, and each run that finds rows fully **overwrites** the CSV. The `-7d@d` window above writes the full inventory; a run whose window starts later than `-6d@d` writes nothing and leaves the CSV as it was (see [What ships](#what-ships)). Since App build 384 both feeds set `dispatchAs = user`: the dispatch runs as the account you call it with, so use an admin-tier account (a non-admin's run cannot write the CSV), and `-7d@d` snaps to midnight in that account's time zone. Wait for both jobs to complete (seconds on a small dataset; longer at customer volume — the feeds read several sourcetypes over 7 days), then verify:
 
 ```spl
 | inputlookup splunk_for_sap_logserv_assets | head 5
@@ -152,13 +158,14 @@ If a customer doesn't want our auto-feed (e.g., CMDB is fully authoritative):
 3. Edit each → Disable
 4. Save
 
-The lookup CSVs remain on disk (last-known state) but are no longer refreshed.
+The lookup CSVs remain on disk (last-known state) but are no longer refreshed. A disabled feed does not re-create its CSV, so an App upgrade that does not keep the App's `lookups/` directory leaves ES without it.
 
 ## :material-circle-box:{ .taiconcolor } Caveats
 
 - **No MAC addresses.** SAP application logs don't expose MAC addresses. Customers needing MAC-based asset resolution must source it elsewhere (DHCP logs, network gear).
 - **Short hostnames vs FQDNs.** Our `dns` column is the `host` field as Splunk indexed it. If Splunk indexed short names but customer DNS uses FQDNs, ES asset lookups by FQDN won't match. Fix via forward-lookup expansion in `lookup_merge.conf`.
 - **No identity start/end dates.** Our feed doesn't track account creation/deactivation. Customers needing `startDate`/`endDate` for behavior baselining should layer an HR-system-sourced identity feed alongside ours.
+- **A partial run still overwrites.** The feeds keep the last CSV only when a run finds nothing. A run that finds part of the estate — one cloud's ingest stopped for more than 7 days, say — writes the smaller inventory, and the missing assets and identities drop out of ES until their data returns.
 - **Static priority/category logic.** The heuristics here are SPL `case()` rules. Customer-specific overrides require a manual override CSV (e.g., `my_company_sap_asset_overrides.csv`) placed above our feed in merge order.
 
 ## :material-circle-box:{ .taiconcolor } Example output shape (reference environment — your values will differ)

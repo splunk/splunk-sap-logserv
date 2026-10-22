@@ -51,7 +51,7 @@ Below are the high level steps for installing the LogServ App. Follow them in or
 
 ### :material-circle-box:{ .taiconcolor } 2. Install the Splunk MCP Server prerequisite
 
-The AI Assistant requires the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) — v1.1.0 or later (the tested-against version; the App's version gate accepts 1.0.3 up to, but not including, 3.0.0, so the 2.x major is supported) — installed on the **same Search Head** as the LogServ App. Install it via Splunk Web (**Apps → Install app from file**) or via CLI:
+The AI Assistant requires the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) — v1.1.0 or later (the tested-against version; the App's version gate accepts 1.0.3 and later, with no upper bound since build 393) — installed on the **same Search Head** as the LogServ App. Install it via Splunk Web (**Apps → Install app from file**) or via CLI:
 
 ```bash
 /opt/splunk/bin/splunk install app /path/to/<splunk-mcp-server-download>.tar.gz

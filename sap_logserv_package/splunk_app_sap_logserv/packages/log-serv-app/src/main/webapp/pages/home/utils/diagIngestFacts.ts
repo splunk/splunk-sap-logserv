@@ -7,7 +7,7 @@
  * #1 cause of "I see zero events". This module closes that boundary the only
  * honest way available: the operator runs a printed command, pastes the
  * output, and the diagnostic parses it into a CHECKED FACT — always badged
- * "Recorded as supplied by <user>", never "Observed".
+ * "Recorded as supplied by <user> (name not verified)", never "Observed".
  *
  * GATE-SAFE: no @splunk imports, no module-level window/document, fetch
  * injectable — exercised by bin/check-diagnostics.js under node.
@@ -19,20 +19,56 @@
  * nulled so it can never steer a confirmed verdict.
  *
  * EVALUATOR SEMANTICS MIRROR THE GENERATOR, NOT FNMATCH FOLKLORE (§15.8a-14,
- * review blocker B2): the Data TA's `fnmatch_patterns_to_combined_regex`
- * SKIPS any pattern without a '/' — a bare `*` inside a mixed include list is
- * inert, and `exclude = *` excludes NOTHING. Pass-all holds iff the effective
- * (slash-bearing) include list is empty or contains a match-everything
- * pattern. Matching is CASE-SENSITIVE (the generated PCRE does not fold;
- * python fnmatch's Windows case-folding is deliberately NOT ported —
- * §15.8a-18).
+ * review blocker B2): the Data TA's generator SKIPS any folder pattern without
+ * a '/' — `exclude = *` excludes NOTHING. Pass-all (session 154, the Data TA's
+ * fix 4d): the include list keeps everything iff its effective (slash-bearing)
+ * part is empty, or ANY entry matches everything — star/star or a bare `*`
+ * (before fix 4d a bare `*` inside a mixed list was inert; a paste from an
+ * older Data TA with such a list is now read as pass-all, the conservative
+ * direction: no exclusion is claimed). Matching is CASE-SENSITIVE (the
+ * generated PCRE does not fold; python fnmatch's Windows case-folding is
+ * deliberately NOT ported — §15.8a-18).
  *
- * KNOWN APPROXIMATION (§15.8a-20): the generated PCRE is pathologically MORE
- * permissive than per-segment fnmatch for suffix/infix wildcards (a `.*`
+ * TWO GENERATED SHAPES are inverted (session 154): the old
+ * `^(?=.*"clz_dir"…)(?=.*"clz_subdir"…)` alternation of fnmatch.translate
+ * fragments, and the current shape (design s154 §5a) — a skip anchor
+ * (`TA_FILTER_REGEX_SKIP`) followed by `(?:entry|entry|…)`, each entry a run
+ * of lookaheads that may not cross a `"_raw"` key, with hand-written value
+ * fragments (`*` -> `[^"]*`, `?` -> `[^"]`, other non-word characters
+ * backslash-escaped). Long lists are split over chunk stanzas `<name>_2`,
+ * `<name>_3`, … which are merged in order. Since design s154 §5b the
+ * generator translates `*` LINEARLY: the pattern is split on runs of `*`,
+ * each MIDDLE segment is written as an atomic group `(?>[^"]*?SEG)` and only
+ * the last `*` stays `[^"]*`; the inverse reads both value forms (§5a and
+ * §5b) and nothing else. A run such as `**` is ONE `*` in the generated
+ * text, so a pattern read back from transforms.conf is shown in that
+ * collapsed form (`/var/log/**` + `/x.log` reads back as `/var/log/*` +
+ * `/x.log` — the same matches); the settings shapes show the text as typed.
+ *
+ * KNOWN APPROXIMATION (§15.8a-20): the OLD generated PCRE is pathologically
+ * MORE permissive than per-segment fnmatch for suffix/infix wildcards (a `.*`
  * inside `"clz_dir"\s*:\s*".*x"` can cross the value's closing quote and
  * match later raw content). Byte-equivalence with the PCRE is not achievable
  * from here; per-segment fnmatch is the documented approximation and is
- * exact for the controlled clz vocabulary.
+ * exact for the controlled clz vocabulary (and for the current shape, whose
+ * wildcards stay inside the quoted value).
+ *
+ * SOURCE RULES (Include Sources / Exclude Sources, session 154) match the
+ * envelope's `source` value — a file path this module cannot map to a clz
+ * folder. They may keep (include) or drop (exclude) SOME files of a folder,
+ * so every per-type verdict stays folder-based and is marked approximate
+ * when any source rule is in effect (`hasSourceRules`).
+ *
+ * NO-FOLDER ROUTES (session 155): the Data TA can also route a type by the
+ * envelope's `source` path when the event carries NO folder fields
+ * (`SOURCETYPE_NOFOLDER_SOURCES` - today the HANA trace files SAP delivers
+ * under undefined/undefined). Folder filters cannot reach those events, so
+ * `noFolderStatus` judges them from the include gate and the plain (folder-
+ * less) source rules alone; check 29 caps every verdict that part changes at
+ * `possible`, because the paste does not say whether the forwarders run such
+ * a route, and adds a claim from it only on a panel that reads such types
+ * alone (a HANA Trace panel) - there as a lead that never pre-empts an
+ * observed verdict.
  *
  * TOOL-TRANSPORT NOTE (sessions 051/074/079/092/095): regex-bearing strings
  * in this file are byte-verified after every edit — this exact feature area
@@ -66,6 +102,15 @@ export const INGEST_RAW_EXCERPT_CHARS = 2000;
 export const INGEST_MAX_DAYS_IN_PAST = 3650;
 export const INGEST_MAX_PATTERNS = 64;
 export const INGEST_MAX_PATTERN_CHARS = 128;
+/** Session 154 — the source-rule lists (Include / Exclude Sources): an entry
+ *  is `srcpat` (1..512 characters) or `dir/subdir=srcpat`. The Data TA field
+ *  holds at most 4096 characters (one entry can never be longer), so these
+ *  caps only bite on hand-POSTed rows. */
+export const INGEST_MAX_SOURCE_PATTERNS = 256;
+export const INGEST_MAX_SOURCE_ENTRY_CHARS = 4096;
+export const INGEST_MAX_SOURCE_PATTERN_CHARS = 512;
+/** A stored JSON list longer than this is not even parsed (world-writable row). */
+export const INGEST_MAX_LIST_JSON_CHARS = 300000;
 
 /** §19.8a-12 — grace on check 29's INDEX-TIME contradiction comparator
  *  (`recentSeen > suppliedAt + SKEW`). Index time for a live feed is by
@@ -100,6 +145,10 @@ export const DIAG_INGEST_FACT_FIELDS: string[] = [
     'cutoff_epoch',
     'include_filters_json',
     'exclude_filters_json',
+    // session 154 — the source-rule lists (JSON, like the folder lists);
+    // rows written before them carry neither field and read as empty.
+    'include_sources_json',
+    'exclude_sources_json',
     'filters_approximate',
     'cloud_provider_stamp',
     'scrubbed_raw',
@@ -149,6 +198,12 @@ export interface IngestFacts {
      *  generator's effective semantics (§15.8a-14). */
     includeFilters: string[];
     excludeFilters: string[];
+    /** Session 154 — Include / Exclude Sources AS SUPPLIED: entries `srcpat`
+     *  or `dir/subdir=srcpat`, matched by the Data TA against the event's
+     *  `source` value. Older rows and fixtures carry no field — read them
+     *  through `includeSourcesOf` / `excludeSourcesOf` (undefined-safe). */
+    includeSources: string[];
+    excludeSources: string[];
     /** true when recovered from generated transforms.conf regexes — caps
      *  check 29 at 'likely' (§15.8a-17). Also set on READ when the stored
      *  pattern lists were clamped (§19.8a-7): a clamped list can never carry
@@ -173,6 +228,8 @@ export interface IngestParseResult {
     cutoffEpoch: number | null;
     includeFilters: string[];
     excludeFilters: string[];
+    includeSources: string[];
+    excludeSources: string[];
     filtersApproximate: boolean;
     cloudProviderStamp: CloudProviderStamp | null;
     sourceHost: string;
@@ -247,6 +304,27 @@ export const SOURCETYPE_CLZ_MAP: Record<string, string[]> = {
     'sap:sapstartsrv': ['sap/sapstartsrv'],
     'sap:saphostexec': ['sap/saphostexec'],
     'sap:saprouter': ['sap/saprouter'],
+};
+
+/**
+ * Session 155 - sourcetypes the Data TA can ALSO route WITHOUT folder fields,
+ * by the envelope's `source` path, through a routing stanza that carries no
+ * `@logserv_filter` annotation on purpose (it declares no folder). Today one:
+ * `[set_srctype_hana_tracelogs_by_source]` routes the HANA trace files SAP
+ * delivers under undefined/undefined (no clz_dir / clz_subdir key) into
+ * `sap:hana:tracelogs`. Folder filters cannot reach those events: Exclude
+ * Filters never drop them, a folder include gate drops them unless a plain
+ * Include Sources entry lets them back in, and a plain Exclude Sources entry
+ * can drop them (a `dir/subdir=pattern` entry needs the folder fields, so it
+ * never matches them).
+ *
+ * The value is the Include Sources entry that keeps them - wording for the
+ * operator, never evaluated here. bin/check-diagnostics.js derives the keys
+ * from the Data TA's un-annotated, source-keyed routing stanzas and fails on
+ * drift in both directions; every key needs its `NOFOLDER_LINES` entry.
+ */
+export const SOURCETYPE_NOFOLDER_SOURCES: Record<string, string[]> = {
+    'sap:hana:tracelogs': ['/usr/sap/*/HDB??/*/trace/*'],
 };
 
 /** Tag-scoped panels carry no sourcetype (DNS scopes by `tag=dns`) — this
@@ -395,18 +473,22 @@ const clzPathMatches = (path: string, pattern: string): boolean => {
     return fnmatchLite(vd, pd) && fnmatchLite(vs, ps);
 };
 
-/** Pass-all include per the GENERATOR: the effective (slash-bearing) list is
- *  empty (nothing generated an include gate), or contains a pattern whose
- *  both segments match everything. */
+/** Does one include entry match every event? Exactly the generator's
+ *  is_pass_all_include test: a bare `*`, or a `dir/subdir` pattern whose two
+ *  segments are star runs (`**` alone is not a valid pattern — the Data TA
+ *  refuses it — so it is not treated as one). */
+const isMatchAllEntry = (p: string): boolean => {
+    if (p === '*') return true;
+    const parts = p.split('/');
+    return parts.length === 2 && /^\*+$/.test(parts[0]) && /^\*+$/.test(parts[1]);
+};
+
+/** Pass-all include per the GENERATOR (session 154, the Data TA's fix 4d):
+ *  the effective (slash-bearing) list is empty (nothing generated an include
+ *  gate), or ANY entry matches everything — `*` + `/` + `*` or a bare `*`. */
 export const isPassAllInclude = (patterns: string[]): boolean => {
-    const eff = effectivePatterns(patterns);
-    if (eff.length === 0) return true;
-    return eff.some((p) => {
-        const i = p.indexOf('/');
-        const d = p.slice(0, i);
-        const s = p.slice(i + 1);
-        return /^\*+$/.test(d) && /^\*+$/.test(s);
-    });
+    if (patterns.some(isMatchAllEntry)) return true;
+    return effectivePatterns(patterns).length === 0;
 };
 
 /** Would an event with this clz path survive the supplied filters?
@@ -454,6 +536,132 @@ export const namedRuleFor = (paths: string[], facts: IngestFacts): string => {
         'not covered by the configured include list `' +
         (facts.includeFilters.join(', ') || '*/*') +
         '`'
+    );
+};
+
+// ---------------------------------------------------------------------------
+// Source rules — Include / Exclude Sources (session 154)
+// ---------------------------------------------------------------------------
+
+/** The short note every surface carries when a source rule is in effect. */
+export const SOURCE_RULES_NOTE = 'source rules may drop or keep some files of a folder';
+
+const stringList = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : [];
+
+/** Include Sources, undefined-safe (rows/fixtures from before session 154
+ *  carry no field and read as empty). */
+export const includeSourcesOf = (facts: IngestFacts | null | undefined): string[] =>
+    facts ? stringList((facts as { includeSources?: unknown }).includeSources) : [];
+
+/** Exclude Sources, undefined-safe. */
+export const excludeSourcesOf = (facts: IngestFacts | null | undefined): string[] =>
+    facts ? stringList((facts as { excludeSources?: unknown }).excludeSources) : [];
+
+/** `dir/subdir=srcpat` -> folder + source pattern; a plain entry has no folder. */
+export const splitSourceEntry = (entry: string): { folder: string | null; src: string } => {
+    const eq = entry.indexOf('=');
+    return eq === -1
+        ? { folder: null, src: entry }
+        : { folder: entry.slice(0, eq), src: entry.slice(eq + 1) };
+};
+
+/** Is any source rule IN EFFECT? None while the paste reports filtering
+ *  DISABLED — the Data TA then generates no filter stanza at all, and the S3
+ *  Direct preview shows no source note (an unknown state stays conservative).
+ *  Exclude Sources always act; Include Sources act only behind an include
+ *  gate — with a pass-all include list the Data TA refuses them at save and
+ *  ignores them at generation. */
+export const hasSourceRules = (facts: IngestFacts): boolean =>
+    facts.filterEnabled !== false &&
+    (excludeSourcesOf(facts).length > 0 ||
+        (includeSourcesOf(facts).length > 0 && !isPassAllInclude(facts.includeFilters)));
+
+/** Could Include Sources keep SOME events of these clz paths that the folder
+ *  include gate drops? A plain entry may match a file in any folder; a
+ *  `dir/subdir=srcpat` entry only in its own folder. Folder excludes run after
+ *  the include stages and still win, so an excluded path is never rescued. */
+export const includeSourcesMayKeep = (paths: string[], facts: IngestFacts): boolean => {
+    if (facts.filterEnabled !== true) return false;
+    const inc = includeSourcesOf(facts);
+    if (inc.length === 0 || isPassAllInclude(facts.includeFilters)) return false;
+    const effInc = effectivePatterns(facts.includeFilters);
+    const effExc = effectivePatterns(facts.excludeFilters);
+    return paths.some((path) => {
+        if (effInc.some((p) => clzPathMatches(path, p))) return false;
+        if (effExc.some((p) => clzPathMatches(path, p))) return false;
+        return inc.some((e) => {
+            const folder = splitSourceEntry(e).folder;
+            return folder === null || clzPathMatches(path, folder);
+        });
+    });
+};
+
+/** Session 155 - how the supplied filters treat the events of a type that
+ *  arrive WITHOUT folder fields (`SOURCETYPE_NOFOLDER_SOURCES`):
+ *   - 'none'    the type has no no-folder route;
+ *   - 'kept'    filtering is not reported enabled, or nothing the paste
+ *               shows can drop them (no include gate, no plain Exclude
+ *               Sources entry);
+ *   - 'dropped' the folder include gate drops them and no plain Include
+ *               Sources entry could let them back in;
+ *   - 'may'     a plain source rule may keep them (behind the gate) or drop
+ *               them - source paths are not evaluated here.
+ *  Folder rules never reach these events, and a `dir/subdir=pattern` source
+ *  entry needs the folder fields, so it never matches them either. The time
+ *  filter is check 28's dimension. */
+export type NoFolderStatus = 'kept' | 'dropped' | 'may' | 'none';
+
+export const noFolderStatus = (sourcetype: string, facts: IngestFacts): NoFolderStatus => {
+    if (!Object.prototype.hasOwnProperty.call(SOURCETYPE_NOFOLDER_SOURCES, sourcetype)) return 'none';
+    if (facts.filterEnabled !== true) return 'kept';
+    const plain = (list: string[]): string[] => list.filter((e) => splitSourceEntry(e).folder === null);
+    const plainInc = plain(includeSourcesOf(facts));
+    const plainExc = plain(excludeSourcesOf(facts));
+    const gateDrops = !isPassAllInclude(facts.includeFilters);
+    if (gateDrops && plainInc.length === 0) return 'dropped';
+    if (gateDrops || plainExc.length > 0) return 'may';
+    return 'kept';
+};
+
+/** The evidence line check 29 adds to a verdict about `sap:hana:tracelogs`
+ *  (user decision U41: only when filtering is on - check 29's own
+ *  precondition - and only on a HANA Trace panel, one that reads no-folder
+ *  types alone; a panel that also reads other types never gets it). */
+export const NOFOLDER_LINE =
+    '`sap:hana:tracelogs` can also arrive without folder fields (HANA trace files SAP delivers under ' +
+    'undefined/undefined, routed by their source path when the Data TA does so): folder filters do not ' +
+    'reach them — Exclude Filters never drop them, an Include Filters allow-list drops them unless an ' +
+    'Include Sources entry without a folder, such as /usr/sap/*/HDB??/*/trace/*, keeps them, and Exclude ' +
+    'Sources can drop them.';
+
+/** One evidence line per no-folder type (keys = SOURCETYPE_NOFOLDER_SOURCES,
+ *  pinned by the consistency test). */
+export const NOFOLDER_LINES: Record<string, string> = {
+    'sap:hana:tracelogs': NOFOLDER_LINE,
+};
+
+/** A bounded display form of a pattern list (reports, evidence lines). */
+export const patternListForDisplay = (list: string[], max = 10): string => {
+    if (list.length <= max) return list.join(', ');
+    return list.slice(0, max).join(', ') + `, … (+${list.length - max} more)`;
+};
+
+/** The evidence line a folder verdict carries when source rules are in effect
+ *  (null when none are). */
+export const sourceRulesLine = (facts: IngestFacts): string | null => {
+    if (!hasSourceRules(facts)) return null;
+    const parts: string[] = [];
+    const inc = includeSourcesOf(facts);
+    const exc = excludeSourcesOf(facts);
+    if (inc.length > 0 && !isPassAllInclude(facts.includeFilters)) {
+        parts.push(`include sources: ${patternListForDisplay(inc)}`);
+    }
+    if (exc.length > 0) parts.push(`exclude sources: ${patternListForDisplay(exc)}`);
+    return (
+        `The supplied configuration also has source rules (${parts.join('; ')}). They match file ` +
+        `paths, which this check cannot map to folders: ${SOURCE_RULES_NOTE}, so this verdict is ` +
+        'approximate.'
     );
 };
 
@@ -560,16 +768,35 @@ const emptyParse = (): IngestParseResult => ({
     cutoffEpoch: null,
     includeFilters: [],
     excludeFilters: [],
+    includeSources: [],
+    excludeSources: [],
     filtersApproximate: false,
     cloudProviderStamp: null,
     sourceHost: '',
 });
 
+/** The settings keys every settings-shaped paste is read through. The two
+ *  source keys (session 154) are OPTIONAL: an older Data TA has no source
+ *  rules, and a local conf omits keys left at their empty default — so an
+ *  absent source key reads as an empty list and never makes a paste partial. */
+type SettingsKey =
+    | 'filter_enabled'
+    | 'include_filters'
+    | 'exclude_filters'
+    | 'days_in_past'
+    | 'include_sources'
+    | 'exclude_sources';
+
+const CORE_SETTINGS_KEYS: SettingsKey[] = [
+    'filter_enabled',
+    'include_filters',
+    'exclude_filters',
+    'days_in_past',
+];
+
 const finishFromSettings = (
     r: IngestParseResult,
-    fields: Partial<
-        Record<'filter_enabled' | 'include_filters' | 'exclude_filters' | 'days_in_past', string>
-    >,
+    fields: Partial<Record<SettingsKey, string>>,
     nowSec: number,
 ): IngestParseResult => {
     const seen = Object.keys(fields).filter(
@@ -579,6 +806,7 @@ const finishFromSettings = (
         r.parseStatus = 'unparsed';
         return r;
     }
+    const seenCore = CORE_SETTINGS_KEYS.filter((k) => typeof fields[k] === 'string').length;
     if (typeof fields.filter_enabled === 'string') {
         r.filterEnabled = fields.filter_enabled.trim() === '1';
     }
@@ -588,6 +816,12 @@ const finishFromSettings = (
     if (typeof fields.exclude_filters === 'string') {
         r.excludeFilters = parseCommaPatterns(fields.exclude_filters);
     }
+    if (typeof fields.include_sources === 'string') {
+        r.includeSources = parseCommaPatterns(fields.include_sources);
+    }
+    if (typeof fields.exclude_sources === 'string') {
+        r.excludeSources = parseCommaPatterns(fields.exclude_sources);
+    }
     if (typeof fields.days_in_past === 'string') {
         const n = parseInt(fields.days_in_past.trim() || '0', 10);
         r.daysInPast = Number.isFinite(n) && n >= 0 ? n : null;
@@ -596,7 +830,8 @@ const finishFromSettings = (
         r.cutoffEpoch = cutoffFromDays(r.daysInPast, nowSec);
     }
     r.parseStatus =
-        r.filterEnabled !== null && (r.filterEnabled === false || seen >= 4)
+        r.filterEnabled !== null &&
+        (r.filterEnabled === false || seenCore >= CORE_SETTINGS_KEYS.length)
             ? 'parsed'
             : 'partial';
     return r;
@@ -633,7 +868,9 @@ const parseRestJson = (text: string, nowSec: number): IngestParseResult | null =
     } else if (
         typeof d.days_in_past === 'string' ||
         typeof d.include_filters === 'string' ||
-        typeof d.filter_enabled === 'string'
+        typeof d.filter_enabled === 'string' ||
+        typeof d.include_sources === 'string' ||
+        typeof d.exclude_sources === 'string'
     ) {
         content = d; // a bare content object pasted on its own
     }
@@ -650,6 +887,8 @@ const parseRestJson = (text: string, nowSec: number): IngestParseResult | null =
             include_filters: pick('include_filters'),
             exclude_filters: pick('exclude_filters'),
             days_in_past: pick('days_in_past'),
+            include_sources: pick('include_sources'),
+            exclude_sources: pick('exclude_sources'),
         },
         nowSec,
     );
@@ -686,12 +925,15 @@ const parseRestXml = (text: string, nowSec: number): IngestParseResult | null =>
             include_filters: key('include_filters'),
             exclude_filters: key('exclude_filters'),
             days_in_past: key('days_in_past'),
+            include_sources: key('include_sources'),
+            exclude_sources: key('exclude_sources'),
         },
         nowSec,
     );
 };
 
 /**
+ * OLD SHAPE (Data TA builds before session 154).
  * Pull `dir/subdir` pattern pairs out of a generated include/exclude REGEX.
  * Inverse of the fnmatch fragments: the generator (`fnmatch.translate`) maps
  * `*` -> `.*`, `?` -> `.`, and every LITERAL char through `re.escape` — which
@@ -762,6 +1004,341 @@ const clzPairsFromRegex = (
     return { pairs: out, unrecoverable };
 };
 
+// ---------------------------------------------------------------------------
+// CURRENT SHAPE (session 154, design s154 §5a) — the exact text the Data
+// TA's filter_utils.py generates, built from parts here so tool transport
+// cannot halve a backslash. bin/check-diagnostics.js pins these two constants
+// against FILTER_REGEX_SKIP / FILTER_REGEX_GAP in the Data TA source, and the
+// consistency test pins them against the design's golden strings:
+//   SKIP          = (?:^|"_raw"\s*:\s*"(?:[^"\\]++|\\.)*+")
+//   LA(key, frag) = (?=(?:(?!"_raw")[^\n])*?"key"\s*:\s*"frag")
+//   chunk REGEX   = SKIP + "(?:" + entries joined by "|" + ")"
+//   folder d/s -> LA(clz_dir,f(d)) LA(clz_subdir,f(s)); source p ->
+//   LA(source,f(p)); combined d/s=p -> all three, in that order.
+//   f(p) (§5b, linear '*'): split p on runs of '*' into S0 .. Sk;
+//     k = 0  -> seg(S0)
+//     k >= 1 -> seg(S0) + (?>[^"]*?seg(Si)) per MIDDLE segment + [^"]* + seg(Sk)
+//   seg(S): '?' -> [^"], [A-Za-z0-9_] as is, any other allowed character
+//   backslash-escaped. With at most one '*' this is the §5a text; a run
+//   such as '**' gives one [^"]* where §5a wrote one per '*' (runs
+//   included) — both forms are read here.
+//   bin/check-diagnostics.js pins the TA_FILTER_FRAG_* constants below
+//   against the literals filter_utils.py writes them with.
+// ---------------------------------------------------------------------------
+
+const BSL = String.fromCharCode(92);
+
+/** The anchor every chunk REGEX starts with: the line start, or just past the
+ *  `_raw` value (AWS envelopes carry `_raw` first). */
+export const TA_FILTER_REGEX_SKIP =
+    '(?:^|"_raw"' +
+    BSL +
+    's*:' +
+    BSL +
+    's*"(?:[^"' +
+    BSL +
+    BSL +
+    ']++|' +
+    BSL +
+    BSL +
+    '.)*+")';
+
+/** The gap inside each lookahead: any characters on the line, never across a
+ *  `"_raw"` key. */
+export const TA_FILTER_REGEX_GAP = '(?:(?!"_raw")[^' + BSL + 'n])*?';
+
+const LA_OPEN = '(?=' + TA_FILTER_REGEX_GAP + '"';
+const KEY_SEP = '"' + BSL + 's*:' + BSL + 's*"';
+const LA_CLOSE = '")';
+
+/** The value fragments the generator writes (design s154 §5a / §5b):
+ *  `[^"]*` for a `*` (§5b: only the `*` before the LAST segment), `[^"]` for
+ *  a `?`, and `(?>[^"]*?` + seg + `)` for a `*` followed by a MIDDLE
+ *  segment. bin/check-diagnostics.js pins all four against the literals in
+ *  filter_utils.py. */
+export const TA_FILTER_FRAG_STAR = '[^"]*';
+export const TA_FILTER_FRAG_ONE = '[^"]';
+export const TA_FILTER_FRAG_ATOM_OPEN = '(?>' + TA_FILTER_FRAG_STAR + '?';
+export const TA_FILTER_FRAG_ATOM_CLOSE = ')';
+
+const FRAG_STAR = TA_FILTER_FRAG_STAR;
+const FRAG_ONE = TA_FILTER_FRAG_ONE;
+const ATOM_OPEN = TA_FILTER_FRAG_ATOM_OPEN;
+const ATOM_CLOSE = TA_FILTER_FRAG_ATOM_CLOSE;
+const WORD_CHAR = /^[A-Za-z0-9_]$/;
+
+type ShapeKind = 'folder' | 'source' | 'combined';
+
+/** One fixed-length segment token at `i`: `[^"]` -> `?`, a backslash +
+ *  printable non-word character -> that character, a word character as
+ *  itself. Anything else -> null — including `[^"]*` (a wildcard, never part
+ *  of a segment) and an escaped `*` or `?` (the generator writes those only
+ *  as wildcards, so a literal one cannot be read back as a pattern). */
+const readSegmentToken = (t: string, i: number): { out: string; next: number } | null => {
+    if (t.slice(i, i + FRAG_STAR.length) === FRAG_STAR) return null;
+    if (t.slice(i, i + FRAG_ONE.length) === FRAG_ONE) return { out: '?', next: i + FRAG_ONE.length };
+    const ch = t.charAt(i);
+    if (ch === BSL) {
+        const c = t.charAt(i + 1);
+        // the generator escapes only printable NON-word characters; a
+        // backslash before a word character is a regex class (\s, \d ...)
+        if (c === '' || WORD_CHAR.test(c) || c < ' ' || c > '~' || c === '*' || c === '?') return null;
+        return { out: c, next: i + 2 };
+    }
+    if (ch !== '' && WORD_CHAR.test(ch)) return { out: ch, next: i + 1 };
+    return null;
+};
+
+/** One atomic middle segment `(?>[^"]*?SEG)` at `i` (§5b): a NON-empty run of
+ *  segment tokens, then the group's close. Anything else -> null. */
+const readAtomicSegment = (t: string, i: number): { out: string; next: number } | null => {
+    if (t.slice(i, i + ATOM_OPEN.length) !== ATOM_OPEN) return null;
+    let j = i + ATOM_OPEN.length;
+    let seg = '';
+    for (;;) {
+        if (t.slice(j, j + ATOM_CLOSE.length) === ATOM_CLOSE) {
+            return seg === '' ? null : { out: '*' + seg, next: j + ATOM_CLOSE.length };
+        }
+        const tok = readSegmentToken(t, j);
+        if (!tok) return null;
+        seg += tok.out;
+        j = tok.next;
+    }
+};
+
+/**
+ * One lookahead at `at`: its key and its value with the fragment inverted.
+ * The value must be one the generator writes, in either version:
+ *   §5a — any sequence of `[^"]*` (-> `*`) and segment tokens, no atomic
+ *         group (one `[^"]*` per `*`, so a `**` reads back as `**`);
+ *   §5b — seg(S0), one or more `(?>[^"]*?SEG)` (-> `*SEG`), then the single
+ *         `[^"]*` and the last segment (the §5b text of k >= 2 star runs;
+ *         k = 1 is the §5a text when the run is one `*`, and a single
+ *         `[^"]*` for a longer run such as `**`, where §5a wrote one per `*`).
+ * An atomic group therefore may only follow the first segment or another
+ * atomic group, and must be followed by another one or by that `[^"]*`:
+ * leftmost placement of a segment equals the glob only when a `*` comes
+ * next, so `(?>[^"]*?a)b` (a literal after the group), an atomic group last
+ * in the value or after a `[^"]*`, an empty or nested group or one holding
+ * a `[^"]*` are all residue. Anything else -> null.
+ */
+const readLookahead = (
+    t: string,
+    at: number,
+): { key: string; value: string; next: number } | null => {
+    if (t.slice(at, at + LA_OPEN.length) !== LA_OPEN) return null;
+    let i = at + LA_OPEN.length;
+    const keyEnd = t.indexOf('"', i);
+    if (keyEnd === -1) return null;
+    const key = t.slice(i, keyEnd);
+    if (key !== 'clz_dir' && key !== 'clz_subdir' && key !== 'source') return null;
+    i = keyEnd;
+    if (t.slice(i, i + KEY_SEP.length) !== KEY_SEP) return null;
+    i += KEY_SEP.length;
+    // first: in seg(S0); atoms: after >= 1 atomic group; last: after the
+    // §5b [^"]* (the last segment); plain: after a [^"]* with no atomic
+    // group (§5a, any further [^"]* allowed)
+    let state: 'first' | 'atoms' | 'last' | 'plain' = 'first';
+    let value = '';
+    while (i < t.length) {
+        if (t.slice(i, i + LA_CLOSE.length) === LA_CLOSE) {
+            if (state === 'atoms') return null; // an atomic group last in the value
+            return { key, value, next: i + LA_CLOSE.length };
+        }
+        if (t.slice(i, i + ATOM_OPEN.length) === ATOM_OPEN) {
+            if (state !== 'first' && state !== 'atoms') return null;
+            const atom = readAtomicSegment(t, i);
+            if (!atom) return null;
+            value += atom.out;
+            i = atom.next;
+            state = 'atoms';
+            continue;
+        }
+        if (t.slice(i, i + FRAG_STAR.length) === FRAG_STAR) {
+            if (state === 'last') return null; // §5b has one [^"]* after the groups
+            value += '*';
+            i += FRAG_STAR.length;
+            state = state === 'atoms' ? 'last' : state === 'first' ? 'plain' : state;
+            continue;
+        }
+        if (state === 'atoms') return null; // only a group or [^"]* may follow a group
+        const tok = readSegmentToken(t, i);
+        if (!tok) return null;
+        value += tok.out;
+        i = tok.next;
+    }
+    return null;
+};
+
+/**
+ * Invert one current-shape chunk REGEX into its entries, in order. Every
+ * entry must be a complete run of lookaheads in one of the three key orders
+ * the generator writes, ending at a `|` or at the end of the group, and its
+ * recovered values must pass the Data TA's grammar; anything else marks the
+ * REGEX unrecoverable (the caller degrades parseStatus to 'partial') and the
+ * scan resynchronizes at the next `|` + lookahead.
+ */
+const recoverShapeEntries = (
+    regexText: string,
+): { entries: Array<{ kind: ShapeKind; pattern: string }>; unrecoverable: boolean } => {
+    const entries: Array<{ kind: ShapeKind; pattern: string }> = [];
+    const t = regexText.trim();
+    if (t.slice(0, TA_FILTER_REGEX_SKIP.length) !== TA_FILTER_REGEX_SKIP) {
+        return { entries, unrecoverable: true };
+    }
+    const rest = t.slice(TA_FILTER_REGEX_SKIP.length);
+    if (rest.slice(0, 3) !== '(?:' || rest.charAt(rest.length - 1) !== ')') {
+        return { entries, unrecoverable: true };
+    }
+    const body = rest.slice(3, rest.length - 1);
+    let unrecoverable = false;
+    let i = 0;
+    for (;;) {
+        const keys: string[] = [];
+        const vals: string[] = [];
+        let la = readLookahead(body, i);
+        while (la) {
+            keys.push(la.key);
+            vals.push(la.value);
+            i = la.next;
+            la = readLookahead(body, i);
+        }
+        const terminated = i === body.length || body.charAt(i) === '|';
+        const sig = keys.join(',');
+        let rec: { kind: ShapeKind; pattern: string } | null = null;
+        if (terminated) {
+            if (sig === 'clz_dir,clz_subdir' && SEGMENT_OK.test(vals[0]) && SEGMENT_OK.test(vals[1])) {
+                rec = { kind: 'folder', pattern: vals[0] + '/' + vals[1] };
+            } else if (sig === 'source' && srcpatOk(vals[0])) {
+                rec = { kind: 'source', pattern: vals[0] };
+            } else if (
+                sig === 'clz_dir,clz_subdir,source' &&
+                SEGMENT_OK.test(vals[0]) &&
+                SEGMENT_OK.test(vals[1]) &&
+                srcpatOk(vals[2])
+            ) {
+                rec = { kind: 'combined', pattern: vals[0] + '/' + vals[1] + '=' + vals[2] };
+            }
+        }
+        if (rec) entries.push(rec);
+        else unrecoverable = true;
+        if (i === body.length) break;
+        if (terminated) {
+            i += 1; // past the '|'
+            if (i === body.length) {
+                unrecoverable = true; // an empty last alternative matches every event
+                break;
+            }
+            continue;
+        }
+        const nxt = body.indexOf('|' + LA_OPEN, i);
+        if (nxt === -1) break;
+        i = nxt + 1;
+    }
+    return { entries, unrecoverable };
+};
+
+const pushUnique = (list: string[], v: string): void => {
+    if (list.indexOf(v) === -1) list.push(v);
+};
+
+/** A folder list (include_allow / exclude) from one REGEX of EITHER shape. */
+const recoverFolderList = (regexText: string): { list: string[]; unrecoverable: boolean } => {
+    const t = regexText.trim();
+    if (t.slice(0, TA_FILTER_REGEX_SKIP.length) === TA_FILTER_REGEX_SKIP) {
+        const rec = recoverShapeEntries(t);
+        const list: string[] = [];
+        let unrecoverable = rec.unrecoverable;
+        for (const e of rec.entries) {
+            if (e.kind === 'folder') pushUnique(list, e.pattern);
+            else unrecoverable = true; // a source entry in a folder stanza
+        }
+        return { list, unrecoverable: unrecoverable || list.length === 0 };
+    }
+    const old = clzPairsFromRegex(t);
+    // the generator never writes a stanza without a pattern: nothing
+    // recovered means a foreign REGEX, never an empty (= pass-all) list
+    return { list: old.pairs, unrecoverable: old.unrecoverable || old.pairs.length === 0 };
+};
+
+/** A source list (include_sources / exclude_sources) — current shape only
+ *  (older Data TA builds never wrote these stanzas). */
+const recoverSourceList = (regexText: string): { list: string[]; unrecoverable: boolean } => {
+    const rec = recoverShapeEntries(regexText);
+    const list: string[] = [];
+    let unrecoverable = rec.unrecoverable;
+    for (const e of rec.entries) {
+        if (e.kind === 'folder') unrecoverable = true; // a folder entry in a source stanza
+        else pushUnique(list, e.pattern);
+    }
+    return { list, unrecoverable: unrecoverable || list.length === 0 };
+};
+
+/** The generated filter stanzas: two singles and four LIST stanzas, whose
+ *  chunk n >= 2 is named `<name>_<n>`. */
+const FILTER_SINGLE_STANZAS = ['logserv_filter_include_drop', 'logserv_filter_time_drop'];
+const FILTER_LIST_STANZA_RE =
+    /^(logserv_filter_(?:include_allow|include_sources|exclude_sources|exclude))(?:_([1-9][0-9]*))?$/;
+
+/** Every `[logserv_filter_…]` header in the paste, in order (duplicates kept).
+ *  Any header text up to the closing bracket counts (session 154 review): a
+ *  chunk header of another shape (`[logserv_filter_exclude-2]`) must surface
+ *  as an UNKNOWN stanza, never be skipped while the list reads as whole. */
+const filterStanzaNames = (text: string): string[] => {
+    const out: string[] = [];
+    const re = /\[(logserv_filter_[^\]\r\n]*)\]/g;
+    let m = re.exec(text);
+    while (m) {
+        out.push(m[1]);
+        m = re.exec(text);
+    }
+    return out;
+};
+
+/** Is this a stanza name the current or the older generator writes? */
+const knownFilterStanza = (name: string): boolean => {
+    if (FILTER_SINGLE_STANZAS.indexOf(name) !== -1) return true;
+    const m = FILTER_LIST_STANZA_RE.exec(name);
+    return !!m && (m[2] === undefined || parseInt(m[2], 10) >= 2);
+};
+
+/**
+ * The REGEX lines of one list stanza and its chunks, in chunk order. `broken`
+ * when a chunk is missing (chunk 1 is the plain name; chunks must run 1..n
+ * without a gap), duplicated, or carries no REGEX line — a paste cut in the
+ * middle of a list can never read as the whole list.
+ */
+const listStanzaRegexes = (
+    text: string,
+    base: string,
+    names: string[],
+): { present: boolean; regexes: string[]; broken: boolean } => {
+    const nums: number[] = [];
+    for (const n of names) {
+        const m = FILTER_LIST_STANZA_RE.exec(n);
+        if (!m || m[1] !== base) continue;
+        nums.push(m[2] === undefined ? 1 : parseInt(m[2], 10));
+    }
+    if (nums.length === 0) return { present: false, regexes: [], broken: false };
+    const sorted = nums.slice().sort((a, b) => a - b);
+    let broken = false;
+    for (let k = 0; k < sorted.length; k += 1) {
+        if (sorted[k] !== k + 1) broken = true; // gap, duplicate, or no chunk 1
+    }
+    const regexes: string[] = [];
+    for (let k = 1; k <= sorted.length; k += 1) {
+        if (sorted.indexOf(k) === -1) continue;
+        const body = stanzaBody(text, k === 1 ? base : base + '_' + String(k));
+        const rm = body === null ? null : /REGEX\s*=\s*([^\n\r]+)/.exec(body);
+        if (rm) regexes.push(rm[1]);
+        else broken = true;
+    }
+    return { present: true, regexes, broken };
+};
+
+/** Exact-name stanza lookup: `[name]` with its closing bracket, so
+ *  `logserv_filter_exclude` never matches `[logserv_filter_exclude_sources]`
+ *  or `[logserv_filter_exclude_2]`. */
 const stanzaBody = (text: string, stanza: string): string | null => {
     const at = text.indexOf('[' + stanza + ']');
     if (at === -1) return null;
@@ -853,38 +1430,100 @@ const parseTransformsConf = (text: string, nowSec: number): IngestParseResult | 
     }
     r.filterEnabled = true;
     let anyUnrecoverable = false;
+    const notes: string[] = [];
+    /* Session 154 — the generated block now has six stanza families and
+     * chunked lists. Every `[logserv_filter_…]` header must be one the
+     * generator writes; a header-looking text that yields no well-formed
+     * name (e.g. a paste collapsed onto one line) cannot be read either. */
+    const names = filterStanzaNames(text);
+    const unknownNames = names.filter((n) => !knownFilterStanza(n));
+    if (names.length === 0) anyUnrecoverable = true;
+    if (unknownNames.length > 0) {
+        anyUnrecoverable = true;
+        notes.push(
+            `Unrecognized filter stanza(s): ${unknownNames
+                .slice(0, 5)
+                // a header may now hold any text: show only its leading
+                // identifier characters, an ellipsis for the rest
+                .map((n) => {
+                    const shown = (/^[A-Za-z0-9_.:-]*/.exec(n.slice(0, 64)) || [''])[0];
+                    return '[' + shown + (shown.length < n.length ? '…' : '') + ']';
+                })
+                .join(', ')}.`,
+        );
+    }
     const timeBody = stanzaBody(text, 'logserv_filter_time_drop');
-    if (timeBody) {
+    if (timeBody !== null) {
         const rm = /REGEX\s*=\s*([^\n\r]+)/.exec(timeBody);
         if (rm) {
             r.cutoffEpoch = recoverCutoffFromRegex(rm[1], nowSec);
             if (r.cutoffEpoch === null) anyUnrecoverable = true;
+        } else {
+            anyUnrecoverable = true;
         }
     }
-    const incBody = stanzaBody(text, 'logserv_filter_include_allow');
-    if (incBody) {
-        const rm = /REGEX\s*=\s*([^\n\r]+)/.exec(incBody);
-        if (rm) {
-            const rec = clzPairsFromRegex(rm[1]);
-            r.includeFilters = rec.pairs;
+    const readList = (
+        base: string,
+        recover: (regexText: string) => { list: string[]; unrecoverable: boolean },
+    ): { present: boolean; list: string[] } => {
+        const st = listStanzaRegexes(text, base, names);
+        if (st.broken) anyUnrecoverable = true;
+        const list: string[] = [];
+        for (const rx of st.regexes) {
+            const rec = recover(rx);
             if (rec.unrecoverable) anyUnrecoverable = true;
+            for (const p of rec.list) pushUnique(list, p);
         }
-    } else {
-        r.includeFilters = []; // no include gate generated = pass-all
+        return { present: st.present, list };
+    };
+    // The include gate: [logserv_filter_include_drop] (REGEX = .) and the
+    // allow list are generated TOGETHER; no gate = pass-all.
+    const hasDrop = names.indexOf('logserv_filter_include_drop') !== -1;
+    const allow = readList('logserv_filter_include_allow', recoverFolderList);
+    r.includeFilters = allow.list;
+    if (hasDrop !== allow.present) {
+        anyUnrecoverable = true; // half a gate: either reading would be a guess
     }
-    const excBody = stanzaBody(text, 'logserv_filter_exclude');
-    if (excBody) {
-        const rm = /REGEX\s*=\s*([^\n\r]+)/.exec(excBody);
-        if (rm) {
-            const rec = clzPairsFromRegex(rm[1]);
-            r.excludeFilters = rec.pairs;
-            if (rec.unrecoverable) anyUnrecoverable = true;
-        }
+    const exc = readList('logserv_filter_exclude', recoverFolderList);
+    r.excludeFilters = exc.list;
+    const incSrc = readList('logserv_filter_include_sources', recoverSourceList);
+    r.includeSources = incSrc.list;
+    if (incSrc.present && !allow.present) {
+        anyUnrecoverable = true; // include sources exist only behind an include gate
     }
-    r.parseStatus = anyUnrecoverable ? 'partial' : 'parsed';
+    const excSrc = readList('logserv_filter_exclude_sources', recoverSourceList);
+    r.excludeSources = excSrc.list;
     if (anyUnrecoverable) {
-        r.parseNote =
-            'Some generated filter expressions could not be faithfully reconstructed (hand-edited or from a different version?) — the recovered fields are incomplete.';
+        notes.unshift(
+            'Some generated filter expressions could not be faithfully reconstructed (hand-edited, cut off, or from a different version?) — the recovered fields are incomplete.',
+        );
+    }
+    /* A paste that holds ONLY source-rule stanzas (no complete marker pair,
+     * no folder or time stanza) proves filtering is enabled, but its absent
+     * folder stanzas are not evidence of pass-all — they may simply not have
+     * been copied (understand_critic "Missed places" 5). */
+    const hasFilterEnd = text.indexOf(FILTER_MARKER_END) !== -1;
+    const blockComplete = hasFilterStart && hasFilterEnd;
+    const folderEvidence =
+        blockComplete || hasDrop || allow.present || exc.present || timeBody !== null;
+    if (!folderEvidence) {
+        notes.push(
+            'The paste carries only source-rule stanzas — the include/exclude folder filters and the time cutoff are not in it; paste the whole local/transforms.conf.',
+        );
+    }
+    /* Session 154 review — the generator always writes BOTH marker lines,
+     * so one without the other means the paste was cut. The stanzas written
+     * last (the excludes, Exclude Sources, the last chunks) are what a
+     * bottom cut loses, so such a paste must never read as whole. */
+    const cutOff = hasFilterStart !== hasFilterEnd;
+    if (cutOff) {
+        notes.push(
+            'The paste has only one of the two filter-block marker lines — it looks cut off; re-paste the whole local/transforms.conf.',
+        );
+    }
+    r.parseStatus = anyUnrecoverable || !folderEvidence || cutOff ? 'partial' : 'parsed';
+    if (notes.length > 0) {
+        r.parseNote = (r.parseNote ? r.parseNote + ' ' : '') + notes.join(' ');
     }
     return r;
 };
@@ -919,15 +1558,18 @@ const parseSettingsConf = (text: string, nowSec: number): IngestParseResult | nu
             include_filters: key('include_filters'),
             exclude_filters: key('exclude_filters'),
             days_in_past: key('days_in_past'),
+            include_sources: key('include_sources'),
+            exclude_sources: key('exclude_sources'),
         },
         nowSec,
     );
 };
 
 /**
- * Parse a SCRUBBED paste. Never throws; never returns null — unparseable
- * input comes back `{parseStatus: 'unparsed'}` and is still stored verbatim
- * (scrubbed), per §3.4. CRLF/CR are normalized before sniffing (§15.8a-19).
+ * Parse a paste. Never throws; never returns null — unparseable input comes
+ * back `{parseStatus: 'unparsed'}` and is still stored verbatim (scrubbed),
+ * per §3.4. CRLF/CR are normalized before sniffing (§15.8a-19). The page
+ * calls it through `prepareIngestPaste` (raw structure, scrubbed storage).
  */
 export const parseIngestPaste = (scrubbed: string, nowSec: number): IngestParseResult => {
     const text = scrubbed.replace(/\r\n?/g, '\n').trim();
@@ -941,6 +1583,58 @@ export const parseIngestPaste = (scrubbed: string, nowSec: number): IngestParseR
     );
 };
 
+/** The context-free, high-signal secret shapes of `scrubPaste` (URL
+ *  credentials, AWS access keys, sk- API keys, JWTs) — the only rules that
+ *  still apply to a filter value that passes the Data TA's grammar. */
+const scrubHighSignal = (v: string): string =>
+    v
+        .replace(/(https?:\/\/)([^/\s:@]+):([^/\s@]+)@/gi, `$1${REDACTED}@`)
+        .replace(/\bAKIA[0-9A-Z]{16}\b/g, REDACTED)
+        .replace(/\bsk-[A-Za-z0-9_-]{20,}\b/g, REDACTED)
+        .replace(/\beyJ[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_-]+){1,2}\b/g, REDACTED);
+
+/**
+ * The page's save path (session 154 review): read the STRUCTURE from the raw
+ * paste, store only SCRUBBED text. `scrubPaste` over-redacts by design
+ * (§15.8a-21), and its flag and key=value rules fire inside legal filter
+ * values — the escaped hyphen-u of `/var/log/unattended-upgrades/*` in a
+ * generated REGEX, `sshkey=` in a `dir/subdir=srcpat` entry, `token:` in a
+ * source pattern — which turned a legal configuration into a partial or
+ * unparsed paste, or a redacted entry, and could flip a Data Doctor verdict.
+ * So the paste is parsed raw (capped like the scrubber) and every parsed
+ * string that is stored or displayed is scrubbed:
+ *  - a list entry that passes the Data TA's grammar (a value the TA accepts:
+ *    no whitespace, quotes or separators) is kept, with only the high-signal
+ *    secret shapes above still redacted in it;
+ *  - any other entry, the host string and the parse note go through the full
+ *    scrubber (a scrubbed entry fails the grammar, so the read side clamps
+ *    it as before).
+ * `scrubbed` is what is stored (`scrubbedRaw`); the raw text never is.
+ */
+export const prepareIngestPaste = (
+    raw: string,
+    nowSec: number,
+): { scrubbed: string; parsed: IngestParseResult } => {
+    const scrubbed = scrubPaste(raw);
+    const capped =
+        raw.length > MAX_INGEST_PASTE_CHARS ? raw.slice(0, MAX_INGEST_PASTE_CHARS) : raw;
+    const p = parseIngestPaste(capped, nowSec);
+    const clean = (list: string[], itemOk: (e: string) => boolean): string[] =>
+        list.map((e) => (itemOk(e) ? scrubHighSignal(e) : scrubPaste(e)));
+    return {
+        scrubbed,
+        parsed: {
+            ...p,
+            parseNote: scrubPaste(p.parseNote),
+            sourceHost: scrubPaste(p.sourceHost),
+            includeFilters: clean(p.includeFilters, patternOk),
+            excludeFilters: clean(p.excludeFilters, patternOk),
+            includeSources: clean(p.includeSources, sourceEntryOk),
+            excludeSources: clean(p.excludeSources, sourceEntryOk),
+        },
+    };
+};
+
 // ---------------------------------------------------------------------------
 // Fingerprints + confidence discipline (§15.8a-8/12)
 // ---------------------------------------------------------------------------
@@ -951,7 +1645,9 @@ export const parseIngestPaste = (scrubbed: string, nowSec: number): IngestParseR
  * byte-indistinguishable from what a DS-managed Heavy Forwarder's endpoint
  * returns REGARDLESS of the pushed configuration (and from an unconfigured
  * install). Every surface that renders the disabled elimination must hedge
- * when this is set, and the boundary line keeps the ask.
+ * when this is set, and the boundary line keeps the ask. The source-rule
+ * lists default to empty too (session 154), so a paste carrying one is not
+ * the defaults shape.
  */
 export const isDefaultsShape = (facts: IngestFacts): boolean =>
     (facts.inputShape === 'rest-json' ||
@@ -961,7 +1657,9 @@ export const isDefaultsShape = (facts: IngestFacts): boolean =>
     facts.daysInPast === 7 &&
     facts.excludeFilters.length === 0 &&
     facts.includeFilters.length === 1 &&
-    facts.includeFilters[0] === '*/*';
+    facts.includeFilters[0] === '*/*' &&
+    includeSourcesOf(facts).length === 0 &&
+    excludeSourcesOf(facts).length === 0;
 
 export type SuppliedConfidence = 'confirmed' | 'likely' | 'possible';
 
@@ -983,6 +1681,15 @@ export const minConfidence = (
 ): SuppliedConfidence => {
     const order: SuppliedConfidence[] = ['possible', 'likely', 'confirmed'];
     return order[Math.min(order.indexOf(a), order.indexOf(b))];
+};
+
+/** The ceiling for PER-TYPE (folder) verdicts — check 29: the supplied cap,
+ *  and at most 'likely' while a source rule is in effect, because source
+ *  rules may drop or keep some files of a folder (session 154). The time
+ *  cutoff (check 28) is unaffected by source rules and keeps the plain cap. */
+export const folderVerdictCap = (facts: IngestFacts, nowSec: number): SuppliedConfidence => {
+    const cap = suppliedConfidenceCap(facts, nowSec);
+    return hasSourceRules(facts) ? minConfidence(cap, 'likely') : cap;
 };
 
 // ---------------------------------------------------------------------------
@@ -1022,6 +1729,8 @@ export const factsToRecord = (facts: IngestFacts, appBuild: string): Record<stri
         parse_note: facts.parseNote,
         include_filters_json: JSON.stringify(facts.includeFilters),
         exclude_filters_json: JSON.stringify(facts.excludeFilters),
+        include_sources_json: JSON.stringify(includeSourcesOf(facts)),
+        exclude_sources_json: JSON.stringify(excludeSourcesOf(facts)),
         filters_approximate: facts.filtersApproximate ? 1 : 0,
         scrubbed_raw: facts.parseStatus === 'parsed' ? '' : facts.scrubbedRaw,
         app_build: appBuild,
@@ -1053,20 +1762,53 @@ const patternOk = (p: string): boolean => {
     return SEGMENT_OK.test(p.slice(0, i)) && SEGMENT_OK.test(p.slice(i + 1));
 };
 
+/** Session 154 — the Data TA's source-pattern grammar (design s154 §4):
+ *  1..512 of [A-Za-z0-9/._:*?+@~-] with at least one character that is not
+ *  `*`, `?` or `/` (a match-everything source pattern is refused at save). */
+const SRCPAT_CHARS_OK = new RegExp('^[A-Za-z0-9/._:*?+@~-]+$');
+const SRCPAT_HAS_LITERAL = new RegExp('[^*?/]');
+const srcpatOk = (p: string): boolean =>
+    p.length > 0 &&
+    p.length <= INGEST_MAX_SOURCE_PATTERN_CHARS &&
+    SRCPAT_CHARS_OK.test(p) &&
+    SRCPAT_HAS_LITERAL.test(p);
+
+/** One Include/Exclude Sources entry: `srcpat`, or `dir/subdir=srcpat` whose
+ *  folder follows the folder-filter segment grammar (exactly one '/'). */
+export const sourceEntryOk = (e: string): boolean => {
+    if (e.length === 0 || e.length > INGEST_MAX_SOURCE_ENTRY_CHARS) return false;
+    const { folder, src } = splitSourceEntry(e);
+    if (folder === null) return srcpatOk(src);
+    const i = folder.indexOf('/');
+    if (i === -1) return false;
+    return (
+        SEGMENT_OK.test(folder.slice(0, i)) &&
+        SEGMENT_OK.test(folder.slice(i + 1)) &&
+        srcpatOk(src)
+    );
+};
+
 /** §19.8a-7 (H17) — the read-side clamp is NOT silent: `clamped` is true
  *  whenever the returned list differs from what the row stored (entries
  *  dropped by the grammar clamp, the count cap, or an unreadable encoding),
  *  and `looksLikeIngestFacts` folds it into `filtersApproximate` so a
- *  clamped list can never carry an exact-shape confidence. */
-const readPatternList = (v: unknown): { list: string[]; clamped: boolean } => {
+ *  clamped list can never carry an exact-shape confidence. Shared by the
+ *  folder lists and (session 154) the source lists, each with its own
+ *  grammar and count cap; an over-long stored string is not even parsed. */
+const readPatternList = (
+    v: unknown,
+    itemOk: (p: string) => boolean = patternOk,
+    maxItems: number = INGEST_MAX_PATTERNS,
+): { list: string[]; clamped: boolean } => {
     if (typeof v !== 'string' || v.length === 0) return { list: [], clamped: false };
+    if (v.length > INGEST_MAX_LIST_JSON_CHARS) return { list: [], clamped: true };
     try {
         const arr = JSON.parse(v);
         if (!Array.isArray(arr)) return { list: [], clamped: true };
         const list = arr
             .filter((p): p is string => typeof p === 'string')
-            .filter(patternOk)
-            .slice(0, INGEST_MAX_PATTERNS);
+            .filter(itemOk)
+            .slice(0, maxItems);
         return { list, clamped: list.length !== arr.length };
     } catch (_e) {
         return { list: [], clamped: true };
@@ -1100,6 +1842,17 @@ export const looksLikeIngestFacts = (row: unknown, nowSec: number): IngestFacts 
     const cutoffRaw = numOrNull(r.cutoff_epoch);
     const inc = readPatternList(r.include_filters_json);
     const exc = readPatternList(r.exclude_filters_json);
+    // Session 154 — the source lists: rows written before them carry
+    // neither field (absent -> empty, not clamped); a non-string value is
+    // unreadable (clamped -> approximate), never trusted.
+    const srcList = (v: unknown): { list: string[]; clamped: boolean } =>
+        v === undefined || v === null
+            ? { list: [], clamped: false }
+            : typeof v !== 'string'
+              ? { list: [], clamped: true }
+              : readPatternList(v, sourceEntryOk, INGEST_MAX_SOURCE_PATTERNS);
+    const incSrc = srcList(r.include_sources_json);
+    const excSrc = srcList(r.exclude_sources_json);
     // §19.8a-9 — sanitize-on-read allowlist: absent, empty and any other
     // value all read as null (the row is world-writable).
     const stampRaw = str(r.cloud_provider_stamp);
@@ -1126,8 +1879,15 @@ export const looksLikeIngestFacts = (row: unknown, nowSec: number): IngestFacts 
                 : null,
         includeFilters: inc.list,
         excludeFilters: exc.list,
+        includeSources: incSrc.list,
+        excludeSources: excSrc.list,
         // §19.8a-7 — a read-side clamp makes the shape inexact.
-        filtersApproximate: bool01(r.filters_approximate) === true || inc.clamped || exc.clamped,
+        filtersApproximate:
+            bool01(r.filters_approximate) === true ||
+            inc.clamped ||
+            exc.clamped ||
+            incSrc.clamped ||
+            excSrc.clamped,
         cloudProviderStamp: stamp,
         scrubbedRaw: scrubbed,
     };
@@ -1213,11 +1973,15 @@ export const fetchIngestFacts = async (
 const fmtUtc = (epochSeconds: number): string =>
     new Date(epochSeconds * 1000).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
 
+/** Build 384 (F3 of the KV-ACL review): the supplier name is the one the browser sent with the paste - the
+ *  collection is writable by every role - so every surface shows it as not verified. */
+export const suppliedByText = (name: string): string => `${name || 'an unknown user'} (name not verified)`;
+
 /** The provenance line every §15 surface carries — "recorded as", never an
  *  attestation (§15.8a-13). */
 export const provenanceLine = (facts: IngestFacts): string => {
     const host = facts.sourceHost ? `, from host ${facts.sourceHost}` : '';
-    return `Recorded as supplied by ${facts.suppliedBy || 'an unknown user'}, ${fmtUtc(facts.suppliedAt)}${host}. Operator-supplied, not observed from this search head.`;
+    return `Recorded as supplied by ${suppliedByText(facts.suppliedBy)}, ${fmtUtc(facts.suppliedAt)}${host}. Operator-supplied, not observed from this search head.`;
 };
 
 export const factsAreStale = (facts: IngestFacts, nowSec: number): boolean =>
@@ -1263,7 +2027,7 @@ export const ingestFactsSummary = (facts: IngestFacts): string => {
         );
     }
     if (facts.filterEnabled === false) {
-        const base = `The supplied configuration (recorded as supplied by ${facts.suppliedBy || 'an unknown user'}) reports ingest filtering DISABLED.`;
+        const base = `The supplied configuration (recorded as supplied by ${suppliedByText(facts.suppliedBy)}) reports ingest filtering DISABLED.`;
         return (isDefaultsShape(facts) ? `${base} ${DEFAULTS_SHAPE_HEDGE}` : base) + stampClause(facts);
     }
     if (facts.filterEnabled === null) {
@@ -1291,6 +2055,22 @@ export const ingestFactsSummary = (facts: IngestFacts): string => {
             ? `exclude: ${facts.excludeFilters.join(', ')}`
             : 'no excludes',
     );
+    // Session 154 — the source lists, only when supplied (older rows and
+    // pastes have none, and their wording stays as it was).
+    const incSrc = includeSourcesOf(facts);
+    const excSrc = excludeSourcesOf(facts);
+    if (incSrc.length > 0) {
+        parts.push(
+            `include sources: ${patternListForDisplay(incSrc)}` +
+                (isPassAllInclude(facts.includeFilters)
+                    ? ' (no effect: every log type is already included)'
+                    : ''),
+        );
+    }
+    if (excSrc.length > 0) parts.push(`exclude sources: ${patternListForDisplay(excSrc)}`);
+    if (hasSourceRules(facts)) {
+        parts.push(`${SOURCE_RULES_NOTE}, so the per-type verdicts are approximate`);
+    }
     return parts.join('; ') + '.' + stampClause(facts);
 };
 

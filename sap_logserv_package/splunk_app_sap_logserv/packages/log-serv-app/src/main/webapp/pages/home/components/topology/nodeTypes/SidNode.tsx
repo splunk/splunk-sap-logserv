@@ -13,9 +13,11 @@ import NodeTooltip from './NodeTooltip';
 /**
  * Custom node for SAP SIDs (focused + secondary).
  *
- * Focused SIDs render as a large circle with a colored health-percentage
- * halo (red < 90, orange 90-94, teal >= 95). Secondary SIDs render as a
- * smaller white-bordered disc.
+ * Every SID renders as a large circle with a cyan-accent halo (the disc
+ * border; build 324 gave both traffic kinds the same chrome). Build 377
+ * removed the health-percentage colouring (red < 90, orange 90-94, teal
+ * >= 95): no saved search ever wrote the node health_pct it read, so every
+ * halo was already the accent. Node health is the call-bucket ring.
  *
  * When `tag === 'DB'` (HANA SIDs detected via SID prefix or via the
  * `knownHanaSystems` set in useTopologyData) the inner disc content swaps
@@ -35,7 +37,6 @@ interface SidNodeData {
     kind: 'sid_focused' | 'sid_secondary';
     tag: string;
     eventCount: number;
-    healthPct?: number;
     /** Build 206 / session 036 — drives the thin outer call-bucket ring. */
     callBuckets?: { normal: number; warning: number; error: number };
     /** Build 326 — the Details-panel selection (the cyan glow), decoupled
@@ -44,12 +45,10 @@ interface SidNodeData {
     [key: string]: unknown;
 }
 
-const haloColor = (pct?: number): string => {
-    if (pct == null) return logservTheme.colors.cyanAccent;
-    if (pct >= 95) return logservTheme.colors.teal;
-    if (pct >= 90) return logservTheme.colors.orange;
-    return logservTheme.colors.red;
-};
+/* Build 377 (U38, option 2a) - the halo is the constant accent it always
+ * rendered: the health percentage that used to colour it was never written
+ * by any saved search. */
+const HALO_COLOR = logservTheme.colors.cyanAccent;
 
 /** SVG arc-path helper. Returns a path string for a circular arc going
  *  CLOCKWISE from `startAngle` to `endAngle` (both in degrees, where 0 is
@@ -344,7 +343,7 @@ const Wrapper = styled.div<{
          * Build 324 / session 109 — kinds re-labeled High/Regular
          * Traffic SID with IDENTICAL chrome (user decision): both render
          * at the former focused geometry (100 px wrap, 92 px disc, 4 px
-         * health halo). Derived geometry updated in lockstep again:
+         * accent halo). Derived geometry updated in lockstep again:
          * FloatingEdge anchorFor sid_secondary → cy+50/r69,
          * sizeForNode secondary → 145×175, DEFAULT_COLLIDE_SECONDARY →
          * 130. The kind prop remains for labels + Systems-panel logic. */
@@ -411,7 +410,7 @@ const Wrapper = styled.div<{
 
 const SidNode: React.FC<NodeProps> = ({ id, data, selected }) => {
     const d = data as SidNodeData;
-    const halo = haloColor(d.healthPct);
+    const halo = HALO_COLOR;
     /* Build 325 (plan item D1) — the window host count arrives via context,
      * keyed by the node's LABEL (the bulk read's scope), NOT via node data:
      * the count lands seconds after layout, and a data-borne count would

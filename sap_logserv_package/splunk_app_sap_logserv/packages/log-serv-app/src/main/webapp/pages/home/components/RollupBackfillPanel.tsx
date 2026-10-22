@@ -8,7 +8,36 @@ import {
     ALL_AGG_SEARCHES,
     ALL_COLLECTIONS,
     FIXED30_BACKFILL_STANZAS,
+    UPGRADE_NOTE_CLEAR_THEN_BACKFILL,
+    UPGRADE_NOTE_BACKFILL_ONLY,
+    UPGRADE_NOTE_TRACE_NAMES,
 } from '../routes/rollupRegistry';
+import {
+    planRollupItems,
+    newRunId,
+    mergeAllowed,
+    stageDeletable,
+    stagedArmRowVerdict,
+    mergeRowVerdict,
+    partQuery,
+    orphanQuery,
+    serverClockSec,
+    readJobFacts,
+    stagedArmResult,
+    mergeJobVerdict,
+    stageCountSpl,
+    classifyPartCount,
+    decidePartCount,
+    guardedMergeSpl,
+    STAGE_COLLECTION,
+} from '../utils/backfillPlan';
+import type {
+    PlannedItem,
+    JobFacts,
+    MergeOutcome,
+    PartCountAttempt,
+    PartCountDecision,
+} from '../utils/backfillPlan';
 import { COMPLETE_SECONDS } from '../utils/diagEnvironment';
 import {
     resolveWindow,
@@ -28,6 +57,26 @@ import {
     INITIAL_TRACKER,
 } from '../utils/backfillPoll';
 import type { ArmVerdict, PollObservation, PollTracker, RowOutcome } from '../utils/backfillPoll';
+import {
+    classifyCheckResponse,
+    runCheck,
+    createLimiter,
+    describeCheckFailure,
+    CHECK_CONCURRENCY,
+} from '../utils/historyCheck';
+import type { CheckAttempt, CheckBatch, CheckResult } from '../utils/historyCheck';
+import {
+    LATE_CHECK_STANZA,
+    LATE_CHECK_ROLLUP_KEY,
+    LATE_CHECK_DAYS,
+    LATE_LIST_MAX,
+    lateCheckWindow,
+    parseLateRows,
+    lateBackfillWindows,
+    describeLateDay,
+    summarizeLate,
+} from '../utils/lateArrivals';
+import type { LateDay } from '../utils/lateArrivals';
 
 /**
  * Dashboard Data — admin control for the entire KV-Store rollup data layer that
@@ -56,6 +105,18 @@ import type { ArmVerdict, PollObservation, PollTracker, RowOutcome } from '../ut
  *   byte-exact. `outputlookup append=true` upserts by `_key`, so re-running is
  *   idempotent + resumable. This panel ports that orchestration to the browser
  *   with limited concurrency + a progress bar.
+ *
+ *   EXCEPT for a tail that combines rows ACROSS arms (build 378, design_impact.md
+ *   F1): the Environment Topology nodes tail sums event_count over the arms, the
+ *   inventory tail keeps each entity's most recent SID over all of them (build
+ *   379: of the SIDs seen in its newest hour of activity, the one with the most
+ *   events; an exact tie writes no row, so the previous row stays). Per arm, the
+ *   last arm to finish overwrote the sum, and the SID with the one its own rows
+ *   chose. Those stanzas are STAGED: each arm (still a top-level
+ *   search) writes what the tail's stats reads into a scratch KV collection under
+ *   one part id, and once every arm of the part is done, one top-level combine
+ *   search reads that part back and runs the stanza's own tail. The planning is
+ *   pure and lives in utils/backfillPlan.ts with its proof.
  *
  * REST surface (all relative to the Splunk Web origin, `/en-US/splunkd/__raw/`):
  *   GET    saved/searches/<name>?output_mode=json              (info + SPL)
@@ -105,6 +166,19 @@ const RETENTION_DISPLAY = '365 days';
 /* The rollup registry moved to routes/rollupRegistry.ts in session 095 — the
    Missing-Data Diagnostic needs it too, and a second copy would drift (it
    already did once, session 062). */
+
+/** An upgrade note's rows, quoted as the table names them ("A", "B" and "C"),
+ *  from their registry keys (build 378) - so a renamed row cannot leave the note
+ *  naming a row the table no longer shows. */
+const upgradeRows = (keys: readonly string[]): string => {
+    const labels = keys
+        .map((k) => ROLLUPS.find((d) => d.key === k))
+        .filter((d): d is RollupDef => !!d)
+        .map((d) => `“${d.label}”`);
+    return labels.length > 1
+        ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
+        : labels.join('');
+};
 
 // ─── REST helpers (raw fetch — the repo's model for imperative dispatch/poll) ──
 /** Read Splunk Web's CSRF token (`splunkweb_csrf_token_<port>` cookie). */
@@ -182,6 +256,24 @@ const clearCollection = async (collection: string): Promise<boolean> => {
     }
 };
 
+/** DELETE the staged rows a KV query selects (utils/backfillPlan.ts): one part's
+ *  rows once the part is settled, or the rows a closed page left behind. Only
+ *  ever the stage collection, only ever with a query. Best effort: the stage is
+ *  scratch space no dashboard reads and no part reads another's rows, so a
+ *  failed delete costs storage, never data. */
+const deleteStageRows = async (query: Record<string, unknown>): Promise<boolean> => {
+    try {
+        const res = await fetch(
+            `${NS_PREFIX}/storage/collections/data/${STAGE_COLLECTION}?output_mode=json`
+                + `&query=${encodeURIComponent(JSON.stringify(query))}`,
+            { method: 'DELETE', credentials: 'same-origin', headers: postHeaders() },
+        );
+        return res.ok;
+    } catch {
+        return false;
+    }
+};
+
 /** GET the backfill saved search's `search` SPL string. */
 const fetchBackfillSpl = async (stanza: string): Promise<string | null> => {
     try {
@@ -239,18 +331,20 @@ const dispatchAdHoc = async (
     }
 };
 
-/** One status poll, reduced to an observation by the wait policy. A thrown
- *  fetch (network down) is a poll ERROR, never a verdict. */
-const pollJobOnce = async (sid: string): Promise<PollObservation> => {
+/** One status poll, reduced to an observation by the wait policy - and, for
+ *  the staged backfill (build 378), to what the job's entry proves about its
+ *  output (utils/backfillPlan.ts readJobFacts). A thrown fetch (network down)
+ *  is a poll ERROR, never a verdict. */
+const pollJobOnce = async (sid: string): Promise<{ obs: PollObservation; facts: JobFacts }> => {
     try {
         const res = await fetch(`${NS_PREFIX}/search/jobs/${encodeURIComponent(sid)}?output_mode=json`, {
             credentials: 'same-origin',
             headers: getHeaders(),
         });
         const body = res.ok ? await res.json().catch(() => null) : null;
-        return observeJob(res.status, body);
+        return { obs: observeJob(res.status, body), facts: readJobFacts(res.status, body) };
     } catch {
-        return { kind: 'error' };
+        return { obs: { kind: 'error' }, facts: { ok: false, reason: 'its job could not be read (no response)' } };
     }
 };
 
@@ -258,6 +352,9 @@ interface ArmOutcome {
     verdict: ArmVerdict;
     /** null only when the dispatch itself failed. */
     sid: string | null;
+    /** The facts of the poll that ended the wait (the finished job's entry
+     *  when the verdict is done). */
+    facts: JobFacts;
 }
 
 /** Dispatch one arm and wait on the job (utils/backfillPoll.ts). Cancel stops
@@ -269,26 +366,85 @@ const runArm = async (
     latest: number,
     shouldCancel: () => boolean,
 ): Promise<ArmOutcome> => {
+    const noFacts: JobFacts = { ok: false, reason: 'its job was not read to the end' };
     const sid = await dispatchAdHoc(spl, earliest, latest);
-    if (!sid) return { verdict: 'failed', sid: null };
+    if (!sid) return { verdict: 'failed', sid: null, facts: { ok: false, reason: 'it could not be dispatched' } };
     const dispatchedAt = Date.now();
     let tracker: Readonly<PollTracker> = INITIAL_TRACKER;
     for (;;) {
-        if (shouldCancel()) return { verdict: 'detached', sid };
+        if (shouldCancel()) return { verdict: 'detached', sid, facts: noFacts };
         await new Promise((r) => window.setTimeout(r, pollDelayMs(Date.now() - dispatchedAt)));
-        if (shouldCancel()) return { verdict: 'detached', sid };
-        const d = decidePoll(await pollJobOnce(sid), tracker, Date.now(), dispatchedAt);
-        if (d.verdict !== 'continue') return { verdict: d.verdict, sid };
+        if (shouldCancel()) return { verdict: 'detached', sid, facts: noFacts };
+        const polled = await pollJobOnce(sid);
+        const d = decidePoll(polled.obs, tracker, Date.now(), dispatchedAt);
+        if (d.verdict !== 'continue') return { verdict: d.verdict, sid, facts: polled.facts };
         tracker = d.tracker;
     }
 };
 
-/** Blocking oneshot returning {n, m} for the completeness detector. n=0 → empty
- *  collection; m = oldest bucket epoch (0 if empty / flat collection). */
-const fetchOldestBucket = async (
-    collection: string,
-    bucketField: string,
-): Promise<{ n: number; m: number } | null> => {
+/** One count of a staged part (utils/backfillPlan.ts stageCountSpl): a
+ *  blocking oneshot, classified like the history check. A thrown fetch counts
+ *  as busy (no response) and is retried by reconcilePart. */
+const stageCountOnce = async (part: string): Promise<PartCountAttempt> => {
+    const params = new URLSearchParams();
+    params.set('search', stageCountSpl(part));
+    params.set('output_mode', 'json');
+    params.set('count', '1');
+    const res = await fetch(`${NS_PREFIX}/search/jobs/oneshot?output_mode=json`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postHeaders(),
+        body: params.toString(),
+    });
+    const body = await res.json().catch(() => null);
+    return classifyPartCount(res.status, body);
+};
+
+/** Count a part until the stage holds exactly the rows its arms wrote, or the
+ *  retries run out (decidePartCount). 'stopped' = the run was cancelled or the
+ *  page closed while it waited. */
+const reconcilePart = async (
+    part: string,
+    expected: number,
+    stopped: () => boolean,
+): Promise<PartCountDecision | { kind: 'stopped' }> => {
+    for (let attempts = 1; ; attempts += 1) {
+        let a: PartCountAttempt;
+        try {
+            a = await stageCountOnce(part);
+        } catch {
+            a = { kind: 'busy', reason: 'no response from Splunk' };
+        }
+        const d = decidePartCount(a, expected, attempts);
+        if (d.kind !== 'retry') return d;
+        if (stopped()) return { kind: 'stopped' };
+        await new Promise((r) => window.setTimeout(r, d.delayMs));
+        if (stopped()) return { kind: 'stopped' };
+    }
+};
+
+/** The server's clock (utils/backfillPlan.ts serverClockSec), from the Date
+ *  header of a cheap read - the orphan sweep never uses the browser's clock.
+ *  null when it cannot be read: the sweep is then skipped. */
+const serverNowSec = async (): Promise<number | null> => {
+    try {
+        const res = await fetch('/en-US/splunkd/__raw/services/server/info?output_mode=json', {
+            credentials: 'same-origin',
+            headers: getHeaders(),
+        });
+        return res.ok ? serverClockSec(res.headers.get('Date')) : null;
+    } catch {
+        return null;
+    }
+};
+
+/** One history-check attempt: a blocking oneshot returning {n, m} - n = the
+ *  collection's rows (0 → empty), m = its oldest bucket epoch (0 if empty / flat
+ *  collection) - classified by utils/historyCheck.ts (build 370). A missing
+ *  lookup definition answers HTTP 200 with ERROR messages and a zero row; the
+ *  classifier reads that as a failed check, not an empty collection. A thrown
+ *  fetch propagates: runCheck counts it as busy (no response) and retries. */
+const checkOnce = async (collection: string, bucketField: string): Promise<CheckAttempt> => {
     const params = new URLSearchParams();
     params.set(
         'search',
@@ -296,82 +452,70 @@ const fetchOldestBucket = async (
     );
     params.set('output_mode', 'json');
     params.set('count', '1');
-    try {
-        const res = await fetch(`${NS_PREFIX}/search/jobs/oneshot?output_mode=json`, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: postHeaders(),
-            body: params.toString(),
-        });
-        if (!res.ok) return null;
-        const json = await res.json();
-        const row = Array.isArray(json?.results) ? json.results[0] : undefined;
-        if (!row) return { n: 0, m: 0 }; // empty collection → 0 rows from stats
-        return { n: Number(row.n) || 0, m: Number(row.m) || 0 };
-    } catch {
-        return null;
-    }
+    const res = await fetch(`${NS_PREFIX}/search/jobs/oneshot?output_mode=json`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postHeaders(),
+        body: params.toString(),
+    });
+    const body = await res.json().catch(() => null);
+    return classifyCheckResponse(res.status, body);
 };
 
-/** Quote-aware union splitter — port of fix_backfill.py parse_union. Tracks
- *  double-quote state (counting consecutive preceding backslashes so an escaped
- *  backslash `\\"` is NOT mistaken for an escaped quote `\"`) so `[`/`]` inside
- *  quoted rex regexes (e.g. linux's "kernel:.*?\]...") don't confuse arm
- *  boundaries. Returns arms=[] for a single-pipeline (no `| union`) search — the
- *  caller then dispatches the whole SPL as one top-level search. */
-const parseUnion = (spl: string): { arms: string[]; tail: string } => {
-    const trimmed = spl.trim();
-    if (!/^\|\s*union\b/.test(trimmed)) return { arms: [], tail: '' };
-    const s = trimmed.replace(/^\|\s*union\s+/, '');
-    const arms: string[] = [];
-    let depth = 0;
-    let start = -1;
-    let rest = 0;
-    let inQ = false;
-    for (let i = 0; i < s.length; i += 1) {
-        const ch = s[i];
-        if (ch === '"') {
-            let bs = 0;
-            let j = i - 1;
-            while (j >= 0 && s[j] === '\\') {
-                bs += 1;
-                j -= 1;
-            }
-            if (bs % 2 === 0) inQ = !inQ;
-        } else if (!inQ) {
-            if (ch === '[') {
-                if (depth === 0) start = i + 1;
-                depth += 1;
-            } else if (ch === ']') {
-                depth -= 1;
-                if (depth === 0) {
-                    arms.push(s.slice(start, i).trim());
-                    rest = i + 1;
-                }
-            }
-        }
-    }
-    return { arms, tail: s.slice(rest).trim() };
+/** One attempt at the late-arriving data check (session 147, build 372): a
+ *  blocking oneshot of the LATE_CHECK_STANZA search over [earliest, latest),
+ *  classified by the history check's rules - a busy search head is retried, an
+ *  ERROR message fails it. The result rows go to `sink`. utils/lateArrivals.ts
+ *  says what the check compares and why. */
+const lateCheckOnce = async (
+    spl: string,
+    earliest: number,
+    latest: number,
+    sink: (rows: unknown) => void,
+): Promise<CheckAttempt> => {
+    const params = new URLSearchParams();
+    params.set('search', /^\s*(search\b|\|)/i.test(spl) ? spl : `search ${spl}`);
+    /* EPOCH, as in dispatchAdHoc: a formatted time would shift with the SH's zone. */
+    params.set('earliest_time', String(earliest));
+    params.set('latest_time', String(latest));
+    params.set('output_mode', 'json');
+    params.set('count', '0');
+    const res = await fetch(`${NS_PREFIX}/search/jobs/oneshot?output_mode=json`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: postHeaders(),
+        body: params.toString(),
+    });
+    const body = await res.json().catch(() => null);
+    const a = classifyCheckResponse(res.status, body);
+    if (a.kind === 'ok') sink((body as { results?: unknown } | null)?.results);
+    return a;
 };
 
-/** Build the flat list of top-level work-items (one per arm, or one whole SPL
- *  for single-pipeline backfills) for the given rollups. A logical rollup may
- *  have multiple backfill stanzas (topology=3, beaconing=2); arms across all its
- *  stanzas are flattened under the same key. */
-interface WorkItem {
+const sleepMs = (ms: number): Promise<void> => new Promise((r) => window.setTimeout(r, ms));
+
+/* The quote-aware union splitter (parseUnion) moved to utils/backfillPlan.ts in
+ * build 378, unchanged, beside the planner that uses it and the test that holds
+ * it to the old copy. */
+
+/** One top-level work-item of a run: a PlannedItem (utils/backfillPlan.ts -
+ *  its window, arm numbering, part and kind: a plain `<arm> <tail>` or single
+ *  pipeline, a staged arm, a part's combine search, or a failure marker) under
+ *  its rollup row. A logical rollup may have several backfill stanzas
+ *  (topology=4, beaconing=2); their arms are numbered across the row. */
+interface WorkItem extends PlannedItem {
     key: string;
     label: string;
-    spl: string;
-    armIndex: number;
-    armCount: number;
-    /** epoch seconds — this item's own window, which is NOT always the run's
-     *  window (the FIXED30 stanzas get a pinned 30 days). */
-    earliest: number;
-    latest: number;
-    /** "Jun 2025" when the arm was split into monthly chunks; '' when it runs
-     *  whole. Shown in the progress line so a failure names a re-runnable month. */
-    chunkLabel: string;
 }
+
+/** The progress line's name for an item: the arm and, for a split window, its
+ *  month or window ("Jun 2025") - a failure names something re-runnable. */
+const progressLabel = (it: WorkItem): string => {
+    const where = it.chunkLabel ? ` · ${it.chunkLabel}` : '';
+    return it.kind === 'merge'
+        ? `${it.label} (combining ${it.armCount > 1 ? 'arms' : 'results'}${where})`
+        : `${it.label} (arm ${it.armIndex}/${it.armCount}${where})`;
+};
 
 /**
  * Expand the selected rollups into dispatchable units.
@@ -390,13 +534,31 @@ interface WorkItem {
  * The FIXED30 stanzas take neither the run's window nor any chunking — see the
  * block comment on FIXED30_BACKFILL_STANZAS for why forcing them would be
  * silently wrong rather than merely slow.
+ *
+ * A run may carry SEVERAL windows (session 147, build 372): rebuilding the
+ * late-arriving days dispatches every arm once per run of consecutive days,
+ * each named in the progress line. The FIXED30 stanzas still run once.
+ *
+ * 3. STAGES (build 378) — a stanza whose tail combines rows across its arms
+ *    (the topology nodes and inventory) is planned part by part instead: per
+ *    window chunk, its arms (each writing to the stage), then that part's
+ *    combine search. Every other stanza is planned exactly as before; the
+ *    expansion is utils/backfillPlan.ts planRollupItems, held item for item to
+ *    the pre-378 algorithm by its consistency test. One run id per run makes
+ *    every part id unique.
  */
 const buildWorkItems = async (
     defs: RollupDef[],
-    win: ResolvedWindow,
+    wins: ResolvedWindow[],
     fixed30: ResolvedWindow,
 ): Promise<WorkItem[]> => {
     const items: WorkItem[] = [];
+    const runId = newRunId(Date.now(), Math.random());
+    let partNo = 0;
+    const nextPart = (): string => {
+        partNo += 1;
+        return `${runId}.${partNo}`;
+    };
     for (const def of defs) {
         const loaded = await Promise.all(
             def.backfillStanzas.map(async (stanza) => ({
@@ -404,41 +566,8 @@ const buildWorkItems = async (
                 spl: await fetchBackfillSpl(stanza),
             })),
         );
-        const arms: Array<{ spl: string; win: ResolvedWindow; chunk: boolean }> = [];
-        loaded.forEach(({ stanza, spl }) => {
-            if (!spl) return;
-            const pinned = FIXED30_BACKFILL_STANZAS.has(stanza);
-            const w = pinned ? fixed30 : win;
-            const { arms: parsed, tail } = parseUnion(spl);
-            if (parsed.length === 0) arms.push({ spl, win: w, chunk: !pinned });
-            else parsed.forEach((a) => arms.push({ spl: `${a} ${tail}`, win: w, chunk: !pinned }));
-        });
-        if (arms.length === 0) {
-            // every stanza was unreadable → one failed sentinel item
-            items.push({
-                key: def.key, label: def.label, spl: '', armIndex: 1, armCount: 1,
-                earliest: win.earliest, latest: win.latest, chunkLabel: '',
-            });
-            continue;
-        }
-        arms.forEach((arm, i) => {
-            const chunks = arm.chunk ? planChunks(arm.win.earliest, arm.win.latest) : [];
-            const units = chunks.length > 1
-                ? chunks
-                : [{ earliest: arm.win.earliest, latest: arm.win.latest, label: '' }];
-            units.forEach((u) => {
-                items.push({
-                    key: def.key,
-                    label: def.label,
-                    spl: arm.spl,
-                    armIndex: i + 1,
-                    armCount: arms.length,
-                    earliest: u.earliest,
-                    latest: u.latest,
-                    chunkLabel: units.length > 1 ? u.label : '',
-                });
-            });
-        });
+        planRollupItems(loaded, wins, fixed30, (s) => FIXED30_BACKFILL_STANZAS.has(s), nextPart)
+            .forEach((p) => items.push({ ...p, key: def.key, label: def.label }));
     }
     return items;
 };
@@ -726,18 +855,48 @@ const HistoryVal = styled.span<{ $tone: 'good' | 'absent' | 'error' | 'warn' | '
             : logservTheme.colors.textMuted};
     font-variant-numeric: tabular-nums;
 `;
+/* The History cell's and the banner's Re-check (build 370): text-sized, so a
+ * row that could not be measured keeps its height. */
+const RecheckLink = styled.button`
+    margin-left: 6px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: ${logservTheme.colors.cyanLight};
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+    &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+`;
 const RowActions = styled.div`
     display: inline-flex;
     gap: 6px;
     justify-content: flex-end;
 `;
 
-type CollStatus = 'complete' | 'incomplete' | 'running' | 'done' | 'error' | 'truncated' | 'unknown';
+/* 'checking' = a Re-check is measuring the row; 'checkfailed' = its history
+ * could not be measured (build 370 - before, that read as the muted "—"). */
+type CollStatus =
+    | 'complete'
+    | 'incomplete'
+    | 'running'
+    | 'done'
+    | 'error'
+    | 'truncated'
+    | 'checking'
+    | 'checkfailed'
+    | 'unknown';
 interface CollState {
     status: CollStatus;
     oldestBucketMs: number; // 0 if empty
     armsDone: number;
     armsTotal: number;
+    /** Why the history could not be measured, one line per collection (status
+     *  'checkfailed'); shown on hover. */
+    checkError?: string;
 }
 interface AggState {
     /** existing aggregate searches that are enabled. */
@@ -749,6 +908,15 @@ interface AggState {
     cron: string;
     next: string | null;
 }
+/** The late-arriving data check (session 147, build 372). */
+type LateState =
+    | { kind: 'idle' }
+    | { kind: 'checking' }
+    /** The check cannot judge right now: no usable Multi-Cloud Overview rollup. */
+    | { kind: 'unavailable'; reason: string }
+    | { kind: 'failed'; reason: string }
+    /** `since` = the window's start, epoch seconds. */
+    | { kind: 'done'; days: LateDay[]; since: number };
 const seedColl = (prev: CollState | undefined, status: CollStatus): CollState => ({
     status,
     oldestBucketMs: prev?.oldestBucketMs ?? 0,
@@ -766,15 +934,32 @@ const fmtAge = (ms: number): string => {
     return `${days.toFixed(1)}d of history`;
 };
 
-/** Fetch + combine completeness across a rollup's bucketed collections. */
+type EntryHistory =
+    | { status: 'complete' | 'incomplete'; oldestMs: number }
+    | { status: 'checkfailed'; oldestMs: 0; checkError: string };
+
+/** Measure + combine completeness across a rollup's bucketed collections. Each
+ *  check runs through the panel's limiter (at most CHECK_CONCURRENCY in flight)
+ *  under the retry policy in utils/historyCheck.ts (build 370). Before, every
+ *  row's checks fired at once and any refusal turned the row into "—"; right
+ *  after a backfill that was most of the table. A row any of whose checks
+ *  produced no measurement is 'checkfailed', with the reasons. */
 const fetchEntryHistory = async (
     def: RollupDef,
-): Promise<{ status: 'complete' | 'incomplete' | 'unknown'; oldestMs: number }> => {
-    const results = await Promise.all(
-        def.completenessCollections.map((c) => fetchOldestBucket(c, def.bucketField)),
+    limit: <T>(task: () => Promise<T>) => Promise<T>,
+    batch: CheckBatch,
+): Promise<EntryHistory> => {
+    const results: CheckResult[] = await Promise.all(
+        def.completenessCollections.map((c) =>
+            limit(() => runCheck(() => checkOnce(c, def.bucketField), sleepMs, batch))),
     );
-    if (results.some((r) => r === null)) return { status: 'unknown', oldestMs: 0 };
-    const rs = results as Array<{ n: number; m: number }>;
+    const rs: Array<{ n: number; m: number }> = [];
+    const failures: string[] = [];
+    results.forEach((r, i) => {
+        if (r.ok) rs.push({ n: r.n, m: r.m });
+        else failures.push(describeCheckFailure(def.completenessCollections[i], r));
+    });
+    if (failures.length > 0) return { status: 'checkfailed', oldestMs: 0, checkError: failures.join('\n') };
     const nowSec = Date.now() / 1000;
     const complete = rs.every((r) => r.n > 0 && r.m > 0 && r.m <= nowSec - COMPLETE_SECONDS);
     const anyEmpty = rs.some((r) => r.n === 0 || r.m === 0);
@@ -791,6 +976,12 @@ const RollupBackfillPanel: React.FC = () => {
     const [busy, setBusy] = useState<boolean>(false);
     const [togglingMaster, setTogglingMaster] = useState<boolean>(false);
     const [clearingAll, setClearingAll] = useState<boolean>(false);
+    /** A Re-check of rows whose history could not be measured is running. */
+    const [rechecking, setRechecking] = useState<boolean>(false);
+    /** The history checks' limiter - at most CHECK_CONCURRENCY in flight across
+     *  the refresh, the per-row re-measure during a run and Re-check. One per
+     *  panel: a panel closed mid-check stops its checks and never delays the next. */
+    const [checkLimit] = useState(() => createLimiter(CHECK_CONCURRENCY));
     const [rowOp, setRowOp] = useState<Record<string, 'toggle' | 'clear'>>({});
     const [progress, setProgress] = useState<{ done: number; total: number; current: string }>({
         done: 0,
@@ -807,6 +998,8 @@ const RollupBackfillPanel: React.FC = () => {
      *  Partial because most rows have none - a plain Record would type every
      *  lookup as present and make the completeness fallback look unreachable. */
     const [runOutcome, setRunOutcome] = useState<Partial<Record<string, RowOutcome>>>({});
+    /** What the late-arriving data check found the last time it ran. */
+    const [late, setLate] = useState<LateState>({ kind: 'idle' });
     /** false once unmounted → guards every post-await setState. */
     const mountedRef = useRef<boolean>(true);
     /** user-requested cancel → stops dispatching new arms (in-flight + already-
@@ -816,15 +1009,79 @@ const RollupBackfillPanel: React.FC = () => {
      *  otherwise launch two pools before the first setBusy(true) commits. */
     const runningRef = useRef<boolean>(false);
 
+    /** Run the late-arriving data check against the Multi-Cloud Overview
+     *  rollup's measured history and aggregation state (session 147, build
+     *  372). Read-only: one oneshot through the history checks' limiter and
+     *  retry policy. */
+    const runLateCheck = useCallback(
+        async (coll: CollState | undefined, agg: AggState | undefined): Promise<void> => {
+            const ref = ROLLUPS.find((d) => d.key === LATE_CHECK_ROLLUP_KEY);
+            const name = ref ? ref.label : 'Multi-Cloud Overview';
+            const unavailable = (reason: string): void => {
+                if (mountedRef.current) setLate({ kind: 'unavailable', reason });
+            };
+            if (!coll || coll.status === 'checkfailed' || coll.status === 'unknown') {
+                unavailable(`the ${name} rollup's history could not be measured`);
+                return;
+            }
+            if (!agg || agg.existCount === 0) {
+                unavailable(`the ${name} aggregate search was not found`);
+                return;
+            }
+            if (agg.enabledCount === 0) {
+                unavailable(`the ${name} aggregation is switched off, so its rollup cannot serve as the reference`);
+                return;
+            }
+            const w = lateCheckWindow(Date.now(), coll.oldestBucketMs);
+            if (!w) {
+                unavailable(`the ${name} rollup holds less than three hours of settled history`);
+                return;
+            }
+            setLate({ kind: 'checking' });
+            const spl = await fetchBackfillSpl(LATE_CHECK_STANZA);
+            if (!mountedRef.current) return;
+            if (!spl) {
+                setLate({ kind: 'failed', reason: `the saved search ${LATE_CHECK_STANZA} could not be read` });
+                return;
+            }
+            const got: { rows: unknown } = { rows: null };
+            const batch: CheckBatch = { saturated: false, stopped: () => !mountedRef.current };
+            const r = await checkLimit(() => runCheck(
+                () => lateCheckOnce(spl, w.earliest, w.latest, (x) => {
+                    got.rows = x;
+                }),
+                sleepMs,
+                batch,
+            ));
+            if (!mountedRef.current) return;
+            if (!r.ok) {
+                setLate({ kind: 'failed', reason: describeCheckFailure(LATE_CHECK_STANZA, r) });
+                return;
+            }
+            /* The search always ends with its summary row (day_ts="all"), even
+             * when nothing is late - an answer without it is not a clean one. */
+            const summary = Array.isArray(got.rows)
+                && (got.rows as Array<{ day_ts?: unknown } | null>).some((x) => !!x && x.day_ts === 'all');
+            if (!summary) {
+                setLate({ kind: 'failed', reason: `${LATE_CHECK_STANZA}: the check returned no summary row` });
+                return;
+            }
+            setLate({ kind: 'done', days: parseLateRows(got.rows), since: w.earliest });
+        },
+        [checkLimit],
+    );
+
     /** Detect per-rollup completeness + aggregation state. */
     const refresh = useCallback(async () => {
         setLoading(true);
         const colls: Record<string, CollState> = {};
         const aggs: Record<string, AggState> = {};
+        /* One batch per refresh; it stops when the panel closes. */
+        const batch: CheckBatch = { saturated: false, stopped: () => !mountedRef.current };
         await Promise.all(
             ROLLUPS.map(async (def) => {
                 const [hist, infos] = await Promise.all([
-                    fetchEntryHistory(def),
+                    fetchEntryHistory(def, checkLimit, batch),
                     Promise.all(def.aggregateSearches.map(fetchSavedSearchInfo)),
                 ]);
                 colls[def.key] = {
@@ -832,6 +1089,7 @@ const RollupBackfillPanel: React.FC = () => {
                     oldestBucketMs: hist.oldestMs,
                     armsDone: 0,
                     armsTotal: 0,
+                    checkError: hist.status === 'checkfailed' ? hist.checkError : undefined,
                 };
                 const existing = infos.filter((i) => i.exists);
                 aggs[def.key] = {
@@ -847,7 +1105,8 @@ const RollupBackfillPanel: React.FC = () => {
         setCollStates(colls);
         setAggStates(aggs);
         setLoading(false);
-    }, []);
+        void runLateCheck(colls[LATE_CHECK_ROLLUP_KEY], aggs[LATE_CHECK_ROLLUP_KEY]);
+    }, [checkLimit, runLateCheck]);
 
     useEffect(() => {
         mountedRef.current = true;
@@ -859,7 +1118,55 @@ const RollupBackfillPanel: React.FC = () => {
         };
     }, [refresh]);
 
-    const incompleteDefs = ROLLUPS.filter((d) => collStates[d.key]?.status !== 'complete');
+    /** Measure again the rows whose history could not be measured (build 370).
+     *  Read-only; each row updates as its own checks finish. */
+    const handleRecheck = useCallback(
+        async (defs: RollupDef[]) => {
+            if (defs.length === 0) return;
+            setRechecking(true);
+            setCollStates((prev) => {
+                const next = { ...prev };
+                defs.forEach((d) => {
+                    if (next[d.key]) next[d.key] = { ...next[d.key], status: 'checking', checkError: undefined };
+                });
+                return next;
+            });
+            const batch: CheckBatch = { saturated: false, stopped: () => !mountedRef.current };
+            await Promise.all(
+                defs.map(async (def) => {
+                    const hist = await fetchEntryHistory(def, checkLimit, batch);
+                    if (!mountedRef.current) return;
+                    const measured: CollState = {
+                        status: hist.status,
+                        oldestBucketMs: hist.oldestMs,
+                        armsDone: 0,
+                        armsTotal: 0,
+                        checkError: hist.status === 'checkfailed' ? hist.checkError : undefined,
+                    };
+                    setCollStates((prev) => ({ ...prev, [def.key]: measured }));
+                    /* The late-arriving data check is judged against this row. */
+                    if (def.key === LATE_CHECK_ROLLUP_KEY) {
+                        void runLateCheck(measured, aggStates[LATE_CHECK_ROLLUP_KEY]);
+                    }
+                }),
+            );
+            if (mountedRef.current) setRechecking(false);
+        },
+        [checkLimit, aggStates, runLateCheck],
+    );
+
+    /** "check again" on the late-arriving data row. */
+    const handleLateRecheck = useCallback(() => {
+        void runLateCheck(collStates[LATE_CHECK_ROLLUP_KEY], aggStates[LATE_CHECK_ROLLUP_KEY]);
+    }, [runLateCheck, collStates, aggStates]);
+
+    /* A row whose history could not be measured is neither complete nor
+     * incomplete: it is left out of "backfill needed" and offered a Re-check. */
+    const incompleteDefs = ROLLUPS.filter((d) => {
+        const s = collStates[d.key]?.status;
+        return s !== 'complete' && s !== 'checkfailed' && s !== 'checking';
+    });
+    const checkFailedDefs = ROLLUPS.filter((d) => collStates[d.key]?.status === 'checkfailed');
     const allComplete = !loading && ROLLUPS.every((d) => collStates[d.key]?.status === 'complete');
 
     // ── master aggregation state (derived from existing aggregate searches) ──
@@ -881,7 +1188,9 @@ const RollupBackfillPanel: React.FC = () => {
             ? 'disabled'
             : 'mixed';
 
-    const anyOtherBusy = busy || togglingMaster || clearingAll;
+    /* A Re-check only reads, but it rewrites the rows it measures - so nothing
+     * that changes a row's state starts while it runs. */
+    const anyOtherBusy = busy || togglingMaster || clearingAll || rechecking;
 
     /* Window selection. Deliberately NOT persisted: a backfill window is a
      * decision about one run, and a remembered 365 would be an expensive
@@ -906,11 +1215,20 @@ const RollupBackfillPanel: React.FC = () => {
         : 0;
     const startBackfill = (defs: RollupDef[]): void => {
         if (!winResult.ok || !fixed30Result.ok) return;
-        void runBackfill(defs, winResult.window, fixed30Result.window);
+        void runBackfill(defs, [winResult.window], fixed30Result.window);
+    };
+    /* The late-arriving days, one window per run of consecutive UTC days
+     * (session 147). Every rollup is rebuilt for them: the check names
+     * sourcetypes, and which rollups read which sourcetype is not recorded. */
+    const lateDays: LateDay[] = late.kind === 'done' ? late.days : [];
+    const lateWins = lateDays.length ? lateBackfillWindows(lateDays, Date.now()) : null;
+    const startLateBackfill = (): void => {
+        if (!lateWins || !lateWins.ok || !fixed30Result.ok) return;
+        void runBackfill(ROLLUPS, lateWins.windows, fixed30Result.window);
     };
 
     const runBackfill = useCallback(
-        async (defs: RollupDef[], win: ResolvedWindow, fixed30: ResolvedWindow) => {
+        async (defs: RollupDef[], wins: ResolvedWindow[], fixed30: ResolvedWindow) => {
             if (defs.length === 0) return;
             if (runningRef.current) return; // re-entrancy guard (busy is async)
             runningRef.current = true;
@@ -936,7 +1254,7 @@ const RollupBackfillPanel: React.FC = () => {
                     return next;
                 });
 
-                const items = await buildWorkItems(defs, win, fixed30);
+                const items = await buildWorkItems(defs, wins, fixed30);
                 const failedKeys = items.filter((it) => !it.spl);
                 const runnable = items.filter((it) => it.spl);
                 const totals: Record<string, number> = {};
@@ -955,11 +1273,26 @@ const RollupBackfillPanel: React.FC = () => {
                     setCollStates((prev) => (prev[key]
                         ? { ...prev, [key]: { ...prev[key], oldestBucketMs: REMEASURING } }
                         : prev));
-                    const hist = await fetchEntryHistory(def);
+                    const hist = await fetchEntryHistory(
+                        def, checkLimit, { saturated: false, stopped: () => !mountedRef.current },
+                    );
                     if (!mountedRef.current) return;
-                    setCollStates((prev) => (prev[key]
-                        ? { ...prev, [key]: { ...prev[key], oldestBucketMs: hist.oldestMs } }
-                        : prev));
+                    setCollStates((prev) => {
+                        const cur = prev[key];
+                        if (!cur) return prev;
+                        if (hist.status !== 'checkfailed') {
+                            return { ...prev, [key]: { ...cur, oldestBucketMs: hist.oldestMs, checkError: undefined } };
+                        }
+                        /* Build 370: a finished row whose depth could not be measured
+                         * says so - it used to read "empty". A failed or truncated
+                         * row keeps its status; its outcome is what the cell shows. */
+                        return {
+                            ...prev,
+                            [key]: cur.status === 'done'
+                                ? { ...cur, status: 'checkfailed', oldestBucketMs: 0, checkError: hist.checkError }
+                                : { ...cur, oldestBucketMs: 0 },
+                        };
+                    });
                 };
                 if (mountedRef.current) {
                     setCollStates((prev) => {
@@ -985,6 +1318,58 @@ const RollupBackfillPanel: React.FC = () => {
                     }
                 }
 
+                /* Staged parts (build 378, utils/backfillPlan.ts). Each staged arm
+                 * reports its verdict to its part; the part's combine search waits
+                 * for all of them and runs only if every one is done. The plan puts
+                 * a part's arms before its merge, so every arm a merge waits for
+                 * has already been claimed by a worker that is running it - a
+                 * waiting merge can never block the arm it waits for. */
+                interface PartState {
+                    total: number;
+                    verdicts: ArmVerdict[];
+                    /** the rows the part's done arms staged (their jobs' result
+                     *  counts): what the stage must hold before and after the
+                     *  combine search (utils/backfillPlan.ts decidePartCount). */
+                    expected: number;
+                    /** the merge was decided (combined, failed or skipped) and its
+                     *  staged rows handled. */
+                    settled: boolean;
+                    /** a combine search the panel stopped waiting for may still be
+                     *  reading the part, or the part did not reconcile: leave its
+                     *  rows for the orphan sweep. */
+                    keepStage: boolean;
+                    done: Promise<void>;
+                    resolve: () => void;
+                }
+                const parts = new Map<string, PartState>();
+                runnable.forEach((it) => {
+                    if (it.kind !== 'stage') return;
+                    let p = parts.get(it.part);
+                    if (!p) {
+                        const box: { resolve: () => void } = { resolve: () => undefined };
+                        const done = new Promise<void>((r) => {
+                            box.resolve = r;
+                        });
+                        p = {
+                            total: 0, verdicts: [], expected: 0, settled: false, keepStage: false, done,
+                            resolve: () => box.resolve(),
+                        };
+                        parts.set(it.part, p);
+                    }
+                    p.total += 1;
+                });
+                /* Rows a closed page or a cancelled run left in the stage belong to
+                 * no part anyone can combine any more. Their age is measured on the
+                 * server's clock, which wrote lsv_staged_at: a browser clock days
+                 * fast would sweep a part another run is still combining. No usable
+                 * server clock - no sweep (scratch rows cost storage, not data). */
+                if (parts.size > 0) {
+                    const serverSec = await serverNowSec();
+                    if (serverSec !== null) await deleteStageRows(orphanQuery(serverSec));
+                }
+                /* Why a staged part failed, for the closing banner. */
+                const stageWhy: string[] = [];
+
                 let idx = 0; // claim-an-index: no `await` between read+increment → atomic
                 let failCount = 0;
                 let truncCount = 0;
@@ -997,16 +1382,79 @@ const RollupBackfillPanel: React.FC = () => {
                         if (i >= runnable.length) return;
                         const it = runnable[i];
                         if (mountedRef.current) {
-                            setProgress((p) => ({
-                                ...p,
-                                current: it.chunkLabel
-                                    ? `${it.label} (arm ${it.armIndex}/${it.armCount} · ${it.chunkLabel})`
-                                    : `${it.label} (arm ${it.armIndex}/${it.armCount})`,
-                            }));
+                            setProgress((p) => ({ ...p, current: progressLabel(it) }));
                         }
-                        const { verdict, sid } = await runArm(
-                            it.spl, it.earliest, it.latest, () => cancelRef.current,
-                        );
+                        let verdict: ArmVerdict;
+                        let sid: string | null = null;
+                        if (it.kind === 'merge') {
+                            const part = parts.get(it.part);
+                            if (!part) return;
+                            await part.done;
+                            /* Cancel stops new dispatches, a combine search included;
+                             * the part's staged rows are discarded below. */
+                            if (cancelRef.current) return;
+                            // Skipped unless every arm is done: when one failed, was cut
+                            // short or was left running, nothing is written for this part
+                            // (a partial sum is the bug this replaces) - the row is marked
+                            // failed, re-run it.
+                            let outcome: MergeOutcome = 'skipped';
+                            let why = '';
+                            if (mergeAllowed(part.verdicts, part.total)) {
+                                /* Every staged row must read back before the combine
+                                 * search reads the part (KV Store warming up after a
+                                 * restart, or a replica catching up, answers short or
+                                 * empty), the combine search must fail on an empty
+                                 * read and prove its own write, and the part must still
+                                 * hold every row afterwards. */
+                                const before = await reconcilePart(it.part, part.expected, () => cancelRef.current);
+                                if (before.kind === 'stopped') return;
+                                if (before.kind === 'mismatch') {
+                                    outcome = 'unreconciled';
+                                    why = before.reason;
+                                } else {
+                                    const ran = await runArm(
+                                        guardedMergeSpl(it.spl, it.part, part.expected), it.earliest, it.latest,
+                                        () => cancelRef.current,
+                                    );
+                                    sid = ran.sid;
+                                    outcome = mergeJobVerdict(ran.verdict, ran.facts);
+                                    if (ran.verdict === 'done' && !ran.facts.ok) why = ran.facts.reason;
+                                    if (outcome === 'done') {
+                                        const after = await reconcilePart(it.part, part.expected, () => false);
+                                        if (after.kind === 'mismatch') {
+                                            outcome = 'unreconciled';
+                                            why = `after combining, ${after.reason}`;
+                                        }
+                                    }
+                                }
+                            }
+                            part.settled = true;
+                            if (stageDeletable(outcome)) await deleteStageRows(partQuery(it.part));
+                            else part.keepStage = true;
+                            verdict = mergeRowVerdict(outcome);
+                            if (why) stageWhy.push(` ${progressLabel(it)}: ${why}.`);
+                        } else {
+                            const ran = await runArm(
+                                it.spl, it.earliest, it.latest, () => cancelRef.current,
+                            );
+                            ({ verdict, sid } = ran);
+                            if (it.kind === 'stage') {
+                                /* A staged arm is done only when its job proves what
+                                 * it staged: no ERROR message, and its result count -
+                                 * rows its part's combine must read back in full. */
+                                const staged = stagedArmResult(ran.verdict, ran.facts);
+                                if (staged.reason) stageWhy.push(` ${progressLabel(it)}: ${staged.reason}.`);
+                                const part = parts.get(it.part);
+                                if (part) {
+                                    part.expected += staged.rows;
+                                    part.verdicts.push(staged.verdict);
+                                    if (part.verdicts.length >= part.total) part.resolve();
+                                }
+                                // A staged arm left running is never combined: not
+                                // "still running on server" but failed (re-run).
+                                verdict = stagedArmRowVerdict(staged.verdict);
+                            }
+                        }
                         if (verdict === 'failed') failCount += 1;
                         else if (verdict === 'truncated') truncCount += 1;
                         else if (verdict === 'detached') detachedCount += 1;
@@ -1037,6 +1485,12 @@ const RollupBackfillPanel: React.FC = () => {
                     }
                 };
                 await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+                /* Parts never combined (cancel, a closed page): their staged rows
+                 * can never be used. A part whose combine search is still running
+                 * keeps its rows - that search needs all of them. */
+                await Promise.all(Array.from(parts.entries())
+                    .filter(([, p]) => !p.settled && !p.keepStage)
+                    .map(([part]) => deleteStageRows(partQuery(part))));
 
                 if (!mountedRef.current) return;
                 const cancelled = cancelRef.current;
@@ -1054,12 +1508,18 @@ const RollupBackfillPanel: React.FC = () => {
                     setNotice('Backfill cancelled. Re-run to complete the rest (idempotent).');
                     window.setTimeout(() => mountedRef.current && setNotice(null), 10000);
                 } else if (failedKeys.length || failCount || truncCount) {
+                    /* A rollup that dispatched nothing says why (an unreadable saved
+                     * search, or a tail the panel cannot split exactly). */
+                    const why = failedKeys.filter((it) => it.error).map((it) => ` ${it.label}: ${it.error}.`).join('')
+                        + stageWhy.slice(0, 5).join('')
+                        + (stageWhy.length > 5 ? ` (and ${stageWhy.length - 5} more)` : '');
                     setOpError(
-                        'Backfill finished with issues — re-run to retry (idempotent). Affected rollups are marked in the table.',
+                        'Backfill finished with issues — re-run to retry (idempotent). Affected rollups are marked in the table.'
+                        + why,
                     );
                 } else if (!detachedCount) {
                     setNotice(
-                        `Backfill complete (${win.label}). Each rollup's own row shows the history `
+                        `Backfill complete (${wins.map((w) => w.label).join(', ')}). Each rollup's own row shows the history `
                         + 'it now holds. The two flat Environment Topology collections (inventory, '
                         + 'IP enrichment) were refreshed over the last 30 days regardless of the '
                         + 'chosen window — they describe current state, not history.',
@@ -1072,7 +1532,7 @@ const RollupBackfillPanel: React.FC = () => {
                 if (mountedRef.current) await refresh();
             }
         },
-        [refresh],
+        [refresh, checkLimit],
     );
 
     const handleCancel = useCallback(() => {
@@ -1207,6 +1667,55 @@ const RollupBackfillPanel: React.FC = () => {
 
     const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
 
+    const lateRecheck = (
+        <RecheckLink
+            type="button"
+            onClick={handleLateRecheck}
+            disabled={anyOtherBusy || loading || late.kind === 'checking'}
+        >
+            check again
+        </RecheckLink>
+    );
+    let lateStatus: React.ReactNode;
+    if (late.kind === 'idle' || late.kind === 'checking') {
+        lateStatus = <FieldStatus $tone="absent">Checking…</FieldStatus>;
+    } else if (late.kind === 'unavailable') {
+        lateStatus = <FieldStatus $tone="absent">Not checked: {late.reason}.</FieldStatus>;
+    } else if (late.kind === 'failed') {
+        lateStatus = (
+            <FieldStatus $tone="warn" title={late.reason}>
+                The check failed (hover for the reason).
+                {lateRecheck}
+            </FieldStatus>
+        );
+    } else if (late.days.length === 0) {
+        lateStatus = (
+            <FieldStatus $tone="good">
+                Every event since {toUtcDateString(late.since * 1000)} UTC is in the rollups.
+                {lateRecheck}
+            </FieldStatus>
+        );
+    } else {
+        const shown = late.days.slice(-LATE_LIST_MAX).reverse();
+        const more = late.days.length - shown.length;
+        lateStatus = (
+            <>
+                <FieldStatus $tone="warn">
+                    {summarizeLate(late.days)}
+                    {lateRecheck}
+                </FieldStatus>
+                {shown.map((d) => (
+                    <FieldHint key={d.dayTs}>{describeLateDay(d)}</FieldHint>
+                ))}
+                {more > 0 && (
+                    <FieldHint>
+                        …and {more} earlier day{more === 1 ? '' : 's'}.
+                    </FieldHint>
+                )}
+            </>
+        );
+    }
+
     return (
         <>
             {notice && <Banner $tone="good">{notice}</Banner>}
@@ -1219,10 +1728,30 @@ const RollupBackfillPanel: React.FC = () => {
                     populate them. Until then those dashboards show only the last hour or two.
                 </Banner>
             )}
+            {!busy && !loading && checkFailedDefs.length > 0 && (
+                <Banner $tone="warn">
+                    The history of {checkFailedDefs.length} of {ROLLUPS.length} rollups could not be
+                    measured just now — Splunk was busy or the check search failed (hover a row for
+                    the reason). This says nothing about their data.{' '}
+                    <RecheckLink
+                        type="button"
+                        onClick={() => handleRecheck(checkFailedDefs)}
+                        disabled={anyOtherBusy}
+                    >
+                        {rechecking ? 'Checking…' : 'Re-check'}
+                    </RecheckLink>
+                </Banner>
+            )}
             {!busy && allComplete && (
                 <Banner $tone="good">
                     All {ROLLUPS.length} dashboard rollups have ~30 days of history. No backfill
                     needed.
+                </Banner>
+            )}
+            {!busy && late.kind === 'done' && late.days.length > 0 && (
+                <Banner $tone="warn">
+                    Late-arriving data: {summarizeLate(late.days)} Rebuild those days under
+                    Backfill below.
                 </Banner>
             )}
 
@@ -1274,6 +1803,38 @@ const RollupBackfillPanel: React.FC = () => {
             </FieldRow>
 
             <SectionHeading>Backfill</SectionHeading>
+            <FieldRow>
+                <div>
+                    <FieldLabel>Late-arriving data</FieldLabel>
+                    <FieldHint>
+                        Events that reach Splunk after their hour was aggregated are missing from the
+                        dashboards until that hour is rebuilt. Each hourly aggregation also re-reads
+                        the hour before, which catches delays of up to about an hour; anything later
+                        &mdash; a weekly log delivery, a queue backlog after an outage, an hour whose
+                        aggregation did not run &mdash; is listed here. The check compares the index
+                        with the Multi-Cloud Overview rollup, which counts every event, per hour and
+                        sourcetype over the last {LATE_CHECK_DAYS} days (UTC), leaving out the last
+                        three hours, which the schedule may still rebuild. It also runs every day at
+                        05:40 (search-head time) and records a triggered alert when it finds a day.
+                    </FieldHint>
+                    {lateStatus}
+                </div>
+                <ButtonRow>
+                    {late.kind === 'done' && late.days.length > 0 && (
+                        <Button
+                            type="button"
+                            onClick={startLateBackfill}
+                            disabled={anyOtherBusy || loading || !lateWins || !lateWins.ok || !fixed30Result.ok}
+                            title={lateWins && !lateWins.ok ? lateWins.error : undefined}
+                        >
+                            {busy
+                                ? 'Backfilling…'
+                                : `Backfill ${late.days.length} day${late.days.length === 1 ? '' : 's'}`}
+                        </Button>
+                    )}
+                </ButtonRow>
+                <span />
+            </FieldRow>
             <FieldRow>
                 <div>
                     <FieldLabel>Backfill window</FieldLabel>
@@ -1357,8 +1918,7 @@ const RollupBackfillPanel: React.FC = () => {
                         <div style={{ marginTop: 4 }}>
                             The two flat Environment Topology collections (inventory, IP enrichment)
                             always refresh over the last 30 days regardless of this setting: they
-                            describe current state rather than history, and a longer window resolves
-                            fewer partner IPs to SIDs, not more.
+                            describe current state rather than history.
                         </div>
                     </WindowSummary>
                 </div>
@@ -1382,15 +1942,29 @@ const RollupBackfillPanel: React.FC = () => {
                         it running; one still running when you cancel is marked &ldquo;still
                         running on server&rdquo; — not failed.
                     </FieldHint>
+                    {/* Build 378 (design_impact.md F1): the topology nodes and inventory
+                      * searches are staged and combined by this page, so - unlike every
+                      * other rollup - their rows are written only while it stays open.
+                      * Phrased by feature, no versions (session-017 sticky). */}
+                    <FieldHint style={{ marginTop: 8 }}>
+                        The Environment Topology node counts and its IP-to-SID inventory add up the
+                        results of several searches. This page collects those results in a scratch
+                        collection and writes the rows only once every search of a month (or of the
+                        whole window) has finished and every result it collected reads back in full,
+                        so keep the page open until that row is done: a month left unfinished, or
+                        one whose results do not all read back, is discarded, never written in part,
+                        and the next backfill rebuilds it.
+                    </FieldHint>
                     {/* Build 325 (plan item E2) — the RFC re-key upgrade note. Phrased by
                       * FEATURE, not by version (session-017 sticky: no version numbers in
                       * user-visible strings). Two halves, both load-bearing: (1) plain
                       * Backfill after the upgrade would double-count RFC history
                       * (append=true writes the new per-app-server keys beside the old
                       * collided rows, and this button's completeness check skips the
-                      * collection anyway); (2) Clear discards up to a year of graph
-                      * history while the backfill restores ~30 days (session-091 sticky e)
-                      * — long-established installs deserve the surgical alternative. */}
+                      * collection anyway); (2) Clear discards graph history older than
+                      * the Backfill window (presets 30-365 days or a custom range back to
+                      * the 365-day floor), so the note asks for a covering window and
+                      * names the narrower repair. */}
                     <FieldHint style={{ marginTop: 8 }}>
                         Upgrading note: if this install predates the per-app-server RFC
                         breakdown in the Environment Topology view, use the per-rollup
@@ -1399,9 +1973,10 @@ const RollupBackfillPanel: React.FC = () => {
                         that rollup&apos;s RFC rows per app server, so a Backfill without the
                         Clear would double-count RFC history (and the completeness check above
                         will otherwise skip it as already complete). The Clear also discards
-                        topology graph history older than the 30-day backfill window; on
-                        installs older than that, the release notes describe an RFC-only
-                        migration that keeps the rest of the history.
+                        topology graph history older than the window you backfill, so pick a
+                        window that covers that history (the 365-day preset reaches as far
+                        back as the graph keeps it); the release notes describe a narrower
+                        repair that keeps older history.
                     </FieldHint>
                     {/* Session 134 (build 358) - two rollups now record corrected values
                       * for existing data, so an upgraded install needs one Clear +
@@ -1420,8 +1995,9 @@ const RollupBackfillPanel: React.FC = () => {
                         in the time zone of whichever search wrote it, so a day could be stored twice),
                         &ldquo;Change &amp; Configuration Activity&rdquo; (it used to store an
                         after-hours flag in the time zone of whichever search wrote the row, so an
-                        hour could be counted twice) and &ldquo;Linux System &amp; Security&rdquo; (it
-                        used to record fragments of ordinary words as kernel event types). All three
+                        hour could be counted twice) and &ldquo;Linux System &amp; Security /
+                        Network Perimeter&rdquo; (it used to record fragments of ordinary words as
+                        kernel event types). All three
                         are rebuilt from the indexed events.
                     </FieldHint>
                     {/* Sessions 139-140 (builds 364-365) - real SAP LogServ records keep the JSON
@@ -1441,6 +2017,55 @@ const RollupBackfillPanel: React.FC = () => {
                         &ldquo;Network Perimeter&rdquo;, &ldquo;Environment Health&rdquo;, &ldquo;Beaconing
                         detection&rdquo; and the two &ldquo;Environment Topology&rdquo; rows, which
                         recount what they already hold.
+                    </FieldHint>
+                    {/* Build 378 (design_impact.md section 4, findings F3, F4, F8; h1
+                      * decision 3) - HANA audit `host` is now the HANA host (the client
+                      * moved to src_host), HANA trace lines are read by their exact format,
+                      * RFC edges count connections in their direction: all three change
+                      * rollup keys. ICM errors (item icm) keep their key but change their
+                      * meaning. Rows to Clear then Backfill, and the two to Backfill
+                      * only, come from routes/rollupRegistry.ts so the labels are the
+                      * table's own. Phrased by feature, no versions (session-017 sticky). */}
+                    <FieldHint style={{ marginTop: 8 }}>
+                        Upgrading note: HANA audit host names, HANA trace severities, ICM errors
+                        (the SAP client of an ICM session is no longer read as an HTTP status) and
+                        Environment Topology RFC edges are now recorded differently, and the
+                        Environment Topology (graph) backfill now adds up its node counts across
+                        all of its searches. For each of these rows, note its history, click
+                        <strong> Clear</strong>, then <strong>Backfill</strong> it once with a
+                        window that covers that history (the 365-day preset or a custom range),
+                        using the row&apos;s own Backfill: {upgradeRows(UPGRADE_NOTE_CLEAR_THEN_BACKFILL)}.
+                        A Backfill without the Clear counts the upgraded hours twice (on ABAP
+                        Network &amp; Security it keeps the old ICM error counts instead). The Clear
+                        removes everything the row holds, history older than the window you
+                        backfill included, and a Backfill brings back only the hours whose raw events
+                        your index still holds; the release notes describe a narrower repair that
+                        keeps that history. Then click <strong>Backfill</strong>, without Clear,
+                        on {upgradeRows(UPGRADE_NOTE_BACKFILL_ONLY)}, which gain the HANA audit
+                        records that have no client fields. SAP Router edges have no history until
+                        the Environment Topology rows are backfilled. Keep the rebuild clear of
+                        00:34&ndash;00:58, 01:30&ndash;01:58 and 02:34&ndash;02:36 (search-head
+                        time), when the nightly retention rewrites the rollups.
+                    </FieldHint>
+                    {/* Build 381 (audit S3 of build 380) - the work process trace-component
+                      * names are SAP's own now, and Work Process Performance keys its
+                      * metric "wp" on the name. The row comes from routes/rollupRegistry.ts
+                      * so the label is the table's own. Phrased by feature, no versions. */}
+                    <FieldHint style={{ marginTop: 8 }}>
+                        Upgrading note: the work process trace components (the letter that starts
+                        each work process trace line) now carry SAP&apos;s own names, and
+                        {' '}{upgradeRows(UPGRADE_NOTE_TRACE_NAMES)} stores those names in its rows.
+                        Note its history, click <strong>Clear</strong>, then <strong>Backfill</strong> it
+                        once with a window that covers that history, using the row&apos;s own Backfill.
+                        A Backfill without the Clear keeps the old names beside the new ones, and the
+                        Work Process Performance totals, function, category and Activity by SID /
+                        Instance panels and the ABAP Operations category pie count those hours twice
+                        (the WP Categories column counts each renamed component twice). The Clear
+                        removes everything the row holds, its other panels&apos; history included, and a
+                        Backfill brings back only the hours the window covers whose raw events your
+                        index still holds; the release notes describe a narrower repair that removes
+                        the trace-component rows only. Keep the rebuild clear of 00:34&ndash;00:58,
+                        01:30&ndash;01:58 and 02:34&ndash;02:36 (search-head time).
                     </FieldHint>
                 </div>
                 <ButtonRow>
@@ -1505,9 +2130,9 @@ const RollupBackfillPanel: React.FC = () => {
                         ? 'good'
                         : status === 'error'
                         ? 'error'
-                        : status === 'truncated' || status === 'detached'
+                        : status === 'truncated' || status === 'detached' || status === 'checkfailed'
                         ? 'warn'
-                        : status === 'running'
+                        : status === 'running' || status === 'checking'
                         ? 'running'
                         : status === 'incomplete'
                         ? 'warn'
@@ -1527,9 +2152,15 @@ const RollupBackfillPanel: React.FC = () => {
                         ? 'still running on server'
                         : status === 'incomplete'
                         ? fmtAge(st?.oldestBucketMs ?? 0)
+                        : status === 'checking'
+                        ? 'checking…'
+                        : status === 'checkfailed'
+                        ? 'check failed —'
                         : '—';
                 const historyTitle = outcome && outcome.sids.length
                     ? `Still running on the server when this panel stopped waiting: ${outcome.sids.join(', ')}`
+                    : status === 'checkfailed'
+                    ? `The history could not be measured:\n${st?.checkError ?? 'no reason recorded'}`
                     : undefined;
                 const rowEnabled =
                     !!a && a.existCount === a.total && a.enabledCount === a.total && a.total > 0;
@@ -1562,7 +2193,18 @@ const RollupBackfillPanel: React.FC = () => {
                             />
                             {rowToggleText}
                         </RowToggle>
-                        <HistoryVal $tone={tone} title={historyTitle}>{historyText}</HistoryVal>
+                        <HistoryVal $tone={tone} title={historyTitle}>
+                            {historyText}
+                            {status === 'checkfailed' && (
+                                <RecheckLink
+                                    type="button"
+                                    onClick={() => handleRecheck([def])}
+                                    disabled={anyOtherBusy || loading}
+                                >
+                                    re-check
+                                </RecheckLink>
+                            )}
+                        </HistoryVal>
                         <RowActions>
                             <SmallButton
                                 type="button"

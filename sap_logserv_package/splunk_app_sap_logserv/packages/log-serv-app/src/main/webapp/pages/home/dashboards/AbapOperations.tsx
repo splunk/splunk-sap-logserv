@@ -13,7 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildDashboardUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * ABAP Operations — honest port of v0.0.4.2 logserv_abap_operations.xml.
@@ -207,17 +207,17 @@ const AbapOperations: React.FC = () => {
             </KpiRow>
 
             <FullWidthPanel>
-                <FramedPanel title="Event Volume by Sourcetype" subtitle="Daily volume across the 6 ABAP runtime sourcetypes">
+                <FramedPanel title="Event Volume by Sourcetype" subtitle={spanSubtitle('Volume across the 6 ABAP runtime sourcetypes', qVolumeByType)}>
                     <TimeSeriesChart query={qVolumeByType} height={280} palette="volume" />
                 </FramedPanel>
             </FullWidthPanel>
 
             <PanelGrid2>
-                <FramedPanel title="Dispatcher Severity Over Time" subtitle="Daily dp_severity breakdown — click to open Work Process Performance"
+                <FramedPanel title="Dispatcher Severity Over Time" subtitle={spanSubtitle('dp_severity breakdown', qDispatcherSeverity, 'click to open Work Process Performance')}
                     onClick={goWpPerformance} clickTitle="Open Work Process Performance dashboard">
                     <TimeSeriesChart query={qDispatcherSeverity} height={260} palette="status" />
                 </FramedPanel>
-                <FramedPanel title="Enqueue Lock Activity" subtitle="Daily lock operation count">
+                <FramedPanel title="Enqueue Lock Activity" subtitle={spanSubtitle('Lock operation count', qEnqueueTimeline)}>
                     <TimeSeriesChart query={qEnqueueTimeline} height={260} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>

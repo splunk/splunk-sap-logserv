@@ -13,7 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * SAP Services — honest port of v0.0.4.2 logserv_sap_services.xml.
@@ -190,7 +190,7 @@ const SapServices: React.FC = () => {
             </KpiRow>
 
             <FullWidthPanel>
-                <FramedPanel title="Event Volume by Service (Normal vs Errors)" subtitle="Daily volume per service / errors split">
+                <FramedPanel title="Event Volume by Service (Normal vs Errors)" subtitle={spanSubtitle('Volume per service / errors split', qVolumeByType)}>
                     <TimeSeriesChart
                         query={qVolumeByType}
                         height={280}

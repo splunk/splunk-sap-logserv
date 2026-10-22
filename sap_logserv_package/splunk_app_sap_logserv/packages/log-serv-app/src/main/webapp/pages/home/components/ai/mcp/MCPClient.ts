@@ -2,6 +2,12 @@ import { Hidden, markHidden } from '../types/Hidden';
 import { clearCredentialCache, readSecret } from '../providers/credentials';
 import { clearAIConfigCache, readAIConfig } from '../../../utils/aiConfigApi';
 import { APP_VERSION } from '../../../buildFlags';
+import {
+    buildSavedSearchArgs,
+    checkSavedSearchName,
+    SavedSearchTimeRange,
+    TOOL_RUN_SAVED_SEARCH,
+} from '../../../utils/savedSearchAllowList';
 
 /**
  * MCP client — talks to the official Splunk MCP Server (Splunkbase App
@@ -306,16 +312,37 @@ export class MCPClient {
     /**
      * Invoke an MCP tool by name. Result is Hidden — the type system
      * blocks it from entering an AI vendor outbound payload.
+     *
+     * Build 376: a saved search can NOT be run through here. Every saved-
+     * search call must go through `runSavedSearch`, which checks the name
+     * against the allow-list and builds the arguments itself; this path
+     * refuses `splunk_run_saved_search` without sending a request.
      */
     async invokeTool(name: string, args: object): Promise<Hidden<MCPToolResult>> {
+        if (name === TOOL_RUN_SAVED_SEARCH) {
+            return markHidden<MCPToolResult>({
+                content: null,
+                isError: true,
+                errorMessage: 'A saved search can only be run through runSavedSearch (the catalog check).',
+            });
+        }
         const result = await this.callTool(name, args);
         return markHidden(result);
     }
 
     /**
-     * Run a Splunk saved search by name. Convenience wrapper around
-     * `invokeTool('splunk_run_saved_search', { saved_search_name, ... })`.
-     * Result is Hidden.
+     * Run a Splunk saved search by name — the ONE place this App sends a
+     * `splunk_run_saved_search` call. Result is Hidden.
+     *
+     * Build 376 (session 149): the name must be in `allowed` — the intent
+     * map's saved searches, the catalog the assistant is shown — or the call
+     * is refused here and no request is sent (`checkSavedSearchName`: exact,
+     * case-sensitive). The MCP arguments are then built field by field by
+     * `buildSavedSearchArgs`: the vetted name, `app` = this App, and the
+     * time range from `time`. Nothing else in `time`, and nothing a model
+     * puts in its tool call, can add or replace a key — before this build a
+     * model-supplied `arguments.saved_search_name` was spread in after the
+     * name and replaced it.
      *
      * Argument naming follows the official Splunk MCP Server (App 7931)
      * `splunk_run_saved_search` tool schema: the saved search identifier
@@ -326,18 +353,29 @@ export class MCPClient {
      * `latest_time`, and `app` as TOP-LEVEL tool arguments (alongside
      * `saved_search_name`), NOT nested under an `arguments` object — the
      * tool has no `arguments` property (its token-substitution field is
-     * the string `args`). Nesting the caller args under `arguments` made
-     * the MCP server silently drop the time range (extra keys are ignored
-     * by its validator), so every canned prompt ran unbounded over the
-     * full index and the AI-panel fetch timed out ("signal is aborted").
-     * Flatten the caller args to the top level so the time-range dropdown
-     * actually bounds the dispatched search.
+     * the string `args`, which this App never sends). Nesting the time range
+     * under `arguments` made the MCP server silently drop it (extra keys are
+     * ignored by its validator), so every canned prompt ran unbounded over
+     * the full index and the AI-panel fetch timed out ("signal is aborted").
+     * The time range therefore goes at the top level, so the time-range
+     * dropdown actually bounds the dispatched search. With `app` given, the
+     * server checks the search belongs to this App instead of resolving a
+     * bare name to the first app that has one.
      */
-    async runSavedSearch(name: string, args: object = {}): Promise<Hidden<MCPToolResult>> {
-        const result = await this.callTool('splunk_run_saved_search', {
-            saved_search_name: name,
-            ...args,
-        });
+    async runSavedSearch(
+        name: string,
+        allowed: ReadonlySet<string>,
+        time: SavedSearchTimeRange = {},
+    ): Promise<Hidden<MCPToolResult>> {
+        const verdict = checkSavedSearchName(name, allowed);
+        if (!verdict.allowed) {
+            return markHidden<MCPToolResult>({
+                content: null,
+                isError: true,
+                errorMessage: verdict.reason ?? 'The saved search is not in the catalog.',
+            });
+        }
+        const result = await this.callTool(TOOL_RUN_SAVED_SEARCH, buildSavedSearchArgs(name, time));
         return markHidden(result);
     }
 

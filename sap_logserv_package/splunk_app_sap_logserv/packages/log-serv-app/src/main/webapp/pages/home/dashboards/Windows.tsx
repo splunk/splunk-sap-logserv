@@ -12,7 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * Windows Events — honest port of v0.0.4.2 logserv_windows.xml.
@@ -200,10 +200,10 @@ const Windows: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Event Volume by Log" subtitle="Daily counts split by WinEventLog source">
+                <FramedPanel title="Event Volume by Log" subtitle={spanSubtitle('Counts split by WinEventLog source', qVolumeByLog)}>
                     <TimeSeriesChart query={qVolumeByLog} height={280} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="Severity Distribution Over Time" subtitle="Stacked daily volume by severity">
+                <FramedPanel title="Severity Distribution Over Time" subtitle={spanSubtitle('Stacked volume by severity', qSeverity)}>
                     <TimeSeriesChart query={qSeverity} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
@@ -218,7 +218,7 @@ const Windows: React.FC = () => {
                 <FramedPanel search={serviceEvents} title="Service Events" subtitle="Service start/stop/crash (EventCode 7036/7034/7031) — click a row for that service's lifecycle history">
                     <DataTable columns={SERVICE_COLS} rows={serviceEvents.results} loading={serviceEvents.loading} error={serviceEvents.error} emptyMessage="No service events in this time range." onRowClick={goServiceRow} />
                 </FramedPanel>
-                <FramedPanel title="PowerShell Activity" subtitle="Daily volume of PowerShell operational events">
+                <FramedPanel title="PowerShell Activity" subtitle={spanSubtitle('Volume of PowerShell operational events', qPowershell)}>
                     <TimeSeriesChart query={qPowershell} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>

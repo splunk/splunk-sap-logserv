@@ -17,7 +17,25 @@ export type IntegrationType =
     | 'bgrfc'         // Background RFC
     | 'web_service'   // SOAP / REST web service
     | 'odata'         // OData / Gateway
-    | 'btp_iflow';    // BTP iFlow / CPI
+    | 'btp_iflow'     // BTP iFlow / CPI
+    /* Build 378 (U32 / U1): the 9th type, and the first since the legacy
+     * eight that a rollup arm actually produces under its own name — the
+     * SAP Router CONNECT TO edges (stored type "saprouter"). Saved layouts
+     * from before it existed keep it enabled on load: see
+     * restoreEnabledTypes in topology/persistence.ts. */
+    | 'saprouter';    // SAP Router routed connection (CONNECT TO)
+
+/** The edge types the rollup stores (`logserv_topology_edges.type`). The
+ *  visual layer maps them onto IntegrationType (splTypeToIntegrationType in
+ *  topology/edgeStyle.ts); the right pane dispatches on this value. */
+export type EdgeSplType = 'http' | 'rfc' | 'hana_audit' | 'hana_tenant' | 'saprouter';
+
+/** Canonical endpoint kinds the topology rollups store — node rows'
+ *  `canonical_kind`, edge rows' `source_kind` / `target_kind`. Build 378
+ *  (U29, option S2) adds `saprouter`: the host that wrote a SAP Router log,
+ *  kept apart from the `host` kind so the host -> SID inventory can never
+ *  fold a router into an SAP system that happens to run on the same VM. */
+export type CanonicalKind = 'sid' | 'ip' | 'host' | 'tenant_db' | 'saprouter';
 
 export type BusinessProcess =
     | 'o2c_order'
@@ -51,6 +69,7 @@ export type SystemTag =
     | 'POSTGRES'      // PostgreSQL
     | 'DB2'           // IBM DB2
     | 'TENANT'        // HANA tenant database (session 109 — tenant_db edge endpoints)
+    | 'ROUTER'        // SAP Router host (build 378 — canonical kind saprouter)
     | 'EXT';          // External / non-SAP
 
 /** User-visible tag strings (session 109 / build 324). Internal SystemTag
@@ -61,7 +80,73 @@ export type SystemTag =
 export const displayTag = (tag: SystemTag, opts?: { short?: boolean }): string => {
     if (tag === 'HANA') return 'HANA SYSTEM';
     if (tag === 'TENANT') return opts?.short ? 'HANA TENANT' : 'APP SERVERS - HANA TENANT';
+    if (tag === 'ROUTER') return 'SAP ROUTER';
     return tag;
+};
+
+/** The tag a node of this canonical kind always carries, whatever the stored
+ *  row or the label heuristics say; null = no fixed tag (the stored tag,
+ *  refined by refineTag in useTopologyData, applies). Build 324 fixed TENANT
+ *  for tenant databases; build 378 fixes ROUTER for SAP Router hosts, so a
+ *  router whose host name happens to contain "hdb" or "ora" is never drawn
+ *  as a database. */
+export const fixedTagForKind = (kind: string | undefined | null): SystemTag | null => {
+    if (kind === 'tenant_db') return 'TENANT';
+    if (kind === 'saprouter') return 'ROUTER';
+    return null;
+};
+
+/** True for the tags fixedTagForKind assigns: refineTag must leave them. */
+export const isFixedTag = (tag: SystemTag): boolean => tag === 'TENANT' || tag === 'ROUTER';
+
+/** Canonical kind of an edge endpoint recovered from the edge row's
+ *  `spl_filter_clauses` field name (clauses[0] = source, clauses[1] =
+ *  target), for endpoints that have no node row. Unknown fields give null,
+ *  so the endpoint is simply not classified (never guessed). Build 378 adds
+ *  the SAP Router fields (router host -> saprouter, target address -> ip)
+ *  and the gateway client address of the RFC connection records. */
+export const clauseFieldToKind = (field: string): CanonicalKind | null => {
+    if (field === 'sap_sid') return 'sid';
+    if (field === 'hana_tenant_sid') return 'tenant_db';
+    if (field === 'saprouter_host') return 'saprouter';
+    if (field === 'clientip' || field === 'client_ip'
+        || field === 'peer_ip' || field === 'local_ip'
+        || field === 'saprouter_target_ip' || field === 'gw_client_ip') return 'ip';
+    if (field === 'host' || field === 'hana_host') return 'host';
+    return null;
+};
+
+/**
+ * The node id an edge endpoint is DRAWN on (the inventory retargeting rule of
+ * useTopologyData, as a pure function since build 378 so the consistency
+ * suite can hold it):
+ *
+ *   - sid: the SID's node (a real bucket row's id, or the synthetic
+ *     `__synth_sid:` id), else the endpoint itself;
+ *   - ip / host: the owning SID's node when the inventory names exactly one
+ *     owner AND that SID has a node, else the endpoint itself;
+ *   - tenant_db: always itself (drawn as the tenant circle);
+ *   - saprouter: always itself (U29 / S2) — even when the inventory holds a
+ *     row for the same host name (a router VM that also runs an SAP system),
+ *     the router stays its own "SAP ROUTER" node;
+ *   - anything else, or no canonical entry: itself.
+ */
+export const retargetEndpoint = (
+    nodeId: string,
+    canonical: { kind: string; value: string } | null | undefined,
+    ownerOf: (value: string) => string | undefined,
+    sidNodeId: (sid: string) => string | undefined,
+): string => {
+    if (!canonical) return nodeId;
+    if (canonical.kind === 'sid') return sidNodeId(canonical.value) ?? nodeId;
+    if (canonical.kind === 'tenant_db') return nodeId;
+    if (canonical.kind === 'saprouter') return nodeId;
+    if (canonical.kind === 'ip' || canonical.kind === 'host') {
+        const resolvedSid = ownerOf(canonical.value);
+        if (!resolvedSid) return nodeId;
+        return sidNodeId(resolvedSid) ?? nodeId;
+    }
+    return nodeId;
 };
 
 /** Predicate: is this tag a database-vendor tag? Used by node renderers
@@ -107,8 +192,10 @@ export interface TopologyNode {
     kind: NodeKind;
     tag: SystemTag;
     eventCount: number;
-    /** Optional health percentage (0-100) — drives the red/green halo on focused SIDs. */
-    healthPct?: number;
+    /* Build 377 (U38): the optional health percentage is gone. No saved
+     * search ever wrote the node KV field it was read from, so the halo it
+     * coloured was always the default accent; node health is the
+     * read-time call-bucket ring below (callBuckets). */
     /* Build 325 note: the D1 per-node host count is deliberately NOT a
      * field on this interface. Attaching it would put the late-arriving
      * bulk SPL read into the node-array identity that TopologyGraph's
@@ -174,12 +261,12 @@ export interface TopologyEdge {
     /** Optional business-process tag for filtering. */
     process?: BusinessProcess;
     /** Session 035 / build 188 — preserves the canonical SPL-emitted edge
-     *  type ('http' | 'rfc' | 'hana_audit' | 'hana_tenant') alongside the
-     *  legacy IntegrationType (which the visual layer uses for coloring).
-     *  Session 036's edge-data right pane dispatches on this for per-type
-     *  tab content. Optional to keep fixture-data + non-KV-Store callers
-     *  type-clean. */
-    splType?: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant';
+     *  type ('http' | 'rfc' | 'hana_audit' | 'hana_tenant', plus 'saprouter'
+     *  since build 378) alongside the legacy IntegrationType (which the
+     *  visual layer uses for coloring). Session 036's edge-data right pane
+     *  dispatches on this for per-type tab content. Optional to keep
+     *  fixture-data + non-KV-Store callers type-clean. */
+    splType?: EdgeSplType;
     /** Session 035 / build 188 — canonical SPL filter clauses, denormalized
      *  from the KV Store edge bucket row's `spl_filter_clauses` JSON array.
      *  Session 036's right pane spliced these into per-edge SPL; since the
@@ -211,18 +298,19 @@ export interface TopologyEdge {
     responseTimeP95?: number;
     responseTimeMax?: number;
     bytesOutSum?: number;
-    icmTasksMax?: number;
-    icmTasksAvg?: number;
     hanaOpP95Ms?: number;
     hanaOpMaxMs?: number;
     authSuccessCount?: number;
     authFailCount?: number;
     /** Build 325 / session 110 (plan item E3) — RFC edges only: the
      *  per-app-server split of this rendered edge's member rows, grouped by
-     *  the stored `local_ip` (the SID-side gateway listening address the
-     *  build-325 key change projects onto RFC rows). Sums to `callCount` by
-     *  construction. Rows stored before the key change carry no address and
-     *  group under `localIp: null`. Absent on non-RFC edges. */
+     *  the stored `local_ip` (the address of the gateway that wrote the
+     *  record — the SAP system's side of the connection; the build-325 key
+     *  change projects it onto RFC rows). Sums to `callCount` by
+     *  construction. Rows that carry no address group under `localIp: null`:
+     *  since build 378 these are the connection records (a remote-gateway
+     *  connection closed, a client session closed), whose log lines name no
+     *  local address. Absent on non-RFC edges. */
     appServers?: EdgeAppServerRow[];
 }
 
@@ -267,9 +355,16 @@ export interface SavedLayout {
      * more completely. All optional. */
     /** ReactFlow viewport (zoom + pan). Default = ReactFlow's `fitView`. */
     viewport?: ViewportState;
-    /** Integration-type filter checkboxes (e.g. ['rfc-sync','idoc-async']).
-     *  Default = all 8 active. */
+    /** Integration-type filter checkboxes — the ENABLED IntegrationType
+     *  values (e.g. ['rfc','web_service']). Default = all active. */
     enabledTypes?: string[];
+    /** Build 378 — the integration types that existed when the layout was
+     *  saved (ALL_INTEGRATION_TYPES at save time). Loading a layout enables
+     *  every type it could not have known about, and honours an unchecked
+     *  box for a type it did know (restoreEnabledTypes in persistence.ts).
+     *  Absent on layouts saved before build 378: those knew exactly the
+     *  frozen eight (LEGACY_INTEGRATION_TYPES_V5). */
+    knownTypes?: string[];
     /** Selected node id for the right-sidebar Details panel. Default = null
      *  (nothing selected). */
     selectedNodeId?: string | null;

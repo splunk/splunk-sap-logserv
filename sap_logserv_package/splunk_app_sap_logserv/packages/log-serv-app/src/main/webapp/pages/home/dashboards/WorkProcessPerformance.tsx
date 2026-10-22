@@ -13,7 +13,7 @@ import { useTimeRange } from '../state/TimeRangeProvider';
 import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * Work Process Performance — honest port of v0.0.4.2 logserv_work_process_performance.xml.
@@ -259,7 +259,7 @@ const WorkProcessPerformance: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Work Process Category Trend" subtitle="Daily volume by wp_category_name">
+                <FramedPanel title="Work Process Category Trend" subtitle={spanSubtitle('Volume by wp_category_name', qCategoryTrend)}>
                     <TimeSeriesChart query={qCategoryTrend} height={280} palette="categorical" />
                 </FramedPanel>
                 <FramedPanel title="Category Distribution" subtitle="Share of total events by category">
@@ -271,7 +271,7 @@ const WorkProcessPerformance: React.FC = () => {
                 <FramedPanel search={topFunctions} title="Work Process Functions" subtitle="Functions ranked by event volume">
                     <DataTable columns={TOP_FUNC_COLS} rows={topFunctions.results} loading={topFunctions.loading} error={topFunctions.error} emptyMessage="No work-process events in this time range." />
                 </FramedPanel>
-                <FramedPanel title="Dispatcher Severity Over Time" subtitle="Dispatcher event severity trend">
+                <FramedPanel title="Dispatcher Severity Over Time" subtitle={spanSubtitle('Dispatcher event severity trend', qSeverityTrend)}>
                     <TimeSeriesChart query={qSeverityTrend} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
@@ -289,7 +289,7 @@ const WorkProcessPerformance: React.FC = () => {
             </FullWidthPanel>
 
             <PanelGrid2>
-                <FramedPanel title="Async RFC Queue Depth" subtitle="ICM ASYNC_RFC tasks-in-queue per dispatch (sap:abap:icm `icm_tasks` field) — daily avg + max">
+                <FramedPanel title="Async RFC Queue Depth" subtitle={spanSubtitle('ICM ASYNC_RFC tasks-in-queue per dispatch (sap:abap:icm `icm_tasks` field) — avg + max', qAsyncRfcQueueTrend)}>
                     <TimeSeriesChart query={qAsyncRfcQueueTrend} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
                 <FramedPanel search={topPrograms} title="Top Programs by Queue Depth" subtitle="ABAP programs ranked by max queue depth at dispatch — saturated programs surface here">

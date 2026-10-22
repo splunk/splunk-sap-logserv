@@ -11,17 +11,17 @@ The Proxy Analytics dashboard monitors outbound internet access through the Squi
 - **Total Requests** -- Aggregate proxy request count
 - **Total Bandwidth** -- Sum of bytes transferred through the proxy (formatted KB/MB/GB)
 - **Denied Requests** -- Count of requests blocked by proxy policy
-- **Request Volume Over Time** -- Daily request trend
+- **Request Volume Over Time** -- Request trend over time
 - **Status Code Distribution** -- Stacked column chart of response categories (2xx-5xx)
 - **Domains** -- Table of the most accessed domains with request counts, bandwidth, and unique client counts
 - **Clients** -- Table of the most active client IPs with request counts, bandwidth, and domain diversity
 - **Clients by Domain Diversity** -- Table ranking client IPs by the count of distinct URL domains they accessed. Click a row to open Host Details for that client (replaces the earlier HTTP Methods donut, which consistently collapsed to a single slice and didn't earn its space)
 - **Cache Action Distribution** -- Table of Squid cache/result actions (`vendor_action`, e.g. TCP_TUNNEL, TCP_HIT, TCP_MISS, TCP_DENIED, TCP_TUNNEL_ABORTED) ranked by event count -- replaces the earlier Content Types donut for the same single-slice reason and reveals cache-hit behavior
-- **Bandwidth Over Time** -- Daily column chart of total bytes out
+- **Bandwidth Over Time** -- Column chart of total bytes out over time
 - **URL Domains by Bytes Out** -- Table of URL domains ranked by MB delivered (the data-exfiltration detection surface); paginated, not capped. Click a row for that domain's full proxy log
-- **Bandwidth Over Time by Domain (Top 5)** -- Daily stacked column chart of the five highest-bandwidth domains over time -- pairs with URL Domains by Bytes Out to show whether exfiltration is ongoing or historical
+- **Bandwidth Over Time by Domain (Top 5)** -- Stacked column chart of the five highest-bandwidth domains over time -- pairs with URL Domains by Bytes Out to show whether exfiltration is ongoing or historical
 - **Slowest Destinations** -- Top destinations by peak response time, with request count and average/max latency (ms), from the Squid `duration` field
-- **Response Time (Avg / Max)** -- Daily average and peak proxy response time
+- **Response Time (Avg / Max)** -- Average and peak proxy response time over time
 
 ## :material-circle-box:{ .taiconcolor } Where the Data Comes From
 

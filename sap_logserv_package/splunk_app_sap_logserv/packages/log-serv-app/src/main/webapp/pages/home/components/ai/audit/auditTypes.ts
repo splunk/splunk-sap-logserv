@@ -2,8 +2,9 @@
  * Audit event schema for the AI Assistant.
  *
  * Every event the audit writer sends to Splunk conforms to one of these
- * shapes. Indexed in the `ai_assistant_audit` index (defined in the
- * splunk_idx_sap_logserv app — see Phase A index app changes).
+ * shapes. Indexed in the `logserv_ai_assistant_audit` index by default
+ * (defined in the Data TA's indexes.conf; the `audit_index_name` setting
+ * can name another).
  *
  * Event categorization (mirrors the chat audit modal in §6.5 of the
  * design doc):
@@ -184,8 +185,22 @@ export interface SecurityBlockedSplEvent extends AuditEventBase {
     category: 'security_blocked_spl';
     /** The AI-authored SPL that was blocked. Truncated at 1000 chars. */
     spl: string;
-    /** The forbidden operator that triggered the block (lowercase, no `|`). */
+    /**
+     * Why it was blocked (lowercase, no `|`): a forbidden command of the
+     * denylist (`collect`, `delete`, ...), a denylist rule
+     * (`inline_comment`, `macro`, ...), an allow-list rule (build 377:
+     * `command_not_allowed`, `query_start`, `index_not_allowed`,
+     * `lookup_not_allowed`, ...) or the search-parser check
+     * (`parser_mismatch`, `parser_rejected`, `parser_unavailable`).
+     */
     operator: string;
+    /**
+     * Build 377: the command, lookup or macro the refusal is about, as the
+     * AI wrote it (`fit`, `customer_hr_lookup`); absent when the refusal is
+     * not about one. Only names made of letters, digits, `_`, `.`, `:` and
+     * `-` (at most 64 characters) are recorded; any other is `(unnamed)`.
+     */
+    command?: string;
 }
 
 /**
@@ -343,7 +358,7 @@ export interface DailySpendCapHitEvent extends AuditEventBase {
  * with `audit_forwarder_enabled = false`. The admin is required to
  * tick a checkbox confirming they understand:
  *
- *   - The local `ai_assistant_audit` index is the only copy of audit
+ *   - The local `logserv_ai_assistant_audit` index is the only copy of audit
  *     events while the forwarder is disabled.
  *   - A host-root admin can edit bucket files directly, so the index
  *     is not tamper-evident on its own.
@@ -366,8 +381,10 @@ export interface ForwarderDisabledAcceptanceEvent extends AuditEventBase {
      *  audit reviewers can prove WHICH revision of the disclaimer
      *  was acknowledged. */
     disclaimerHash: string;
-    /** Active provider at the moment of save (e.g. 'anthropic'). Useful
-     *  for correlating acceptance events with subsequent vendor
+    /** The LLM provider the answer goes with (e.g. 'anthropic'): for a
+     *  Yes, the one the save that follows applies - recorded even if that
+     *  save then fails; for a No, the one in effect (builds 390-392).
+     *  Useful for correlating acceptance events with subsequent vendor
      *  traffic. */
     provider: string;
     /** The previous `audit_forwarder_enabled` state — useful for
@@ -441,7 +458,9 @@ export interface AiAssistantEnableAcceptanceEvent extends AuditEventBase {
     /** SHA-256 hex of the disclaimer text the admin saw, so future
      *  audit reviewers can prove WHICH revision was acknowledged. */
     disclaimerHash: string;
-    /** Active provider at the moment of save (e.g. 'anthropic'). The
+    /** The LLM provider the answer goes with (e.g. 'anthropic'): for a
+     *  Yes, the one the save that follows applies - recorded even if that
+     *  save then fails; for a No, the one in effect (builds 390-392). The
      *  liability disclaimer covers all configurable providers, but
      *  cross-correlation with subsequent vendor traffic uses this. */
     provider: string;

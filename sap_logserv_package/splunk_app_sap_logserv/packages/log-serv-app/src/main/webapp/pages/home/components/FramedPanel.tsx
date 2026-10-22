@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
 import { PanelMeta, PanelMetaContext, PanelDiagnosticContext, PanelActions } from './PanelMeta';
@@ -10,6 +10,21 @@ import { textFromNode } from '../utils/reactText';
  * Cyan-outlined dark fill with rounded corners, optional title and
  * inline-right action area. Foundation primitive for every dashboard panel.
  */
+
+/** Build 371 — a chart asks its FramedPanel to become a flex column, so the
+ *  chart can grow into the height the panel's grid row gives it. A row is as
+ *  tall as its tallest panel - usually a table - and a chart panel beside one
+ *  used to keep its fixed-height chart with an empty band below it. Null
+ *  outside a FramedPanel, where a chart keeps its own height. */
+export const PanelFillContext = createContext<(() => void) | null>(null);
+
+/** Call from a chart component: puts the enclosing FramedPanel into fill mode. */
+export const useRequestPanelFill = (): void => {
+    const request = useContext(PanelFillContext);
+    useEffect(() => {
+        if (request) request();
+    }, [request]);
+};
 
 interface PanelRootProps {
     $compact?: boolean;
@@ -23,6 +38,11 @@ interface PanelRootProps {
      *  overflow:hidden. Opt-in — used by the topology Live Activity panel
      *  (build 280); no effect on any other panel. */
     $fillHeight?: boolean;
+    /** Build 371 — set when a chart inside asked for fill (PanelFillContext):
+     *  the panel becomes a flex column at its grid-stretched height, with no
+     *  height or min-height of its own, so a panel with no taller neighbour
+     *  lays out exactly as before. */
+    $fillChart?: boolean;
 }
 
 const Root = styled.section<PanelRootProps>`
@@ -66,6 +86,14 @@ const Root = styled.section<PanelRootProps>`
         box-sizing: border-box;
         height: 100%;
         min-height: 0;
+        display: flex;
+        flex-direction: column;
+    `
+            : ''}
+
+    ${(p) =>
+        p.$fillChart
+            ? `
         display: flex;
         flex-direction: column;
     `
@@ -204,6 +232,10 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
     // PanelActions toolbar.
     const [captured, setCaptured] = useState<PanelMeta | null>(null);
     const ctx = useMemo(() => ({ report: setCaptured }), []);
+    /* Build 371 — set once by a chart inside (useRequestPanelFill); stable
+     * callback, so the chart's effect runs once. */
+    const [chartFill, setChartFill] = useState<boolean>(false);
+    const requestFill = useCallback(() => setChartFill(true), []);
     /* Build 253 — pointer travel between pointerdown and click. A drag inside
      * the panel (chart zoom selection, text selection) ends with a browser-
      * synthesized click on the common ancestor of the down/up targets — this
@@ -261,10 +293,12 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
                 directly. So the explicit `search` prop is the only trustworthy
                 source here, and a panel without one correctly says nothing. */}
             <PanelDiagnosticContext.Provider value={diagnosticValue}>
+            <PanelFillContext.Provider value={requestFill}>
             <Root
                 $compact={compact}
                 $clickable={isClickable}
                 $fillHeight={fillHeight}
+                $fillChart={chartFill && !fillHeight}
                 className={className}
                 onPointerDown={
                     isClickable
@@ -345,8 +379,9 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
                         {headerRight}
                     </Header>
                 )}
-                <Body $fill={fillHeight}>{children}</Body>
+                <Body $fill={fillHeight || chartFill}>{children}</Body>
             </Root>
+            </PanelFillContext.Provider>
             </PanelDiagnosticContext.Provider>
         </PanelMetaContext.Provider>
     );

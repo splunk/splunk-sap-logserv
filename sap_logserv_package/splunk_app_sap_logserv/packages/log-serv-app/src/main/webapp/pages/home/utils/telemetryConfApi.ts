@@ -6,8 +6,9 @@
  *
  *   OPERATOR-CONTROLLED `optInVersion` lives in `default/ai_assistant_acks.conf`
  *   (read-only via the standard `configs/conf-ai_assistant_acks` REST endpoint
- *   in `default` namespace). Operators bump this value to force everyone to
- *   re-acknowledge after a disclaimer text change. Reads only — the app
+ *   in `default` namespace). Operators bump this value to ask for the
+ *   acknowledgement again after a disclaimer text change (once per deployment:
+ *   the KV row has no user in its key). Reads only — the app
  *   never writes to optInVersion.
  *
  *   USER-CONTROLLED acknowledgement state (optInVersionAcknowledged,
@@ -254,7 +255,7 @@ const writeKvAckRow = async (record: KvAckRecord): Promise<void> => {
         });
     }
     if (!resp.ok) {
-        throw new Error(`Acknowledgement KV Store write failed: HTTP ${resp.status}`);
+        throw new Error(`HTTP ${resp.status} on logserv_ai_assistant_acks`);
     }
 };
 

@@ -1,21 +1,66 @@
-"""
+r"""
 SAP LogServ TA - Filter Utility Functions
 
 Shared utilities for:
 - Discovering supported log types from @logserv_filter annotations in transforms.conf
-- Converting fnmatch patterns to Splunk-compatible regex for transforms.conf
+- Validating the Filters-tab patterns: folder patterns (Include Filters /
+  Exclude Filters, ``dir/subdir``) and source patterns (Include Sources /
+  Exclude Sources: a pattern over the envelope's whole ``source`` value,
+  optionally limited to one folder as ``dir/subdir=pattern``)
+- Translating both kinds of pattern into index-time REGEX text with a
+  hand-written translator whose output does not depend on the Python version
+  (fnmatch.translate is never used: its output changed in Python 3.13 and its
+  Python 3.14 output cannot be unwrapped)
 - Comparing supported types against user include patterns to find uncovered types
 - Generating transforms.conf and props.conf filter stanzas
 
-These utilities are used by both the REST handler (rh_filter_settings.py) and
-the upgrade check scripted input (logserv_filter_upgrade_check.py).
+These utilities are used by the REST handler (rh_filter_settings.py), the
+daily time-filter refresh (logserv_filter_time_refresh.py), the upgrade check
+(logserv_filter_upgrade_check.py) and, for APP_NAME and the deployment
+helpers, the Deploy to Forwarders and S3 Direct REST handlers.  Nothing here
+compiles a generated REGEX: it is text written to a conf file and run by
+Splunk's PCRE (its possessive quantifiers and atomic groups need Python
+3.11+ ``re``).
+
+Generated REGEX shape (every generated filter stanza also sets
+LOOKAHEAD = 100000, the TRUNCATE of default/props.conf, so the whole line is
+searched, not only its first 4096 characters):
+
+    SKIP          = (?:^|"_raw"\s*:\s*"(?:[^"\\]++|\\.)*+")
+    LA(key, frag) = (?=(?:(?!"_raw")[^\n])*?"key"\s*:\s*"frag")
+    f(p)          : split p on runs of * into segments S0 .. Sk (** is one *)
+                    k = 0  -> seg(S0)
+                    k >= 1 -> seg(S0) + (?>[^"]*?seg(Si)) for each MIDDLE
+                              segment S1 .. S(k-1) + [^"]* + seg(Sk)
+    seg(S)        : per character - ? -> [^"]   [A-Za-z0-9_] -> itself
+                    any other allowed character c -> backslash + c
+    folder   d/s    -> LA(clz_dir, f(d)) LA(clz_subdir, f(s))
+    source   p      -> LA(source, f(p))
+    combined d/s=p  -> LA(clz_dir, f(d)) LA(clz_subdir, f(s)) LA(source, f(p))
+    REGEX of a chunk = SKIP + "(?:" + entries joined by "|" + ")"
+
+The search starts at the line start (Azure and GCP envelopes put the metadata
+keys before "_raw") or right after the "_raw" value (AWS envelopes put them
+after it), and no lookahead may run past a "_raw" key, so text inside the
+event itself is never matched.  Each middle segment of a pattern is matched
+at its leftmost occurrence inside an atomic group, so only the last [^"]*
+backtracks: the work grows linearly with the value's length however many *
+the pattern has, which stays far inside PCRE's match limit on real source
+values (see filter_pattern_fragment).  Example - Include Filters
+linux/linux_secure:
+
+    (?:^|"_raw"\s*:\s*"(?:[^"\\]++|\\.)*+")(?:(?=(?:(?!"_raw")[^\n])*?"clz_dir"\s*:\s*"linux")(?=(?:(?!"_raw")[^\n])*?"clz_subdir"\s*:\s*"linux_secure"))
+
+Example - Exclude Sources /usr/sap/*/trace/*:
+
+    (?:^|"_raw"\s*:\s*"(?:[^"\\]++|\\.)*+")(?:(?=(?:(?!"_raw")[^\n])*?"source"\s*:\s*"\/usr\/sap\/(?>[^"]*?\/trace\/)[^"]*"))
 """
 
 import os
 import re
 import shutil
 import logging
-from fnmatch import fnmatch, translate as fnmatch_translate
+from fnmatch import fnmatchcase
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +82,33 @@ FILTER_MARKER_END = '### END LOGSERV FILTER CONFIG ###'
 # daily time-filter refresh preserves any block outside the FILTER markers).
 CLOUD_PROVIDER_MARKER_START = '### BEGIN LOGSERV CLOUD_PROVIDER CONFIG - DO NOT EDIT MANUALLY ###'
 CLOUD_PROVIDER_MARKER_END = '### END LOGSERV CLOUD_PROVIDER CONFIG ###'
+
+# ---------------------------------------------------------------------------
+# Generated filter REGEX building blocks.  Byte-exact: the App's Data Doctor
+# parses generated transforms.conf back into patterns and its build gate pins
+# this shape - change these only together with that inverse.
+# ---------------------------------------------------------------------------
+
+# Where a filter REGEX starts looking: the line start, or just past the
+# "_raw" value (possessive, as [set_raw_only] - the plain (?:[^"\\]|\\.)*
+# nests one PCRE frame per character and exceeds DEPTH_LIMIT on long lines).
+FILTER_REGEX_SKIP = r'(?:^|"_raw"\s*:\s*"(?:[^"\\]++|\\.)*+")'
+# What a lookahead may cross before its key: anything on the line except a
+# "_raw" key, so the event text is never searched for envelope keys.
+FILTER_REGEX_GAP = r'(?:(?!"_raw")[^\n])*?'
+# LOOKAHEAD of every generated filter stanza (= TRUNCATE in default/props.conf).
+FILTER_LOOKAHEAD = 100000
+# A list whose REGEX would pass this many characters is split into numbered
+# stanzas (Splunk's PCRE compiled 80 combined entries = 12,765 characters;
+# 16 K characters failed with "regular expression is too large").
+FILTER_REGEX_MAX_CHARS = 8000
+
+# Source patterns (Include Sources / Exclude Sources).
+SOURCE_PATTERN_MAX_LEN = 512
+SOURCE_FIELD_MAX_LEN = 4096
+# The characters the two source fields accept in Splunk Web (the regex
+# validator in globalConfig.json); the full grammar is checked server-side.
+SOURCE_FIELD_UI_PATTERN = r'^[A-Za-z0-9/._:*?=,+@~ -]*$'
 
 
 def get_app_path():
@@ -105,20 +177,25 @@ def find_uncovered_types(supported_types, include_patterns):
 
     A supported type is "uncovered" if it does not match *any* include pattern,
     meaning events of that type will be dropped by the filter before indexing.
+    A pass-all include list (see :func:`is_pass_all_include`) covers every
+    type.  Matching is case-sensitive, as the generated REGEX is
+    (``fnmatchcase``; ``fnmatch`` would fold case on Windows).  Include
+    Sources are not considered: they keep some files of a folder, not a
+    whole log type.
 
     Args:
         supported_types: Set of clz_dir/clz_subdir strings from annotations.
-        include_patterns: List of fnmatch pattern strings from user config.
+        include_patterns: List of folder pattern strings from user config.
 
     Returns:
         set[str]: Supported types that are not matched by any include pattern.
     """
-    if not include_patterns or include_patterns == ['*/*']:
+    if is_pass_all_include(include_patterns):
         return set()
 
     uncovered = set()
     for log_type in supported_types:
-        if not any(fnmatch(log_type, pat) for pat in include_patterns):
+        if not any(fnmatchcase(log_type, pat) for pat in include_patterns):
             uncovered.add(log_type)
 
     return uncovered
@@ -126,7 +203,11 @@ def find_uncovered_types(supported_types, include_patterns):
 
 def parse_comma_patterns(pattern_string):
     """
-    Parse a comma-separated string of fnmatch patterns into a list.
+    Parse a comma-separated string of folder patterns into a list.
+
+    Used for Include Filters and Exclude Filters (the source fields use
+    :func:`parse_source_patterns`, which keeps empty entries so they can be
+    rejected).
 
     Args:
         pattern_string: Comma-separated patterns (e.g. ``'linux/*,hana/hanaaudit'``).
@@ -139,12 +220,47 @@ def parse_comma_patterns(pattern_string):
     return [p.strip() for p in pattern_string.split(',') if p.strip()]
 
 
+def parse_source_patterns(value):
+    """
+    Split an Include Sources / Exclude Sources value into its entries.
+
+    Only spaces around an entry are stripped; any other character (a tab, a
+    newline, a control character) stays in the entry so that validation
+    rejects it.  Empty entries are KEPT (as ``''``) so that a doubled,
+    leading or trailing comma is rejected rather than silently dropped.  An
+    empty value, or one of spaces only, means "no entries".
+
+    Args:
+        value: The field value as stored or submitted (``None`` = empty).
+
+    Returns:
+        list[str]: The entries in their original order (not de-duplicated).
+    """
+    if value is None:
+        return []
+    if not isinstance(value, str):
+        value = str(value)
+    if value.strip(' ') == '':
+        return []
+    return [entry.strip(' ') for entry in value.split(',')]
+
+
 # ---------------------------------------------------------------------------
 # Pattern validation
 # ---------------------------------------------------------------------------
 
 # Valid characters for dir/subdir segments: alphanumeric, wildcards, and . - : _
+# (checked with fullmatch, so a trailing newline is rejected too).
 VALID_SEGMENT_PATTERN = re.compile(r'^[a-zA-Z0-9*?._:\-]+$')
+
+# Characters a source pattern may contain (the part after "=" in a combined
+# entry, or the whole entry).  ASCII only; checked with fullmatch.
+VALID_SOURCE_PATTERN = re.compile(r'[A-Za-z0-9/._:*?+@~\-]+')
+
+# Characters a source entry may contain at all ("=" separates a folder).
+_SOURCE_ENTRY_CHARS = frozenset(
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/._:*?+@~-='
+)
 
 
 def validate_single_pattern(pattern):
@@ -152,9 +268,13 @@ def validate_single_pattern(pattern):
     Validate a single filter pattern.
 
     A valid pattern is either:
-    - ``*`` (standalone wildcard matching everything)
+    - ``*`` (standalone wildcard: in Include Filters it makes the list
+      pass-all, see :func:`is_pass_all_include`; in Exclude Filters it
+      excludes nothing)
     - ``<dir>/<subdir>`` where dir and subdir contain only valid characters
       (alphanumeric, ``*``, ``?``, ``.``, ``-``, ``:``, ``_``)
+
+    Segments are checked with fullmatch, so a trailing newline is rejected.
 
     Args:
         pattern: A single pattern string (already stripped).
@@ -197,14 +317,14 @@ def validate_single_pattern(pattern):
             f'Use "*" for wildcard (e.g., "linux/*").'
         )
 
-    if not VALID_SEGMENT_PATTERN.match(dir_part):
+    if not VALID_SEGMENT_PATTERN.fullmatch(dir_part):
         return False, (
             f'Pattern "{pattern}" contains invalid characters in the '
             f'directory portion "{dir_part}". Allowed: letters, numbers, '
             f'* ? . - : _'
         )
 
-    if not VALID_SEGMENT_PATTERN.match(subdir_part):
+    if not VALID_SEGMENT_PATTERN.fullmatch(subdir_part):
         return False, (
             f'Pattern "{pattern}" contains invalid characters in the '
             f'subdirectory portion "{subdir_part}". Allowed: letters, '
@@ -238,87 +358,421 @@ def validate_patterns(patterns, field_name='Pattern'):
     return True, None
 
 
-# ---------------------------------------------------------------------------
-# Pattern-to-regex conversion for transforms.conf
-# ---------------------------------------------------------------------------
-
-def _fnmatch_to_clz_regex(pattern):
+def _show(value, limit=80):
     """
-    Convert a single fnmatch pattern like ``linux/*`` into a regex that
-    matches against the raw NDJSON event containing ``"clz_dir"`` and
-    ``"clz_subdir"`` JSON keys.
+    Render a submitted entry for an error message: printable ASCII as is,
+    anything else as a backslash escape (``\\n``, ``\\x00``, ``\\xe9``),
+    long values shortened.
+    """
+    shown = ''.join(ch if ' ' <= ch <= '~' else ascii(ch)[1:-1] for ch in value)
+    if len(shown) > limit:
+        shown = shown[:limit] + '...'
+    return shown
 
-    The generated regex is designed to match the raw JSON text of the event
-    *before* any field extraction occurs, which is how TRANSFORMS operates
-    at index time.
 
-    Supports patterns in the form ``<clz_dir_pattern>/<clz_subdir_pattern>``.
-    Both the dir and subdir portions can contain fnmatch wildcards (``*``, ``?``).
+def _source_entry_bad_character(entry):
+    """Describe the first character a source entry may not contain, or None."""
+    for ch in entry:
+        code = ord(ch)
+        if code < 32 or code == 127:
+            return f'a control character ({ascii(ch)[1:-1]})'
+        if code > 127:
+            return f'a non-ASCII character ({ascii(ch)[1:-1]})'
+        if ch == ' ':
+            return 'a space'
+        if ch not in _SOURCE_ENTRY_CHARS:
+            return f'the character {ch}'
+    return None
+
+
+def validate_source_entry(entry):
+    """
+    Validate one Include Sources / Exclude Sources entry.
+
+    Grammar (both fields)::
+
+        entry   := srcpat | folder "=" srcpat
+        folder  := dir "/" subdir      (as Include/Exclude Filters; no bare *)
+        srcpat  := 1..512 of [A-Za-z0-9/._:*?+@~-], with at least one
+                   character that is not * ? or /
+
+    ``*`` matches any run of characters (including ``/``) and ``?`` one
+    character, over the WHOLE source value, case-sensitively.  A pattern of
+    only ``*``, ``?`` and ``/`` (``*``, ``**``, ``/*``, ``*/*``) would match
+    every source and is rejected.  Quotes, backslashes, brackets, spaces,
+    control characters and non-ASCII characters are rejected - the value is
+    written into a conf file and into a REGEX.
 
     Args:
-        pattern: An fnmatch pattern (e.g. ``'linux/*'``, ``'hana/hanaaudit'``).
+        entry: One entry (already split on commas, spaces stripped).
 
     Returns:
-        str: A regex string suitable for use in transforms.conf REGEX.
+        tuple: (is_valid: bool, error_message: str or None).
     """
-    parts = pattern.split('/', 1)
-    if len(parts) != 2:
-        logger.warning(f'Pattern "{pattern}" does not contain a "/" separator, skipping')
-        return None
+    if not isinstance(entry, str):
+        return False, 'Entries must be text.'
+    if entry == '':
+        return False, (
+            'Empty entry - remove the doubled, leading or trailing comma.'
+        )
+    bad = _source_entry_bad_character(entry)
+    if bad:
+        return False, (
+            f'Entry "{_show(entry)}" contains {bad}. Allowed: letters, '
+            f'numbers and / . _ : * ? + @ ~ - (plus one = after a folder, '
+            f'as in linux/linux_secure=/var/log/zypper.log).'
+        )
+    if entry.count('=') > 1:
+        return False, (
+            f'Entry "{entry}" contains more than one "=". Use '
+            f'dir/subdir=pattern, e.g. linux/linux_secure=/var/log/zypper.log.'
+        )
+    if '=' in entry:
+        folder, pattern = entry.split('=', 1)
+        if not folder:
+            return False, (
+                f'Entry "{entry}" has nothing before "=". Use '
+                f'dir/subdir=pattern, or the source pattern alone.'
+            )
+        if folder == '*':
+            return False, (
+                f'Entry "{entry}": the folder before "=" must be dir/subdir '
+                f'(e.g. linux/linux_secure or sap/*), not a bare *.'
+            )
+        is_valid, error = validate_single_pattern(folder)
+        if not is_valid:
+            return False, (
+                f'Entry "{entry}": the folder before "=" is invalid. {error}'
+            )
+        if not pattern:
+            return False, (
+                f'Entry "{entry}" has nothing after "=". Add the source '
+                f'pattern, e.g. {folder}=/var/log/messages.'
+            )
+    else:
+        pattern = entry
+    if len(pattern) > SOURCE_PATTERN_MAX_LEN:
+        return False, (
+            f'Entry "{_show(entry)}" has a source pattern longer than '
+            f'{SOURCE_PATTERN_MAX_LEN} characters.'
+        )
+    if not VALID_SOURCE_PATTERN.fullmatch(pattern):
+        return False, (
+            f'Entry "{_show(entry)}" contains characters a source pattern '
+            f'may not contain. Allowed: letters, numbers and / . _ : * ? + @ ~ -'
+        )
+    if all(ch in '*?/' for ch in pattern):
+        return False, (
+            f'Entry "{entry}" would match every source. Leave the field '
+            f'empty, or use Include Filters / Exclude Filters (or turn '
+            f'filtering off) instead.'
+        )
+    return True, None
 
-    dir_part, subdir_part = parts
 
-    # Convert fnmatch patterns to regex fragments for the field values only.
-    # fnmatch.translate() produces a full-match regex like (?s:...\Z) — we
-    # strip the wrapper to get the inner pattern.
-    def _fnmatch_fragment(pat):
-        raw = fnmatch_translate(pat)
-        # Remove the anchoring wrapper that fnmatch.translate adds.
-        # Python 3.x produces  (?s:<pattern>\Z)  or  (?s:<pattern>)\Z
-        raw = re.sub(r'^\(\?s:', '', raw)
-        raw = re.sub(r'\\Z\)$', '', raw)
-        raw = re.sub(r'\)\\Z$', '', raw)
-        return raw
+def validate_source_patterns(patterns, field_name='Source pattern'):
+    """
+    Validate a list of source entries (from :func:`parse_source_patterns`).
 
-    dir_regex = _fnmatch_fragment(dir_part)
-    subdir_regex = _fnmatch_fragment(subdir_part)
+    Args:
+        patterns: List of entry strings.
+        field_name: Human-readable field name for error messages
+            (``'Include Sources'`` or ``'Exclude Sources'``).
 
-    # Build a regex that matches both clz_dir and clz_subdir in either order
-    # within the raw JSON line.  SAP LogServ NDJSON always includes both keys.
-    # We use a two-lookahead approach so key order doesn't matter.
-    regex = (
-        f'^(?=.*"clz_dir"\\s*:\\s*"{dir_regex}")'
-        f'(?=.*"clz_subdir"\\s*:\\s*"{subdir_regex}")'
-    )
+    Returns:
+        tuple: (is_valid: bool, error_message: str or None).
+            If invalid, error_message names the field and the first invalid
+            entry.
+    """
+    if not patterns:
+        return True, None
 
-    return regex
+    for pattern in patterns:
+        is_valid, error = validate_source_entry(pattern)
+        if not is_valid:
+            return False, f'{field_name}: {error}'
+
+    return True, None
+
+
+def validate_source_field(value, field_name='Source pattern'):
+    """
+    Validate a whole Include Sources / Exclude Sources value as submitted or
+    stored: its length, then every entry (:func:`validate_source_patterns`).
+    An empty value is valid (no source rules).
+
+    Returns:
+        tuple: (is_valid: bool, error_message: str or None).
+    """
+    if value is None:
+        return True, None
+    if not isinstance(value, str):
+        return False, f'{field_name}: the value must be text.'
+    if len(value) > SOURCE_FIELD_MAX_LEN:
+        return False, (
+            f'{field_name}: the value must be at most '
+            f'{SOURCE_FIELD_MAX_LEN} characters.'
+        )
+    return validate_source_patterns(parse_source_patterns(value), field_name)
+
+
+# ---------------------------------------------------------------------------
+# Pattern-to-regex translation for transforms.conf (hand-written; the output
+# is the same on every Python version - see the module docstring for the shape)
+# ---------------------------------------------------------------------------
+
+_FRAGMENT_WORD_CHARS = frozenset(
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_'
+)
+# Every other character a folder or source pattern may contain; each is
+# emitted backslash-escaped (a backslash before a non-alphanumeric character
+# is always a literal in PCRE and in Python re).
+_FRAGMENT_ESCAPED_CHARS = frozenset('/.-:+@~')
+
+_LOOKAHEAD_KEYS = ('clz_dir', 'clz_subdir', 'source')
+
+
+def _star_segments(pattern):
+    """
+    Split a pattern on runs of ``*`` into its segments S0 .. Sk, k being the
+    number of runs (``**`` counts as one ``*``):
+    ``'/usr/sap/*/trace/*'`` -> ``['/usr/sap/', '/trace/', '']``.
+    Only the first and the last segment can be empty.
+    """
+    segments = [[]]
+    in_run = False
+    for ch in pattern:
+        if ch == '*':
+            if not in_run:
+                segments.append([])
+            in_run = True
+        else:
+            segments[-1].append(ch)
+            in_run = False
+    return [''.join(segment) for segment in segments]
+
+
+def _fragment_segment(segment, pattern):
+    """
+    Translate one segment without ``*`` (design seg(S)), per character:
+    ``?`` -> ``[^"]``, ``[A-Za-z0-9_]`` -> itself, ``/ . - : + @ ~`` ->
+    backslash + character.
+
+    Raises:
+        ValueError: on any other character (the message names the whole
+            ``pattern``).
+    """
+    out = []
+    for ch in segment:
+        if ch == '?':
+            out.append('[^"]')
+        elif ch in _FRAGMENT_WORD_CHARS:
+            out.append(ch)
+        elif ch in _FRAGMENT_ESCAPED_CHARS:
+            out.append('\\' + ch)
+        else:
+            raise ValueError(
+                f'cannot translate the character {ascii(ch)} in pattern '
+                f'"{_show(pattern)}"'
+            )
+    return ''.join(out)
+
+
+def filter_pattern_fragment(pattern):
+    """
+    Translate one folder segment or source pattern into the REGEX fragment
+    that must match a JSON string value exactly (design f(p), with the
+    linear ``*`` translation of design section 5b).
+
+    The pattern is split on runs of ``*`` into segments S0 .. Sk
+    (:func:`_star_segments`), each translated by :func:`_fragment_segment`.
+    Without ``*`` the fragment is seg(S0); otherwise it is::
+
+        seg(S0) (?>[^"]*?seg(S1)) ... (?>[^"]*?seg(S(k-1))) [^"]* seg(Sk)
+
+    Each MIDDLE segment is matched at its leftmost occurrence inside an
+    atomic group and never revisited, so only the last ``[^"]*`` backtracks
+    and the match time grows linearly with the value's length however many
+    ``*`` the pattern holds.  (One ``[^"]*`` per ``*`` backtracks about n^k
+    steps on a value of length n that does not match, and Splunk's PCRE
+    stops at its match limit.  At index time such a REGEX is expected to
+    count as no match - not yet measured - so an Exclude rule would keep
+    the event and an Include rule drop it.)  Leftmost placement is safe
+    because every segment has a fixed length (``?`` included), so the
+    matches are the glob's.  A pattern with no ``*`` or a single ``*`` gives
+    the same text as one ``[^"]*`` per ``*``; a run such as ``**`` gives one
+    ``[^"]*``.
+    The wildcards never cross the closing quote of the value, so a match
+    cannot run into the next key or into the event text.  Atomic groups
+    need Python 3.11+ ``re``; nothing here compiles the result.
+
+    Raises:
+        ValueError: on an empty pattern or any character outside the
+            grammar (callers validate first; this is the last line of
+            defence).
+    """
+    if not isinstance(pattern, str) or not pattern:
+        raise ValueError('cannot translate an empty pattern')
+    segments = _star_segments(pattern)
+    if len(segments) == 1:
+        return _fragment_segment(pattern, pattern)
+    out = [_fragment_segment(segments[0], pattern)]
+    for middle in segments[1:-1]:
+        out.append('(?>[^"]*?' + _fragment_segment(middle, pattern) + ')')
+    out.append('[^"]*')
+    out.append(_fragment_segment(segments[-1], pattern))
+    return ''.join(out)
+
+
+def filter_lookahead(key, fragment):
+    """
+    One condition of a generated REGEX: the JSON key ``key`` with a value
+    matching ``fragment`` (from :func:`filter_pattern_fragment`), found
+    without crossing a ``"_raw"`` key.
+    """
+    if key not in _LOOKAHEAD_KEYS:
+        raise ValueError(f'unknown envelope key {key!r}')
+    return '(?=' + FILTER_REGEX_GAP + '"' + key + '"\\s*:\\s*"' + fragment + '")'
+
+
+def _folder_alternative(pattern):
+    """The REGEX alternative of a validated ``dir/subdir`` folder pattern."""
+    dir_part, subdir_part = pattern.split('/')
+    return (filter_lookahead('clz_dir', filter_pattern_fragment(dir_part))
+            + filter_lookahead('clz_subdir', filter_pattern_fragment(subdir_part)))
+
+
+def _source_alternative(entry):
+    """The REGEX alternative of a validated source entry (plain or combined)."""
+    if '=' in entry:
+        folder, pattern = entry.split('=', 1)
+        return (_folder_alternative(folder)
+                + filter_lookahead('source', filter_pattern_fragment(pattern)))
+    return filter_lookahead('source', filter_pattern_fragment(entry))
+
+
+def _as_folder_list(patterns):
+    """Accept a list (the normal case) or a raw comma-separated string."""
+    if patterns is None:
+        return []
+    if isinstance(patterns, str):
+        return parse_comma_patterns(patterns)
+    return list(patterns)
+
+
+def _as_source_list(entries):
+    """Accept a list (the normal case) or a raw field value."""
+    if entries is None:
+        return []
+    if isinstance(entries, str):
+        return parse_source_patterns(entries)
+    return list(entries)
+
+
+def _folder_alternatives(patterns, field_name):
+    """
+    Re-validate a folder pattern list and translate it.  A bare ``*`` adds no
+    alternative (in Include Filters it makes the list pass-all, in Exclude
+    Filters it excludes nothing).
+
+    Returns:
+        list[tuple[str, str]]: (pattern, REGEX alternative) pairs.
+
+    Raises:
+        ValueError: naming the field, on the first invalid pattern.
+    """
+    out = []
+    for pattern in _as_folder_list(patterns):
+        is_valid, error = validate_single_pattern(pattern)
+        if not is_valid:
+            raise ValueError(f'{field_name}: {error}')
+        if pattern == '*':
+            continue
+        out.append((pattern, _folder_alternative(pattern)))
+    return out
+
+
+def _source_alternatives(entries, field_name):
+    """
+    Re-validate a source entry list and translate it.
+
+    Returns:
+        list[tuple[str, str]]: (entry, REGEX alternative) pairs.
+
+    Raises:
+        ValueError: naming the field, on the first invalid entry.
+    """
+    out = []
+    for entry in _as_source_list(entries):
+        is_valid, error = validate_source_entry(entry)
+        if not is_valid:
+            raise ValueError(f'{field_name}: {error}')
+        out.append((entry, _source_alternative(entry)))
+    return out
+
+
+def _chunk_regexes(alternatives, field_name):
+    """
+    De-duplicate alternatives (first occurrence kept, order preserved) and
+    join them into REGEX chunks of at most FILTER_REGEX_MAX_CHARS characters:
+    a new chunk starts when adding an entry would take the REGEX past the
+    limit.
+
+    Raises:
+        ValueError: if a single entry alone would pass the limit.
+    """
+    head = FILTER_REGEX_SKIP + '(?:'
+    tail = ')'
+    chunks = []
+    current = []
+    length = 0
+    seen = set()
+    for entry, alternative in alternatives:
+        if alternative in seen:
+            continue
+        seen.add(alternative)
+        alone = len(head) + len(alternative) + len(tail)
+        if alone > FILTER_REGEX_MAX_CHARS:
+            raise ValueError(
+                f'{field_name}: entry "{_show(entry)}" is too long or has too '
+                f'many wildcards (its rule would be {alone} characters; the '
+                f'limit is {FILTER_REGEX_MAX_CHARS}). Shorten it.'
+            )
+        if current and length + 1 + len(alternative) <= FILTER_REGEX_MAX_CHARS:
+            current.append(alternative)
+            length += 1 + len(alternative)
+        else:
+            if current:
+                chunks.append(current)
+            current = [alternative]
+            length = alone
+    if current:
+        chunks.append(current)
+    return [head + '|'.join(chunk) + tail for chunk in chunks]
 
 
 def fnmatch_patterns_to_combined_regex(patterns):
     """
-    Convert a list of fnmatch patterns into a single combined regex string
-    using alternation (``|``).
+    Compatibility helper (kept for existing importers): the REGEX matching
+    any of the given folder patterns, as ONE string (no chunking), in the
+    shape the generator uses.
 
     Args:
-        patterns: List of fnmatch pattern strings.
+        patterns: List of ``dir/subdir`` folder pattern strings.
 
     Returns:
-        str: Combined regex string, or ``None`` if no valid patterns.
+        str: The REGEX, or ``None`` if the list holds no ``dir/subdir`` pattern.
+
+    Raises:
+        ValueError: on an invalid pattern.
     """
-    regexes = []
-    for pattern in patterns:
-        regex = _fnmatch_to_clz_regex(pattern)
-        if regex:
-            regexes.append(regex)
-
-    if not regexes:
+    unique = []
+    for _pattern, alternative in _folder_alternatives(patterns, 'Pattern'):
+        if alternative not in unique:
+            unique.append(alternative)
+    if not unique:
         return None
-
-    if len(regexes) == 1:
-        return regexes[0]
-
-    # Wrap each in a non-capturing group and join with alternation
-    return '|'.join(f'(?:{r})' for r in regexes)
+    return FILTER_REGEX_SKIP + '(?:' + '|'.join(unique) + ')'
 
 
 # ---------------------------------------------------------------------------
@@ -401,93 +855,131 @@ def generate_epoch_less_than_regex(cutoff_epoch):
 # Filter conf generation
 # ---------------------------------------------------------------------------
 
-def _is_wildcard_include(include_patterns):
+def is_pass_all_include(include_patterns):
     """
-    Check whether the include patterns are effectively a wildcard pass-all.
+    Whether an Include Filters list keeps every event (no include gate).
+
+    Pass-all when the list is empty or contains ANY ``*/*`` or bare ``*``
+    entry (or a ``dir/subdir`` entry whose two segments are only ``*``
+    characters, e.g. ``**/*``, which matches the same).  Another entry next
+    to it does not narrow it: ``*/*, linux/cron`` and ``*, linux/cron`` keep
+    everything, including events that carry no folder fields.  This is the
+    Data Doctor's model.
 
     Args:
-        include_patterns: List of fnmatch pattern strings.
+        include_patterns: List of folder pattern strings.
 
     Returns:
-        bool: True if include patterns are absent, empty, or ``['*/*']``.
+        bool: True if no include gate is generated.
     """
     if not include_patterns:
         return True
-    return include_patterns == ['*/*']
+    for pattern in include_patterns:
+        if not isinstance(pattern, str):
+            continue
+        if pattern == '*':
+            return True
+        parts = pattern.split('/')
+        if (len(parts) == 2 and parts[0] and parts[1]
+                and set(parts[0]) == {'*'} and set(parts[1]) == {'*'}):
+            return True
+    return False
 
 
-def generate_transforms_stanzas(include_patterns, exclude_patterns, days_in_past=0):
+# Kept for existing importers; same rule as is_pass_all_include.
+_is_wildcard_include = is_pass_all_include
+
+
+def parse_days_in_past(days_in_past):
     """
-    Generate transforms.conf stanzas for the include, exclude, and time filters.
+    Days in the Past as an int, read the same way by the REST handler (at
+    save) and the daily refresh: ``None`` / ``''`` = 0, a whole number in
+    any form the settings field accepts (``'7'``, ``'7.0'``, ``'1e1'``) =
+    that number.  A value of 0 or less means no time filter.
 
-    The include filter is an **active gate**: events whose ``clz_dir/clz_subdir``
-    does not match any include pattern are dropped to ``nullQueue`` before
-    indexing.  This is implemented as a three-transform chain where the last
-    matching transform wins::
+    Raises:
+        ValueError: naming Days in the Past, for anything that is not a
+            finite whole number (``'7.5'``, ``'abc'``, ``'nan'``, ``'inf'``,
+            a boolean).
+    """
+    if days_in_past is None or days_in_past == '':
+        return 0
+    if isinstance(days_in_past, bool):
+        raise ValueError('Days in the Past must be a whole number.')
+    try:
+        return int(days_in_past)
+    except (TypeError, ValueError, OverflowError):
+        pass
+    try:
+        as_float = float(days_in_past)
+    except (TypeError, ValueError):
+        as_float = None
+    if as_float is None or not math.isfinite(as_float) or as_float != int(as_float):
+        raise ValueError(
+            f'Days in the Past must be a whole number, not '
+            f'"{_show(str(days_in_past))}".'
+        )
+    return int(as_float)
 
-        logserv_filter_include_drop  →  REGEX = .           →  queue=nullQueue
-        logserv_filter_include_allow →  REGEX = <includes>  →  queue=indexQueue
-        logserv_filter_exclude       →  REGEX = <excludes>  →  queue=nullQueue
 
-    Pipeline logic:
-    1. Drop everything (default deny)
-    2. Allow back events matching include patterns
-    3. Re-drop events matching exclude patterns (exclude wins over include)
+# Kept for existing callers; same function.
+_days_value = parse_days_in_past
 
-    When include is ``*/*`` (the default), the include drop/allow transforms
-    are omitted entirely — everything passes, and only the exclude transform
-    (if any) is generated.
 
-    Time-based filtering is implemented as an additional transform that matches
-    the ``"_time"`` epoch value in the raw JSON and routes old events to
-    ``nullQueue``.  This runs in the TRANSFORMS phase alongside the other
-    filters, avoiding the need for INGEST_EVAL (which requires a server-wide
-    ``limits.conf`` setting that may not be available on Splunk Cloud).
+def _filter_plan(include_patterns, exclude_patterns, days_in_past,
+                 include_sources, exclude_sources, warn=False):
+    """
+    The ordered list of generated filter stanzas, shared by both generators
+    so props.conf references exactly the stanzas transforms.conf defines.
 
-    Args:
-        include_patterns: List of fnmatch include pattern strings.
-        exclude_patterns: List of fnmatch exclude pattern strings.
-        days_in_past: Number of days; events older than this are dropped.
+    Every entry of every list is re-validated first; nothing is built from
+    an invalid value.
 
     Returns:
-        str: transforms.conf stanza text, or empty string if nothing to generate.
+        list[tuple[str, str, str]]: (stanza name, REGEX, FORMAT) in
+        ``TRANSFORMS-00-filter`` order.
+
+    Raises:
+        ValueError: naming the field and entry, on any invalid value.
     """
-    stanzas = []
-    wildcard_include = _is_wildcard_include(include_patterns)
+    include_patterns = _as_folder_list(include_patterns)
+    include_alts = _folder_alternatives(include_patterns, 'Include Filters')
+    exclude_alts = _folder_alternatives(exclude_patterns, 'Exclude Filters')
+    include_source_alts = _source_alternatives(include_sources, 'Include Sources')
+    exclude_source_alts = _source_alternatives(exclude_sources, 'Exclude Sources')
+    days = parse_days_in_past(days_in_past)
 
-    # --- Include transforms (only when include is not wildcard) ---
-    if not wildcard_include:
-        include_regex = fnmatch_patterns_to_combined_regex(include_patterns)
-        if include_regex:
-            # Transform 1: Default-drop all events
-            stanzas.append(
-                '[logserv_filter_include_drop]\n'
-                'REGEX = .\n'
-                'FORMAT = nullQueue\n'
-                'DEST_KEY = queue\n'
-            )
-            # Transform 2: Allow back events matching include patterns
-            stanzas.append(
-                f'[logserv_filter_include_allow]\n'
-                f'REGEX = {include_regex}\n'
-                f'FORMAT = indexQueue\n'
-                f'DEST_KEY = queue\n'
-            )
+    plan = []
 
-    # --- Exclude transform ---
-    if exclude_patterns:
-        exclude_regex = fnmatch_patterns_to_combined_regex(exclude_patterns)
-        if exclude_regex:
-            stanzas.append(
-                f'[logserv_filter_exclude]\n'
-                f'REGEX = {exclude_regex}\n'
-                f'FORMAT = nullQueue\n'
-                f'DEST_KEY = queue\n'
-            )
+    def add_chunks(name, alternatives, fmt, field_name):
+        for number, regex in enumerate(_chunk_regexes(alternatives, field_name), 1):
+            plan.append((name if number == 1 else f'{name}_{number}', regex, fmt))
 
-    # --- Time-based filter transform ---
-    if days_in_past and int(days_in_past) > 0:
-        cutoff = epoch_cutoff_from_days(int(days_in_past))
+    # Stages 1-3: the include gate - drop everything, then allow back the
+    # included folders and the included sources.
+    if not is_pass_all_include(include_patterns):
+        plan.append(('logserv_filter_include_drop', '.', 'nullQueue'))
+        add_chunks('logserv_filter_include_allow', include_alts,
+                   'indexQueue', 'Include Filters')
+        if include_source_alts:
+            add_chunks('logserv_filter_include_sources', include_source_alts,
+                       'indexQueue', 'Include Sources')
+    elif include_source_alts and warn:
+        logger.warning(
+            'Include Sources is set but Include Filters keeps every log type '
+            '(*/* or *), so there is no include gate: the Include Sources rule '
+            'has no effect and was not generated.'
+        )
+
+    # Stage 4: time filter (overrides the allows for old events).
+    if days > 0:
+        cutoff = epoch_cutoff_from_days(days)
+        if cutoff < 0:
+            # (the epoch regex cannot express a cutoff before 1970)
+            raise ValueError(
+                f'Days in the Past is too large ({days}): the cutoff would '
+                f'fall before 1970. Use a value between 0 and 3650.'
+            )
         epoch_regex = generate_epoch_less_than_regex(cutoff)
         if epoch_regex:
             # Match "_time": VALUE in the raw JSON where VALUE < cutoff.
@@ -495,22 +987,93 @@ def generate_transforms_stanzas(include_patterns, exclude_patterns, days_in_past
             # or "_time":"1735689600.123".  We anchor on the field name
             # and match the integer epoch portion.
             full_regex = f'"_time"\\s*:\\s*"?(?:{epoch_regex})(?:\\.\\d+)?'
-            stanzas.append(
-                f'[logserv_filter_time_drop]\n'
-                f'REGEX = {full_regex}\n'
-                f'FORMAT = nullQueue\n'
-                f'DEST_KEY = queue\n'
-            )
+            plan.append(('logserv_filter_time_drop', full_regex, 'nullQueue'))
 
+    # Stages 5-6: excludes (always win over the allows).
+    if exclude_alts:
+        add_chunks('logserv_filter_exclude', exclude_alts,
+                   'nullQueue', 'Exclude Filters')
+    if exclude_source_alts:
+        add_chunks('logserv_filter_exclude_sources', exclude_source_alts,
+                   'nullQueue', 'Exclude Sources')
+
+    # Last line of defence: every REGEX is one printable-ASCII conf line that
+    # does not end in a backslash (a conf line continuation).
+    for name, regex, _fmt in plan:
+        if (not regex or regex.endswith('\\')
+                or any(ord(ch) < 32 or ord(ch) > 126 for ch in regex)):
+            raise ValueError(f'generated REGEX for [{name}] is not a single conf line')
+
+    return plan
+
+
+def generate_transforms_stanzas(include_patterns, exclude_patterns, days_in_past=0,
+                                include_sources=None, exclude_sources=None):
+    """
+    Generate transforms.conf stanzas for the include, source, time and
+    exclude filters.
+
+    The include filter is an **active gate**: when Include Filters is not
+    pass-all (:func:`is_pass_all_include`), every event is dropped to
+    ``nullQueue`` and then allowed back if its folder matches an Include
+    Filters pattern or its source matches an Include Sources entry.  The
+    stanzas, in the order the last match wins::
+
+        logserv_filter_include_drop     REGEX = .                 nullQueue   (include gate)
+        logserv_filter_include_allow    REGEX = <folder includes> indexQueue  (include gate)
+        logserv_filter_include_sources  REGEX = <source includes> indexQueue  (include gate + Include Sources)
+        logserv_filter_time_drop        REGEX = <epoch < cutoff>  nullQueue   (days_in_past > 0)
+        logserv_filter_exclude          REGEX = <folder excludes> nullQueue   (Exclude Filters)
+        logserv_filter_exclude_sources  REGEX = <source excludes> nullQueue   (Exclude Sources)
+
+    Each stanza is generated only when its condition holds.  A list whose
+    REGEX would pass FILTER_REGEX_MAX_CHARS is split into chunks: the first
+    keeps the plain name, chunk n >= 2 is ``<name>_<n>``.  Every stanza
+    carries ``LOOKAHEAD = 100000`` so the whole line is searched.  Include
+    Sources while Include Filters is pass-all is not generated (a WARNING is
+    logged).  A bare ``*`` in Exclude Filters excludes nothing.
+
+    Time-based filtering matches the ``"_time"`` epoch value in the raw JSON
+    and routes old events to ``nullQueue`` in the TRANSFORMS phase, avoiding
+    INGEST_EVAL (which requires a server-wide ``limits.conf`` setting that
+    may not be available on Splunk Cloud).
+
+    Args:
+        include_patterns: List of Include Filters folder patterns.
+        exclude_patterns: List of Exclude Filters folder patterns.
+        days_in_past: Number of days; events older than this are dropped.
+        include_sources: List of Include Sources entries (default none).
+        exclude_sources: List of Exclude Sources entries (default none).
+
+    Returns:
+        str: transforms.conf stanza text, or empty string if nothing to generate.
+
+    Raises:
+        ValueError: if any entry of any list (or days_in_past) is invalid -
+            the message names the field and the entry.  Nothing is generated
+            from unvalidated input.
+    """
+    plan = _filter_plan(include_patterns, exclude_patterns, days_in_past,
+                        include_sources, exclude_sources, warn=True)
+    stanzas = []
+    for name, regex, fmt in plan:
+        stanzas.append(
+            f'[{name}]\n'
+            f'REGEX = {regex}\n'
+            f'FORMAT = {fmt}\n'
+            f'DEST_KEY = queue\n'
+            f'LOOKAHEAD = {FILTER_LOOKAHEAD}\n'
+        )
     return '\n'.join(stanzas)
 
 
-def generate_props_filter_lines(include_patterns, exclude_patterns, days_in_past, filter_enabled):
+def generate_props_filter_lines(include_patterns, exclude_patterns, days_in_past, filter_enabled,
+                                include_sources=None, exclude_sources=None):
     """
     Generate the ``[sap_logserv_logs]`` props.conf stanza that references
     the filter transforms.
 
-    All filtering (include/exclude gate AND time-based) is done via
+    All filtering (include/exclude gate, sources AND time-based) is done via
     TRANSFORMS, which run in the same pipeline phase as sourcetype routing.
     This avoids INGEST_EVAL (which requires ``allow_ingest_eval = true``
     in ``limits.conf`` — a server-wide setting unavailable on Splunk Cloud).
@@ -522,57 +1085,45 @@ def generate_props_filter_lines(include_patterns, exclude_patterns, days_in_past
 
     The transform order within the line is::
 
-        logserv_filter_include_drop   (default deny → nullQueue)
-        logserv_filter_include_allow  (allow matching types → indexQueue)
-        logserv_filter_time_drop      (drop old events → nullQueue, overrides allow)
-        logserv_filter_exclude        (drop excluded types → nullQueue, overrides allow)
+        logserv_filter_include_drop     (default deny → nullQueue)
+        logserv_filter_include_allow    (allow matching folders → indexQueue)
+        logserv_filter_include_sources  (allow matching sources → indexQueue)
+        logserv_filter_time_drop        (drop old events → nullQueue, overrides the allows)
+        logserv_filter_exclude          (drop excluded folders → nullQueue, overrides the allows)
+        logserv_filter_exclude_sources  (drop excluded sources → nullQueue, overrides the allows)
 
-    When include is ``*/*``, include transforms are omitted.
-    When exclude is empty, the exclude transform is omitted.
-    When days_in_past is 0 or empty, the time transform is omitted.
+    Each name is present only when its stanza is generated (see
+    :func:`generate_transforms_stanzas`; chunks ``<name>_<n>`` follow their
+    first stanza).
 
     Args:
-        include_patterns: List of fnmatch include pattern strings.
-        exclude_patterns: List of fnmatch exclude pattern strings.
+        include_patterns: List of Include Filters folder patterns.
+        exclude_patterns: List of Exclude Filters folder patterns.
         days_in_past: Number of days; events older than this are dropped.
         filter_enabled: Whether filtering is enabled at all.
+        include_sources: List of Include Sources entries (default none).
+        exclude_sources: List of Exclude Sources entries (default none).
 
     Returns:
         str: props.conf ``[sap_logserv_logs]`` stanza content, or empty string.
+
+    Raises:
+        ValueError: as :func:`generate_transforms_stanzas`, when filtering
+            is enabled.
     """
     if not filter_enabled:
         return ''
 
-    lines = ['[sap_logserv_logs]']
-    wildcard_include = _is_wildcard_include(include_patterns)
-
-    # Build a single TRANSFORMS-00-filter line with all queue transforms.
-    # Order matters: last match wins within the line.
-    transform_refs = []
-
-    # Stage 1 & 2: Include gate (drop all, then allow matching)
-    if not wildcard_include:
-        include_regex = fnmatch_patterns_to_combined_regex(include_patterns)
-        if include_regex:
-            transform_refs.append('logserv_filter_include_drop')
-            transform_refs.append('logserv_filter_include_allow')
-
-    # Stage 3: Time filter (overrides include_allow for old events)
-    if days_in_past and int(days_in_past) > 0:
-        transform_refs.append('logserv_filter_time_drop')
-
-    # Stage 4: Exclude filter (overrides include_allow for excluded types)
-    if exclude_patterns:
-        exclude_regex = fnmatch_patterns_to_combined_regex(exclude_patterns)
-        if exclude_regex:
-            transform_refs.append('logserv_filter_exclude')
-
-    if transform_refs:
-        lines.append(f'TRANSFORMS-00-filter = {", ".join(transform_refs)}')
-
-    if len(lines) <= 1:
+    plan = _filter_plan(include_patterns, exclude_patterns, days_in_past,
+                        include_sources, exclude_sources)
+    if not plan:
         return ''
 
+    transform_refs = [name for name, _regex, _fmt in plan]
+    lines = [
+        '[sap_logserv_logs]',
+        f'TRANSFORMS-00-filter = {", ".join(transform_refs)}',
+    ]
     return '\n'.join(lines) + '\n'
 
 

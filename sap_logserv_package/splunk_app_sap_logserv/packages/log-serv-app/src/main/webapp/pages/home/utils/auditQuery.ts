@@ -1,5 +1,5 @@
 /**
- * auditQuery — read-only fetch of `ai_assistant_audit` events from
+ * auditQuery — read-only fetch of `logserv_ai_assistant_audit` events from
  * Splunk's search REST endpoint. Used by the Settings page's Audit Log
  * viewer (build 95, session 022).
  *
@@ -123,8 +123,10 @@ const escapeForSpl = (s: string): string =>
  * The SPL is constructed defensively — user inputs are filtered through
  * `escapeForSpl` before string interpolation. The `category` and time
  * range come from typed enums, so they don't need escaping.
+ *
+ * Exported for `auditQuery.consistency-test.ts` (build 394).
  */
-const buildSpl = (filters: AuditQueryFilters): string => {
+export const buildSpl = (filters: AuditQueryFilters): string => {
     const clauses: string[] = [AUDIT_INDEX_MACRO];
     if (filters.categories.length > 0) {
         const cats = filters.categories.map((c) => `"${c}"`).join(',');
@@ -146,8 +148,15 @@ const buildSpl = (filters: AuditQueryFilters): string => {
     // pre-populated by Splunk's automatic event classification (value
     // "unknown" for our sourcetype) and `spath` does NOT overwrite it.
     // `eval` does, so we re-derive the category directly from the
-    // raw JSON. Other JSON fields (user, model, sessionId, etc.) don't
-    // collide with reserved names and arrive correctly via spath alone.
+    // raw JSON.
+    //
+    // `user` is re-derived the same way (build 394). The "User contains"
+    // filter puts `user="*...*"` in the base search, so Splunk extracts
+    // `user` from the JSON to apply it; `spath` then adds the same value
+    // again, and the field comes back with two values, which the viewer
+    // rendered as the name twice ("adminadmin"). Without the filter the
+    // field arrived once. Other JSON fields (model, sessionId, etc.) are
+    // never in the base search and arrive correctly via spath alone.
     return [
         `search ${clauses.join(' ')}`,
         `head ${Math.max(1, Math.min(5000, filters.limit))}`,
@@ -158,6 +167,7 @@ const buildSpl = (filters: AuditQueryFilters): string => {
         `sort -_time`,
         `spath`,
         `eval category=json_extract(_raw, "category")`,
+        `eval user=json_extract(_raw, "user")`,
     ].join(' | ');
 };
 

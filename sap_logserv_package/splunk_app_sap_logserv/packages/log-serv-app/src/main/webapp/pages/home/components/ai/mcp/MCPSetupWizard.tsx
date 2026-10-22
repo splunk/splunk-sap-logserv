@@ -187,40 +187,6 @@ const MCPSetupWizard: React.FC<MCPSetupWizardProps> = ({ health, onRetry }) => {
         );
     }
 
-    if (health.status === 'mcp_server_too_new') {
-        return (
-            <Card>
-                <SeverityBadge $severity="warning">Uncertified version</SeverityBadge>
-                <Title>Splunk MCP Server v{health.installedVersion} is not yet certified</Title>
-                <Subtitle>
-                    The AI Assistant has been validated against versions{' '}
-                    <code>&lt; {health.maxExclusiveVersion}</code>. The installed
-                    version is at or above that line and may have changed the
-                    protocol shape we depend on.
-                </Subtitle>
-                <Body>
-                    This is intentional — a Splunk MCP Server major release can
-                    rename tools, change the request/response envelope, or alter
-                    error handling in ways that would silently break tool dispatch.
-                    Until our team re-certifies the AI Assistant against the new
-                    major, we refuse to operate so admins see a clear cause
-                    instead of cryptic errors.
-                    <br />
-                    <br />
-                    Either downgrade the Splunk MCP Server to a certified version
-                    (<code>&lt; {health.maxExclusiveVersion}</code>), or wait for an
-                    AI Assistant update that bumps the certified upper bound.
-                </Body>
-                <ActionRow>
-                    <PrimaryButton href={SPLUNKBASE_MCP_SERVER_URL} target="_blank" rel="noreferrer">
-                        Open Splunkbase App 7931
-                    </PrimaryButton>
-                    {onRetry && <SecondaryButton onClick={onRetry}>Re-check</SecondaryButton>}
-                </ActionRow>
-            </Card>
-        );
-    }
-
     if (health.status === 'mcp_ta_missing') {
         return (
             <Card>

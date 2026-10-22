@@ -34,7 +34,7 @@ Saved-search counts are CUMULATIVE over each search's own rolling window (typica
 
 **Tier 1:** the summary the AI receives is `Returned N rows in Mms.` (inside the `<TOOL_RESULT_DATA>` wrapper) — no window data at all. The AI must hedge: *"X rows over the search's rolling window, exact span unknown"* OR infer from the saved-search NAME (e.g., `*_24h`, `*_after_hours`) when the name carries a window hint.
 
-**Tier 2:** the summary includes a `Time range:` line ONLY when the result has a `_time` column (timecharts, time-series). For aggregate searches like `stats by user`, no `_time` column → no time-range line → AI must hedge as in Tier 1.
+**Tier 2:** the summary includes a `Time range:` line ONLY when the result has a `_time` column (timecharts, time-series). When every `_time` value is a timestamp, both ends are ISO-8601 UTC timestamps the App writes and the line ends `(UTC).`; otherwise it reads `Time range: not shown (the _time values are not all timestamps).`. For aggregate searches like `stats by user`, no `_time` column → no time-range line → AI must hedge as in Tier 1.
 
 ### Rule 2 — Normalize Count → Rate
 

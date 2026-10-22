@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { useSearch } from '../hooks/useSearch';
 import { logservTheme } from '../styles/logservTheme';
+import { formatBucketTime, utcDayLabel } from '../utils/timechartSpan';
 
 /**
  * Sparkline — tiny inline SVG line chart for KPI tiles.
@@ -14,12 +15,23 @@ import { logservTheme } from '../styles/logservTheme';
  * Hover behavior: moving the mouse over the chart snaps to the nearest data
  * point and shows a tooltip with the timestamp and value, plus a dashed
  * guide line and dot at the hovered point. Skips null/empty data points.
+ *
+ * Tooltip time (build 377): a bucket is a day in the dispatching Splunk user's
+ * zone, and Splunk writes `_time` with that zone's offset, so the tooltip
+ * prints the wall clock written in `_time` (utils/timechartSpan.ts
+ * formatBucketTime) - never the browser's zone. A sparkline over a rollup
+ * stored by UTC day (the beaconing rollups' `day_ts`) passes `utcDayField`
+ * and its tooltip shows the UTC date each point carries, labelled as a UTC
+ * day (utcDayLabel).
  */
 
 interface SparklineProps {
     values: Array<number | null | undefined>;
     /** Optional timestamps (ISO strings or unix-second numbers) aligned with values. */
     times?: Array<string | number | null | undefined>;
+    /** Optional tooltip time lines aligned with values; when given they are
+     *  shown instead of the formatted `times`. */
+    timeLabels?: Array<string | null | undefined>;
     /** Optional label shown on the second tooltip line, e.g. "Total Events". */
     label?: string;
     /** Format the value for the tooltip. Defaults to integer with commas. */
@@ -84,23 +96,10 @@ const ValueLine = styled.div`
 
 const defaultFormat = (n: number): string => n.toLocaleString('en-US');
 
-const formatTimeShort = (raw: string | number | null | undefined): string | null => {
-    if (raw === null || typeof raw === 'undefined') return null;
-    const d = typeof raw === 'number' ? new Date(raw * 1000) : new Date(String(raw));
-    if (Number.isNaN(d.getTime())) return String(raw);
-    return d.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-    });
-};
-
 export const Sparkline: React.FC<SparklineProps> = ({
     values,
     times,
+    timeLabels,
     label,
     formatValue,
     width = 140,
@@ -177,7 +176,14 @@ export const Sparkline: React.FC<SparklineProps> = ({
     const fmt = formatValue ?? defaultFormat;
     const hoverPoint = hoverIdx !== null ? points[hoverIdx] : null;
     const hoverValue = hoverIdx !== null ? cleaned[hoverIdx] : null;
-    const hoverTime = hoverIdx !== null && times ? formatTimeShort(times[hoverIdx]) : null;
+    const hoverTime =
+        hoverIdx === null
+            ? null
+            : timeLabels
+              ? timeLabels[hoverIdx] ?? null
+              : times
+                ? formatBucketTime(times[hoverIdx])
+                : null;
     const hoverLeftPct = hoverIdx !== null ? (hoverIdx / (cleaned.length - 1)) * 100 : 0;
     // Inside the outer ~20% at either end, pin the tooltip's NEAR edge at the
     // hovered point instead of centring on it, or it overflows the KPI card. The
@@ -259,6 +265,11 @@ interface SparklineFromQueryProps {
     label?: string;
     /** Format the value for the tooltip. Defaults to integer with commas. */
     formatValue?: (v: number) => string;
+    /** The field carrying each point's UTC day (epoch seconds of its 00:00
+     *  UTC), for a sparkline over a rollup stored by UTC day (`day_ts`). The
+     *  tooltip then shows that UTC date, labelled as a UTC day, instead of
+     *  the bin's local time (build 377). */
+    utcDayField?: string;
     width?: number;
     height?: number;
     color?: string;
@@ -270,6 +281,7 @@ export const SparklineFromQuery: React.FC<SparklineFromQueryProps> = ({
     valueField,
     label,
     formatValue,
+    utcDayField,
     width,
     height,
     color,
@@ -290,10 +302,14 @@ export const SparklineFromQuery: React.FC<SparklineFromQueryProps> = ({
         if (raw === null || typeof raw === 'undefined') return null;
         return raw as string | number;
     });
+    const timeLabels = utcDayField
+        ? results.map((row, i) => utcDayLabel((row as Record<string, unknown>)[utcDayField], times[i]))
+        : undefined;
     return (
         <Sparkline
             values={values}
             times={times}
+            timeLabels={timeLabels}
             label={label}
             formatValue={formatValue}
             width={width}

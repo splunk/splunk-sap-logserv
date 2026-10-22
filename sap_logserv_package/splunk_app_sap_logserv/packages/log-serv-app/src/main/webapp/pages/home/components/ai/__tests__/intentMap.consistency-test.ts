@@ -296,8 +296,8 @@ for (const p of intentMap.prompts) {
 //   2. The Environment Topology graph rollups put it INFIX, because one
 //      collection is split across three searches:
 //      logserv_topology_aggregate_nodes / _backfill_edges / …
-//      (`logserv_topology_retention` and the newer
-//      `logserv_topology_detail_*` stanzas match shape 1.)
+//      (`logserv_topology_retention`, `logserv_topology_edges_retention`
+//      and the newer `logserv_topology_detail_*` stanzas match shape 1.)
 //
 // Deliberately anchored and narrow: it matches only the three known job
 // suffixes under the `logserv_` prefix, so a genuinely un-prompted *prompt-
@@ -306,8 +306,13 @@ for (const p of intentMap.prompts) {
 // zero prompt-backed ones.
 const ROLLUP_JOB_SUFFIXED = /^logserv_[a-z0-9_]+_(aggregate|backfill|retention)$/;
 const ROLLUP_JOB_TOPOLOGY = /^logserv_topology_(aggregate|backfill)_[a-z0-9_]+$/;
+// Session 147 (build 372): the rollup layer's read-only late-arrival check is
+// maintenance, not a prompt - Settings -> Dashboard Data dispatches it. Named
+// one by one, never by pattern, so the exemption cannot grow by accident.
+const ROLLUP_MAINTENANCE_SEARCHES: ReadonlySet<string> = new Set(['logserv_late_arrival_check']);
 const isScheduledRollupJob = (name: string): boolean =>
-    ROLLUP_JOB_SUFFIXED.test(name) || ROLLUP_JOB_TOPOLOGY.test(name);
+    ROLLUP_JOB_SUFFIXED.test(name) || ROLLUP_JOB_TOPOLOGY.test(name)
+    || ROLLUP_MAINTENANCE_SEARCHES.has(name);
 
 let skippedRollupJobs = 0;
 for (const stanzaName of Object.keys(savedSearches)) {

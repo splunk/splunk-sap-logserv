@@ -49,7 +49,10 @@ const BUILDERS: { name: string; fn: Builder }[] = [
     { name: 'SEARCH_EDGE_PERFORMANCE', fn: searchMod.SEARCH_EDGE_PERFORMANCE },
     { name: 'SEARCH_EDGE_ERRORS', fn: searchMod.SEARCH_EDGE_ERRORS },
 ];
-const SPL_TYPES = ['http', 'rfc', 'hana_audit', 'hana_tenant'];
+// Build 378: + 'saprouter' (SAP Router host -> CONNECT TO target). The conf
+// side - the edges search emits exactly these types and the detail search
+// scopes each of them three times - is section 3m of bin/check-diagnostics.js.
+const SPL_TYPES = ['http', 'rfc', 'hana_audit', 'hana_tenant', 'saprouter'];
 
 let tFailures = 0;
 let tChecks = 0;

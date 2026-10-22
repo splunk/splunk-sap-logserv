@@ -5,7 +5,7 @@ The AI Assistant's tool-dispatch path runs on top of the [Splunk MCP Server (Spl
 ## :material-circle-box:{ .taiconcolor } Prerequisites
 
 - **Splunk 9.4.3 or later.**
-- **[Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.0.3 or later** — the version floor the App's health probe enforces, paired with an upper bound below **v3.0.0**, so the 2.x major is accepted (App build 335 and later); **v1.1.0 or later is recommended** (cookie auth was validated against 1.1.0) — installed on the **same search head** as the LogServ App. (The LogServ App's React UI calls MCP via the same Splunk Web session, so they need to share an HTTP host.)
+- **[Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.0.3 or later** — the version floor the App's health probe enforces, with no upper bound since App build 393 (2.0.0 is the newest version verified); **v1.1.0 or later is recommended** (cookie auth was validated against 1.1.0) — installed on the **same search head** as the LogServ App. (The LogServ App's React UI calls MCP via the same Splunk Web session, so they need to share an HTTP host.)
 - **Admin user role** to install the MCP Server app and configure its REST handlers.
 
 !!! note "Splunk MCP TA gate currently bypassed"

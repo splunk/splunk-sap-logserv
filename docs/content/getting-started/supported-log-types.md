@@ -15,7 +15,7 @@ However `clz_dir` and `clz_subdir` fields are preserved to maintain backtracking
 The Data TA also stamps `splunk_solution` (always `splunk_for_sap_logserv`, identifying events that flowed through this solution) at index time on every routed event. It can additionally stamp `cloud_provider` (`aws`, `azure`, or `gcp`, identifying the cloud the data was ingested from) — the Azure and GCP ingest add-ons set it automatically per input, while for AWS (or TA-wide) it is enabled via the Data TA's **Configuration → Cloud Provider** dropdown, which ships as **Not set**; see [Configuring Filters → Cloud Provider Attribution](../install-setup/configure-filters.md#cloud-provider-attribution) for details.
 
 !!! note "Ingest channel: AWS S3, Azure Blob Storage, or Google Cloud Storage"
-    The sourcetype mappings below apply identically to all three ingest channels — **AWS S3** (via the Splunk Add-on for AWS), **Azure Blob Storage** (via the Splunk TA for SAP LogServ on Azure add-on), and **Google Cloud Storage** (via the Splunk TA for SAP LogServ on GCP add-on). The Data TA's index-time routing transforms key on the `clz_dir` / `clz_subdir` fields carried inside each NDJSON event (and, for the OS/DNS/proxy types, on the event's `source` path), which the SAP LogServ collector writes the same way regardless of object-storage destination. See the [Azure Setup Guide](../install-setup/azure-setup.md) and the [GCP Setup Guide](../install-setup/gcp-setup.md) for cloud-specific configuration; AWS S3 is covered under [Prerequisites](../install-setup/prerequisites.md). Azure- and GCP-ingested events carry an indexed `cloud_provider` field automatically (stamped per input by their add-on); AWS-ingested events carry it once you set the Cloud Provider dropdown (or add `_meta = cloud_provider::aws` to the AWS S3 inputs on a mixed forwarder) — see [Cloud Provider Attribution](../install-setup/configure-filters.md#cloud-provider-attribution).
+    The sourcetype mappings below apply identically to all three ingest channels — **AWS S3** (via the Splunk Add-on for AWS), **Azure Blob Storage** (via the Splunk TA for SAP LogServ on Azure add-on), and **Google Cloud Storage** (via the Splunk TA for SAP LogServ on GCP add-on). The Data TA's index-time routing transforms key on the `clz_dir` / `clz_subdir` fields carried inside each NDJSON event (and, for the OS/DNS/proxy types and for HANA trace files delivered without folder fields, on the event's `source` path), which the SAP LogServ collector writes the same way regardless of object-storage destination. See the [Azure Setup Guide](../install-setup/azure-setup.md) and the [GCP Setup Guide](../install-setup/gcp-setup.md) for cloud-specific configuration; AWS S3 is covered under [Prerequisites](../install-setup/prerequisites.md). Azure- and GCP-ingested events carry an indexed `cloud_provider` field automatically (stamped per input by their add-on); AWS-ingested events carry it once you set the Cloud Provider dropdown (or add `_meta = cloud_provider::aws` to the AWS S3 inputs on a mixed forwarder) — see [Cloud Provider Attribution](../install-setup/configure-filters.md#cloud-provider-attribution).
 
 ### :material-circle-box:{ .taiconcolor } LogServ Object Storage Path Structure
 
@@ -33,7 +33,7 @@ logserv/hana/hanaaudit/2025/10/01/hana-xyz789.json.gz
 logserv/dns/binddns/2025/11/20/dns-def456.json.gz
 ```
 
-The `clz_dir/clz_subdir` values are used by the index-time filter to match include/exclude patterns. See [Configuring Filters](../install-setup/configure-filters.md) for details.
+The `clz_dir/clz_subdir` values are used by the index-time filter to match include/exclude patterns. The filter's **Include Sources** and **Exclude Sources** fields match the event's `source` value instead — the log file's path, such as `/var/log/zypper.log` — which is how log files that share a folder are told apart. See [Configuring Filters](../install-setup/configure-filters.md) for details. Some Azure data sits in a folder named `undefined/undefined` and its events carry no folder fields; see [Data Delivered Without Folder Fields](#data-delivered-without-folder-fields).
 
 ## :material-circle-box:{ .taiconcolor } Primary Supported Log Types
 
@@ -49,7 +49,7 @@ The LogServ App provides rich search-time field extractions for SAP HANA audit e
 
 ### SAP Web Dispatcher (LogServ App)
 
-The LogServ App provides search-time field extractions for SAP Web Dispatcher access logs — client/method/status/URI, four-stage timing, TLS posture, and derived response-time / error fields, plus CIM field aliases.
+The LogServ App provides search-time field extractions for SAP Web Dispatcher access logs — client/method/status/URI, four-stage timing, TLS posture, and derived response-time / error fields, plus CIM field aliases. Like the ABAP sourcetypes, it also extracts `sap_sid` and `sap_instance` from the `source` metadata field (`/usr/sap/<SID>/<instance>/...`): a path with no `/usr/sap/<SID>/` directory (three upper-case letters or digits) gets no `sap_sid`, and one with no instance directory (upper-case letters followed by digits, such as `W00`) right below `/usr/sap/<dir>/` gets no `sap_instance`.
 
 | Source field value | Sourcetype assigned | Filter path |
 |-------------------|-------------------|-------------|
@@ -71,6 +71,8 @@ The LogServ App provides search-time field extractions for 9 SAP ABAP applicatio
 | ABAP sapstartsrv log | `sap:abap:sapstartsrv` | `abap/sapstartsrv` |
 | ABAP work process log † | `sap:abap:workprocess` | `abap/workprocess` |
 
+The ICM log (`dev_icm`) gives the request type, session ID, SAP client (`sap_client`), user and terminal of each session-list entry, the direction, addresses and protocol of each connection, and the class of the ICM's own messages (`icm_severity`: ERROR or WARNING). It records no HTTP status code. The Data TA gives this sourcetype to the `abap/icm` folder only. Data TA builds of 2026-10-13 and earlier gave it to every LogServ folder named `icm`, so a Web Dispatcher's own ICM log (`webdispatcher/icm`) indexed by them is `sap:abap:icm`, with the Web Dispatcher's `sap_sid` and `sap_instance`; from the build of 2026-10-16 it keeps `sap_logserv_logs`, like the Web Dispatcher's other secondary folders.
+
 !!! warning "† Discontinued from LogServ scope — effective April 2026"
     SAP discontinued three of the ABAP log types above from LogServ delivery **effective April 2026**:
 
@@ -91,6 +93,9 @@ The LogServ App provides search-time field extractions for HANA trace logs, incl
 | Source field value | Sourcetype assigned | Filter path |
 |-------------------|-------------------|-------------|
 | HANA trace log | `sap:hana:tracelogs` | `hana/tracelogs` |
+| HANA trace log delivered without folder fields: a `.trc` file or `backup.log` in `/usr/sap/<SID>/HDB<nn>/<host>/trace/` or its `DB_<tenant>/` subfolder | `sap:hana:tracelogs` | none — Include Sources or Exclude Sources `/usr/sap/*/HDB??/*/trace/*` |
+
+Real Azure deliveries can send the HANA trace directory without `clz_dir` and `clz_subdir` (see [Data Delivered Without Folder Fields](#data-delivered-without-folder-fields)); on the reference system all of the real HANA trace data arrived that way. The Data TA routes these events by their `source` path instead, and only when the event has no folder fields; an event that has them is routed by its folder as before. Other files in the trace directory, such as `backint.log` or compressed `.trc.gz` files, and files in deeper subfolders keep the base `sap_logserv_logs` sourcetype, and so do HANA trace events indexed by an earlier Data TA build. Routing does not add folder fields, so a folder pattern such as `hana/tracelogs` never matches these files: in Include Filters it does not keep them (an allow-list drops them), and in Exclude Filters it does not drop them. Use the `source` pattern in the table.
 
 ### SAP Cloud Connector (LogServ App)
 
@@ -114,6 +119,7 @@ The LogServ App provides search-time field extractions for SAP host-level servic
 !!! tip "SAP Service Log Details"
     - **`sap:sapstartsrv`** includes fields for OS authentication failures, SSL/TLS negotiation errors (protocol version, cipher suite, peer addresses), and webmethod invocation failures.
     - **`sap:saprouter`** covers both `.log` files (CONNECT/DISCONNECT/INVAL DATA events with connection IDs and host addresses) and `.trc` files (NiBuf/NiI error traces with peer/local addresses and return codes) as a single sourcetype.
+    - On GCP the router's records can also arrive as `/var/log/messages` lines in the `sap/saprouter` folder. These lines get `sap:saprouter` too. On the reference system at least 70% of them, in the one hour measured, were the router's own connection and trace records, and the rest the router container's wrapper output and other text; every line had the same tagged syslog form, and the newest lines carry the router container's tag. They are router data, so do not drop them with an entry such as `sap/saprouter=/var/log/messages`.
 
 ### Linux OS logs
 
@@ -156,7 +162,7 @@ Parsing of Squid's native format is absorbed into the LogServ App (from the arch
 | /var/log/squid/cache.log | squid:cache | `proxy/squid`, `linux/proxy` |
 | /var/log/squid/store.log | squid:store | `proxy/squid`, `linux/proxy` |
 
-Real LogServ deliveries do not all use one folder layout. The AWS bucket files Squid under `proxy/squid`; Azure delivers it under `linux/proxy`; GCP delivers `pacemaker.log` under `linux/pacemaker` and a proxy VM's `/var/log/messages` under `linux/proxy`. The Filter path columns list every path seen, and the Data TA declares all of them, so a filter rule meant to cover a log type on every cloud names each of its paths — `proxy/squid, linux/proxy` for Squid.
+Real LogServ deliveries do not all use one folder layout. The AWS bucket files Squid under `proxy/squid`; Azure delivers it under `linux/proxy`; GCP delivers `pacemaker.log` under `linux/pacemaker` and a proxy VM's `/var/log/messages` under `linux/proxy`. The Filter path columns list every path seen, and the Data TA declares all of them, so a filter rule meant to cover a log type on every cloud names each of its paths — `proxy/squid, linux/proxy` for Squid. To exclude Squid, keep in mind that `linux/proxy` also carries a proxy VM's `/var/log/messages`: Exclude Filters `proxy/squid` with Exclude Sources `linux/proxy=/var/log/squid/*` drops the Squid files of both layouts and keeps those lines.
 
 
 ### ISC BIND (`isc:bind:*`)
@@ -179,22 +185,46 @@ Parsing is absorbed natively into the LogServ App (from the archived Splunk Add-
 !!! tip "Filter Path Column"
     The **Filter path** column shows the `clz_dir/clz_subdir` value used in the index-time filter include/exclude patterns. See [Configuring Filters](../install-setup/configure-filters.md) for details.
 
+!!! tip "Source Field Value Column"
+    In the Linux, Windows, Squid and ISC BIND tables the **Source field value** column shows the `source` values that the filter's **Include Sources** and **Exclude Sources** fields match; the SAP tables describe the log instead. Some rows are shorthand rather than literal values: `/var/log/sssd/sssd*` stands for every sssd file, rotated copies such as `/var/log/sssd/sssd.log-20260913` included, and `WinEventLog:(*.)Operational` for the Operational channels. Real deliveries on the reference system carry `lastlog` and `who` without the leading `/` that the table shows (the routing accepts both forms). A source pattern must match the whole value and is case-sensitive, so list the values your own deliveries carry before writing one — see [Source Pattern Syntax](../install-setup/configure-filters.md#source-pattern-syntax).
+
 ## :material-circle-box:{ .taiconcolor } Secondary Supported Log Types
 
 The log types below are within LogServ's scope and **are ingested and fully searchable once SAP has activated them for your landscape** (Network and WAF/F5 logs are activated only on request, and WAF/F5 applies only if your RISE package includes WAF or F5), but they do not have the dedicated index-time routing and search-time field extractions that the Primary types above have. They remain under the base `sap_logserv_logs` sourcetype in raw form; detailed, per-type parsing may be added in a future release.
 
-These data sources are drawn from Section 2 ("Data sources") of the SAP LogServ service description and are the sources not covered by a Primary parser above.
+These data sources are drawn from Section 2 ("Data sources") of the SAP LogServ service description and are the sources not covered by a Primary parser above. Each entry ends with how to keep it out of the index with the Data TA's filters (**Configuration → Filters**, Enable Filtering checked; see [Configuring Filters](../install-setup/configure-filters.md#filter-recipes) for complete recipes).
 
-- **Network / Flow logs** — VPC/VNET network-traffic flow logs (source/destination IPs, ports, protocols, and traffic statistics). *Category-level in the source document; no dedicated `clz_dir/clz_subdir`; activated on request.*
-- **WAF / F5 logs** — Web Application Firewall / F5 traffic and firewall system events (successful and failed connection attempts). *Category-level; no dedicated `clz_dir/clz_subdir`; activated on request.*
-- **SAP ABAP — transport + HTTP access** — the ABAP transport log (`abap/transport` — discontinued by SAP from LogServ scope effective April 2026) and the ABAP HTTP access log (`abap/httpaccess`, newly added to LogServ scope).
-- **SAP Web Dispatcher — process / ICM / sapstartsrv / dev_icm traces** — `webdispatcher/process`, `webdispatcher/icm`, `webdispatcher/sapstartsrv`, `webdispatcher/devicm`; only `webdispatcher/accesslog` has a Primary parser.
-- **Additional Linux system logs** — `/var/log/zypper.log`, `/var/log/YaST2` (`linux/linux_secure`), and `/var/log/cluster/corosync.log` (`linux/pacemaker`).
-- **Database — SAP ASE (Sybase)** — ASE error log, Backup Server log, and Job scheduler error log (`sybase/install`).
-- **Database — Microsoft SQL Server** — MSSQL database audit logs (`MSSQLDBAudit`).
-- **SAP NetWeaver Java** — deploy, JSMON, JStart, server, ICM, security, and general trace/log files (`java/*`).
-- **SAP BusinessObjects (BOBJ — BI / BODS / IPS)** — BI/IPS, BODS and Jobserver, Webapp, Tomcat, and SAC Agent logs (`bobj_bi/*`, `bobj_bods/*`, `bobj_sacagent/*`).
-- **DP Agent (Data Provisioning Agent)** — framework alert and trace logs (`dpagent/alert`, `dpagent/trace`).
+- **Network / Flow logs** — VPC/VNET network-traffic flow logs (source/destination IPs, ports, protocols, and traffic statistics). *Category-level in the source document; no dedicated `clz_dir/clz_subdir`; activated on request.* **Filter:** the folder is not known, so only an Include Filters allow-list drops it; once you know its folder or `source` values, name them in Exclude Filters or Exclude Sources.
+- **WAF / F5 logs** — Web Application Firewall / F5 traffic and firewall system events (successful and failed connection attempts). *Category-level; no dedicated `clz_dir/clz_subdir`; activated on request.* **Filter:** as for Network / Flow — an Include Filters allow-list, or an exclude once the folder or `source` is known.
+- **SAP ABAP — transport + HTTP access** — the ABAP transport log (`abap/transport` — discontinued by SAP from LogServ scope effective April 2026) and the ABAP HTTP access log (`abap/httpaccess`, newly added to LogServ scope). **Filter:** Exclude Filters `abap/transport, abap/httpaccess`; an allow-list must name the Primary ABAP folders one by one, since `abap/*` keeps both.
+- **SAP Web Dispatcher — process / sapstartsrv / dev_icm traces** — `webdispatcher/process`, `webdispatcher/sapstartsrv`, `webdispatcher/devicm`; only `webdispatcher/accesslog` has a Primary parser. The Web Dispatcher's ICM log (`webdispatcher/icm`) is raw as well; Data TA builds of 2026-10-13 and earlier typed it `sap:abap:icm` (see the ICM paragraph above). **Filter:** Exclude Filters `webdispatcher/process, webdispatcher/icm, webdispatcher/sapstartsrv, webdispatcher/devicm`, or `webdispatcher/accesslog` (not `webdispatcher/*`) in an allow-list.
+- **Additional Linux system logs** — `/var/log/zypper.log`, `/var/log/YaST2` (`linux/linux_secure`), and `/var/log/cluster/corosync.log` (`linux/pacemaker`). **Filter:** these share their folders with Primary log types — `linux/linux_secure` also holds the firewall, kernel, sssd, `lastlog` and `who` logs, and `linux/pacemaker` the Pacemaker cluster log — so a folder pattern cannot drop them without dropping those too. Drop them by `source` with Exclude Sources: `/var/log/zypper.log*, /var/log/YaST2/*` for zypper and YaST2 (real deliveries carry `/var/log/zypper.log`, `/var/log/YaST2/mkinitrd.log` and `/var/log/YaST2/config_diff_<date>.log`), and `/var/log/cluster/corosync.log*` for corosync. `corosync.log` has not been observed in real data on the reference system; the path is the one the service description names, so confirm the `source` value your deliveries carry before relying on the pattern. See [Recipe 3](../install-setup/configure-filters.md#recipe-3).
+- **Database — SAP ASE (Sybase)** — ASE error log, Backup Server log, and Job scheduler error log (`sybase/install`). **Filter:** Exclude Filters `sybase/*`.
+- **Database — Microsoft SQL Server** — MSSQL database audit logs (`MSSQLDBAudit`). **Filter:** no folder is known, so only an Include Filters allow-list drops them; once you know their folder or `source` values, exclude those.
+- **SAP NetWeaver Java** — deploy, JSMON, JStart, server, ICM, security, and general trace/log files (`java/*`). **Filter:** Exclude Filters `java/*`.
+- **SAP BusinessObjects (BOBJ — BI / BODS / IPS)** — BI/IPS, BODS and Jobserver, Webapp, Tomcat, and SAC Agent logs (`bobj_bi/*`, `bobj_bods/*`, `bobj_sacagent/*`). **Filter:** Exclude Filters `bobj_bi/*, bobj_bods/*, bobj_sacagent/*`.
+- **DP Agent (Data Provisioning Agent)** — framework alert and trace logs (`dpagent/alert`, `dpagent/trace`). **Filter:** Exclude Filters `dpagent/*`.
+
+!!! note "Check the folders and files your own deliveries use"
+    The folder names above come from the service description; none of these Secondary folders has appeared in the reference system's real deliveries, while the zypper and YaST2 files have. Before relying on a rule, list what your deliveries carry under the base sourcetype:
+
+    ```spl
+    | tstats count where `sap_logserv_idx_macro` sourcetype=sap_logserv_logs by clz_dir, clz_subdir, source
+    ```
+
+    Some events carry no folder fields at all and do not appear in that list — see [Data Delivered Without Folder Fields](#data-delivered-without-folder-fields) below. An Include Filters allow-list drops them unless **Include Sources** keeps them.
 
 !!! note "Out of scope"
     Per the LogServ service description, **DB2 and MaxDB database logs are not in LogServ scope**, and are therefore not listed above.
+
+### Data Delivered Without Folder Fields
+
+SAP files some Azure data in a storage folder named `undefined/undefined` (`<prefix>/undefined/undefined/<YYYY>/<MM>/<DD>/`), and its events carry no `clz_dir` or `clz_subdir`. In about four weeks of real Azure deliveries on the reference system it was about 19.9 million events of two kinds, each from a single host:
+
+- **Unix command output** — about 19.4 million events, with `source` values `ps`, `netstat`, `iostat`, `cpu`, `nfsiostat`, `top`, `openPorts`, `interfaces`, `df`, `bandwidth`, `vmstat` and `Unix:ListeningPorts`; `ps` alone is about 80%. Together that is about 0.7 million events and roughly 125 MB of text a day. This output is not among the data sources the LogServ service description lists. They stay under the base `sap_logserv_logs` sourcetype and are not parsed: each event holds one table row, a header line on its own, or a table whose line breaks are written as the two characters `\n`.
+- **HANA trace files** — about 566,000 events, the `.trc` files and `backup.log` of `/usr/sap/<SID>/HDB<nn>/<host>/trace/`. The Data TA routes them to `sap:hana:tracelogs` by their `source` path (see [SAP HANA Trace Logs](#sap-hana-trace-logs-logserv-app)).
+
+Folder patterns cannot reach either kind: an Include Filters allow-list drops them all, `hana/tracelogs` in Include Filters does not keep the trace files, and no Exclude Filters entry drops them. Use **Include Sources** and **Exclude Sources**, which match the `source` value.
+
+!!! warning "Drop the Unix command output unless you need it"
+    If you do not use this output, drop it with Exclude Sources `ps, top, netstat, iostat, vmstat, df, cpu, interfaces, bandwidth, openPorts, nfsiostat, Unix:ListeningPorts`. If you keep it, review who can search it: a `ps` row can carry the arguments a process was started with — up to 34% of the real `ps` rows checked on the reference system did — and process arguments can contain passwords, keys or tokens. See [Configuring Filters → Events Without Folder Fields](../install-setup/configure-filters.md#events-without-folder-fields).

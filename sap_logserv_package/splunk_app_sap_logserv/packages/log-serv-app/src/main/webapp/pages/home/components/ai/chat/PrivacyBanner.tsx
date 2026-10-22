@@ -4,6 +4,7 @@ import { logservTheme } from '../../../styles/logservTheme';
 import { PrivacyPosture, AIProvider, ModelDescriptor } from '../providers/AIProvider';
 import DocsHelpIcon from '../../DocsHelpIcon';
 import { DOCS_AI_ASSISTANT_OVERVIEW } from '../../../utils/docsLinks';
+import { AuditWriteProblem, describeAuditWriteProblem } from '../audit/auditWriter';
 
 /**
  * PrivacyBanner — persistent display of the user's actual outbound
@@ -209,6 +210,68 @@ const PrivacyBanner: React.FC<PrivacyBannerProps> = ({
 export default PrivacyBanner;
 
 // -----------------------------------------------------------------------------
+// AuditWriteWarning — shown under the banner while audit writes fail.
+// -----------------------------------------------------------------------------
+
+const WriteWarning = styled.div`
+    /* Magnetic warning-banner treatment, as on the Audit Log tab's
+       disclaimer: sentiment tint fill + strong left border. */
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: ${logservTheme.spacing.sm} ${logservTheme.spacing.md};
+    background: ${logservTheme.colors.warningTint};
+    border-bottom: 1px solid ${logservTheme.colors.panelBorderWeak};
+    border-left: 3px solid ${logservTheme.colors.orange};
+    color: ${logservTheme.colors.textActive};
+    font-size: ${logservTheme.fontSize.body};
+    line-height: 1.5;
+`;
+
+const WriteWarningTitle = styled.div`
+    font-weight: ${logservTheme.fontWeight.semibold};
+`;
+
+const WriteWarningIcon = styled.span`
+    color: ${logservTheme.colors.orange};
+    margin-right: ${logservTheme.spacing.xs};
+`;
+
+const WriteWarningSince = styled.div`
+    color: ${logservTheme.colors.textMuted};
+    font-size: ${logservTheme.fontSize.small};
+`;
+
+interface AuditWriteWarningProps {
+    /** AIAssistantProvider's `auditWriteProblem` (render only when set). */
+    problem: AuditWriteProblem;
+}
+
+/**
+ * The warning the chat panel shows while writes to the audit index fail:
+ * most often a user who holds neither edit_tcp nor edit_log_alert_event, for whom
+ * Splunk refuses every write. The words come from
+ * `describeAuditWriteProblem`. The alert region holds the title and the
+ * reason only, so a screen reader announces it when it appears or its
+ * status changes; the count line below it updates silently.
+ */
+export const AuditWriteWarning: React.FC<AuditWriteWarningProps> = ({ problem }) => {
+    const text = describeAuditWriteProblem(problem);
+    return (
+        <WriteWarning>
+            <div role="alert">
+                <WriteWarningTitle>
+                    <WriteWarningIcon aria-hidden>⚠</WriteWarningIcon>
+                    {text.title}
+                </WriteWarningTitle>
+                <div>{text.detail}</div>
+            </div>
+            <WriteWarningSince>{text.since}</WriteWarningSince>
+        </WriteWarning>
+    );
+};
+
+// -----------------------------------------------------------------------------
 // AuditModal — companion modal that lists every audit event in this session.
 // -----------------------------------------------------------------------------
 
@@ -290,12 +353,28 @@ const CloseBtn = styled.button`
     &:hover { color: ${logservTheme.colors.textActive}; }
 `;
 
+const ModalWriteNote = styled.div`
+    background: ${logservTheme.colors.warningTint};
+    border: 1px solid ${logservTheme.colors.panelBorderWeak};
+    border-left: 3px solid ${logservTheme.colors.orange};
+    border-radius: ${logservTheme.radius.small};
+    padding: ${logservTheme.spacing.sm} ${logservTheme.spacing.md};
+    margin-bottom: ${logservTheme.spacing.md};
+    font-size: ${logservTheme.fontSize.body};
+    line-height: 1.5;
+`;
+
 interface AuditModalProps {
     events: ReadonlyArray<AuditEvent>;
     onClose: () => void;
+    /** AIAssistantProvider's `auditWriteProblem`. While set, a note says
+     *  that the events listed from about the first failed write on may
+     *  not be in the audit index (the list is the session's own record,
+     *  not a read of the index). */
+    writeProblem?: AuditWriteProblem | null;
 }
 
-export const AuditModal: React.FC<AuditModalProps> = ({ events, onClose }) => {
+export const AuditModal: React.FC<AuditModalProps> = ({ events, onClose, writeProblem = null }) => {
     const local = events.filter((e) => e.category === 'local_only');
     const t1 = events.filter((e) => e.category === 'vendor_tier1');
     const t2 = events.filter((e) => e.category === 'vendor_tier2');
@@ -314,6 +393,12 @@ export const AuditModal: React.FC<AuditModalProps> = ({ events, onClose }) => {
                         ✕
                     </CloseBtn>
                 </ModalHeader>
+
+                {writeProblem && (
+                    <ModalWriteNote role="note">
+                        {describeAuditWriteProblem(writeProblem).modalNote}
+                    </ModalWriteNote>
+                )}
 
                 <CategoryHeader $color={logservTheme.colors.teal}>
                     🟢 Local-only ({local.length})
@@ -369,10 +454,10 @@ export const AuditModal: React.FC<AuditModalProps> = ({ events, onClose }) => {
                     <EmptyCategory>No SPL guard rejections in this session.</EmptyCategory>
                 ) : (
                     blocked.map((e) => {
-                        const v = e as { operator?: string; spl?: string };
+                        const v = e as { operator?: string; command?: string; spl?: string };
                         return (
                             <EventRow key={`${e.sessionId}-${e.seq}`}>
-                                operator <code>{v.operator}</code> · <code>{(v.spl ?? '').slice(0, 80)}{(v.spl ?? '').length > 80 ? '…' : ''}</code>
+                                operator <code>{v.operator}</code>{v.command ? <> · command <code>{v.command}</code></> : null} · <code>{(v.spl ?? '').slice(0, 80)}{(v.spl ?? '').length > 80 ? '…' : ''}</code>
                             </EventRow>
                         );
                     })

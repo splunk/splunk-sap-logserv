@@ -5,7 +5,17 @@ import { logservTheme } from '../../styles/logservTheme';
 import { useThemeMode } from '../../state/ThemeModeProvider';
 import type { ColorTokens } from '../../styles/magneticTokens';
 import { darken } from '../../utils/colorMath';
-import { formatCallCount } from '../../topology/edgeStyle';
+import {
+    combinedMeasureUnit,
+    donutCentreUnit,
+    edgeMeasureLabels,
+    edgeOperationsNoun,
+    edgePerformanceCaption,
+    failureRate,
+    formatCallCount,
+    splTypeColorToken,
+    splTypeLabel,
+} from '../../topology/edgeStyle';
 import type { TopologyNode, TopologyEdge } from '../../topology/types';
 import { isDatabaseTag, displayTag } from '../../topology/types';
 import type { NodeError, NodeHost } from '../../hooks/useNodeData';
@@ -333,7 +343,7 @@ const HourlyChart: React.FC<{ data: number[]; color: string }> = ({ data, color 
             viewBox={`0 0 ${VB_W} ${VB_H}`}
             preserveAspectRatio="none"
             role="img"
-            aria-label="Calls per hour, last 24h"
+            aria-label="Count per hour, last 24h"
             style={{ display: 'block' }}
         >
             <defs>
@@ -372,6 +382,12 @@ interface DonutDatum {
     code: string;
     calls: number;
     color: string;
+    /** What `calls` counts (build 378), in the wedge hover text and under the
+     *  centre total; absent = "calls". The Edge Details Operations donut sets
+     *  the edge type's unit (an RFC edge counts connections, a SAP Router edge
+     *  routed connections); since build 380 the node pane's donuts set the
+     *  unit of their direction's edge types (combinedMeasureUnit). */
+    unit?: string;
     /* Build 331 / session 112 — the per-row ownership badge was REMOVED at
      * user direction ("just show the IP and # calls"): retargeting folds
      * every inventoried address into its owner's node, so "owner not
@@ -383,14 +399,15 @@ interface DonutDatum {
 
 /**
  * The hover text for one wedge (and its legend row): the endpoint, its exact
- * call count, and its share of this chart's total. The share is stated because
- * the angle cannot be trusted to convey it — a slice too small to survive its
- * own 1 px stroke is widened to stay visible.
+ * count in the wedge's unit ("calls" unless the datum names another), and its
+ * share of this chart's total. The share is stated because the angle cannot
+ * be trusted to convey it — a slice too small to survive its own 1 px stroke
+ * is widened to stay visible.
  */
 const wedgeTooltip = (d: DonutDatum, total: number): string => {
     const pct = total > 0 ? (d.calls / total) * 100 : 0;
     const shown = pct > 0 && pct < 0.1 ? '<0.1' : pct.toFixed(1);
-    return `${d.code} — ${d.calls.toLocaleString()} calls (${shown}% of ${total.toLocaleString()})`;
+    return `${d.code} — ${d.calls.toLocaleString()} ${d.unit ?? 'calls'} (${shown}% of ${total.toLocaleString()})`;
 };
 
 /**
@@ -407,8 +424,14 @@ const wedgeTooltip = (d: DonutDatum, total: number): string => {
  *   - an empty data array divided by zero and emitted an invalid path under a
  *     centre reading "0 calls". Callers render an empty state instead, and the
  *     guard below is defence in depth.
+ *
+ * Build 378 — the word under the centre total is the wedges' unit (one per
+ * chart in practice; "calls" when none is set), shortened to its last word by
+ * donutCentreUnit, the only width the hole fits. Build 380 — a caller can name
+ * that word itself (`centre`): a node pane donut over calls and connections
+ * reads "total" there.
  */
-const DonutChart: React.FC<{ data: DonutDatum[]; label: string }> = ({ data, label }) => {
+const DonutChart: React.FC<{ data: DonutDatum[]; label: string; centre?: string }> = ({ data, label, centre }) => {
     const W = 120;
     const cx = W / 2;
     const cy = W / 2;
@@ -418,6 +441,7 @@ const DonutChart: React.FC<{ data: DonutDatum[]; label: string }> = ({ data, lab
     const values = data.map((d) => d.calls);
     const wedges = visibleWedgeCount(values);
     const segments = donutSegments(values);
+    const unit = data.find((d) => d.unit)?.unit ?? 'calls';
 
     const arcPath = (start: number, end: number): string => {
         const a0 = (start * 2 * Math.PI) - Math.PI / 2;
@@ -480,7 +504,7 @@ const DonutChart: React.FC<{ data: DonutDatum[]; label: string }> = ({ data, lab
                 );
             })}
             <text x={cx} y={cy - 2} textAnchor="middle" fontSize="11" fontWeight="600" style={{ fill: logservTheme.colors.textActive }}>{formatCallCount(total)}</text>
-            <text x={cx} y={cy + 12} textAnchor="middle" fontSize="9" style={{ fill: logservTheme.colors.textMuted }}>calls</text>
+            <text x={cx} y={cy + 12} textAnchor="middle" fontSize="9" style={{ fill: logservTheme.colors.textMuted }}>{centre ?? donutCentreUnit(unit)}</text>
         </svg>
     );
 };
@@ -539,8 +563,11 @@ const ChartBlock = styled.div`
 `;
 
 /** The ownership verdict as the panel says it. "shared" is deliberately NOT a
- *  word used here: absence from the inventory has at least four causes and we
- *  have measured none of them (§8a-6). */
+ *  word used here: absence from the inventory has several causes and we have
+ *  measured none of them (§8a-6). Since build 379 they are: no system
+ *  identifier an inventory arm reads, an exact tie between SIDs in every run
+ *  that saw it (the inventory otherwise keeps each endpoint's most recent
+ *  SID), or not observed since the collection was populated. */
 const ownershipText = (o: Ownership | undefined | null): string | null => {
     if (!o || o.state === 'none') return null;
     if (o.state === 'owner') return `owner: ${o.sid}`;
@@ -555,26 +582,31 @@ const ownershipText = (o: Ownership | undefined | null): string | null => {
  * stacked blocks short; the user asked for the full list instead. The right
  * zone already scrolls, so a wide fan-out makes this block tall rather than
  * incomplete, and nothing about the node's traffic is left unnamed.
+ *
+ * Build 380 — the caption names what the total counts (`measure`, from the
+ * direction's edge types: calls, connections, or calls + connections), as
+ * the facts table above it does since build 379.
  */
 const PartnerDonutBlock: React.FC<{
     title: string;
     data: DonutDatum[];
     calls: number;
+    measure: { unit: string; centre: string };
     emptyMsg: string;
-}> = ({ title, data, calls, emptyMsg }) => {
+}> = ({ title, data, calls, measure, emptyMsg }) => {
     const total = data.reduce((s, d) => s + d.calls, 0);
     return (
         <ChartBlock>
             <ChartCaption>
                 {data.length > 0
-                    ? `${title} · ${data.length} · ${calls.toLocaleString()} calls`
+                    ? `${title} · ${data.length} · ${calls.toLocaleString()} ${measure.unit}`
                     : title}
             </ChartCaption>
             {data.length === 0 ? (
                 <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>{emptyMsg}</EmptyMsg>
             ) : (
                 <>
-                    <DonutChart data={data} label={title} />
+                    <DonutChart data={data} label={title} centre={measure.centre} />
                     {/* Build 331 — legend rows are swatch + endpoint + count only;
                       * the ownership badge column was removed at user direction
                       * (see the DonutDatum comment). */}
@@ -854,7 +886,15 @@ const ActivityTrendChart: React.FC<{
     const VB_W = 280;
     const VB_H = 90;
     if (data.length === 0) return null;
-    const maxVal = Math.max(...data.map((d) => d.count), 1);
+    /* Build 378 — the bar height is the larger of the two series: the SAP
+     * Router arm counts failed connections from separate log lines, so an
+     * hour can hold more failures than routed connections (or failures
+     * alone), and an error bar taller than its total would leave the box.
+     * For every other type errors are part of the calls and this is the
+     * count, as before. */
+    const peakOf = (d: { count: number; errorCount: number }): number =>
+        Math.max(d.count, d.errorCount);
+    const maxVal = Math.max(...data.map(peakOf), 1);
     const barW = VB_W / data.length;
     return (
         <svg
@@ -877,7 +917,7 @@ const ActivityTrendChart: React.FC<{
                 </linearGradient>
             </defs>
             {data.map((d, i) => {
-                const totalH = Math.max(1, (d.count / maxVal) * (VB_H - 4));
+                const totalH = Math.max(1, (peakOf(d) / maxVal) * (VB_H - 4));
                 const errorH = Math.max(0, (d.errorCount / maxVal) * (VB_H - 4));
                 const successH = Math.max(0, totalH - errorH);
                 const successY = VB_H - totalH;
@@ -924,25 +964,15 @@ const formatBytes = (bytes: number | undefined): string => {
     return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 };
 
-const edgeTypeColor = (splType: string | undefined): string => {
-    switch (splType) {
-        case 'http': return logservTheme.colors.cyanAccent;
-        case 'rfc': return logservTheme.colors.teal;
-        case 'hana_audit': return logservTheme.colors.orange;
-        case 'hana_tenant': return logservTheme.colors.purple;
-        default: return logservTheme.colors.textMuted;
-    }
-};
+/* Build 378 — the per-stored-type colour token and name live in
+ * topology/edgeStyle.ts (splTypeColorToken / splTypeLabel), so the SAP Router
+ * badge here and the SAP Router edges on the canvas read ONE token
+ * (SAPROUTER_EDGE_TOKEN) and the consistency suite can hold both. The four
+ * older types keep this pane's long-standing colours. */
+const edgeTypeColor = (splType: string | undefined): string =>
+    logservTheme.colors[splTypeColorToken(splType)];
 
-const edgeTypeLabel = (splType: string | undefined): string => {
-    switch (splType) {
-        case 'http': return 'HTTP';
-        case 'rfc': return 'RFC';
-        case 'hana_audit': return 'HANA Audit';
-        case 'hana_tenant': return 'HANA Tenant';
-        default: return splType ?? 'unknown';
-    }
-};
+const edgeTypeLabel = (splType: string | undefined): string => splTypeLabel(splType);
 
 const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
     selectedNode,
@@ -1048,7 +1078,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
      * attribution now feeds ONLY this disambiguation.)
      */
     const buildDonutData = useCallback(
-        (entries: PartnerEntry[]): DonutDatum[] => {
+        (entries: PartnerEntry[], unit: string): DonutDatum[] => {
             const labels = entries.map((p) => labelForEndpoint(p.id));
             const seen = new Map<string, number>();
             labels.forEach((l) => seen.set(l, (seen.get(l) ?? 0) + 1));
@@ -1063,10 +1093,22 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                     code: dup && att?.kind ? `${labels[i]} (${att.kind})` : labels[i],
                     calls: p.calls,
                     color: partnerColorAt(PARTNER_PALETTE, i, mode),
+                    unit,
                 };
             });
         },
         [labelForEndpoint, endpointAttribution, PARTNER_PALETTE, mode],
+    );
+
+    /* Build 380 — what each direction's donut counts, from its edge types:
+     * calls, connections (RFC, SAP Router), or calls + connections. */
+    const inboundMeasure = React.useMemo(
+        () => combinedMeasureUnit(partnerSplit.inboundTypes),
+        [partnerSplit.inboundTypes],
+    );
+    const outboundMeasure = React.useMemo(
+        () => combinedMeasureUnit(partnerSplit.outboundTypes),
+        [partnerSplit.outboundTypes],
     );
 
     /* Declared above the edge-branch early return so the hooks stay
@@ -1074,12 +1116,12 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
      * partner list is unbounded since build 322, and the dashboard re-renders
      * on every mousemove while a panel divider is being dragged. */
     const inboundDonut = React.useMemo(
-        () => buildDonutData(partnerSplit.inbound),
-        [buildDonutData, partnerSplit.inbound],
+        () => buildDonutData(partnerSplit.inbound, inboundMeasure.unit),
+        [buildDonutData, partnerSplit.inbound, inboundMeasure.unit],
     );
     const outboundDonut = React.useMemo(
-        () => buildDonutData(partnerSplit.outbound),
-        [buildDonutData, partnerSplit.outbound],
+        () => buildDonutData(partnerSplit.outbound, outboundMeasure.unit),
+        [buildDonutData, partnerSplit.outbound, outboundMeasure.unit],
     );
 
     const collapseAction = onCollapse ? (
@@ -1100,8 +1142,13 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
         const splType = selectedEdge.splType;
         const typeColor = edgeTypeColor(splType);
         const typeLabel = edgeTypeLabel(splType);
-        const errorRate = selectedEdge.errorCount && selectedEdge.callCount > 0
-            ? (selectedEdge.errorCount / selectedEdge.callCount) * 100
+        /* Build 378 — what this type's two counts count (RFC: connections
+         * and broken connections; SAP Router: routed and failed
+         * connections; the other types: calls and errors). */
+        const measures = edgeMeasureLabels(splType);
+        /* Clamped to 100 %: SAP Router failures come from separate lines. */
+        const errorRate = selectedEdge.callCount > 0
+            ? failureRate(selectedEdge.callCount, selectedEdge.errorCount ?? 0) * 100
             : 0;
 
         return (
@@ -1124,7 +1171,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                             {selectedEdge.direction.toUpperCase()}
                         </KindChip>
                         <span style={{ marginLeft: 'auto', fontSize: 11, color: logservTheme.colors.textMuted }}>
-                            {selectedEdge.callCount.toLocaleString()} calls
+                            {`${selectedEdge.callCount.toLocaleString()} ${measures.unit}`}
                         </span>
                     </NodeIdRow>
                     <TabBar role="tablist" aria-label="Edge detail tabs">
@@ -1152,9 +1199,9 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                 <tbody>
                                     <tr><td className="k">Edge type</td><td className="v">{typeLabel}</td></tr>
                                     <tr><td className="k">Direction</td><td className="v">{selectedEdge.direction}</td></tr>
-                                    <tr><td className="k">Calls in window</td><td className="v">{selectedEdge.callCount.toLocaleString()}</td></tr>
+                                    <tr><td className="k">{measures.countRow}</td><td className="v">{selectedEdge.callCount.toLocaleString()}</td></tr>
                                     <tr>
-                                        <td className="k">{splType === 'hana_audit' ? 'Auth failures (CONNECT)' : 'Errors in window'}</td>
+                                        <td className="k">{measures.errorRow}</td>
                                         <td className="v">{(selectedEdge.errorCount ?? 0).toLocaleString()}</td>
                                     </tr>
                                     {selectedEdge.callCount > 0 && (
@@ -1166,11 +1213,14 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                 </tbody>
                             </FactsTable>
                             {/* Build 325 (plan item E3) — RFC edges only: the per-app-
-                              * server split of this edge's calls, grouped by the stored
-                              * SID-side gateway listening address (local_ip). The rows
-                              * partition the member rows, so Calls sums to the facts
-                              * table's "Calls in window" by construction. Shown for any
-                              * RFC edge, even one row — it names the app server. The
+                              * server split of this edge's connections, grouped by the
+                              * stored local_ip — the address of the gateway that wrote
+                              * the record, the SAP system's side of the connection in
+                              * either direction (build 378: inbound edges end at the
+                              * SID, so it is not always the source). The rows
+                              * partition the member rows, so Connections sums to the
+                              * facts table's count by construction. Shown for any RFC
+                              * edge, even one row — it names the app server. The
                               * caption counts only NAMED addresses: a "(not recorded)"
                               * bucket is explicitly not an app server. */}
                             {splType === 'rfc' && selectedEdge.appServers && selectedEdge.appServers.length > 0 && (() => {
@@ -1186,17 +1236,13 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                             : 'By app server · current time range'}
                                     </ChartCaption>
                                     <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
-                                        {`Each row is a SID-side gateway listening address this edge's calls were recorded against — the app servers of ${sourceLabel} as the gateway log names them, not a full instance inventory. Ownership comes from the system inventory and is not limited to the selected time range; an address without an owner is one the inventory has not attributed to exactly one system.`}
+                                        {'Each row is the address of the gateway that recorded these connections — the SAP system’s side of the connection, as the gateway log names it, not a full instance inventory. Ownership comes from the system inventory and is not limited to the selected time range; an address without an owner is one the inventory has not attributed to exactly one system.'}
                                     </EmptyMsg>
                                     {appServers.some((a) => a.localIp === null) && (
                                         <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
-                                            Calls recorded before the per-app-server upgrade carry no
-                                            address and are grouped as “(not recorded)”. Running Clear +
-                                            Backfill on the Environment Topology (graph) rollup from
-                                            Settings → Dashboard Data resolves them — note the clear
-                                            discards graph history older than the backfill window, so on
-                                            long-established installs check the release notes for the
-                                            RFC-only alternative that keeps it.
+                                            Connection records (a remote-gateway connection or a client
+                                            session that closed) name no local address, so their
+                                            connections are grouped as “(not recorded)”.
                                         </EmptyMsg>
                                     )}
                                     <TableScroll>
@@ -1204,8 +1250,8 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                             <thead>
                                                 <tr>
                                                     <th>App server</th>
-                                                    <th className="num">Calls</th>
-                                                    <th className="num">Errors</th>
+                                                    <th className="num">Connections</th>
+                                                    <th className="num">Broken</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1237,14 +1283,14 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                     <DonutLegend style={{ marginTop: 6 }}>
                                         <li>
                                             <span className="swatch" style={{ background: logservTheme.colors.cyanLight }} />
-                                            <span className="code">Successful calls</span>
+                                            <span className="code">{measures.okLegend}</span>
                                             <span className="count">{
-                                                edgeData.activity.reduce((s, p) => s + (p.count - p.errorCount), 0).toLocaleString()
+                                                edgeData.activity.reduce((s, p) => s + Math.max(0, p.count - p.errorCount), 0).toLocaleString()
                                             }</span>
                                         </li>
                                         <li>
                                             <span className="swatch" style={{ background: logservTheme.colors.red }} />
-                                            <span className="code">Errors</span>
+                                            <span className="code">{measures.errLegend}</span>
                                             <span className="count">{
                                                 edgeData.activity.reduce((s, p) => s + p.errorCount, 0).toLocaleString()
                                             }</span>
@@ -1269,19 +1315,19 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                             )}
                             {!edgeData?.activityLoading && edgeData?.activity && edgeData.activity.length > 0 && (
                                 <ActivityChartWrap>
-                                    <ChartCaption>Calls + errors per hour · current time range</ChartCaption>
+                                    <ChartCaption>{`${measures.perHourCaption} · current time range`}</ChartCaption>
                                     <ActivityTrendChart data={edgeData.activity} />
                                     <DonutLegend style={{ marginTop: 6 }}>
                                         <li>
                                             <span className="swatch" style={{ background: logservTheme.colors.cyanLight }} />
-                                            <span className="code">Successful calls</span>
+                                            <span className="code">{measures.okLegend}</span>
                                             <span className="count">{
-                                                edgeData.activity.reduce((s, p) => s + (p.count - p.errorCount), 0).toLocaleString()
+                                                edgeData.activity.reduce((s, p) => s + Math.max(0, p.count - p.errorCount), 0).toLocaleString()
                                             }</span>
                                         </li>
                                         <li>
                                             <span className="swatch" style={{ background: logservTheme.colors.red }} />
-                                            <span className="code">Errors</span>
+                                            <span className="code">{measures.errLegend}</span>
                                             <span className="count">{
                                                 edgeData.activity.reduce((s, p) => s + p.errorCount, 0).toLocaleString()
                                             }</span>
@@ -1312,13 +1358,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                             {!edgeData?.operationsLoading && edgeData?.operations && edgeData.operations.length > 0 && (
                                 <ChartBlock>
                                     <ChartCaption>
-                                        {`Top ${
-                                            splType === 'http' ? 'URIs'
-                                            : splType === 'rfc' ? 'ABAP programs'
-                                            : splType === 'hana_audit' ? 'action types'
-                                            : splType === 'hana_tenant' ? 'trace components'
-                                            : 'entities'
-                                        } · current time range`}
+                                        {`Top ${edgeOperationsNoun(splType)} · current time range`}
                                     </ChartCaption>
                                     <DonutChart
                                         label="Top entities on this edge"
@@ -1326,6 +1366,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                             id: op.entity,
                                             code: op.entity,
                                             calls: op.count,
+                                            unit: measures.unit,
                                             color: partnerColorAt(PARTNER_PALETTE, i, mode),
                                         }))}
                                     />
@@ -1368,20 +1409,25 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                         </PerfMetric>
                                     </>
                                 )}
-                                {/* No rfc headline cells: the only candidates were
-                                    icm_tasks max/avg, which no saved search computes
-                                    (the fields appear solely in the aggregate's `| fields`
-                                    projection), so they could only ever render an em dash.
-                                    Dropped in build 321 rather than shipped beside a
-                                    newly-live histogram looking like pending data. */}
+                                {/* No rfc or saprouter headline cells. ICM task load is
+                                    not an edge measure (an sap:abap:icm ASYNC_RFC line
+                                    names no peer), so it is shown on the Work Process
+                                    Performance dashboard instead; the RFC and SAP Router
+                                    edges carry counts only, and their histograms below
+                                    (connection record mix, target role mix) come from the
+                                    detail rollup. */}
+                                {/* hana_tenant: hana_op_duration_ms times an hdbcons
+                                    (HANA console) command in the tenant's trace files,
+                                    not SQL. Build 377 renamed these labels, as the HANA
+                                    Trace dashboard renamed its panels. */}
                                 {splType === 'hana_tenant' && (
                                     <>
                                         <PerfMetric>
-                                            <div className="perfLabel">p95 SQL duration</div>
+                                            <div className="perfLabel">p95 hdbcons duration</div>
                                             <div className="perfValue">{formatLatency(selectedEdge.hanaOpP95Ms)}</div>
                                         </PerfMetric>
                                         <PerfMetric>
-                                            <div className="perfLabel">max SQL duration</div>
+                                            <div className="perfLabel">max hdbcons duration</div>
                                             <div className="perfValue">{formatLatency(selectedEdge.hanaOpMaxMs)}</div>
                                         </PerfMetric>
                                     </>
@@ -1411,16 +1457,15 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                             {!edgeData?.performanceLoading && edgeData?.performance && edgeData.performance.length > 0 && (
                                 <>
                                     <ChartCaption style={{ marginTop: 12 }}>
-                                        {splType === 'http' ? 'Status class distribution'
-                                            : splType === 'rfc' ? 'icm_tasks distribution'
-                                            : splType === 'hana_audit' ? 'Action status mix'
-                                            : splType === 'hana_tenant' ? 'SQL duration (avg + max)'
-                                            : 'Distribution'}
+                                        {edgePerformanceCaption(splType)}
                                     </ChartCaption>
                                     {splType === 'hana_tenant' && (
                                         <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
                                             Percentiles are not available here: they cannot be merged
-                                            across hourly buckets, so this reads mean and maximum.
+                                            across hourly buckets, so this reads mean and maximum. Each
+                                            command's duration is converted to milliseconds from the
+                                            unit its trace line records (microseconds, milliseconds or
+                                            seconds).
                                         </EmptyMsg>
                                     )}
                                     {(() => {
@@ -1571,7 +1616,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                     <>
                         <FactsTable>
                             <tbody>
-                                <tr><td className="k">Kind</td><td className="v">{selectedNode.kind === 'sid_focused' ? 'High Traffic SID' : selectedNode.kind === 'sid_secondary' ? 'Regular Traffic SID' : 'Remote partner'}</td></tr>
+                                <tr><td className="k">Kind</td><td className="v">{selectedNode.kind === 'sid_focused' ? 'High Traffic SID' : selectedNode.kind === 'sid_secondary' ? 'Regular Traffic SID' : selectedNode.tag === 'ROUTER' ? 'SAP Router' : 'Remote partner'}</td></tr>
                                 <tr><td className="k">Tag</td><td className="v">{displayTag(selectedNode.tag as never)}</td></tr>
                                 {/* Build 329 / session 112 — IP enrichment rows, placed
                                   * directly under the Tag row (user-ratified). Hostname
@@ -1621,9 +1666,9 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                   * possible would be thrown away at the last step (§8a-8).
                                   * The partition matches the donuts: bidirectional edges are
                                   * counted separately, never filed under in or out. */}
-                                <tr><td className="k">Total calls</td><td className="v">{totalCalls.toLocaleString()}</td></tr>
-                                <tr><td className="k">Inbound calls</td><td className="v">{partnerSplit.inboundCalls.toLocaleString()}</td></tr>
-                                <tr><td className="k">Outbound calls</td><td className="v">{partnerSplit.outboundCalls.toLocaleString()}</td></tr>
+                                <tr><td className="k">Total calls + connections</td><td className="v">{totalCalls.toLocaleString()}</td></tr>
+                                <tr><td className="k">Inbound calls + connections</td><td className="v">{partnerSplit.inboundCalls.toLocaleString()}</td></tr>
+                                <tr><td className="k">Outbound calls + connections</td><td className="v">{partnerSplit.outboundCalls.toLocaleString()}</td></tr>
                                 {partnerSplit.bidiEdges > 0 && (
                                     <tr><td className="k">Bidirectional calls</td><td className="v">{partnerSplit.bidiCalls.toLocaleString()}</td></tr>
                                 )}
@@ -1631,9 +1676,6 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                 <tr><td className="k">Outbound edges</td><td className="v">{selectedNodeOutgoingEdges.filter((e) => e.direction !== 'bidi').length}</td></tr>
                                 {partnerSplit.bidiEdges > 0 && (
                                     <tr><td className="k">Bidirectional edges</td><td className="v">{partnerSplit.bidiEdges}</td></tr>
-                                )}
-                                {selectedNode.healthPct != null && (
-                                    <tr><td className="k">Health</td><td className="v">{selectedNode.healthPct}%</td></tr>
                                 )}
                             </tbody>
                         </FactsTable>
@@ -1660,8 +1702,9 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                           * tab is non-sparse for DB nodes:
                           *   - List of tenant DBs hosted (from incoming
                           *     hana_tenant edges where target = this node)
-                          *   - Sum of HANA SQL p95 latency across tenant
-                          *     edges (max-of, since latencies don't sum)
+                          *   - The highest hdbcons command p95 / max across
+                          *     tenant edges (max-of, since durations don't
+                          *     sum), and their trace-event count
                           *   - Sum of HANA Audit auth success/fail counts
                           *     across hana_audit edges incident to this node
                           * Derived from in-memory edge data — no SPL dispatch
@@ -1714,19 +1757,19 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                             )}
                                             {tenantEdges.length > 0 && (
                                                 <tr>
-                                                    <td className="k">Tenant SQL ops</td>
+                                                    <td className="k">Tenant trace events</td>
                                                     <td className="v">{tenantCalls.toLocaleString()}</td>
                                                 </tr>
                                             )}
                                             {maxP95 > 0 && (
                                                 <tr>
-                                                    <td className="k">SQL p95 (any tenant)</td>
+                                                    <td className="k">hdbcons p95 (any tenant)</td>
                                                     <td className="v">{formatLatency(maxP95)}</td>
                                                 </tr>
                                             )}
                                             {maxOpMax > 0 && (
                                                 <tr>
-                                                    <td className="k">SQL max (any tenant)</td>
+                                                    <td className="k">hdbcons max (any tenant)</td>
                                                     <td className="v">{formatLatency(maxOpMax)}</td>
                                                 </tr>
                                             )}
@@ -1749,13 +1792,16 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                         })()}
                         <ChartRow>
                             <ChartBlock>
-                                <ChartCaption>Calls / hr · last 24h{nodeHourlyLoading ? ' · loading…' : ''}</ChartCaption>
+                                {/* Build 380 — "Count", as the Live Activity chart
+                                  * (build 379): the chart counts the node's log events
+                                  * per hour (metric node_hourly), not its calls. */}
+                                <ChartCaption>Count / hr · last 24h{nodeHourlyLoading ? ' · loading…' : ''}</ChartCaption>
                                 {nodeHourly && nodeHourly.length > 0 ? (
                                     <HourlyChart data={nodeHourly} color={sparklineColor} />
                                 ) : (
                                     <EmptyMsg style={{ fontSize: 11, padding: '8px 0' }}>
                                         {nodeHourlyLoading
-                                            ? 'Querying Splunk for hourly call counts…'
+                                            ? 'Querying Splunk for hourly counts…'
                                             : 'No hourly activity for this node in the last 24h.'}
                                     </EmptyMsg>
                                 )}
@@ -1778,6 +1824,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                 title={isSidNode ? 'Partners calling this system' : 'Endpoints calling this node'}
                                 data={inboundDonut}
                                 calls={partnerSplit.inboundCalls}
+                                measure={inboundMeasure}
                                 emptyMsg={partnerSplit.bidiEdges > 0
                                     ? 'No inbound-recorded traffic — this node’s bidirectional calls are counted separately (see below).'
                                     : 'Nothing calls this node in the current time range.'}
@@ -1788,6 +1835,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                 title={isSidNode ? 'Partners this system calls' : 'Endpoints this node calls'}
                                 data={outboundDonut}
                                 calls={partnerSplit.outboundCalls}
+                                measure={outboundMeasure}
                                 emptyMsg={partnerSplit.bidiEdges > 0
                                     ? 'No outbound-recorded traffic — this node’s bidirectional calls are counted separately (see above).'
                                     : 'This node calls nothing in the current time range.'}
@@ -1949,12 +1997,14 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                   * for an ip-kind node. */}
                                 <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
                                     {isSidNode
-                                        ? 'Hosts that logged events for this system. Ownership comes from the system inventory, which records a host only once it has been seen carrying exactly one SAP system identifier — "owner not established" means that has not happened yet, and the inventory is not limited to the selected time range.'
+                                        ? 'Hosts that logged events for this system. Ownership comes from the system inventory, which records each host under the SAP system identifier of its most recent hour of activity (when that hour shows two, the one it logged more) — "owner not established" means it has no entry yet, and the inventory is not limited to the selected time range.'
                                         : selectedAttribution?.kind === 'tenant_db'
                                             ? `These rows are scoped by the name ${selectedNode.label}, which this tenant database shares with an application system, so they may include that system's hosts.`
                                             : selectedAttribution?.kind === 'ip'
                                                 ? 'Hosts that logged events referencing this address. They sit on the SAP side of the connection, so no ownership is claimed for them here.'
-                                                : 'Hosts that logged events matching this node’s name. No ownership is claimed for them here.'}
+                                                : selectedAttribution?.kind === 'saprouter'
+                                                    ? 'Hosts that logged events matching this SAP Router host’s name. A router is never folded into an SAP system, so no ownership is claimed for them here.'
+                                                    : 'Hosts that logged events matching this node’s name. No ownership is claimed for them here.'}
                                 </EmptyMsg>
                                 <TableScroll>
                                     <DataTable>
@@ -2015,11 +2065,11 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                 <EmptyMsg style={{ fontSize: 10, padding: '0 0 6px' }}>
                                     {`A row names a host only when this node's own side of the edge is a hostname, which is always the receiving side; otherwise the calls are grouped by edge type.${
                                         trafficSum === totalCalls
-                                            ? ` Together the rows account for all ${totalCalls.toLocaleString()} calls on this node's edges.`
+                                            ? ` Together the rows account for all ${totalCalls.toLocaleString()} calls + connections on this node's edges.`
                                             : ''
                                     }${
                                         nodeHosts && nodeHosts.length > 0
-                                            ? ' "Calls" counts edge calls; the Events column above counts log events, from a different rollup.'
+                                            ? ' "Calls" counts edge calls + connections; the Events column above counts log events, from a different rollup.'
                                             : ''
                                     }`}
                                 </EmptyMsg>

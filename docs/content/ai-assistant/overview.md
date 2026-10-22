@@ -22,9 +22,15 @@ The predefined-prompt path runs entirely between your browser, your Splunk searc
 
 Once a provider credential is configured, a second guarantee takes over:
 
-> **No event data from your Splunk instance is ever transmitted to any AI vendor.**
+> **No raw event and no unsummarized search result from your Splunk instance is ever transmitted to any AI vendor — only the summary the active privacy tier allows.**
 
-That guarantee is not policy; it is **enforced by the type system at build time, with a runtime defense-in-depth scan as a second layer**. The TypeScript compiler refuses to put any tool-result value from MCP into an outbound vendor payload, and every outbound payload is additionally serialized and scanned at dispatch time — it is rejected if any Splunk data field key (`_raw`, `_time`, `host`, `source`, `sourcetype`, `index`, …) appears. Either layer is sufficient; both ship. The only conversion path produces a non-data summary whose contents are gated by the active **privacy tier** ([Privacy Tiers](privacy-tiers.md)): Tier 1 (default) exposes `count + execution_time` only; Tier 2 (admin opt-in) adds aggregated metadata (cardinality, top-N values, min/max/avg/sum, time range) but still no raw rows; Tier 0 (future) is air-gapped Ollama. What the vendor sees: the user's question, schema descriptions, tool definitions, and the tier-bounded summaries — never a field value from any event.
+That guarantee is not policy; it is **enforced by the type system at build time, with a runtime defense-in-depth scan as a second layer**. The TypeScript compiler refuses to put any tool-result value from MCP into an outbound vendor payload; the only conversion path is the active tier's summarizer. As a second layer, every outbound payload is serialized and scanned at dispatch time and rejected if a Splunk data field name (`_raw`, `_time`, `host`, `source`, `sourcetype`, `index`, …) appears as a key; the scan checks the payload's structure, not the text of a summary. What a summary may contain is set by the active **privacy tier** ([Privacy Tiers](privacy-tiers.md)):
+
+- **Tier 1 (default)** sends two numbers per call, a count and a timing — no field value from any event. A model that writes its own queries can still make those numbers depend on event data, so a few bits per call can leak.
+- **Tier 2 (admin opt-in)** adds aggregated metadata: per-column statistics and top-N values with counts — field values from the events, filtered, capped at 40 characters each and, with PII redaction on, sent in clear only when the App can trace the column to a field that marks no identifier — column names only when Splunk generates them or every word in them was written by the model in its own query or by the App's catalog search that ran (others appear as `col_N`), and the time range only as UTC timestamps the App formats. No raw rows.
+- **Tier 0 (future)** is air-gapped Ollama.
+
+In every tier a failed call sends only its HTTP status and a fixed error class. What the vendor sees: the user's question, schema descriptions, tool definitions, and the tier-bounded summaries.
 
 For the build-time type-system mechanism, see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).
 
@@ -53,11 +59,13 @@ The **full-LLM variant** adds the vendor loop around the same MCP dispatch:
         |                                                              |
         |                                  (raw rows stay client-side) |
         |  <-----  privacy-tier summary  <----+ (count + timing,
-        |                                       optionally aggregates)
+        |                                       Tier 2 adds aggregates)
         |
         v  AI synthesizes narrative reply
    Chat panel (left pane)        Tool result tiles (right pane)
 ```
+
+When a search fails, the vendor is told only the HTTP status and a fixed error class, never Splunk's error text; the full error shows in the tile. See [Privacy Tiers](privacy-tiers.md#failed-tool-calls-every-tier).
 
 Every saved-search dispatch produces a tool-result tile in the right pane (table / chart / KPI / pie based on the prompt's `renderHint`). Drill-down chips (`↗ <Dashboard name>`, `↗ Run SPL`) on each tile connect the conversation back into the dashboards or Splunk's universal Search app — see [Drill-down Chips](drill-down-chips.md).
 
@@ -68,7 +76,7 @@ Every saved-search dispatch produces a tool-result tile in the right pane (table
 - **The predefined-prompt catalog** in three packs (SAP Basis / Security / Operations) plus a context-aware **Dashboard Focused** tab that auto-filters to prompts relevant to the dashboard you currently have open. Many prompts read the same KV-Store rollups the dashboards use, so they stay fast at any data volume. See [Predefined Prompts](predefined-prompts.md).
 - **Result tiles + guidance cards** — every dispatch renders the actual data (table / chart / KPI / pie) plus a static "How to read this result" interpretation and suggested next steps from the intent map.
 - **[Drill-down chips](drill-down-chips.md)** — a `↗ <Dashboard name>` chip per related dashboard and `↗ Run SPL` on every tile, carrying the dispatch's exact time window.
-- **[Audit log](audit-log.md)** — every canned-prompt dispatch (and every admin acknowledgement) lands in a dedicated `logserv_ai_assistant_audit` index, with an in-app browser + optional [HEC forwarder](audit-log.md#hec-forwarder) for tamper-evidence.
+- **[Audit log](audit-log.md)** — every canned-prompt dispatch (and every admin acknowledgement) lands in a dedicated `logserv_ai_assistant_audit` index, with an in-app browser + optional [HEC forwarder](audit-log.md#hec-forwarder) for tamper-evidence. Writing it needs Splunk's `edit_tcp` or `edit_log_alert_event` capability, which by default `admin` and `power` hold and `user` does not ([who can write audit events](audit-log.md#who-can-write-audit-events)).
 - **[Settings](settings.md)** — the admin Settings page (General / Provider Credentials / Splunk MCP / Audit Log sub-tabs), including the MCP request timeout and the audit-forwarder configuration.
 
 **Once an LLM provider credential is configured:**

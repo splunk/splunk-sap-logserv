@@ -17,7 +17,7 @@ Customers running a single cloud see the dashboard collapse cleanly to one provi
 - **AWS Events** -- Event count where `cloud_provider = "aws"` (includes events explicitly attributed at ingest time AND legacy events defaulted via the macro). Sparkline shows daily AWS-only volume.
 - **Azure Events** -- Event count where `cloud_provider = "azure"`. Sparkline shows daily Azure-only volume. On an install without Azure ingest, this KPI shows `0` and its sparkline is empty.
 - **GCP Events** -- Event count where `cloud_provider = "gcp"`. Sparkline shows daily GCP-only volume. On an install without GCP ingest, this KPI shows `0` and its sparkline is empty.
-- **Daily Event Volume by Cloud Provider** -- Stacked column chart showing daily event counts split by provider. Each bar is the day's total; the per-provider segments stack to make each contribution visible. Useful for spotting day-over-day shifts (a sudden drop in one provider's stack height while the others stay flat = that provider's ingest stalled).
+- **Event Volume by Cloud Provider** -- Stacked column chart showing event counts over time, split by provider. Each bar is one time bucket's total; the per-provider segments stack to make each contribution visible. Useful for spotting shifts over time (a sudden drop in one provider's stack height while the others stay flat = that provider's ingest stalled).
 - **Event Count by Provider** -- One-row-per-provider table with the raw cumulative event counts. The same data as the per-provider KPIs but in tabular form so the ratios are easy to read.
 - **Distinct Hosts by Provider** -- One-row-per-provider table showing how many unique `host` values reported under each `cloud_provider`. Confirms forwarder coverage across the cloud boundary.
 - **Distinct Sourcetypes by Provider** -- One-row-per-provider table showing how many distinct sourcetypes have at least one event per provider. Useful for confirming every cloud is producing the full sourcetype mix (e.g., not just `linux_messages_syslog` from Azure while AWS has the SAP stack).
@@ -46,7 +46,7 @@ Summary-backed panels switch automatically to their exact raw-equivalent search 
 
 ## :material-circle-box:{ .taiconcolor } Drill-Down Behavior
 
-Every KPI sparkline and the Daily Event Volume chart respect the dashboard's global time-range picker + the per-dashboard Refresh picker like any other LogServ App dashboard. Unlike other dashboards, this one has no Cloud Provider picker in its title row — the provider split *is* the dashboard, so every panel reports all providers side by side.
+Every KPI sparkline and the Event Volume by Cloud Provider chart respect the dashboard's global time-range picker + the per-dashboard Refresh picker like any other LogServ App dashboard. Unlike other dashboards, this one has no Cloud Provider picker in its title row — the provider split *is* the dashboard, so every panel reports all providers side by side.
 
 Tables on this dashboard are inventory views — they don't yet wire click-to-drill-down behavior (because the natural drill destination would be a Splunk search filtered by `cloud_provider` which most customers will see directly via the macro on any dashboard).
 

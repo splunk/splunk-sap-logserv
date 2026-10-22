@@ -12,8 +12,8 @@ SAP Router is the network gateway that sits between SAP systems and external net
 - **Router Errors** -- Count of router error events
 - **Invalid Data Events** -- Count of events where the router received malformed or unexpected protocol data -- often indicates a misconfigured client or probing
 - **Unique Peer IPs** -- Distinct count of peer IPs seen in the time window
-- **Connection Actions Over Time** -- Stacked column chart of CONNECT, DISCONNECT, and error actions daily
-- **Router Errors Over Time** -- Daily trend of router error events (column chart)
+- **Connection Actions Over Time** -- Stacked column chart of CONNECT, DISCONNECT, and error actions over time
+- **Router Errors Over Time** -- Trend of router error events over time (column chart)
 - **Peer IPs by Connection Volume** -- Table of peer IPs ranked by connection count; a row click opens that peer's full router event log
 - **Return Code Distribution** -- Donut chart of router return codes over the time range, decoded to readable labels ("0 = OK (Success)", "-93 = Connection Refused", "-92 = Host Unknown (DNS)", ...)
 - **Error Detail by Function** -- Table of router error functions (NiBuf, NiI, ...) with count, unique peer count, the return codes seen, and the most recent error detail text (paginated 5 rows at a time); a row click opens that function's error events
@@ -32,8 +32,29 @@ error traces).
 - **Recent Connection Log** is a live event listing dispatched against the raw events at view time,
   capped at the 500 most recent entries.
 
+On a `CONNECT TO` line the address after `host` is the connection's **target**, and the router's
+search-time `src_ip` (with its CIM alias `src`) takes that first address — so on those rows the
+Recent Connection Log's source IP column shows the target. The target also has its own fields:
+`saprouter_target_ip` / `saprouter_target_addr`, `saprouter_target_service` (`sapms<SID>`, `33NN`,
+`sapgwNN`, ...), `saprouter_target_sid` (for a `sapms<SID>` target), `saprouter_target_role`
+(message server, gateway, gateway (secure), dispatcher, SAP Router, niping, other service) and
+`saprouter_target_instance`. A server-side receive failure that names an IPv4 address
+(`NiBufReceive S<n>/<m> '<IPv4>' failed`) carries `saprouter_fail_target_ip`; client-side failures
+(`NiBufReceive C<n>/...`) and failures that name a host do not.
+
 Summary-backed panels switch automatically to their exact raw-equivalent search when the selected window is shorter than 90 minutes, so sub-hour investigation stays real-time. The collection keeps 365 days of hourly history (trimmed by a daily retention search); a fresh install seeds the last 30 days from **Settings → Dashboard Data → Run backfill**. The global **Cloud** dropdown filters the summaries through the `cloud_provider` dimension stored in every rollup row. Full schedule and freshness reference: [Performance & Data Freshness](../performance.md).
 
+
+## :material-circle-box:{ .taiconcolor } In the Environment Topology
+
+The [Environment Topology](../topology.md) draws each router's routed connections as **SAP Router**
+edges, from the router host (a "SAP ROUTER" square) to each `CONNECT TO` target, rolled up hourly.
+A target named `sapms<SID>` is that SID's message server, so its address is attributed to the SID and
+the edge ends on the SID's circle; targets reached by port (`3300`) or `sapgw<NN>` stay addresses until
+another source attributes them. Server-side receive failures that name a target address
+(`NiBufReceive S... '<IPv4>' failed`) count as the edge's failed connections; client-side failures and
+failures that name a host are not counted. Loopback targets (127.0.0.0/8 — such as the niping self-test,
+`127.0.0.1/3298`) are left out of the graph.
 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 

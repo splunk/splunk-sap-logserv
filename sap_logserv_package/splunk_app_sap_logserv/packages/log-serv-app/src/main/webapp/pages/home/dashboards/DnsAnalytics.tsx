@@ -13,9 +13,9 @@ import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { shouldUseRawSource } from '../utils/hybridRouting';
 import { recordRawTwin } from '../utils/rawTwin';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useCloudProvider, mapCloudProviderQueries, withCloudProvider } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
-import { chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanToken, chooseTimechartSpan, SPAN_TOKEN, spanSubtitle } from '../utils/timechartSpan';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
 
@@ -144,7 +144,9 @@ const Q_BASE = {
 
     // --- beaconing KPI + spark reuse logserv_beaconing_rollup (per-day dc(query)) --
     kpiBeaconing: `${BEACON} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
-    sparkBeaconing: `${BEACON} | eval _time=day_ts | timechart span=1d sum(count) as daily | fillnull value=0`,
+    // Build 377: each point carries its UTC day (day_ts) for the tooltip; only
+    // the count is 0-filled, so a filled day carries none.
+    sparkBeaconing: `${BEACON} | eval _time=day_ts | timechart span=1d sum(count) as daily max(day_ts) as day_ts | fillnull value=0 daily`,
 
     // --- stays RAW: streamstats beaconing DETAIL tables (per-event gap analysis;
     //     can't roll up byte-exact — streamstats over the per-event stream).
@@ -308,11 +310,12 @@ const DnsAnalytics: React.FC = () => {
     // Client-IP options for the Multiselect — sorted by descending request
     // volume so the dropdown's first items are the busiest clients. Hybrid so a
     // sub-hour range populates the dropdown from the raw index, not the empty
-    // hourly buckets. (Not cloud-filtered — matches the pre-hybrid behavior of
-    // this dropdown populator and the dynamic chart memos below.)
+    // hourly buckets. Build 377: cloud-filtered (withCloudProvider), like the
+    // two chart memos below and every other panel here - before, the dropdown
+    // and both time charts ignored the global Cloud picker.
     const clientListSearch = useHybridSearch<{ src?: string; count?: string | number }>({
-        cached: `${MAIN} | search src!="(none)" | stats sum(count) as count by src | sort -count`,
-        raw: `${DNS_RAW} | stats count by src | sort -count`,
+        cached: withCloudProvider(`${MAIN} | search src!="(none)" | stats sum(count) as count by src | sort -count`, provider),
+        raw: withCloudProvider(`${DNS_RAW} | stats count by src | sort -count`, provider),
     });
     const clientOptions = useMemo<string[]>(() => {
         const rows = clientListSearch.results ?? [];
@@ -333,39 +336,52 @@ const DnsAnalytics: React.FC = () => {
         // Sub-hour: raw DNS events at the real (sub-hour) span. `eval cnt=1 |
         // sum(cnt)` null-fills empty (src,bin) cells to match the cached
         // `sum(count)` (a plain `count` would 0-fill and diverge on sparse series).
-        const rawQ =
+        // Build 377: both arms go through applySpanToken, so the cached arm (hourly
+        // rollup rows) never bins under 1h - at Last 24 hours it had drawn each
+        // hour into one 15-minute bin and left three empty. Both arms also go
+        // through withCloudProvider (the global Cloud picker), as on Web Dispatcher.
+        const rawQ = applySpanToken(withCloudProvider(
             `${DNS_RAW}${clientFilterClause} | eval cnt=1 ` +
-            `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(cnt) AS Requests by src`;
-        const cachedQ =
+            `| timechart span=${SPAN_TOKEN} limit=${limitVal} usenull=f useother=f sum(cnt) AS Requests by src`,
+            provider,
+        ), span);
+        const cachedQ = applySpanToken(withCloudProvider(
             `${MAIN}${clientFilterClause} | search src!="(none)" | eval _time=bucket_ts ` +
-            `| timechart span=${span} limit=${limitVal} usenull=f useother=f sum(count) AS Requests by src`;
+            `| timechart span=${SPAN_TOKEN} limit=${limitVal} usenull=f useother=f sum(count) AS Requests by src`,
+            provider,
+        ), span);
         recordRawTwin(cachedQ, rawQ); // §17.8a-17 (grouped by src → real signal)
         return useRawSrc ? rawQ : cachedQ;
-    }, [span, topN, selectedClients, useRawSrc]);
+    }, [span, topN, selectedClients, useRawSrc, provider]);
 
+    // The span printed is the dispatched one (spanSubtitle reads the query).
     const clientsChartSubtitle = useMemo<string>(() => {
         const total = clientOptions.length;
         if (selectedClients.length > 0) {
-            return `${selectedClients.length} of ${total} clients selected — span ${span}`;
+            return spanSubtitle(`${selectedClients.length} of ${total} clients selected`, topClientsQuery);
         }
         if (topN === 'all') {
-            return `All clients (${total}) by request volume — span ${span}`;
+            return spanSubtitle(`All clients (${total}) by request volume`, topClientsQuery);
         }
-        return `Top ${topN} clients by request volume — span ${span}`;
-    }, [span, topN, selectedClients, clientOptions.length]);
+        return spanSubtitle(`Top ${topN} clients by request volume`, topClientsQuery);
+    }, [topClientsQuery, topN, selectedClients, clientOptions.length]);
 
     const recordTypesQuery = useMemo(
         () => {
-            const rawQ =
+            const rawQ = applySpanToken(withCloudProvider(
                 `${DNS_RAW} record_type=* | ${RECORD_TYPE_RELABEL} | eval cnt=1 `
-                + `| timechart span=${span} usenull=f useother=f sum(cnt) BY record_type`;
-            const cachedQ =
+                + `| timechart span=${SPAN_TOKEN} usenull=f useother=f sum(cnt) BY record_type`,
+                provider,
+            ), span);
+            const cachedQ = applySpanToken(withCloudProvider(
                 `${RTYPE} | search record_type!="(none)" | ${RECORD_TYPE_RELABEL} | eval _time=bucket_ts `
-                + `| timechart span=${span} usenull=f useother=f sum(count) BY record_type`;
+                + `| timechart span=${SPAN_TOKEN} usenull=f useother=f sum(count) BY record_type`,
+                provider,
+            ), span);
             recordRawTwin(cachedQ, rawQ); // §17.8a-17
             return useRawSrc ? rawQ : cachedQ;
         },
-        [span, useRawSrc],
+        [span, useRawSrc, provider],
     );
 
     const beaconingTone = Number(beaconing.value ?? 0) > 0 ? 'warning' : 'neutral';
@@ -382,7 +398,7 @@ const DnsAnalytics: React.FC = () => {
                 <KpiCard label="Unique Clients" value={clients.value} loading={clients.loading} error={clients.error} search={clients.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkClients} valueField="clients" fill />} />
                 <KpiCard label="Beaconing Domains" value={beaconing.value} loading={beaconing.loading} error={beaconing.error} search={beaconing.search} formatValue={formatInteger} tone={beaconingTone}
-                    sparkline={<SparklineFromQuery query={Q.sparkBeaconing} valueField="daily" color={logservTheme.colors.orange} fill />} />
+                    sparkline={<SparklineFromQuery query={Q.sparkBeaconing} valueField="daily" utcDayField="day_ts" color={logservTheme.colors.orange} fill />} />
             </KpiRow>
 
             <PanelGrid2>
@@ -428,7 +444,7 @@ const DnsAnalytics: React.FC = () => {
                 </FramedPanel>
                 <FramedPanel
                     title="Requests by Record Type"
-                    subtitle={`Query mix by record type — span ${span}`}
+                    subtitle={spanSubtitle('Query mix by record type', recordTypesQuery)}
                 >
                     <TimeSeriesChart query={recordTypesQuery} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>

@@ -2,7 +2,7 @@
 
 Splunk Cloud Victoria (10.x and later) routes admin access through a different role model than Splunk Enterprise. This page covers the differences that affect Splunk for SAP LogServ installs on Splunk Cloud Victoria — what your customer-tier admin can and can't do, what we've done in the LogServ packages to make customer-tier admins productive, and what you'll need to coordinate with Splunk Cloud Support.
 
-If you're installing on **Splunk Enterprise** (on-prem or BYOL), none of this page applies — Splunk Enterprise's `admin` role is the universal admin with no capability gaps to work around.
+If you're installing on **Splunk Enterprise** (on-prem or BYOL), only one item on this page applies: the capability the AI Assistant's audit writes need, `edit_tcp` or `edit_log_alert_event` (the `/receivers/simple` row [below](#capability-gated-rest-endpoints)), which Splunk Enterprise's default `admin` and `power` roles hold and `user` does not. Otherwise Splunk Enterprise's `admin` role is the universal admin with no capability gaps to work around.
 
 ## :material-circle-box:{ .taiconcolor } Splunk Cloud Victoria role tiers
 
@@ -18,7 +18,7 @@ If you're installing on **Splunk Enterprise** (on-prem or BYOL), none of this pa
 
 ## :material-circle-box:{ .taiconcolor } Capability-gated REST endpoints
 
-Splunk's REST framework enforces some capability requirements server-side, independent of any per-object access control list. These gates affect what your `sc_subadmin` account can do on the LogServ packages:
+Splunk's REST framework enforces some capability requirements server-side, independent of any per-object access control list. These gates affect what your `sc_subadmin` account can do on the LogServ packages; the `/receivers/simple` gate also decides whether each AI Assistant user is audited:
 
 | REST endpoint | Gate | LogServ usage |
 |---|---|---|
@@ -26,8 +26,9 @@ Splunk's REST framework enforces some capability requirements server-side, indep
 | `/storage/collections/data/<collection>` | None — collection-level metadata ACL only | AI Assistant settings + acks, topology layouts, dashboard refresh preferences |
 | `/configs/conf-<name>/...` | **`admin_all_objects`** (hardcoded in the REST framework) | Historical AI Assistant settings storage — migrated to KV Store to dodge this gate |
 | `/data/inputs/<service>` | `admin_all_objects` | UCC modular-input writes — the LogServ **Azure** and **GCP** add-ons ship `passSystemAuth = true` on every `[admin_external:*]` stanza so the input-CRUD handler runs in system context (applied at build time by each add-on's `additional_packaging.py`) |
+| `/receivers/simple` | **`edit_tcp`** or **`edit_log_alert_event`** (on Splunk Enterprise the default `admin` role holds both, `power` holds `edit_log_alert_event` and `user` neither; on Splunk Cloud `edit_tcp` may not be grantable to customer roles) | AI Assistant audit events: the browser writes each one as the signed-in user, so a user without either capability is not audited and sees an **Audit events are not being written** warning in the AI Assistant panel. `edit_log_alert_event` is the narrower one to grant; either lets the role write events to any index, and `edit_tcp` also lets it change TCP data inputs — see [Who Can Write Audit Events](../ai-assistant/audit-log.md#who-can-write-audit-events) |
 
-The takeaway: **even with full metadata.meta write permission on an object, certain REST endpoints will return 403 to your `sc_subadmin` account if `admin_all_objects` isn't granted.** The LogServ packages have been built to either avoid these endpoints (KV Store, where possible) or work around them via system-context bypasses (`passSystemAuth`, where the admin_external pattern applies).
+The takeaway: **even with full metadata.meta write permission on an object, certain REST endpoints will return 403 to your `sc_subadmin` account if `admin_all_objects` isn't granted.** The LogServ packages have been built to either avoid these endpoints (KV Store, where possible) or work around them via system-context bypasses (`passSystemAuth`, where the admin_external pattern applies). The one gate they neither avoid nor bypass is the `edit_tcp` / `edit_log_alert_event` check on `/receivers/simple`: the AI Assistant writes its audit events there as the signed-in user, so whether a user's activity is audited depends on that user's role, on Splunk Cloud and on Splunk Enterprise alike.
 
 ## :material-circle-box:{ .taiconcolor } What the LogServ packages do for customer-tier admins
 
@@ -50,9 +51,11 @@ The AI Assistant's admin-controlled settings (`enabled`, `provider`, `default_mo
 - `logserv_ai_assistant_settings` — single row keyed `defaults`, holding every admin-controlled AI Assistant settings field
 - `logserv_ai_assistant_acks` — one row per legal-stanza name, holding the acknowledged opt-in version, the choice, and its timestamp (the acknowledgement is recorded once per stanza for the deployment, not per user; the audit event records who acknowledged it)
 
-KV Store endpoints are governed only by the collection-level metadata ACL — no `admin_all_objects` capability requirement. Both collections ship with `write : [ * ]` — write access is granted to every authenticated user at the ACL layer, because the KV Store endpoint has no capability gate to fall back on; admin-tier gating is enforced in the UI (`useIsAdmin`), not by the collection ACL. Without this design, sc_subadmin users on locked-down Splunk Cloud Victoria deployments would hit 403 on every Save Defaults click and every T&C modal Submit.
+KV Store endpoints are governed only by the collection-level metadata ACL — no `admin_all_objects` capability requirement, so sc_subadmin users on locked-down Splunk Cloud Victoria deployments can Save Defaults and submit the T&C modals. Since App build 383 both collections (and the model cache `logserv_ai_models`) ship with `write : [ admin, sc_admin, sc_subadmin ]` and `read : [ * ]`: the collection ACL, not only the UI's `useIsAdmin` gate, keeps other roles from changing the settings. Earlier builds shipped `write : [ * ]`, which let any signed-in user change, through the REST API, where an admin's browser sends the audit forwarder's HEC token and the MCP bearer token ([Who can save AI Assistant settings](../ai-assistant/settings.md)).
 
-A one-shot migration helper in `App.tsx`'s mount effect copies pre-migration values from `local/ai_assistant_settings.conf` and `local/ai_assistant_acks.conf` into the new KV Store rows on first page load. Customers upgrading from a build that wrote settings to local conf-files don't lose their settings.
+Since App build 384 the dashboard rollup, Environment Topology and platform-snapshot collections are admin-tier write as well (`write : [ admin, sc_admin, sc_subadmin ]`). sc_subadmin is in that tier, so its **Settings → Dashboard Data** Clear and Backfill keep working; the scheduled searches that fill them run as Splunk's system user.
+
+A one-shot migration helper in `App.tsx`'s mount effect copies pre-migration values from `local/ai_assistant_settings.conf` and `local/ai_assistant_acks.conf` into the new KV Store rows on the first page load of an admin-tier user (another user's attempt is refused and skipped quietly). Customers upgrading from a build that wrote settings to local conf-files don't lose their settings.
 
 ### :material-circle-box:{ .taiconcolor } Data TA Configuration saves fall back to the filesystem
 

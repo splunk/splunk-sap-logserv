@@ -6,7 +6,8 @@
  * The gate's job is to:
  *   1. Refuse versions < MIN_MCP_SERVER_VERSION (CVE-2026-20205).
  *   2. Accept versions >= MIN_MCP_SERVER_VERSION.
- *   3. Treat malformed/missing versions as "fail closed" → refuse.
+ *   3. Treat malformed/missing versions as "fail closed" → refuse; a
+ *      two-part version ("3.0") reads as MAJOR.MINOR.0 (build 393).
  *   4. Strip pre-release suffixes for the comparison so 1.0.3-rc1 still
  *      meets the bar of 1.0.3.
  */
@@ -51,11 +52,17 @@ const meetsCases: MeetsCase[] = [
     { installed: '1.0.0', expect: false },
     { installed: '0.9.99', expect: false },
     { installed: '1.0.3-rc1', expect: true },
+    // Two-part versions read as MAJOR.MINOR.0 (build 393):
+    { installed: '3.0', expect: true },
+    { installed: '2.1', expect: true },
+    { installed: '1.1', expect: true },
+    { installed: '1.0', expect: false }, // 1.0.0, below the floor
     // Fail-closed cases:
     { installed: '', expect: false },
     { installed: 'not-a-version', expect: false },
     { installed: '1', expect: false },
-    { installed: '1.0', expect: false },
+    { installed: '3', expect: false },
+    { installed: '.3.0', expect: false },
     { installed: 'v1.0.3', expect: false }, // we don't strip leading 'v'
     // Custom required:
     { installed: '1.5.0', required: '2.0.0', expect: false },

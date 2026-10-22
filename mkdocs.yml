@@ -80,6 +80,7 @@ nav:
     - Prerequisites: 'content/install-setup/prerequisites.md'
     - Installing the Data TA: 'content/install-setup/install-ta.md'
     - Configuring Filters: 'content/install-setup/configure-filters.md'
+    - Heavy Forwarder Sizing: 'content/install-setup/hf-sizing.md'
     - Splunk Cloud Victoria Notes: 'content/install-setup/splunk-cloud-victoria-notes.md'
     - Setup Guides Overview: 'content/install-setup/setup-guides.md'
     - AWS Setup Guides:

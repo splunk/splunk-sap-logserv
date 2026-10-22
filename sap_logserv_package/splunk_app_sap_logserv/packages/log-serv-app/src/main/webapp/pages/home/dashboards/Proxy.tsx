@@ -12,7 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * Proxy Analytics — honest port of v0.0.4.2 logserv_proxy.xml.
@@ -272,10 +272,10 @@ const Proxy: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Request Volume Over Time" subtitle="Daily proxy request count">
+                <FramedPanel title="Request Volume Over Time" subtitle={spanSubtitle('Proxy request count', Q.requestVolume)}>
                     <TimeSeriesChart query={Q.requestVolume} height={280} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="Status Code Distribution" subtitle="Daily volume bucketed 2xx/3xx/4xx/5xx">
+                <FramedPanel title="Status Code Distribution" subtitle={spanSubtitle('Volume bucketed 2xx/3xx/4xx/5xx', qStatusCodes)}>
                     <TimeSeriesChart query={qStatusCodes} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
@@ -296,7 +296,7 @@ const Proxy: React.FC = () => {
                 <FramedPanel search={cacheActions} title="Cache Action Distribution" subtitle="Squid cache actions ranked by count">
                     <DataTable columns={CACHE_COLS} rows={cacheActions.results} loading={cacheActions.loading} error={cacheActions.error} emptyMessage="No proxy events in this time range." />
                 </FramedPanel>
-                <FramedPanel title="Bandwidth Over Time" subtitle="Daily bytes-out volume">
+                <FramedPanel title="Bandwidth Over Time" subtitle={spanSubtitle('Bytes-out volume', qBandwidthTimeline)}>
                     <TimeSeriesChart query={qBandwidthTimeline} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
@@ -305,7 +305,7 @@ const Proxy: React.FC = () => {
                 <FramedPanel search={topDomBytes} title="URL Domains by Bytes Out" subtitle="Domains ranked by MB delivered — click a row for that domain's full proxy log">
                     <DataTable columns={TOP_DOM_BYTES_COLS} rows={topDomBytes.results} loading={topDomBytes.loading} error={topDomBytes.error} emptyMessage="No proxy events in this time range." initialSortKey="MB Out" initialSortDir="desc" onRowClick={goDomainRow} />
                 </FramedPanel>
-                <FramedPanel title="Bandwidth Over Time by Domain (Top 5)" subtitle="Daily bytes by top 5 domains">
+                <FramedPanel title="Bandwidth Over Time by Domain (Top 5)" subtitle={spanSubtitle('Bytes by top 5 domains', qBandwidthByDomain)}>
                     <TimeSeriesChart query={qBandwidthByDomain} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
@@ -314,7 +314,7 @@ const Proxy: React.FC = () => {
                 <FramedPanel search={slowDestinations} title="Slowest Destinations" subtitle="Top 20 destinations by max response time (ms) — Squid access.log duration field">
                     <DataTable columns={SLOW_DEST_COLS} rows={slowDestinations.results} loading={slowDestinations.loading} error={slowDestinations.error} emptyMessage="No access.log events with duration in this time range." initialSortKey="Max (ms)" initialSortDir="desc" />
                 </FramedPanel>
-                <FramedPanel title="Response Time (Avg / Max)" subtitle="Daily average and peak response time (ms) — Squid access.log duration field">
+                <FramedPanel title="Response Time (Avg / Max)" subtitle={spanSubtitle('Average and peak response time (ms)', qResponseTimeTrend, 'Squid access.log duration field')}>
                     <TimeSeriesChart query={qResponseTimeTrend} height={280} palette="categorical" chartType="line" />
                 </FramedPanel>
             </PanelGrid2>

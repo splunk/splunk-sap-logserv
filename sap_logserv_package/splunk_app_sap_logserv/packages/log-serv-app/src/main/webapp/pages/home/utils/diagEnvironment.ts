@@ -53,6 +53,7 @@ import {
     IngestFacts,
     sanitizeFetchedFactsRow,
     ingestFactsSummary,
+    suppliedByText,
 } from './diagIngestFacts';
 import { probeIngestFacts } from './diagEvidence';
 
@@ -297,7 +298,7 @@ export const gatherEnvironmentEvidence = async (
                 'Ingest-tier filter config (operator-supplied)',
                 'ok',
                 facts
-                    ? `Recorded as supplied by ${facts.suppliedBy || 'an unknown user'}: ${ingestFactsSummary(facts)}`
+                    ? `Recorded as supplied by ${suppliedByText(facts.suppliedBy)}: ${ingestFactsSummary(facts)}`
                     : 'Not supplied — the Diagnostics page explains how to provide it.',
             );
         }

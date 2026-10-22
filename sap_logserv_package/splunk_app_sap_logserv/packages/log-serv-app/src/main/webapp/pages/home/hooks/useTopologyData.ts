@@ -6,9 +6,17 @@ import type {
     ActivityRow,
     NodeKind,
     SystemTag,
-    IntegrationType,
+    CanonicalKind,
+    EdgeSplType,
 } from '../topology/types';
-import { detectDbVendor } from '../topology/types';
+import {
+    clauseFieldToKind,
+    detectDbVendor,
+    fixedTagForKind,
+    isFixedTag,
+    retargetEndpoint,
+} from '../topology/types';
+import { splTypeToIntegrationType } from '../topology/edgeStyle';
 import { collectBucketIds, edgeDisplayId } from '../topology/edgeIds';
 import { buildNodeTraffic, buildEdgeAppServers } from '../topology/panelFacts';
 import type { EndpointAttribution, TrafficRow, TrafficEdgeGroup } from '../topology/panelFacts';
@@ -55,7 +63,9 @@ import type { EndpointAttribution, TrafficRow, TrafficEdgeGroup } from '../topol
 interface NodeBucketRow {
     _key: string;
     id: string;
-    canonical_kind: 'sid' | 'ip' | 'host' | 'tenant_db';
+    /* Build 378: + 'saprouter' (the SAP Router host; its rows carry
+     * tag "ROUTER" and kind "partner"). */
+    canonical_kind: CanonicalKind;
     canonical_value: string;
     bucket_ts: number;
     kind: NodeKind;
@@ -70,15 +80,18 @@ interface EdgeBucketRow {
     id: string;
     source_id: string;
     target_id: string;
-    type: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant';
+    /* Build 378: + 'saprouter' (router host -> CONNECT TO target address). */
+    type: EdgeSplType;
     direction: 'client' | 'server' | 'bidi';
     bucket_ts: number;
     call_count: number;
     error_count: number;
-    /** Build 325 / session 110 — RFC rows only: the SID-side gateway
-     *  listening address (a group-by of the rfc arm, projected as a real
-     *  field since the per-app-server key change). Absent on other types
-     *  AND on RFC rows stored before build 325. */
+    /** Build 325 / session 110 — RFC rows only: the address of the gateway
+     *  that wrote the record (the SAP system's side of the connection; a
+     *  group-by of the rfc arms, projected as a real field since the
+     *  per-app-server key change). Absent on other types, on RFC rows stored
+     *  before build 325 and, since build 378, on the connection-record rows
+     *  (GwDiscRemGw / GwDisconnectClient lines name no local address). */
     local_ip?: string;
     /** Build 224 / session 037 — first-class warning count from
      *  hana_tenant edges. Null for non-hana_tenant edge types. */
@@ -87,8 +100,6 @@ interface EdgeBucketRow {
     response_time_p95?: number;
     response_time_max?: number;
     bytes_out_sum?: number;
-    icm_tasks_max?: number;
-    icm_tasks_avg?: number;
     hana_op_p95_ms?: number;
     hana_op_max_ms?: number;
     auth_success_count?: number;
@@ -241,20 +252,9 @@ const fetchKvAllRows = async <T>(collection: string): Promise<T[]> => {
     return res.json();
 };
 
-/**
- * Map SPL-emitted edge type (rfc/http/hana_audit/hana_tenant) onto the
- * legacy IntegrationType enum used by the visual layer. The SPL type is
- * preserved in `splType` for session-036's right-pane tabs.
- */
-const splTypeToIntegrationType = (splType: EdgeBucketRow['type']): IntegrationType => {
-    switch (splType) {
-        case 'http': return 'web_service';
-        case 'rfc': return 'rfc';
-        case 'hana_audit': return 'web_service';
-        case 'hana_tenant': return 'rfc';
-        default: return 'rfc';
-    }
-};
+/* The SPL-emitted edge type -> IntegrationType map (splTypeToIntegrationType)
+ * lives in topology/edgeStyle.ts since build 378, where the consistency suite
+ * holds it; the SPL type is preserved in `splType` for the right-pane tabs. */
 
 /**
  * Parse the canonical SPL filter clauses from the edge row's denormalized
@@ -460,17 +460,9 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
         // retarget() able to dispatch on kind without needing a node row to
         // exist — critical for catching SIDs whose gateway events lack
         // local_ip and so were skipped by the aggregate-NODES SPL.
-        const clauseFieldToKind = (
-            field: string,
-        ): 'sid' | 'ip' | 'host' | 'tenant_db' | null => {
-            if (field === 'sap_sid') return 'sid';
-            if (field === 'hana_tenant_sid') return 'tenant_db';
-            if (field === 'clientip' || field === 'client_ip'
-                || field === 'peer_ip' || field === 'local_ip') return 'ip';
-            if (field === 'host' || field === 'hana_host') return 'host';
-            return null;
-        };
-
+        /* Field -> canonical kind: topology/types.ts clauseFieldToKind (build
+         * 378 moved it there and added saprouter_host -> saprouter and
+         * saprouter_target_ip / gw_client_ip -> ip). */
         edgeRows.forEach((row) => {
             const clauses = parseFilterClauses(row.spl_filter_clauses);
             clauses.forEach((c, idx) => {
@@ -492,7 +484,7 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
 
         /**
          * Given a node id from an edge endpoint, return the retargeted node
-         * id. Three cases:
+         * id — topology/types.ts retargetEndpoint (pure since build 378):
          *
          *   - Endpoint is a SID (kind='sid'): retarget to the SID's
          *     canonical node id (real bucket id if it exists, synthetic
@@ -501,24 +493,22 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
          *     wasn't captured by the aggregate-NODES SPL — Fix A (build 193).
          *   - Endpoint is IP/host (kind='ip' or 'host'): if inventory
          *     resolves it to a SID AND that SID has a node, retarget to the
-         *     SID node. Otherwise stay raw.
+         *     SID node. Otherwise stay raw. A SAP Router target address
+         *     (kind 'ip') folds into its SID this way when the inventory's
+         *     sapms<SID> arm attributed it (U30, T1 + inventory).
          *   - Endpoint is tenant_db: stay raw — those render as DB cylinder
          *     nodes per the topology view's rules.
+         *   - Endpoint is saprouter (build 378, U29 / S2): stay raw, ALWAYS —
+         *     the router is its own "SAP ROUTER" node even when the inventory
+         *     maps the same host name to a SID (a router VM that also runs an
+         *     SAP system would otherwise vanish into that system's circle).
          */
-        const retarget = (nodeId: string): string => {
-            const canonical = nodeIdToCanonical.get(nodeId);
-            if (!canonical) return nodeId;
-            if (canonical.kind === 'sid') {
-                return sidToNodeId.get(canonical.value) ?? nodeId;
-            }
-            if (canonical.kind === 'tenant_db') return nodeId;
-            if (canonical.kind === 'ip' || canonical.kind === 'host') {
-                const resolvedSid = inventoryByValue.get(canonical.value);
-                if (!resolvedSid) return nodeId;
-                return sidToNodeId.get(resolvedSid) ?? nodeId;
-            }
-            return nodeId;
-        };
+        const retarget = (nodeId: string): string => retargetEndpoint(
+            nodeId,
+            nodeIdToCanonical.get(nodeId),
+            (value) => inventoryByValue.get(value),
+            (sid) => sidToNodeId.get(sid),
+        );
 
         // ---- Aggregate edges by (retargeted source, retargeted target, type) ----
         // Apply inventory retargeting BEFORE aggregation so multiple raw-IP
@@ -552,9 +542,6 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             responseTimeP50Weight: number;
             responseTimeMaxAcc: number;
             bytesOutSumAcc: number;
-            icmTasksMaxAcc: number;
-            icmTasksAvgWeightedSum: number;
-            icmTasksAvgWeight: number;
             hanaOpP95WeightedSum: number;
             hanaOpP95Weight: number;
             hanaOpMaxAcc: number;
@@ -608,9 +595,6 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
                     responseTimeP50Weight: row.response_time_p50 != null ? w : 0,
                     responseTimeMaxAcc: row.response_time_max ?? 0,
                     bytesOutSumAcc: row.bytes_out_sum ?? 0,
-                    icmTasksMaxAcc: row.icm_tasks_max ?? 0,
-                    icmTasksAvgWeightedSum: (row.icm_tasks_avg ?? 0) * w,
-                    icmTasksAvgWeight: row.icm_tasks_avg != null ? w : 0,
                     hanaOpP95WeightedSum: (row.hana_op_p95_ms ?? 0) * w,
                     hanaOpP95Weight: row.hana_op_p95_ms != null ? w : 0,
                     hanaOpMaxAcc: row.hana_op_max_ms ?? 0,
@@ -636,13 +620,6 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
                 }
                 if (row.bytes_out_sum != null) {
                     existing.bytesOutSumAcc += row.bytes_out_sum;
-                }
-                if (row.icm_tasks_max != null) {
-                    existing.icmTasksMaxAcc = Math.max(existing.icmTasksMaxAcc, row.icm_tasks_max);
-                }
-                if (row.icm_tasks_avg != null) {
-                    existing.icmTasksAvgWeightedSum += row.icm_tasks_avg * w;
-                    existing.icmTasksAvgWeight += w;
                 }
                 if (row.hana_op_p95_ms != null) {
                     existing.hanaOpP95WeightedSum += row.hana_op_p95_ms * w;
@@ -714,10 +691,6 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
                     : undefined,
                 responseTimeMax: agg.responseTimeMaxAcc > 0 ? agg.responseTimeMaxAcc : undefined,
                 bytesOutSum: agg.bytesOutSumAcc > 0 ? agg.bytesOutSumAcc : undefined,
-                icmTasksMax: agg.icmTasksMaxAcc > 0 ? agg.icmTasksMaxAcc : undefined,
-                icmTasksAvg: agg.icmTasksAvgWeight > 0
-                    ? agg.icmTasksAvgWeightedSum / agg.icmTasksAvgWeight
-                    : undefined,
                 hanaOpP95Ms: agg.hanaOpP95Weight > 0
                     ? agg.hanaOpP95WeightedSum / agg.hanaOpP95Weight
                     : undefined,
@@ -807,13 +780,15 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             } else {
                 /* Build 324 — tenant_db endpoints get the TENANT tag
                  * (SID-format tenant circle + combo icon in PartnerNode);
-                 * all other unmatched endpoints stay EXT partners. */
-                const isTenantDb = nodeIdToCanonical.get(id)?.kind === 'tenant_db';
+                 * build 378 — saprouter endpoints get the ROUTER tag (the
+                 * "SAP ROUTER" partner square); all other unmatched
+                 * endpoints stay EXT partners. */
+                const fixedTag = fixedTagForKind(nodeIdToCanonical.get(id)?.kind);
                 synthesizedNodes.push({
                     id,
                     label: idLabelHints.get(id) ?? id,
                     kind: 'partner',
-                    tag: isTenantDb ? 'TENANT' : 'EXT',
+                    tag: fixedTag ?? 'EXT',
                     eventCount: 0,
                 });
             }
@@ -880,11 +855,13 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             /* Build 324 — tenant_db endpoints (from edge clauses) carry the
              * TENANT tag so PartnerNode renders the SID-format tenant
              * circle. Defensive here: tenant endpoints normally have no
-             * bucket rows (the synthesized path below is the usual one). */
+             * bucket rows (the synthesized path below is the usual one).
+             * Build 378 — saprouter rows carry ROUTER (the nodes arm stores
+             * it too) and never go through refineTag: a router whose host
+             * name contains "hdb" or "ora" is not a database. */
             const canonicalKind = nodeIdToCanonical.get(agg.row.id)?.kind;
-            const tag = canonicalKind === 'tenant_db'
-                ? ('TENANT' as SystemTag)
-                : refineTag(agg.row.label, agg.row.tag);
+            const tag = fixedTagForKind(canonicalKind)
+                ?? refineTag(agg.row.label, agg.row.tag);
             return {
                 id: agg.row.id,
                 label: agg.row.label,
@@ -902,12 +879,13 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             ...n,
             /* Build 324 — synthetic SIDs participate in the High Traffic
              * promotion like real-bucket SIDs (e.g. the HANA systems,
-             * which never get gateway-fed bucket rows). TENANT tags are
-             * preserved (refineTag would not match them anyway). */
+             * which never get gateway-fed bucket rows). TENANT and (build
+             * 378) ROUTER tags are preserved: refineTag classifies from the
+             * label, and a router's host name is no evidence of a database. */
             kind: n.kind === 'sid_secondary' && highTrafficIds.has(n.id)
                 ? ('sid_focused' as NodeKind)
                 : n.kind,
-            tag: n.tag === 'TENANT' ? n.tag : refineTag(n.label, n.tag),
+            tag: isFixedTag(n.tag) ? n.tag : refineTag(n.label, n.tag),
         }));
 
         const nodes: TopologyNode[] = [...aggregatedNodes, ...refinedSynthesizedNodes];
@@ -966,11 +944,17 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
         // Inventory status diagnostic: count endpoints (sources + targets across
         // all edges) and how many resolved to a SID or tenant_db node. After
         // retargeting, edge endpoints reference the SID node id whenever the
-        // raw IP/host had an unambiguous SID mapping in the inventory.
+        // raw IP/host has a row in the inventory, which records its most
+        // recent SID (build 379).
+        // Build 378: SAP Router endpoints are left out of both counts — the
+        // router is never folded into a SID by design (S2), so counting it
+        // would lower "% endpoints resolved to SID" for something that is not
+        // a gap in the inventory.
         let totalEndpoints = 0;
         let resolved = 0;
         edges.forEach((e) => {
             [e.source, e.target].forEach((id) => {
+                if (nodeIdToCanonical.get(id)?.kind === 'saprouter') return;
                 totalEndpoints += 1;
                 const canonical = nodeIdToCanonical.get(id);
                 if (canonical && (canonical.kind === 'sid' || canonical.kind === 'tenant_db')) {
@@ -983,8 +967,8 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
          *
          * endpointAttribution answers "what is this endpoint, and who owns it"
          * for every id we can canonically identify. `owner` comes from the
-         * inventory, which is fetched unwindowed and is written on
-         * last-unambiguous-hour evidence with no retention sweep — the panel
+         * inventory, which is fetched unwindowed and records each endpoint's
+         * most recent SID (build 379) with no retention sweep — the panel
          * discloses that; the record itself just reports what is there.
          *
          * hostTrafficByNode reads the SURVIVING groups' member rows, because

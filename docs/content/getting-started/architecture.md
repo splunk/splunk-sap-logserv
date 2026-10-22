@@ -31,6 +31,7 @@ Where you install each package depends on your Splunk topology:
 !!! warning "Important"
     - The Data TA is **never** installed directly on Heavy Forwarders when using a Deployment Server -- the DS distributes it automatically.
     - The LogServ App is **never** installed on Heavy Forwarders or the Deployment Server.
+    - The Data TA and the Azure / GCP add-ons are **strongly recommended against** on a search head (Splunk Cloud included); nothing blocks them there — see [Running the TAs on a search head](../install-setup/install-ta.md#running-the-tas-on-a-search-head).
     - On Splunk Cloud you cannot install apps on the indexer tier, so the Data TA's bundled `indexes.conf` never applies there. Create both indexes through the Splunk Cloud console or the Admin Config Service (ACS) — see [Installing the Data TA](../install-setup/install-ta.md).
     - For single-instance deployments, both packages are installed on the same instance and Splunk merges their configurations at runtime.
 
@@ -166,11 +167,13 @@ User question  -->  AI vendor  -->  AI picks tools  -->  MCP server  -->  Splunk
                   AI synthesizes narrative reply
 ```
 
-Tool results from the Splunk MCP Server are typed `Hidden<MCPToolResult>` in TypeScript. The compiler refuses to put a `Hidden<T>` value into the outbound vendor payload — the only way to convert it is via `sanitize(hidden, summarizer)`, which forces the caller to provide a non-data summary. The summarizer is gated by the active **privacy tier**:
+Tool results from the Splunk MCP Server are typed `Hidden<MCPToolResult>` in TypeScript. The compiler refuses to put a `Hidden<T>` value into the outbound vendor payload — the only way to convert it is via `sanitize(hidden, summarizer)`, which forces the caller to provide a summary string. No raw row and no unsummarized result reaches the vendor; what the summary may contain is set by the active **privacy tier**:
 
   - **Tier 0 (Ollama, future)** — air-gapped local LLM; no vendor traffic at all.
-  - **Tier 1 (default)** — summary is `count + execution_time` only. AI sees no values.
-  - **Tier 2 (admin opt-in)** — summary adds aggregated metadata (per-column cardinality, top-N values + counts for categorical, min/max/avg/sum for numeric, time range when `_time` is present). Still no raw rows.
+  - **Tier 1 (default)** — summary is two numbers, a count and a timing. AI sees no values; a model that writes its own queries can still make those numbers depend on event data, so a few bits per call can leak.
+  - **Tier 2 (admin opt-in)** — summary adds aggregated metadata: per-column cardinality, top-N values + counts for categorical columns (field values from the events — filtered, 40 characters each, and with PII redaction on sent in clear only when the App can trace the column to a field that marks no identifier), min/max/avg/sum for numeric columns, and the time range only as UTC timestamps the App formats. A column name is sent only when Splunk generates it or every word in it was written by the model in its own query or by the App's catalog search that ran; any other name, such as a split-by value (`timechart … by user`) the query did not type, appears as `col_N`. No raw rows.
+
+In every tier, a tool call that **fails** reaches the vendor only as its HTTP status and a fixed error class (`Tool error (HTTP 400, class=parse_error): …`), never as Splunk's or the MCP server's error text; the full error stays in the result tile on the user's screen. See [Privacy Tiers](../ai-assistant/privacy-tiers.md#failed-tool-calls-every-tier).
 
 **Two paths:**
 
@@ -179,7 +182,7 @@ Tool results from the Splunk MCP Server are typed `Hidden<MCPToolResult>` in Typ
 
 **Audit log:**
 
-Every AI Assistant action — both paths — produces audit events into a dedicated `logserv_ai_assistant_audit` index. Categories include `local_only` (canned-prompt dispatches), `vendor_tier1` / `vendor_tier2` (LLM calls with token counts + USD cost estimate), `security_blocked_spl`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, the two legal-acknowledgement categories, and more — the [Audit Log](../ai-assistant/audit-log.md) page enumerates the full category set. The Audit Log tab in Settings provides an in-app browser; an optional HEC forwarder can stream events to a separate Splunk / SIEM destination for tamper-evidence.
+Every AI Assistant action — both paths — produces audit events into a dedicated `logserv_ai_assistant_audit` index. Categories include `local_only` (canned-prompt dispatches), `vendor_tier1` (every free-form LLM prompt, at any tier, with token counts + USD cost estimate + the Tier 2 PII-redaction count), `vendor_tier2_elevation` (an admin switched the privacy tier to 2), `security_blocked_spl`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, the two legal-acknowledgement categories, and more — the [Audit Log](../ai-assistant/audit-log.md) page enumerates the full category set. The Audit Log tab in Settings provides an in-app browser; an optional HEC forwarder can stream events to a separate Splunk / SIEM destination for tamper-evidence.
 
 **Splunk MCP Server prerequisite:**
 
@@ -194,20 +197,20 @@ The Environment Topology view (also accessible via URL slug `integration-topolog
 The view assembles its node + edge inventory from a union of six SPL searches against the existing sourcetypes (no new ingest required):
 
   - **`sap:abap:gateway`** — RFC peer/local IPs (`P=<peer>` / `L=<local>` fields)
-  - **`sap:abap:icm`** — ICM peer/local IPs
+  - **`sap:abap:icm`** — ICM local IPs (`icm_local_ip`) and the ICM programs (`icm_program`)
   - **`sap:hana:tracelogs`** — HANA host + tenant SID extracted from the source path (`/usr/sap/<HANA_SID>/HDB<inst>/<host>/trace/DB_<TENANT_SID>/`)
-  - **`sap:saprouter`** — peer hostname extracted from the parens after `host <ip>/<service> (<resolved.host>)`
+  - **`sap:saprouter`** — SAP Router edges: from the router host to each `CONNECT TO` target address (`saprouter_target_ip`), with server-side failures that name the target (`NiBufReceive S… '<IPv4>' failed`) counted as failed connections; a `sapms<SID>` target attributes its address to that SID in the inventory. Loopback targets (127.0.0.0/8) are excluded.
   - **`linux_messages_syslog`** with osquery cpu_brand events — host inventory (CPU, RAM, OS, region, AZ, instance ID)
   - **Default Splunk `host` field** — fallback for hosts not surfaced in the above
 
 **Self-derived IP→SID inventory:**
 
-The "which IP belongs to which SID" mapping is derived from a multi-source `union` SPL with a `mvcount(sids)=1` filter — a host whose multiple sourcetypes all agree on a single SAP SID is unambiguously attributed; otherwise it's surfaced as "unknown". Resolution depends on what your data exposes: unique hostname/IP appearances across multiple SAP sourcetypes (HANA tracelogs, ABAP gateway L=, ICM peer fields, saprouter peer hostnames) attribute cleanly, while shared NAT IPs and external partners typically remain unknown. Additional inventory sources can be added by appending another `union` arm — the inventory framework is extensible per-customer without new ingest.
+The "which IP belongs to which SID" mapping is derived from a multi-source `union` SPL that counts the events each SAP SID logged for an IP address or host: the endpoint is attributed to its most recent SID (of the SIDs seen in its most recent hour, the one with the most events), so a host that really runs two systems at once is shown under the one that logged more; an exact tie keeps the previous attribution, and an endpoint never attributed is surfaced as "unknown". Resolution depends on what your data exposes: unique hostname/IP appearances across multiple SAP sourcetypes (HANA tracelogs, ABAP gateway L=, ICM local IPs, SAP Router `sapms<SID>` targets) attribute cleanly, while shared NAT IPs and external partners typically remain unknown. A Web Dispatcher's own logs (its access log and its ICM trace) are not an attribution source; see [Environment Topology](../logserv-app/dashboards/topology.md). Additional inventory sources can be added by appending another `union` arm — the inventory framework is extensible per-customer without new ingest.
 
 **Saved layouts:**
 
-User-arranged graph layouts are persisted via Splunk KV Store collection `logserv_topology_layouts`. The schema (currently v4) carries node positions, panel state, viewport zoom + pan, enabled integration types, selected node, active right-sidebar tab, and snap mode. Layouts are per-user-named (an admin can save a default layout that other users see; users can save their own variants). Schema migration is in-memory: v1 / v2 / v3 records still load.
+User-arranged graph layouts are persisted via Splunk KV Store collection `logserv_topology_layouts`. The schema (currently v5) carries the layout mode (Force / Layered / Tree), node positions, panel state, viewport zoom + pan, enabled integration types and the types the view offered when the layout was saved (so a type added later starts enabled), selected node and edge, active right-sidebar tab, and snap mode. Layouts are saved per user under a name, and each user can mark one per layout mode as the default that loads automatically. A layout saved in an older schema does not load; save it again.
 
 **Data refresh:**
 
-Topology data is populated by three hourly scheduled saved searches (`logserv_topology_aggregate_nodes / _edges / _inventory`, cron `5 * * * *`) that write to the KV Store collections. The view re-reads the KV Store on initial mount, on global TimeRange picker change, and whenever the user clicks the toolbar's **Refresh** button. There is no auto-polling — Splunk's hourly cron is what governs data freshness. An earlier Live | Lookup toggle was removed because the underlying data only changes hourly, so client-side polling at 30s intervals re-rendered the same data 119 times per hour. Per-node detail panels (right sidebar tabs) continue to re-fetch via on-demand SPL whenever a node is selected.
+Topology data is populated by three hourly scheduled saved searches (`logserv_topology_aggregate_nodes` / `_edges` / `_inventory`, crons `5`, `6` and `7 * * * *`) that write to the KV Store collections. The view re-reads the KV Store on initial mount, on global TimeRange picker change, and whenever the user clicks the toolbar's **Refresh** button. There is no auto-polling — Splunk's hourly cron is what governs data freshness. An earlier Live | Lookup toggle was removed because the underlying data only changes hourly, so client-side polling at 30s intervals re-rendered the same data 119 times per hour. Per-node detail panels (right sidebar tabs) continue to re-fetch via on-demand SPL whenever a node is selected.

@@ -1,11 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MCPClient } from '../components/ai/mcp/MCPClient';
-import {
-    MAX_MCP_SERVER_VERSION_EXCLUSIVE,
-    MIN_MCP_SERVER_VERSION,
-    belowMaxVersion,
-    meetsMinVersion,
-} from '../components/ai/mcp/versionGate';
+import { MIN_MCP_SERVER_VERSION, meetsMinVersion } from '../components/ai/mcp/versionGate';
 
 /**
  * Health check for the AI Assistant's MCP dependencies.
@@ -46,15 +41,6 @@ export type MCPHealthState =
           installedVersion: string;
           requiredVersion: string;
           cveId: 'CVE-2026-20205';
-      }
-    | {
-          /** Installed App 7931 version is at or above the uncertified
-           *  upper bound. The protocol shape may have changed in ways
-           *  the AI Assistant doesn't yet support. Build 83 / OWASP
-           *  LLM03 (Supply Chain). */
-          status: 'mcp_server_too_new';
-          installedVersion: string;
-          maxExclusiveVersion: string;
       }
     | { status: 'mcp_ta_missing'; serverVersion: string }
     | { status: 'error'; message: string };
@@ -183,18 +169,8 @@ export const useMCPHealth = (opts: UseMCPHealthOptions = {}): MCPHealthState => 
                     return;
                 }
 
-                // 2b. Upper-bound check (OWASP LLM03 Supply Chain — build 83).
-                //     Refuses to operate against an uncertified next-major.
-                //     See `versionGate.ts` for the rationale.
-                if (!belowMaxVersion(serverInfo.version, MAX_MCP_SERVER_VERSION_EXCLUSIVE)) {
-                    if (cancelled) return;
-                    setState({
-                        status: 'mcp_server_too_new',
-                        installedVersion: serverInfo.version,
-                        maxExclusiveVersion: MAX_MCP_SERVER_VERSION_EXCLUSIVE,
-                    });
-                    return;
-                }
+                // No upper bound (build 393): a newer Splunk MCP Server is
+                // accepted. See `versionGate.ts`.
 
                 // 3. MCP TA presence (required — currently bypassed per
                 //    SKIP_MCP_TA_CHECK; see comment at the top of this file).

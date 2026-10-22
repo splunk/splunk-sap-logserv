@@ -13,7 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * Change & Configuration Activity — honest port of v0.0.4.2 logserv_change_config.xml.
@@ -158,7 +158,10 @@ const Q_BASE = {
     category: `${MAIN} | stats sum(count) as count by category | sort -count`,
     operators: `${MAIN} | search operator!="(none)" | stats sum(count) as count by operator | sort -count | rename operator as "Operator", count as "Change Events"`,
 
-    hana: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" (action_category IN ("User Management","User Creation","User Deletion","Permission Grant","Permission Revoke","Password Management","Account Status Change","Password Reset") OR action_type IN ("CREATE TABLE","ALTER TABLE","DROP TABLE","CREATE VIEW","ALTER VIEW","DROP VIEW","CREATE SCHEMA","ALTER SCHEMA","DROP SCHEMA","CREATE FUNCTION","ALTER FUNCTION","DROP FUNCTION","CREATE PROCEDURE","ALTER PROCEDURE","DROP PROCEDURE","AUDIT POLICY","CREATE AUDIT POLICY","ALTER AUDIT POLICY","DROP AUDIT POLICY")) | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, target_user, action_category, action_type, status, audit_hostname | rename executing_user as "Operator", target_user as "Target", action_category as "Category", action_type as "Action", status as "Status", audit_hostname as "Host"`,
+    // HANA Host = host, the indexed LogServ host that wrote the audit record;
+    // Client Host = src_host, the client's host name (CSV field 9, Client Name).
+    // Until build 377 this table showed audit_hostname (the client) as "Host".
+    hana: `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" (action_category IN ("User Management","User Creation","User Deletion","Permission Grant","Permission Revoke","Password Management","Account Status Change","Password Reset") OR action_type IN ("CREATE TABLE","ALTER TABLE","DROP TABLE","CREATE VIEW","ALTER VIEW","DROP VIEW","CREATE SCHEMA","ALTER SCHEMA","DROP SCHEMA","CREATE FUNCTION","ALTER FUNCTION","DROP FUNCTION","CREATE PROCEDURE","ALTER PROCEDURE","DROP PROCEDURE","AUDIT POLICY","CREATE AUDIT POLICY","ALTER AUDIT POLICY","DROP AUDIT POLICY")) | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | sort -_time | table Time, executing_user, target_user, action_category, action_type, status, host, src_host | rename executing_user as "Operator", target_user as "Target", action_category as "Category", action_type as "Action", status as "Status", host as "HANA Host", src_host as "Client Host"`,
     windows: `\`sap_logserv_idx_macro\` sourcetype="XmlWinEventLog" EventCode IN (4720,4722,4724,4725,4726,4738,4740,4767,4781,4728,4729,4732,4733,4756,4757) | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | eval Description = case(EventCode=4720, "Account Created", EventCode=4722, "Account Enabled", EventCode=4724, "Password Reset", EventCode=4725, "Account Disabled", EventCode=4726, "Account Deleted", EventCode=4738, "Account Modified", EventCode=4740, "Account Locked Out", EventCode=4767, "Account Unlocked", EventCode=4781, "Account Renamed", EventCode=4728, "Added to Global Group", EventCode=4729, "Removed from Global Group", EventCode=4732, "Added to Local Group", EventCode=4733, "Removed from Local Group", EventCode=4756, "Added to Universal Group", EventCode=4757, "Removed from Universal Group", 1=1, "Other") | sort -_time | table Time, EventCode, Description, SubjectUserName, TargetUserName, host | rename EventCode as "Event", SubjectUserName as "Operator", TargetUserName as "Target", host as "Computer"`,
     linux: `\`sap_logserv_idx_macro\` (sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") ("COMMAND=" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd) | head 500 | eval Time = strftime(_time, "%Y-%m-%d %H:%M:%S") | rex field=_raw "sudo:\\s+(?<sudo_op>\\w+)\\s*:" | rex field=_raw "\\((?<paren_op>\\w+)\\)" | rex field=_raw "COMMAND=(?<cmd>[^\\s]+(?:\\s[^\\s]+){0,4})" | eval Operator = coalesce(sudo_op, paren_op, os_user, "unknown") | eval Type = case(match(_raw, "(?i)useradd"), "useradd", match(_raw, "(?i)usermod"), "usermod", match(_raw, "(?i)userdel"), "userdel", match(_raw, "(?i)groupadd"), "groupadd", match(_raw, "(?i)groupmod"), "groupmod", match(_raw, "(?i)groupdel"), "groupdel", match(_raw, "(?i)passwd\\b"), "passwd", match(_raw, "COMMAND="), "sudo", 1=1, "other") | sort -_time | table Time, Operator, Type, cmd, host | rename cmd as "Command", host as "Host"`,
 
@@ -227,7 +230,8 @@ const HANA_COLS: ColumnDef[] = [
     { key: 'Category', label: 'Category' },
     { key: 'Action', label: 'Action' },
     { key: 'Status', label: 'Status', width: '120px' },
-    { key: 'Host', label: 'Host', width: '160px' },
+    { key: 'HANA Host', label: 'HANA Host', width: '160px' },
+    { key: 'Client Host', label: 'Client Host', width: '160px' },
 ];
 const WIN_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
@@ -346,7 +350,7 @@ const ChangeConfig: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Change Activity Over Time (by Source)" subtitle="Daily volume — HANA / Windows / Linux">
+                <FramedPanel title="Change Activity Over Time (by Source)" subtitle={spanSubtitle('Volume by source — HANA / Windows / Linux', qActivity)}>
                     <TimeSeriesChart query={qActivity} height={300} palette="auth" />
                 </FramedPanel>
                 <FramedPanel title="Change Events by Category" subtitle="Permission Grant / User Mgmt / DDL / Password / etc.">

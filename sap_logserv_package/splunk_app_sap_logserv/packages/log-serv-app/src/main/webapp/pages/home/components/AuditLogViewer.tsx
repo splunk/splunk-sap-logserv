@@ -17,7 +17,7 @@ import {
 const PAGE_SIZE = 25;
 
 /**
- * AuditLogViewer — read-only browser of the `ai_assistant_audit`
+ * AuditLogViewer — read-only browser of the `logserv_ai_assistant_audit`
  * Splunk index. Rendered inside the Settings page's "Audit Log" tab.
  * Build 95 / session 022.
  *
@@ -376,7 +376,7 @@ const renderHighlight = (row: AuditRow): string => {
         case 'vendor_tier2_elevation':
             return `${row.previousTier ?? '?'} → ${row.newTier ?? '?'}, provider=${row.provider ?? '?'}`;
         case 'security_blocked_spl':
-            return `operator=${row.operator ?? '?'}`;
+            return `operator=${row.operator ?? '?'}${row.command ? `, command=${String(row.command)}` : ''}`;
         case 'rate_limited_prompt':
             return `threshold=${row.threshold ?? '?'}, count=${row.countInWindow ?? '?'}, retry=${row.secondsUntilNextSlot ?? '?'}s`;
         case 'user_prompt_jailbreak_flag': {
@@ -573,7 +573,7 @@ const AuditLogViewer: React.FC = () => {
                     <strong>Read-only viewer.</strong> This panel queries
                     the audit index (resolved via the{' '}
                     <code>sap_logserv_audit_idx_macro</code> macro,
-                    default <code>ai_assistant_audit</code>) through{' '}
+                    default <code>logserv_ai_assistant_audit</code>) through{' '}
                     <code>services/search/jobs/oneshot</code>. It cannot
                     modify, delete, or inject audit events.
                 </p>

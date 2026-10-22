@@ -15,42 +15,18 @@
 export const MIN_MCP_SERVER_VERSION = '1.0.3';
 
 /**
- * Exclusive upper bound on App 7931 versions we have tested against.
- * Any version `>= MAX_MCP_SERVER_VERSION_EXCLUSIVE` is considered
- * uncertified and the AI Assistant refuses to operate against it
- * until we explicitly re-cert.
- *
- * Rationale (OWASP LLM03 Supply Chain — build 83 / Appendix D #8):
- * a Splunk MCP Server major-version bump (e.g. 1.x → 2.x) is allowed
- * to break the protocol shape we depend on (request/response
- * structure, tool naming, error envelope). Without an upper bound a
- * field upgrade of App 7931 could silently degrade the AI Assistant
- * — admins would see broken tool dispatches with no clear cause.
- *
- * Bump this when the team has validated the next major against the
- * AI Assistant's expectations and updated MCPClient as needed.
- *
- * 2.x admitted in build 335 (session 120). What that bump rests on:
- *   - `initialize` handshake -- VERIFIED IN THE FIELD against 2.0.0.
- *     `useMCPHealth` calls `client.info()` before reaching this gate,
- *     so any server whose version the gate can read has already
- *     accepted our hardcoded `protocolVersion: '2024-11-05'` and
- *     returned a parseable `serverInfo.version` over the JSON-RPC
- *     transport. A customer seeing the "not yet certified" wizard is
- *     itself proof that step succeeded.
- *   - `tools/list` and `tools/call` -- VERIFIED against a live 2.0.0
- *     server (manual operator check, 2026-09-17, session 123): tool
- *     calls dispatch and come back usable. That closes the gap this
- *     bump was knowingly taking -- the tool names
- *     `splunk_run_saved_search` / `splunk_run_query` and the
- *     `result.structuredContent` / `result.content` / `result.isError`
- *     envelope `MCPClient` reads are exactly what a major is allowed
- *     to break, and 2.0.0 did not.
- *     Scope: 2.0.0 by spot-check -- not an automated regression, and
- *     not a claim about later 2.x minors. Re-verify and record the
- *     result here before admitting 3.x.
+ * No upper bound (build 393, 2026-10-20 - the user: newer versions of
+ * another app must not be blocked). Builds 83-392 refused to operate
+ * against App 7931 at or above an "uncertified" major (2.0.0, then
+ * 3.0.0 from build 335), replacing the chat with a setup card. A newer
+ * Splunk MCP Server is now accepted. What has been verified: 2.0.0 -
+ * the `initialize` handshake in the field, and `tools/list` /
+ * `tools/call` against a live server (manual operator check,
+ * 2026-09-17, session 123); not later minors, not 3.x. If a later
+ * major changes the protocol shape the AI Assistant depends on, that
+ * shows as failing tool calls in the chat rather than as a refusal to
+ * start.
  */
-export const MAX_MCP_SERVER_VERSION_EXCLUSIVE = '3.0.0';
 
 /**
  * Compare two semver-shaped strings ("MAJOR.MINOR.PATCH" with
@@ -75,31 +51,15 @@ export const compareVersions = (a: string, b: string): number => {
 /**
  * Returns `true` if `installed` is greater than or equal to `required`.
  * Returns `false` if `installed` is missing/malformed (treated as
- * "older" — fail closed on parse error).
+ * "older" — fail closed on parse error). A two-part version ("3.0")
+ * reads as MAJOR.MINOR.0 (build 393); it used to be refused as malformed.
  */
 export const meetsMinVersion = (
     installed: string,
     required: string = MIN_MCP_SERVER_VERSION,
 ): boolean => {
-    if (!installed || !installed.match(/^\d+\.\d+\.\d+/)) return false;
+    if (!installed || !installed.match(/^\d+\.\d+/)) return false;
     return compareVersions(installed, required) >= 0;
-};
-
-/**
- * Returns `true` if `installed` is strictly less than `maxExclusive`.
- * Returns `false` if `installed` is missing/malformed (fail closed —
- * an unparseable version string can't be confidently bounded).
- *
- * Used to enforce the upper version bound on App 7931. A `false`
- * return means the installed version is at or beyond the exclusive
- * cap and the caller should refuse to operate.
- */
-export const belowMaxVersion = (
-    installed: string,
-    maxExclusive: string = MAX_MCP_SERVER_VERSION_EXCLUSIVE,
-): boolean => {
-    if (!installed || !installed.match(/^\d+\.\d+\.\d+/)) return false;
-    return compareVersions(installed, maxExclusive) < 0;
 };
 
 const parseSemver = (v: string): [number, number, number] => {

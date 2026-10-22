@@ -12,7 +12,7 @@ The App declares participation in four CIM data models in `app.manifest` under `
 | **Change** | account / role / config modifications | `sap:hana:audit` (DDL events), `sap:scc:audit` (CONFIGURATION_CHANGED, SERVICE_*) |
 | **Network_Sessions** | TCP-level connection tracking | `sap:abap:gateway`, `sap:saprouter` |
 | **Network / Resolution (DNS)** | DNS query / resolution activity (absorbed ISC BIND parser) | `isc:bind:query`, `isc:bind:queryerror` |
-| **Web** | HTTP request/response | `sap:webdispatcher:access`, `sap:scc:http_access`, `sap:abap:icm`, `squid:access` (absorbed Squid proxy parser) |
+| **Web** | HTTP request/response | `sap:webdispatcher:access`, `sap:scc:http_access`, `squid:access` (absorbed Squid proxy parser) |
 
 For sourcetypes that don't fit any stock CIM model (HANA tracelogs, ABAP application-tier internal logs), the App still extracts rich search-time fields and adds `vendor_product = "SAP NetWeaver ABAP"` (or similar) for cross-cutting search consistency, but doesn't tag them into a CIM model.
 
@@ -22,7 +22,7 @@ Two configuration files drive CIM tagging:
 
 ### :material-circle-box:{ .taiconcolor } `default/eventtypes.conf`
 
-Defines 18 eventtypes. Fourteen are CIM-tagged in `default/tags.conf` — 11 SAP-specific plus `isc_bind_query`, `isc_bind_queryerror`, and `squid_access`; the remaining four (`sap_hana_audit_high_risk`, `sap_abap_audit_event`, `isc_bind_lameserver`, `isc_bind_transfer`) exist for dashboard/search convenience and are deliberately not tagged into a model. For example:
+Defines 17 eventtypes. Thirteen are CIM-tagged in `default/tags.conf` — 10 SAP-specific plus `isc_bind_query`, `isc_bind_queryerror`, and `squid_access`; the remaining four (`sap_hana_audit_high_risk`, `sap_abap_audit_event`, `isc_bind_lameserver`, `isc_bind_transfer`) exist for dashboard/search convenience and are deliberately not tagged into a model. For example:
 
 ```ini
 [sap_hana_authentication]
@@ -66,6 +66,7 @@ For each tagged sourcetype, the App's `default/props.conf` provides the CIM-requ
 | `user` | FIELDALIAS-user = `executing_user` (the user PERFORMING the action) |
 | `dest_user` | FIELDALIAS-dest_user = `target_user` (the affected user, for Change model) |
 | `src` | FIELDALIAS-src = `client_ip` |
+| `src_host` | FIELDALIAS-src_host = `audit_hostname` (the client's host name; `host` stays the HANA host that wrote the record) |
 | `dest` | FIELDALIAS-dest = `db_hostname` |
 | `change_type` | EVAL — `case(match(action_type,"(?i)(user|role|grant|revoke)"), "account", ...)` |
 | `object` | FIELDALIAS-object = `target_user` |
@@ -98,7 +99,7 @@ Repeat for the other models:
 
 ```spl
 | datamodel Change search | search sourcetype IN ("sap:hana:audit","sap:scc:audit") | stats count by sourcetype All_Changes.action
-| datamodel Web search | search sourcetype IN ("sap:webdispatcher:access","sap:scc:http_access","sap:abap:icm") | stats count by sourcetype Web.action
+| datamodel Web search | search sourcetype IN ("sap:webdispatcher:access","sap:scc:http_access") | stats count by sourcetype Web.action
 | datamodel Network_Sessions search | search sourcetype IN ("sap:abap:gateway","sap:saprouter") | stats count by sourcetype
 ```
 
@@ -111,7 +112,6 @@ If `| datamodel ...` returns rows for our sourcetypes, ES can consume them — e
 | `sap:hana:audit` | Authentication + Change | (CONNECT events: high-priority for ES Auth dashboards) |
 | `sap:webdispatcher:access` | Web | medium |
 | `sap:scc:http_access` | Web | medium |
-| `sap:abap:icm` | Web | medium |
 | `sap:abap:gateway` | Network_Sessions | medium |
 | `sap:saprouter` | Network_Sessions | medium |
 | `sap:sapstartsrv` | Authentication | medium |
@@ -132,6 +132,8 @@ This is correct CIM-aligned behavior — each tier records its own view, and ES 
 ### :material-circle-box:{ .taiconcolor } F6: Some sourcetypes have no clean CIM fit
 
 ABAP application-tier internal logs (`sap:abap:dispatcher`, `sap:abap:enqueueserver`, `sap:abap:event`, `sap:abap:messageserver`, `sap:abap:sapstartsrv`, `sap:abap:workprocess`) and HANA tracelogs (`sap:hana:tracelogs`) don't map cleanly to any stock Splunk CIM model. The App provides rich search-time fields for them but doesn't force a poor-fit mapping. Our own dashboards consume these directly; ES correlation searches built on these would need to use sourcetype-explicit SPL rather than CIM-data-model search.
+
+The ICM trace (`sap:abap:icm`) is not tagged either. `dev_icm` records sessions, connections and the ICM's own warning and error messages, not HTTP requests with a status, method and URL, so it has no honest Web data model mapping. Builds before 378 tagged its HTTP session-list entries as Web events with the SAP client in `status` (and `action` derived from it); after the upgrade those events leave the Web data model. If the Web data model is accelerated, ICM events summarized before the upgrade stay in its summaries until they age out of the summary range or the acceleration is rebuilt. On ICM connection lines, `src` and `dest` follow the connection's direction (`icm_conn_role`): the side that opened the connection is `src`.
 
 ### :material-circle-box:{ .taiconcolor } sap:abap:audit currently has minimal extraction
 

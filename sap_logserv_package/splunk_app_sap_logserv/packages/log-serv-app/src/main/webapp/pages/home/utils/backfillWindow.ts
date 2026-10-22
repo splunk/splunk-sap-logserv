@@ -17,7 +17,8 @@
  * Design: rollup_backfill_window_design_v0.1_20260923.md. Session 131.
  */
 
-/** Rollup retention is -365d in all 29 *_retention searches. A backfill earlier
+/** Rollup retention is -365d in all 28 rollup *_retention searches (the Data
+ *  Doctor platform snapshot's -30d trim is not a rollup). A backfill earlier
  *  than this rebuilds rows the nightly retention run then deletes. */
 export const RETENTION_DAYS = 365;
 

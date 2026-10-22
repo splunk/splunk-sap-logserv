@@ -6,12 +6,17 @@
  * actual billing is the vendor dashboard's truth.
  *
  * Numbers are USD-per-million-tokens, taken from public list pricing
- * pages; refreshed session 079 / build 275 (July 2026). Update as
- * vendors revise.
+ * pages; refreshed session 079 / build 275 (July 2026), and for the
+ * Claude 5.x ids in build 377 (October 2026) from Anthropic's API
+ * reference of 2026-10-06 (first-party API rates). Update as vendors
+ * revise.
  *
  * Cache pricing (Anthropic only):
- *   - `cachedInput` (cache HIT) — typically ~10% of base input rate
- *   - `cacheCreation` (cache WRITE) — typically ~125% of base input rate
+ *   - `cachedInput` (cache HIT) — each model's own published cache-read
+ *     rate (not a fixed ratio: Claude Fable 5.1 reads at $0.25, Claude
+ *     Fable 5 at $1.00, for the same $10 input)
+ *   - `cacheCreation` (cache WRITE, 5-minute TTL) — 125% of the base
+ *     input rate
  *   When a model entry omits these, callers fall back to the base
  *   `input` rate for both fields.
  *
@@ -47,15 +52,30 @@ export interface ModelPricing {
  * rather than a stale price.
  */
 export const MODEL_PRICING: Readonly<Record<string, ModelPricing>> = Object.freeze({
-    // Anthropic — Claude 4.x/5 families. List pricing refreshed session
+    // Anthropic — Claude 5.x (build 377; Anthropic API reference cached
+    // 2026-10-06, first-party API rates, exact ids as the model discovery
+    // of sh-idxr lists them - no date suffixes). Until build 376 none of
+    // these was priced, so their turns read $0 and did not count toward
+    // daily_spend_cap_usd; claude-sonnet-5 was listed at a stale $3/$15.
+    //   claude-haiku-5-5: the rate for prompts up to 100K tokens. Above
+    //   100K it is $0.50 / $2.50, a tier an exact-id table cannot
+    //   express - such turns are under-estimated, never over-estimated.
+    'claude-fable-5-1': { input: 10.0, output: 50.0, cachedInput: 0.25, cacheCreation: 12.5 },
+    'claude-fable-5': { input: 10.0, output: 50.0, cachedInput: 1.0, cacheCreation: 12.5 },
+    'claude-opus-5-5': { input: 4.0, output: 20.0, cachedInput: 0.2, cacheCreation: 5.0 },
+    'claude-opus-5': { input: 5.0, output: 25.0, cachedInput: 0.5, cacheCreation: 6.25 },
+    'claude-sonnet-5-5': { input: 2.0, output: 10.0, cachedInput: 0.2, cacheCreation: 2.5 },
+    'claude-sonnet-5': { input: 2.0, output: 10.0, cachedInput: 0.2, cacheCreation: 2.5 },
+    'claude-haiku-5-5': { input: 0.1, output: 0.5, cachedInput: 0.01, cacheCreation: 0.125 },
+
+    // Anthropic — Claude 4.x families. List pricing refreshed session
     // 079 (July 2026): Opus-tier is $5/$25 (the earlier $15/$75 entry
-    // for opus-4-7 was stale), Sonnet-tier $3/$15, Haiku 4.5 $1/$5.
+    // for opus-4-7 was stale), Sonnet 4.6 $3/$15, Haiku 4.5 $1/$5.
     // Both the dated and undated Haiku ids are listed since discovery
     // can surface either form.
     'claude-opus-4-8': { input: 5.0, output: 25.0, cachedInput: 0.5, cacheCreation: 6.25 },
     'claude-opus-4-7': { input: 5.0, output: 25.0, cachedInput: 0.5, cacheCreation: 6.25 },
     'claude-opus-4-6': { input: 5.0, output: 25.0, cachedInput: 0.5, cacheCreation: 6.25 },
-    'claude-sonnet-5': { input: 3.0, output: 15.0, cachedInput: 0.3, cacheCreation: 3.75 },
     'claude-sonnet-4-6': { input: 3.0, output: 15.0, cachedInput: 0.3, cacheCreation: 3.75 },
     'claude-haiku-4-5': { input: 1.0, output: 5.0, cachedInput: 0.1, cacheCreation: 1.25 },
     'claude-haiku-4-5-20251001': { input: 1.0, output: 5.0, cachedInput: 0.1, cacheCreation: 1.25 },
@@ -75,8 +95,10 @@ export const MODEL_PRICING: Readonly<Record<string, ModelPricing>> = Object.free
     o1: { input: 15.0, output: 60.0 },
     o3: { input: 2.0, output: 8.0 }, // June-2025 price cut (was 15/60)
 
-    // AWS Bedrock — Anthropic Claude on Bedrock. Bedrock typically
-    // matches Anthropic direct pricing for Claude. Cache fields omitted
+    // AWS Bedrock — Anthropic Claude on Bedrock. Bedrock prices are set
+    // by AWS, not by Anthropic, so they are never derived from the
+    // first-party rates above; these entries are unchanged since build
+    // 275 (build 377 adds no Bedrock id). Cache fields omitted
     // until BedrockProvider exposes them (currently the
     // anthropicEventTranslator captures cache_read / cache_creation but
     // those flow through to the audit event and could be priced — left
@@ -98,6 +120,7 @@ export const MODEL_PRICING: Readonly<Record<string, ModelPricing>> = Object.free
     // Mock provider — deliberately zero so smoke tests don't accumulate
     // fake spend in the audit log.
     'mock-fast': { input: 0, output: 0 },
+    'mock-deep': { input: 0, output: 0 },
 });
 
 const ZERO_PRICING: ModelPricing = { input: 0, output: 0 };

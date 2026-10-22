@@ -10,22 +10,31 @@ import { logservTheme } from '../styles/logservTheme';
  * yet been acknowledged on this deployment.
  *
  * Per Splunk's optInVersion pattern, ANY interaction with the modal
- * (yes via Submit OR no via Cancel) bumps the conf's
- * `optInVersionAcknowledged` to current. The boolean choice is
- * recorded separately in `optInChoice` and on the
- * `ai_assistant_enable_acceptance` audit event.
+ * (yes via Submit OR no via Cancel) records the current version as
+ * acknowledged in the KV Store collection `logserv_ai_assistant_acks`
+ * (one row per stanza, so one acknowledgement per deployment). The
+ * boolean choice is recorded in the same row's `opt_in_choice` and
+ * on the `ai_assistant_enable_acceptance` audit event.
  *
  * Save behaviour:
  *   * yes  → save proceeds (enable AI Assistant)
- *   * no   → save aborted (`enabled` stays at its previous value)
+ *   * no   → save aborted; an AI Assistant being turned on stays off,
+ *            and one that is already on is turned off (build 388)
  *
  * The exact disclaimer text is hashed (SHA-256) and stored on the
  * audit event as `disclaimerHash`. Bump `optInVersion` in
  * `default/ai_assistant_acks.conf [logserv-ai-assistant-enable-tc]` after any
- * change to `ENABLE_DISCLAIMER_TEXT` to force re-acknowledgement
- * across all admins.
+ * change to `ENABLE_DISCLAIMER_TEXT` to force a new acknowledgement
+ * (one per deployment: the next admin who saves Settings is prompted).
  *
- * Build 100 / session 022.
+ * Build 100 / session 022. Revision 2 (build 387): clause 7 says where
+ * the answer is recorded - the audit log and the KV Store (version 1
+ * named the old telemetry route) - and
+ * `[logserv-ai-assistant-enable-tc] optInVersion` went to 2 with it;
+ * utils/legalAcks.consistency-test.ts pins each text to its version.
+ * Revision 3 (build 388): the closing sentence covers an AI Assistant
+ * that is already enabled, which a No now turns off
+ * (AIAssistantSettings.tsx handleEnableChoice); `optInVersion` went to 3.
  */
 
 // ─────────────────────────────────────────────────────────────────────
@@ -63,9 +72,9 @@ TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL THE INDEMNI
 The administrator submitting this acknowledgement represents and warrants that they have the actual authority to bind Customer to the obligations set forth herein, and that they are submitting this acknowledgement of their own volition and not under duress, coercion, or mistake.
 
 7. RECORD OF ACKNOWLEDGEMENT.
-Customer's response to this acknowledgement (yes or no) is recorded together with the administrator's account name, network address, and a precise timestamp via the standard Splunk telemetry endpoint, and is durably retained as part of the AI Assistant audit log. This record is itself an audit event subject to the same integrity expectations as the records it concerns.
+Customer's response to this acknowledgement (yes or no) is recorded together with the administrator's account name, network address, and a precise timestamp as an event in the AI Assistant audit log, where it is durably retained; the response and the acknowledged version are also stored in this Splunk deployment's KV Store. This record is itself an audit event subject to the same integrity expectations as the records it concerns.
 
-If Customer does not accept these terms, the administrator should select "I do not accept" below; the AI Assistant feature will remain disabled.`;
+If Customer does not accept these terms, the administrator should select "I do not accept" below; the AI Assistant feature will then remain disabled or, if it is already enabled, be disabled.`;
 
 // ─── styled primitives ────────────────────────────────────────────────────
 
@@ -227,10 +236,14 @@ interface EnableModalProps {
     /** The admin's Splunk username — surfaced in the dialog so the
      *  admin sees exactly which account is being recorded. */
     adminUsername: string;
-    /** The admin's currently-configured LLM provider name (e.g.
-     *  'anthropic'). Surfaced in the body so the legal context is
-     *  concrete for the deployment. */
+    /** The LLM provider named as active (e.g. 'anthropic'): the saved one
+     *  on a re-ask, the page's on an enable (build 391). Surfaced in the
+     *  body so the legal context is concrete for the deployment. */
     providerName: string;
+    /** Build 392: on a re-ask whose save also changes the provider, the
+     *  one a Yes saves (a No keeps `providerName`). Undefined otherwise;
+     *  named right after the active one. */
+    pendingProviderName?: string;
     /** Was AI Assistant ENABLED before this save attempt? Used in the
      *  audit event's `previousEnabledState` and the dialog headline. */
     previousEnabledState: boolean;
@@ -255,6 +268,7 @@ const AiAssistantEnableAcceptanceModal: React.FC<EnableModalProps> = ({
     open,
     adminUsername,
     providerName,
+    pendingProviderName,
     previousEnabledState,
     tcVersion,
     onChoice,
@@ -281,7 +295,7 @@ const AiAssistantEnableAcceptanceModal: React.FC<EnableModalProps> = ({
 
     const submitting = busy || hashing;
     const transitionLabel = previousEnabledState
-        ? 'Re-acknowledgement required for the AI Assistant feature.'
+        ? 'Re-acknowledgement required for the AI Assistant feature. If you do not accept, the AI Assistant is turned off.'
         : 'You are about to ENABLE the AI Assistant feature for this deployment.';
 
     return (
@@ -296,7 +310,11 @@ const AiAssistantEnableAcceptanceModal: React.FC<EnableModalProps> = ({
                         {transitionLabel}
                     </p>
                     <p style={{ color: logservTheme.colors.textMuted, marginTop: 0 }}>
-                        Active LLM provider: <code>{providerName || '(none configured)'}</code>.
+                        Active LLM provider: <code>{providerName || '(none configured)'}</code>
+                        {pendingProviderName ? (
+                            <> (this save changes it to <code>{pendingProviderName}</code>)</>
+                        ) : null}
+                        .
                         The disclaimer below applies regardless of which provider is configured;
                         Customer's choice of provider is governed by Customer's separate agreement
                         with that provider.
@@ -307,8 +325,9 @@ const AiAssistantEnableAcceptanceModal: React.FC<EnableModalProps> = ({
                         of disclaimer version <code>v{tcVersion}</code> will be
                         recorded for administrator account{' '}
                         <code>{adminUsername || 'unknown'}</code> along with
-                        your network address and a timestamp via the standard
-                        Splunk telemetry endpoint.
+                        your network address and a timestamp in the AI
+                        Assistant audit log, and stored in the KV Store of
+                        this deployment.
                     </Identity>
                     <AckRow>
                         <input
@@ -329,7 +348,9 @@ const AiAssistantEnableAcceptanceModal: React.FC<EnableModalProps> = ({
                         onClick={() => fireChoice('no')}
                         disabled={submitting}
                     >
-                        I do not accept (record No)
+                        {previousEnabledState
+                            ? 'I do not accept (record No and turn off)'
+                            : 'I do not accept (record No)'}
                     </Button>
                     <Button
                         type="button"

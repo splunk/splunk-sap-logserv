@@ -1,189 +1,29 @@
 /**
- * SPL strings for the Environment Topology view (Phase 2 / session 023).
+ * SPL strings for the Environment Topology view's right-pane detail tabs.
  *
- * Each exported function returns a complete SPL search ready to feed to
- * the `useSearch` hook (which auto-applies the global TimeRangeProvider's
- * earliest/latest). All searches scope to the SAP LogServ index via the
- * `sap_logserv_idx_macro` macro.
+ * The graph itself (nodes, edges, the IP/host -> SID inventory and the IP
+ * enrichment) is read from the KV Store collections that the
+ * logserv_topology_* saved searches in savedsearches.conf write every hour
+ * (session 035 / build 188 onward) - see useTopologyData. Nothing in this
+ * file feeds the graph.
  *
- * The four searches together feed the topology view:
- *   1. SEARCH_INVENTORY  — IP/host -> SID map (used to enrich edge endpoints)
- *   2. SEARCH_RFC_EDGES  — sap:abap:gateway peer-to-local connections
- *   3. SEARCH_HANA_EDGES — sap:hana:audit cross-stack auth (client_ip -> HANA)
- *   4. SEARCH_HTTP_EDGES — sap:webdispatcher:access (clientip -> dispatcher)
+ * What is left here are the detail-tab reads. Each builder returns a complete
+ * SPL search over the logserv_topology_detail_rollup KV Store, ready for the
+ * `useSearch` hook (which applies the global TimeRangeProvider's
+ * earliest/latest), plus the bulk per-scope host-count read the view issues
+ * once per load.
  *
- * The React side joins these in JS rather than via SPL `join` (cleaner
- * loading semantics; per-search error isolation; easier to debug).
- *
- * Self-derived IP/host -> SID resolution:
- *   - The `local_ip` field in gateway events is canonical: an event tagged
- *     with sap_sid=XCP that logged L=10.186.74.23 means that IP belongs to
- *     XCP. (See SESSION-MEMORY-023.md Path A Phase 2.)
- *   - The Splunk-default `host` field works the same way for non-IP
- *     hostnames, but multi-SID hosts (centralized forwarders like
- *     hec53v013858) are excluded by the `mvcount(sids)=1` filter.
+ * Build 377 deleted the on-demand searches of the session-023 prototype: the
+ * inventory, the RFC / HANA audit / HTTP / HANA tenant edge searches, the Live
+ * Activity search and the calls-per-hour search. Nothing had imported them
+ * since the KV Store data layer replaced them, and their filters had drifted
+ * from the shipped saved searches (the HANA audit loopback filter among
+ * them). The shipped SPL is in savedsearches.conf:
+ * logserv_topology_aggregate_* and their logserv_topology_backfill_* twins.
  */
 
 import { edgeIdClause, sanitizeEdgeIds } from './edgeIds';
-
-const IDX = '`sap_logserv_idx_macro`';
-
-/**
- * Inventory: build (ip|host) -> sid mappings from multiple sourcetype-specific
- * canonical fields. Returns rows shaped { key: <ip-or-host>, sid: <SID>, kind:
- * 'ip'|'host' }.
- *
- * Filters multi-SID keys (centralized forwarders, ambiguous hostnames) via
- * `mvcount(sids)=1` after the union so only unambiguous mappings flow through.
- *
- * Four canonical mapping sources (each contributes independently and gets
- * merged):
- *
- *   1. **gateway L= local_ip** -> sap_sid: a gateway daemon log line that
- *      includes its own L=<ip> and is tagged sap_sid=X PROVES that ip
- *      belongs to X (the daemon listens on that local IP).
- *   2. **ICM icm_local_ip** -> sap_sid (added build 122 / A.3): the ABAP
- *      ICM process logs its own listening IP via the icm_local_ip EXTRACT
- *      directive. Same self-attribution pattern as gateway L= but covers
- *      ICM-only hosts that don't run a gateway daemon. Empirically adds ~6
- *      fresh IP→SID mappings on the xsd-vlab dataset (doubles the IP-side
- *      inventory from 5 → 11).
- *   3. **HANA tracelogs hana_host** -> sap_sid: HANA tracelog source paths
- *      contain the HANA hostname segment, and the events are tagged with
- *      the HANA SID via the existing EXTRACT-sap_sid. Pairs them as
- *      "hana_host belongs to sap_sid" (added build 113 / Phase 3).
- *   4. **Splunk default `host` field** across all SAP sourcetypes ->
- *      sap_sid: the Splunk-stamped originating host, when single-SID.
- *
- * Sources investigated and rejected (session 024 / A.3):
- *   - DNS query log (isc:bind:query): no sap_sid attribution on DNS events,
- *     and no extracted hostname↔IP pairing (BIND log only has src_ip + query
- *     name; no "answer" field captured by the BIND TA at our deployment).
- *   - Saprouter peer_hostname: saprouter events lack sap_sid attribution AND
- *     most peer parens are IP-only (the build-113 EXTRACT skips IP-only
- *     parens by design), so the source returns near-zero rows. The
- *     hostnames it does produce belong to REMOTE peers, not the saprouter's
- *     own SID — including them would corrupt inventory.
- *   - icm_peer_ip / client_ip: remote-end IPs, attributing them to the
- *     LOGGING sap_sid would be wrong by construction.
- *
- * The union with `mvcount(sids)=1` after stats gives "every key that
- * unambiguously maps to one SID across all sources".
- */
-export const SEARCH_INVENTORY = (): string => `
-| union
-    [search ${IDX} sourcetype=sap:abap:gateway local_ip=* sap_sid=*
-        | eval key=local_ip, kind="ip"
-        | fields key, kind, sap_sid]
-    [search ${IDX} sourcetype=sap:abap:icm icm_local_ip=* sap_sid=*
-        | eval key=icm_local_ip, kind="ip"
-        | fields key, kind, sap_sid]
-    [search ${IDX} sourcetype=sap:hana:tracelogs hana_host=* sap_sid=*
-        | eval key=hana_host, kind="host"
-        | fields key, kind, sap_sid]
-    [search ${IDX} sap_sid=* host=*
-        | eval key=host, kind="host"
-        | fields key, kind, sap_sid]
-| stats values(sap_sid) as sids by key, kind
-| where mvcount(sids) = 1
-| eval sid=mvindex(sids, 0)
-| fields key, sid, kind
-`.trim();
-
-/**
- * RFC connection edges from sap:abap:gateway P=/L= log lines.
- * Returns rows: { src_sid, peer_ip, local_ip, call_count }
- * The React side resolves peer_ip via the inventory.
- */
-export const SEARCH_RFC_EDGES = (): string => `
-${IDX} sourcetype=sap:abap:gateway peer_ip=* local_ip=* sap_sid=*
-| stats count as call_count by sap_sid, peer_ip, local_ip
-| rename sap_sid as src_sid
-| sort - call_count
-| head 200
-`.trim();
-
-/**
- * HANA cross-stack edges: who's authenticating to which HANA system.
- * Returns rows: { hana_sid, client_ip, user, call_count }
- *
- * The HANA system's SID is derived by joining its `host` field against the
- * inventory (where the same hostname has a sap_sid attached from
- * non-audit HANA events).
- */
-export const SEARCH_HANA_EDGES = (): string => `
-${IDX} sourcetype=sap:hana:audit client_ip=* host=*
-| where client_ip != "127.0.0.1"
-| stats count as call_count by host, client_ip, user
-| rename host as hana_host
-| sort - call_count
-| head 100
-`.trim();
-
-/**
- * HTTP inbound edges: client IPs hitting Web Dispatcher.
- * Returns rows: { dispatcher_host, clientip, call_count, error_count }
- */
-export const SEARCH_HTTP_EDGES = (): string => `
-${IDX} sourcetype=sap:webdispatcher:access clientip=* host=*
-| stats count as call_count, sum(eval(if(status>=400, 1, 0))) as error_count by host, clientip
-| rename host as dispatcher_host
-| sort - call_count
-| head 100
-`.trim();
-
-/**
- * HANA tenant database hosting edges: HANA system SID <- tenant DB SID.
- * Sourced from sap:hana:tracelogs source-path pattern
- * `/usr/sap/<HANA_SID>/HDB<inst>/<host>/trace/DB_<TENANT_SID>/...` extracted
- * via the EXTRACT-hana_tenant_sid directive (build 113).
- *
- * Returns rows shaped { hana_system, tenant_sid, call_count }. The hana_system
- * is treated as a database in the topology view (cylinder icon, 'DB' tag);
- * the tenant_sid is the application SID running on top of it.
- *
- * Critical for surfacing HANA systems as nodes — HANA audit edges target
- * forwarder hosts (hec53v*) which resolve to the HANA SID via inventory but
- * don't directly produce HANA-system nodes. These tenant edges put the HANA
- * SID front and center.
- */
-export const SEARCH_HANA_TENANT_EDGES = (): string => `
-${IDX} sourcetype=sap:hana:tracelogs sap_sid=* hana_tenant_sid=*
-| stats count as call_count by sap_sid, hana_tenant_sid
-| rename sap_sid as hana_system, hana_tenant_sid as tenant_sid
-| where hana_system != tenant_sid
-| sort - call_count
-| head 30
-`.trim();
-
-/**
- * Top RFC partners for the bottom Live Activity table.
- * Returns rows: { source_sid, direction, partner, call_count }
- *
- * Uses the same gateway P=/L= data as the RFC edges; partner can be either
- * a resolved SID or the raw IP if unresolved. Direction is derived: if
- * src_sid hosts the local_ip (the call originated locally), it's "client";
- * otherwise "server".
- */
-export const SEARCH_ACTIVITY = (): string => `
-${IDX} sourcetype=sap:abap:gateway peer_ip=* local_ip=* sap_sid=*
-| stats count as call_count by sap_sid, peer_ip
-| rename sap_sid as source_sid, peer_ip as partner
-| eval direction="client"
-| sort - call_count
-| head 8
-`.trim();
-
-/**
- * Calls per hour for the bottom panel sparkline (24h trend regardless of
- * the global time range — gives consistent context).
- */
-export const SEARCH_CALLS_PER_HOUR = (): string => `
-${IDX} sourcetype=sap:abap:gateway peer_ip=*
-| timechart span=1h count
-| eval call_count=count
-| fields _time, call_count
-`.trim();
+import type { EdgeSplType } from './types';
 
 /**
  * Whitelist sanitization for a node ID before string-interpolating into SPL.
@@ -213,7 +53,7 @@ const sanitizeNodeId = (id: string): string => {
  * explode-dedup) OR the edge id (edge_* metrics). DETAIL_RANGE carries the
  * global TimeRange picker into the generating inputlookup via addinfo. Row
  * shapes are unchanged so useNodeData/useEdgeData/TopologyRightSidebar are
- * untouched. The node Calls/Hr read uses a fixed -24h bucket_ts window (not
+ * untouched. The node Count / hr read uses a fixed -24h bucket_ts window (not
  * addinfo) — its production window is hardcoded recent context.
  *
  * Trade-off: these tabs are now hourly-fresh (like the dashboards) rather than
@@ -226,7 +66,7 @@ const DETAIL_RANGE =
     '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
 
 /**
- * Per-node hourly-calls timechart for the right-sidebar bar chart.
+ * Per-node hourly log-event timechart for the right-sidebar bar chart (Count / hr).
  * Reads the node_hourly metric (byte-exact with the old per-node OR-match
  * count). Fixed -24h bucket_ts window regardless of global time range so the
  * chart shows consistent recent context. (See SESSION-MEMORY-023.md Phase 2
@@ -405,13 +245,22 @@ ${DETAIL_RANGE}
  *
  *   - Activity   → NOT dispatched since build 321: computed in-memory by
  *                  useTopologyData from the same bucket rows as the headline.
- *   - Operations → edge_op metric (top entity: uri / icm_program / action_type
- *                  / hana_trace_component).
- *   - Performance→ edge_perf metric (status-class / icm_tasks / action_status
- *                  histograms; hana_tenant shows Avg+Max of hana_op_duration_ms
+ *   - Operations → edge_op metric (top entity: uri / remote gateway service
+ *                  or client program / action_type / hana_trace_component /
+ *                  SAP Router target service).
+ *   - Performance→ edge_perf metric (status-class / connection-record kind /
+ *                  action_status / SAP Router target role histograms;
+ *                  hana_tenant shows Avg+Max of hana_op_duration_ms
  *                  — percentiles don't merge across hourly buckets, option-c.
  *                  Headline p50/p95/max still come from the edge row).
  *   - Errors     → edge_err metric (error_kind / error_detail pairs).
+ *
+ * Build 378: the RFC arms read gateway CONNECTION records (a remote-gateway
+ * connection closed, a client session closed, a broken connection) in the
+ * direction the connection was made, so the rfc Operations and Performance
+ * reads have rows (the build-240 arms over icm_program / icm_tasks never
+ * did); the SAP Router arms (type "saprouter") add a fifth stored type. The
+ * reads themselves are type-agnostic and did not change.
  *
  * Signature is `(splType, edgeIds)` — splType only selects the Performance
  * read variant; the ids are the rollup scopes. Returns null when splType is
@@ -434,14 +283,14 @@ ${DETAIL_RANGE}
 
 /**
  * Per-edge Operations: top entities traversing the edge for the current time
- * range (uri / icm_program / action_type / hana_trace_component depending on
- * edge type — precomputed in the edge_op metric). Returns rows { entity, count
- * }. Top 10 (store-all-then-top → byte-exact). rfc legitimately returns empty
- * (icm_program is absent on sap:abap:gateway events — same as the old live
- * search).
+ * range (uri / remote gateway service or client program / action_type /
+ * hana_trace_component / SAP Router target service depending on edge type —
+ * precomputed in the edge_op metric). Returns rows { entity, count }. Top 10
+ * (store-all-then-top → byte-exact). Until build 378 rfc always returned empty
+ * (the old arm grouped icm_program, which sap:abap:gateway events never carry).
  */
 export const SEARCH_EDGE_OPERATIONS = (
-    _splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    _splType: EdgeSplType,
     edgeIds: readonly string[] | null | undefined,
 ): string | null => {
     const sel = sanitizeEdgeIds(edgeIds);
@@ -460,14 +309,14 @@ ${DETAIL_RANGE}
  * Per-edge Performance distribution for the Performance tab (the headline
  * p50/p95/max come straight off the edge row — no dispatch). Reads the
  * edge_perf metric:
- *   HTTP / RFC / HANA Audit → per-bucket_label count histogram (status class /
- *     icm_tasks band / action_status).
+ *   HTTP / RFC / HANA Audit / SAP Router → per-bucket_label count histogram
+ *     (status class / connection-record kind / action_status / target role).
  *   HANA Tenant → Avg + Max of hana_op_duration_ms (Σsum/Σn + max-of-max;
  *     percentiles don't merge across hourly buckets — session-051 option-c).
  * Returns rows { bucket_label, count }.
  */
 export const SEARCH_EDGE_PERFORMANCE = (
-    splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    splType: EdgeSplType,
     edgeIds: readonly string[] | null | undefined,
 ): string | null => {
     const sel = sanitizeEdgeIds(edgeIds);
@@ -496,12 +345,13 @@ ${DETAIL_RANGE}
 /**
  * Per-edge Errors: top failure modes for the current time range. Reads the
  * edge_err metric (error_kind + error_detail pairs, precomputed per-type:
- * HTTP `HTTP <status>`/uri; RFC gw_error_detail/error_function; HANA Audit
- * `UNSUCCESSFUL <action>`/user; HANA Tenant severity/component). Returns rows
- * { error_kind, error_detail, count, last_seen }. Top 15.
+ * HTTP `HTTP <status>`/uri; RFC gw_error_detail/error_function over the
+ * broken-connection lines; HANA Audit `UNSUCCESSFUL <action>`/user; HANA
+ * Tenant severity/component; SAP Router `rc=<code>`/server-side connection
+ * failed). Returns rows { error_kind, error_detail, count, last_seen }. Top 15.
  */
 export const SEARCH_EDGE_ERRORS = (
-    _splType: 'http' | 'rfc' | 'hana_audit' | 'hana_tenant',
+    _splType: EdgeSplType,
     edgeIds: readonly string[] | null | undefined,
 ): string | null => {
     const sel = sanitizeEdgeIds(edgeIds);

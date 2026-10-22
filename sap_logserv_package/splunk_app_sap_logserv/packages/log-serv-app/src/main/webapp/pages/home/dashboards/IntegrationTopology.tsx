@@ -20,10 +20,11 @@ import { SEARCH_NODE_HOST_COUNTS } from '../topology/searches';
 import HostCountContext from '../components/topology/HostCountContext';
 import IpEnrichmentContext from '../components/topology/IpEnrichmentContext';
 import { useIpEnrichment } from '../hooks/useIpEnrichment';
-import { ALL_INTEGRATION_TYPES } from '../topology/edgeStyle';
+import { ALL_INTEGRATION_TYPES, failureRate } from '../topology/edgeStyle';
 import type { TrafficRow } from '../topology/panelFacts';
 import {
     loadCachedLayout,
+    restoreEnabledTypes,
     saveLayoutNamed,
     loadLayoutBySlug,
     listLayouts,
@@ -689,7 +690,10 @@ const IntegrationTopology: React.FC = () => {
      * SidNode showing normal / warning / error call counts.
      *
      * Per-edge classification rule:
-     *   - errorRate = errorCount / callCount (or 0 if no calls)
+     *   - errorRate = errorCount / callCount, clamped to [0, 1]; an edge with
+     *     errors and no calls is 100 % failed (build 378: failureRate — the
+     *     SAP Router arm counts failed connections from separate log lines,
+     *     so an hour can hold failures and no routed connection)
      *   - normal_calls (always): callCount - errorCount
      *   - errorCount routing:
      *       errorRate <  10%  → warning (sporadic, edge mostly healthy)
@@ -719,8 +723,9 @@ const IntegrationTopology: React.FC = () => {
             let warning = 0;
             let error = 0;
             /* Build 224 / session 037 — HANA-tagged nodes get a vendor-
-             * specific warning signal: tenant SQL events with severity=
-             * WARNING OR duration > 1000 ms (excluding ERROR/FATAL events).
+             * specific warning signal: tenant trace events with severity=
+             * WARNING OR an hdbcons command duration > 1000 ms (excluding
+             * ERROR/FATAL events).
              * Pre-computed at SPL aggregation time as `warning_count` on
              * each hana_tenant edge bucket row; summed across the time
              * window in useTopologyData. Replaces the build-211 heuristic
@@ -754,7 +759,7 @@ const IntegrationTopology: React.FC = () => {
                 const cleanCalls = Math.max(0, total - errs - tenantWarnings);
                 normal += cleanCalls;
                 warning += tenantWarnings;
-                const rate = total > 0 ? errs / total : 0;
+                const rate = failureRate(total, errs);
                 if (rate < 0.10) {
                     warning += errs;
                 } else {
@@ -818,7 +823,7 @@ const IntegrationTopology: React.FC = () => {
         const resolvedPct = inv.totalEndpoints > 0
             ? Math.round((inv.resolved / inv.totalEndpoints) * 100)
             : 0;
-        return `${liveNodes.length} nodes · ${liveEdges.length} edges · ${totalCalls.toLocaleString()} calls · ${resolvedPct}% endpoints resolved to SID`;
+        return `${liveNodes.length} nodes · ${liveEdges.length} edges · ${totalCalls.toLocaleString()} calls + connections · ${resolvedPct}% endpoints resolved to SID`;
     }, [topology.loading, liveNodes, liveEdges, totalCalls, topology.inventoryStatus]);
 
     // ---- Selection handlers (build 202 / session 036 — enforce mutex
@@ -882,11 +887,16 @@ const IntegrationTopology: React.FC = () => {
              * state controls so a load fully restores the user's session. */
             const viewport = topologyGraphRef.current?.getViewport() ?? undefined;
             const enabledTypesArr = Array.from(enabledTypes);
+            /* Build 378 — record the types this build knows, so a later load
+             * can tell a box the user unchecked from a type added after the
+             * save (restoreEnabledTypes). */
+            const knownTypesArr: string[] = ALL_INTEGRATION_TYPES.slice();
             const result = await saveLayoutNamed(layoutName, {
                 nodes: positions,
                 panels,
                 viewport,
                 enabledTypes: enabledTypesArr,
+                knownTypes: knownTypesArr,
                 selectedNodeId: selectedNodeId,
                 selectedEdgeId: selectedEdgeId,
                 rightTabId: rightTab,
@@ -912,6 +922,7 @@ const IntegrationTopology: React.FC = () => {
                 panels: { ...panels },
                 viewport,
                 enabledTypes: enabledTypesArr,
+                knownTypes: knownTypesArr,
                 selectedNodeId,
                 selectedEdgeId,
                 rightTabId: rightTab,
@@ -955,13 +966,20 @@ const IntegrationTopology: React.FC = () => {
              * Each field guards on `undefined` so a v3 layout (loaded via
              * the v3-to-v4 migration in persistence.ts) leaves the live
              * state at its current dashboard default. */
-            if (layout.enabledTypes && layout.enabledTypes.length > 0) {
-                /* Filter to known IntegrationType values defensively — a
-                 * future schema bump that retires a type shouldn't crash
-                 * the load. */
-                const knownSet = new Set<string>(ALL_INTEGRATION_TYPES);
-                const filtered = layout.enabledTypes.filter((t) => knownSet.has(t)) as IntegrationType[];
-                setEnabledTypes(new Set(filtered));
+            /* Build 378 (U32 / U1) — the saved list names the ENABLED
+             * types, so restoring it verbatim would switch off every type
+             * added after the save (the SAP Router type, for every layout
+             * saved before it existed). restoreEnabledTypes enables the
+             * types the layout could not have known about, keeps a type the
+             * layout knew and had unchecked off, and drops retired names.
+             * null = the layout recorded no filter: keep the live one. */
+            const restoredTypes = restoreEnabledTypes(
+                layout.enabledTypes,
+                layout.knownTypes,
+                ALL_INTEGRATION_TYPES,
+            );
+            if (restoredTypes) {
+                setEnabledTypes(new Set<IntegrationType>(restoredTypes));
             }
             if (typeof layout.snapMode === 'boolean') {
                 setSnapMode(layout.snapMode);

@@ -8,9 +8,9 @@
  * `logserv_diag_platform_snapshot` collection. This module turns those rows
  * back into classified, renderable facts.
  *
- * DOCTRINE (SS16.8a-1, the review's convergent blocker): the collection is
- * `write : [ * ]`, so a well-formed row can be forged by any authenticated
- * user. Snapshot-derived facts may therefore only ever ADD provenance-badged
+ * DOCTRINE (SS16.8a-1, the review's convergent blocker): the collection was
+ * `write : [ * ]` before build 384 (admin-tier write since; a local.meta can
+ * reopen it), so a well-formed row may be forged. Snapshot-derived facts may therefore only ever ADD provenance-badged
  * evidence lines — they must NEVER raise a verdict's confidence grade. The
  * `confirmed` grade stays reserved for first-hand observations.
  *
@@ -76,7 +76,7 @@ export const SENTINEL_SCOPE = '(all)';
 
 /** The provenance badge every snapshot-derived line carries (SS16.8a-1/2). */
 export const SNAPSHOT_PROVENANCE =
-    'recorded by the hourly platform snapshot, a collection any authenticated Splunk user can write';
+    'recorded by the hourly platform snapshot, a collection only Splunk administrators can write';
 
 const MAX_SCOPE_CHARS = 256;
 const MAX_DETAIL_CHARS = 300;

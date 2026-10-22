@@ -188,12 +188,12 @@
       "id": "sap_basis.hana_trace_severity_trend",
       "pack": "sap_basis",
       "label": "HANA trace event severity trend",
-      "description": "Per-hour count of sap:hana:tracelogs events broken down by hana_trace_severity (UNKNOWN / INFO / WARNING / ERROR \u2014 FATAL is not produced by the current trace configuration). Trends ERROR/WARNING over time so spikes are visible at a glance.",
+      "description": "Per-hour count of sap:hana:tracelogs events by hana_trace_severity: INFO / WARNING / ERROR from trace lines and backup.log, plus UNKNOWN for lines without a level (continuation lines of a multi-line record). Record files \u2014 hdbcons command timings, SQL trace, loads, availability \u2014 carry no severity and are not counted. FATAL is rare. Trends ERROR/WARNING over time so spikes are visible at a glance.",
       "savedSearch": "logserv_hana_trace_severity_trend",
       "spl": "| inputlookup logserv_hana_trace_rollup where metric=\"main\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search hana_trace_severity!=\"(none)\" | eval _time=bucket_ts | timechart bins=90 minspan=1h sum(count) by hana_trace_severity | fillnull value=0",
       "renderHint": "timechart",
       "chartPalette": "status",
-      "interpretation": "HANA trace event severity over time. UNKNOWN and INFO are noise; WARNING and ERROR are the diagnostic signal. Sudden ERROR spikes often correspond to query timeouts, license issues, or HSR replication state changes.",
+      "interpretation": "HANA trace event severity over time. INFO is routine and UNKNOWN marks continuation lines; WARNING and ERROR are the diagnostic signal \u2014 ERROR includes failed backups from backup.log. Sudden ERROR spikes often correspond to query timeouts, license issues, or HSR replication state changes.",
       "nextSteps": [
         {
           "text": "If ERROR spikes, run hana_trace_errors for the same time range to see the actual messages with context.",
@@ -203,7 +203,7 @@
           "text": "Sustained WARNING growth without ERRORs is usually a backup window or a long-running query \u2014 cross-check with hana_admin_user_management to see if scheduled admin work is happening.",
           "savedSearch": "logserv_hana_admin_user_management"
         },
-        "Quiet periods (UNKNOWN dominating) are normal \u2014 investigate when ERROR rate persists above ~5 per hour."
+        "Quiet periods (INFO dominating) are normal \u2014 investigate when ERROR rate persists above ~5 per hour."
       ],
       "dashboard": "hana-trace"
     },
@@ -211,7 +211,7 @@
       "id": "sap_basis.hana_trace_errors",
       "pack": "sap_basis",
       "label": "HANA trace ERROR events with context",
-      "description": "Lists sap:hana:tracelogs events at ERROR severity, with the SID, host, and the first 200 characters of the trace message. (FATAL is not produced by the current trace configuration; ERROR is the highest severity available in this dataset.)",
+      "description": "Lists sap:hana:tracelogs events at ERROR severity \u2014 trace lines at level e and backup.log ERROR entries \u2014 with the SID, host, and the first 200 characters of the message. FATAL is rare.",
       "savedSearch": "logserv_hana_trace_errors",
       "spl": "`sap_logserv_idx_macro` sourcetype=sap:hana:tracelogs hana_trace_severity=ERROR | eval message_preview=substr(_raw, 1, 200) | table _time sap_sid host message_preview | sort -_time | head 50",
       "renderHint": "table",
@@ -226,13 +226,13 @@
     {
       "id": "sap_basis.icm_top_peer_ips",
       "pack": "sap_basis",
-      "label": "ICM top peer IPs by request volume",
-      "description": "Ranks the IPs reaching ABAP ICM by request count over the selected time range. Useful for understanding which RFC clients or upstream gateways are driving ICM load.",
+      "label": "ICM top peer IPs by connection count",
+      "description": "Ranks the addresses at the other end of ABAP ICM connections by connection count over the selected time range: the hosts the ICM connected to and the clients that connected to it.",
       "savedSearch": "logserv_icm_top_peer_ips",
       "spl": "| inputlookup logserv_abapnet_rollup where metric=\"icmpeer\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | stats sum(count) as count by icm_peer_ip | eventstats sum(count) as total | eval percent=round(count/total*100,6) | sort - count | head 15 | fields icm_peer_ip count percent",
       "renderHint": "pie",
       "chartPalette": "categorical",
-      "interpretation": "IPs reaching ABAP ICM, ranked by request count. Healthy distribution is a few known internal client subnets dominating with the rest as long-tail. A new IP appearing high in the list often indicates a new integration OR a misconfigured client retrying aggressively.",
+      "interpretation": "Addresses at the other end of ABAP ICM connections (both directions), ranked by connection count. Healthy distribution is a few known internal client subnets dominating with the rest as long-tail. A new IP appearing high in the list often indicates a new integration OR a misconfigured client retrying aggressively.",
       "nextSteps": [
         "Map the top IPs to known internal subnets \u2014 anything from outside the expected 10.x range warrants a closer look.",
         {
@@ -246,13 +246,13 @@
     {
       "id": "sap_basis.icm_request_volume_trend",
       "pack": "sap_basis",
-      "label": "ICM request volume trend",
-      "description": "Per-hour count of sap:abap:icm requests, broken down by host. A leading indicator of dispatcher load shifts.",
+      "label": "ICM log volume trend",
+      "description": "Per-hour count of sap:abap:icm log lines (sessions, connections and the ICM's own messages), broken down by host. A leading indicator of dispatcher load shifts.",
       "savedSearch": "logserv_icm_request_volume_trend",
       "spl": "| inputlookup logserv_stmap_rollup | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search sourcetype=\"sap:abap:icm\" | eval _time=bucket_ts | timechart bins=90 minspan=1h sum(count) by host limit=8 useother=t | fillnull value=0",
       "renderHint": "timechart",
       "chartPalette": "categorical",
-      "interpretation": "Per-hour ICM request volume, broken down by host. Steady similar shapes across hosts indicate healthy load distribution. A sudden spike on one host usually means a runaway client, a load-balancer failover, or a stuck WP causing retries. A drop to zero on one host (while others stay steady) usually means that host crashed or was removed from the pool.",
+      "interpretation": "Per-hour ICM log volume, broken down by host. Steady similar shapes across hosts indicate healthy load distribution. A sudden spike on one host usually means a runaway client, a load-balancer failover, or a stuck WP causing retries. A drop to zero on one host (while others stay steady) usually means that host crashed or was removed from the pool.",
       "nextSteps": [
         {
           "text": "If a single host shows a sudden spike, run dispatcher_softcancel_reasons for the same window \u2014 bursts of ICM_PROCESSING_TIMEOUT or ICM_CANCEL_REQUEST confirm overload.",
@@ -406,7 +406,7 @@
       "id": "security.firewall_proxy_correlation",
       "pack": "security",
       "label": "Source IPs flagged by firewall and/or proxy",
-      "description": "Cross-references linux_secure firewall drops and squid:access blocks by source IP. The `layers` column shows whether the IP appears in 1 layer (drop only or block only) or 2 layers (both \u2014 high-priority, indicates active reconnaissance or attempted egress).",
+      "description": "Cross-references Linux kernel firewall drops from both chains (linux_secure IN_DROP at the host, and FWD_DROP in transit plus the rare other firewall line, which the dashboards show together as In Transit / Other; lines with a destination port only, so ICMP is left out) and squid:access blocks by source IP. The `layers` column shows whether the IP appears in 1 layer (drop only or block only) or 2 layers (both \u2014 high-priority, indicates active reconnaissance or attempted egress).",
       "savedSearch": "logserv_firewall_proxy_correlation",
       "spl": "| inputlookup logserv_perimeter_rollup where metric=\"fw\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search fw_action!=\"IN_ACCEPT\" fw_src!=\"(none)\" fw_dpt!=\"(none)\" | stats sum(count) as count by fw_src | eval src_ip=fw_src, layer=\"firewall\" | append [| inputlookup logserv_beaconing_detail_rollup where metric=\"denied\" | addinfo | where day_ts>=relative_time(info_min_time,\"@d\") AND day_ts<info_max_time | search src!=\"(none)\" | stats sum(denied_count) as count by src | eval src_ip=src, layer=\"proxy\"] | stats dc(layer) AS layers sum(count) as count by src_ip | sort -layers -count | head 25",
       "renderHint": "table",
@@ -425,19 +425,19 @@
       "id": "security.firewall_drops_by_port",
       "pack": "security",
       "label": "Firewall drops by destination port",
-      "description": "Top destination ports being blocked by the Linux kernel firewall (linux_secure FW_DROP / IN_DROP / FWD_DROP events). Repeated hits on uncommon ports often indicate scanning.",
+      "description": "Top destination ports being blocked by the Linux kernel firewall, counting both chains: linux_secure IN_DROP (packets addressed to the host itself) and FWD_DROP (packets the host was routing onward), plus the rare other firewall line that carries a port; the dashboards show FWD_DROP and those lines together as In Transit / Other. ICMP carries no port and is not counted. Repeated hits on uncommon ports often indicate scanning.",
       "savedSearch": "logserv_firewall_drops_by_port",
       "spl": "| inputlookup logserv_perimeter_rollup where metric=\"fw\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search fw_action!=\"IN_ACCEPT\" fw_dpt!=\"(none)\" | stats sum(count) as count by fw_dpt | eventstats sum(count) as total | eval percent=round(count/total*100,6) | sort - count | head 15 | rename fw_dpt as dest_port | fields dest_port count percent",
       "renderHint": "pie",
       "chartPalette": "errors",
-      "interpretation": "Top destination ports being blocked by the Linux kernel firewall. Common scanning ports (135, 445, 3389, 22, 23, 1433) are normal background noise. Unusual ports (5900, 8080, 9090, custom DB ports) often mean a specific reconnaissance attempt.",
+      "interpretation": "Top destination ports being blocked by the Linux kernel firewall, with drops at the host (IN_DROP, INPUT chain) and drops in transit (FWD_DROP, FORWARD chain) counted together, along with the occasional other firewall line that carries a port. On hosts that forward traffic, such as VPN or IPsec gateways, transit drops usually dominate: traffic the forwarding policy does not allow toward the systems behind the gateway, often a monitoring or discovery job rather than an attack. Common scanning ports (135, 445, 3389, 22, 23, 1433) are normal background noise. Unusual ports (5900, 8080, 9090, custom DB ports) often mean a specific reconnaissance attempt.",
       "nextSteps": [
         "Map ports to services \u2014 are any of them ports that SHOULD be reachable but were misclassified by the firewall? (Check ipset / cgs_firewall config.)",
         {
           "text": "Concentrated hits on a single non-standard port + single source IP \u2192 run firewall_proxy_correlation to see if the same IP is being blocked elsewhere.",
           "savedSearch": "logserv_firewall_proxy_correlation"
         },
-        "Persistent 9995 / 50007 hits in this dataset are internal scanning agents \u2014 generally expected."
+        "Steady hits on one port from a single internal source across many destinations usually come from a monitoring or discovery agent (SAP Host Agent probes, for example, use ports 1128 / 1129) \u2014 confirm the source with its owner, then treat it as expected background."
       ],
       "dashboard": [
         "network-perimeter",
@@ -956,12 +956,12 @@
       "id": "operations.icm_request_type_mix",
       "pack": "operations",
       "label": "ICM request type mix",
-      "description": "Distribution of sap:abap:icm requests across types (ASYNC_RFC, HTTP_NORMAL, INTERNAL). Shifts in the mix often correspond to changes in workload character (e.g., more sync HTTP than usual, or new RFC clients online).",
+      "description": "Distribution of sap:abap:icm session-list entries across request types (ASYNC_RFC, HTTP_NORMAL, INTERNAL). Shifts in the mix often correspond to changes in workload character (e.g., more sync HTTP than usual, or new RFC clients online).",
       "savedSearch": "logserv_icm_request_type_mix",
       "spl": "| inputlookup logserv_abapnet_rollup where metric=\"icmreq\" | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | stats sum(count) as count by icm_request_type | eventstats sum(count) as total | eval percent=round(count/total*100,6) | sort - count | head 10 | fields icm_request_type count percent",
       "renderHint": "pie",
       "chartPalette": "categorical",
-      "interpretation": "Distribution of ABAP ICM requests across types: ASYNC_RFC (typical SAP backend RFC traffic), HTTP_NORMAL (modern web-style traffic \u2014 Fiori, OData, BTP), INTERNAL (dispatcher-level). Sudden shifts often correspond to new application rollouts or load-shape changes.",
+      "interpretation": "Distribution of ABAP ICM session-list entries across request types: ASYNC_RFC (typical SAP backend RFC traffic), HTTP_NORMAL (modern web-style traffic \u2014 Fiori, OData, BTP), INTERNAL (dispatcher-level). Sudden shifts often correspond to new application rollouts or load-shape changes.",
       "nextSteps": [
         {
           "text": "If HTTP_NORMAL grows out of proportion, check webdispatcher_5xx_rate_trend \u2014 new web-tier traffic often surfaces problems first.",
@@ -989,7 +989,7 @@
       "chartHint": "pie",
       "chartPalette": "categorical",
       "dashboard": "integration-topology",
-      "interpretation": "Each row shows total inbound calls (gateway RFC frames + ICM HTTP/RFC requests) for one SID at one source layer. The biggest rows tell you where your integration traffic actually lives. A SID that suddenly outranks its peers is worth investigating.",
+      "interpretation": "Each row shows total inbound calls (gateway RFC log lines + ICM log lines) for one SID at one source layer. The biggest rows tell you where your integration traffic actually lives. A SID that suddenly outranks its peers is worth investigating.",
       "nextSteps": [
         {
           "text": "If one SID dominates, drill into its calls-per-hour pattern via the Environment Topology view.",
@@ -1179,7 +1179,7 @@
       "description": "Admin users (executing_user matching admin / <sid>adm) active on the HANA database tier outside business hours (before 08:00 or 18:00+ local time), grouped by user and host, annotated with the count of off-hours web-dispatcher requests on the same host. Off-hours admin activity on the data tier is a leading indicator of admin-account compromise.",
       "savedSearch": "splunk_sap_logserv_es_after_hours_admin_data_access",
       "renderHint": "table",
-      "interpretation": "Each row is an admin account with off-hours HANA activity on a host: the number of events and which action categories. The host_web_events column flags hosts that ALSO had off-hours web-dispatcher traffic, so a non-zero value means the same host saw both database-tier and HTTP-tier activity off-hours - a stronger cross-tier signal. Healthy environments show routine <sid>adm maintenance here; confirm each against a change ticket and watch for unexpected accounts or sensitive action categories off-hours (Permission Grant, User Creation, User Management).",
+      "interpretation": "Each row is an admin account with off-hours HANA activity on a HANA host: the number of events, which action categories, and the client hosts it connected from (src_hosts). The host_web_events column flags hosts that ALSO had off-hours web-dispatcher traffic, so a non-zero value means the same host saw both database-tier and HTTP-tier activity off-hours - a stronger cross-tier signal. Healthy environments show routine <sid>adm maintenance here; confirm each against a change ticket and watch for unexpected accounts or sensitive action categories off-hours (Permission Grant, User Creation, User Management).",
       "nextSteps": [
         {
           "text": "For each suspicious user, pull the recent off-hours webdispatcher + HANA timeline.",
@@ -1193,7 +1193,7 @@
         "hana-audit",
         "web-dispatcher"
       ],
-      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" | eval oh_hour=tonumber(strftime(_time, \"%H\")) | where oh_hour<8 OR oh_hour>=18 | stats count AS hana_events, dc(action_category) AS distinct_actions, values(action_category) AS actions, max(_time) AS last_seen by executing_user, host | join type=left host [| inputlookup logserv_stmap_rollup | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search sourcetype=\"sap:webdispatcher:access\" | eval oh_hour=tonumber(strftime(bucket_ts, \"%H\")) | where oh_hour<8 OR oh_hour>=18 | stats sum(count) AS host_web_events by host] | eval host_web_events=coalesce(host_web_events, 0) | sort -hana_events"
+      "spl": "`sap_logserv_idx_macro` sourcetype=\"sap:hana:audit\" is_admin_user=\"true\" | eval oh_hour=tonumber(strftime(_time, \"%H\")) | where oh_hour<8 OR oh_hour>=18 | stats count AS hana_events, dc(action_category) AS distinct_actions, values(action_category) AS actions, values(src_host) AS src_hosts, max(_time) AS last_seen by executing_user, host | join type=left host [| inputlookup logserv_stmap_rollup | addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time | search sourcetype=\"sap:webdispatcher:access\" | eval oh_hour=tonumber(strftime(bucket_ts, \"%H\")) | where oh_hour<8 OR oh_hour>=18 | stats sum(count) AS host_web_events by host] | eval host_web_events=coalesce(host_web_events, 0) | sort -hana_events"
     },
     {
       "id": "security.service_account_interactive",
@@ -1376,14 +1376,14 @@
       "description": "Reads pre-aggregated edge bucket rows from the logserv_topology_edges KV Store. Runs daily and detects edges whose call_count in any hour of the most recent day is statistically anomalous vs. that edge's own 30-day baseline.",
       "savedSearch": "splunk_sap_logserv_es_anomaly_topology_edge_volume",
       "renderHint": "table",
-      "interpretation": "Each row is a topology edge (source to target, with type) whose hourly call volume on the most recent day deviates from its own historical pattern. Surge = surge in cross-system traffic (could be brute-force or a surge in legitimate workload); drop = integration outage. The Z-score sign tells you which direction. Reads from KV Store, no live SPL on raw indexes.",
+      "interpretation": "Each row is one hourly row of a topology edge (its source and target, read from the edge's stored SPL filter clauses; its stored edge id and type; RFC edges have one row per app server) whose call volume on the most recent day deviates from that edge's own 30-day pattern. Surge = surge in cross-system traffic (could be brute-force or a surge in legitimate workload); drop = integration outage. The Z-score sign tells you which direction. Reads from KV Store, no live SPL on raw indexes.",
       "nextSteps": [
         "For surge anomalies (positive Z), check whether the source system is making more requests than usual or whether the target is being targeted.",
         "For drop anomalies (negative Z), confirm the source service is healthy on its own dashboards before declaring an integration outage.",
         "Open the Environment Topology view, click the anomalous edge, and review the Activity tab for the historical trend visualization."
       ],
       "dashboard": "integration-topology",
-      "spl": "| inputlookup logserv_topology_edges | where bucket_ts >= relative_time(now(), \"-30d@h\") | eventstats avg(call_count) AS baseline_avg, stdev(call_count) AS baseline_stdev by source, target, type | where bucket_ts >= relative_time(now(), \"-1d@d\") | eval z_score = round((call_count - baseline_avg) / baseline_stdev, 2) | where abs(z_score) > 3 AND call_count > 10 | sort -z_score"
+      "spl": "| inputlookup logserv_topology_edges | where bucket_ts >= relative_time(now(), \"-30d@h\") | eventstats avg(call_count) AS baseline_avg, stdev(call_count) AS baseline_stdev by id, type | where bucket_ts >= relative_time(now(), \"-1d@d\") | eval z_score = round((call_count - baseline_avg) / baseline_stdev, 2) | where abs(z_score) > 3 AND call_count > 10 | eval source=mvindex(spath(spl_filter_clauses, \"{}.value\"), 0), target=mvindex(spath(spl_filter_clauses, \"{}.value\"), 1) | sort -z_score"
     },
     {
       "id": "security.anomaly_after_hours_admin",

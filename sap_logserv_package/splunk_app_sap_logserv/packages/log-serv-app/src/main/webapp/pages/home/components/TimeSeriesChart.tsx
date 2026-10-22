@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import Column from '@splunk/visualizations/Column';
 import Line from '@splunk/visualizations/Line';
@@ -13,6 +13,7 @@ import LegendTitleTooltips from './LegendTitleTooltips';
 import PanelLoading from './PanelLoading';
 import EmptyStateHint from './EmptyStateHint';
 import { usePanelMetaReporter } from './PanelMeta';
+import { useRequestPanelFill } from './FramedPanel';
 
 /**
  * TimeSeriesChart — wraps @splunk/visualizations/Column with our SearchJob
@@ -25,7 +26,8 @@ interface TimeSeriesChartProps {
     query: string;
     /** Default: the first non-`_time` field in the result fields. */
     valueFields?: string[];
-    /** Chart height in px. Default: 280. */
+    /** Minimum chart height in px. Inside a FramedPanel the chart grows to fill
+     *  any extra height its panel's grid row gives it (build 371). Default: 280. */
     height?: number;
     /** Tooltip / legend formatter for the y-axis. */
     yLabel?: string;
@@ -50,9 +52,15 @@ interface TimeSeriesChartProps {
     chartType?: 'column' | 'line' | 'area' | 'bar';
 }
 
-const Container = styled.div<{ $height: number }>`
+/* Build 371 — the chart fills its panel. Inside a FramedPanel (which the chart
+ * puts into fill mode, see useRequestPanelFill) this is a flex item that grows
+ * into whatever height the panel's grid row leaves - a row is as tall as its
+ * tallest panel, usually a table - and the prop height is only the floor.
+ * Anywhere else it is exactly the prop height, as before. */
+const Container = styled.div<{ $minHeight: number }>`
     width: 100%;
-    height: ${(p) => p.$height}px;
+    min-height: ${(p) => p.$minHeight}px;
+    flex: 1 1 auto;
     position: relative;
 
     /* Highcharts' built-in legend pagination renders the "1/N" page
@@ -66,6 +74,18 @@ const Container = styled.div<{ $height: number }>`
     text.highcharts-legend-navigation {
         fill: ${logservTheme.colors.textActive} !important;
     }
+`;
+
+/* The drawn chart sits out of flow, so its own height never counts toward the
+ * row's height: the row stays set by the panels beside it (a DataTable sizes
+ * its page to that row), and the chart follows the row - growing and
+ * shrinking - instead of holding it open. */
+const Fill = styled.div`
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
 `;
 
 const StatusLine = styled.div`
@@ -124,6 +144,27 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // the palettes resolve per mode and the chart re-renders on mode flips.
     const { mode } = useThemeMode();
 
+    /* Build 371 — fill the panel: the chart is drawn at the container's measured
+     * height, never below the prop height. The container is the one root element
+     * of every state below (loading, empty, error, chart), so the observer stays
+     * on the same element for the chart's whole life. */
+    useRequestPanelFill();
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [drawHeight, setDrawHeight] = useState<number>(height);
+    useLayoutEffect(() => {
+        const el = containerRef.current;
+        if (!el) return undefined;
+        const measure = (): void => {
+            const h = Math.max(height, Math.floor(el.clientHeight));
+            setDrawHeight((prev) => (prev === h ? prev : h));
+        };
+        measure();
+        if (typeof ResizeObserver === 'undefined') return undefined;
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [height]);
+
     const chartData = useMemo(() => {
         if (!results || results.length === 0) {
             return null;
@@ -176,7 +217,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     if (error) {
         return (
-            <Container $height={height}>
+            <Container ref={containerRef} $minHeight={height}>
                 <ErrorLine>{error.message || 'Search failed'}</ErrorLine>
             </Container>
         );
@@ -184,7 +225,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     if (loading && !dataSources) {
         return (
-            <Container $height={height}>
+            <Container ref={containerRef} $minHeight={height}>
                 <PanelLoading height={height} />
             </Container>
         );
@@ -194,7 +235,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         // Session 093 — the chart owns its search, so it feeds EmptyStateHint
         // directly rather than via the FramedPanel context (no one-render lag).
         return (
-            <Container $height={height}>
+            <Container ref={containerRef} $minHeight={height}>
                 <StatusLine>
                     No data in this time range.
                     <EmptyStateHint
@@ -249,11 +290,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
 
     // Line chart wrappers don't benefit from the column-bar gradient and
     // can render slightly cleaner without it. Skip the wrap for line type.
-    const chart = (
-        <Container $height={height}>
-            <Viz dataSources={dataSources} width="100%" height={height} options={options} />
-        </Container>
-    );
+    const chart = <Viz dataSources={dataSources} width="100%" height={drawHeight} options={options} />;
     const wrapped = chartType === 'line' ? chart : (
         // GradientWrap self-resolves its darken per theme mode (build 254).
         <GradientWrap>{chart}</GradientWrap>
@@ -263,7 +300,14 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     // by `legendTruncation: ellipsisMiddle`. Splunk's own StyledTooltip
     // has a timing issue (content set on mouseenter but the tooltip
     // already missed the open window) — native title attrs sidestep it.
-    return <LegendTitleTooltips>{wrapped}</LegendTitleTooltips>;
+    // Both wrappers only walk the DOM beneath them, so they sit inside Fill.
+    return (
+        <Container ref={containerRef} $minHeight={height}>
+            <Fill>
+                <LegendTitleTooltips>{wrapped}</LegendTitleTooltips>
+            </Fill>
+        </Container>
+    );
 };
 
 export default TimeSeriesChart;

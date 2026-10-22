@@ -25,11 +25,12 @@
  *   - Read: any authenticated user with read on the collection (ACL is
  *     `read : [ * ]`), so non-admin users can fetch the active provider /
  *     tier on app load.
- *   - Write: any authenticated user with write on the collection (ACL is
- *     `write : [ * ]`). Single-row convention (_key = "defaults") means
- *     all admin saves overwrite the same row — no per-user fragmentation.
- *     The admin-gating happens client-side via useIsAdmin; the server-
- *     side ACL is intentionally permissive to dodge the capability gate.
+ *   - Write: the admin tier only (ACL `write : [ admin, sc_admin,
+ *     sc_subadmin ]` since build 380 - the row decides where an admin's
+ *     browser sends the forwarder HEC token and the MCP bearer token, so
+ *     an open write let any user redirect them). Single-row convention
+ *     (_key = "defaults") means all admin saves overwrite the same row.
+ *     KV Store has no capability gate, so sc_subadmin can still save.
  *
  * Cache: `readAIConfig()` results are memoized in-process to avoid one
  * REST round-trip per render. Call `clearAIConfigCache()` after a
@@ -137,11 +138,13 @@ export interface AIConfigSettings {
      *  Splunk dashboards routinely show hostnames. Build 94. */
     tier2_redact_hostnames: boolean;
     /** Local Splunk index that receives every audit event AuditWriter
-     *  posts. Default `ai_assistant_audit` matches the LogServ Index
-     *  App's default indexes.conf and the `sap_logserv_audit_idx_macro`
-     *  search-time macro definition. Customers who rename the audit
-     *  index must update the macro definition in lockstep so the in-app
-     *  Audit Log Viewer + user-written queries find the events. */
+     *  posts. Default `logserv_ai_assistant_audit` matches the index the
+     *  Data TA's indexes.conf defines, the shipped conf value and the
+     *  `sap_logserv_audit_idx_macro` search-time macro definition (an
+     *  empty or missing stored value falls back to it). Customers who
+     *  rename the audit index must update the macro definition in
+     *  lockstep so the in-app Audit Log Viewer + user-written queries
+     *  find the events. */
     audit_index_name: string;
     /** When true, every audit event POSTed to the local audit index
      *  is ALSO POSTed to the HEC endpoint configured below. Tamper-
@@ -190,7 +193,7 @@ export const DEFAULT_AI_CONFIG: AIConfigSettings = {
     daily_spend_cap_usd: 50.0,
     tier2_pii_redaction: true,
     tier2_redact_hostnames: false,
-    audit_index_name: 'ai_assistant_audit',
+    audit_index_name: 'logserv_ai_assistant_audit',
     audit_forwarder_enabled: false,
     audit_forwarder_url: '',
     audit_forwarder_index: '',

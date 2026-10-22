@@ -12,10 +12,10 @@ The Cloud Connector dashboard monitors SAP Cloud Connector (SCC), which provides
 - **HTTP Error Rate** -- Percentage of HTTP requests returning 4xx or 5xx status codes (scoped name clarifies that this is HTTP-only, not audit-log errors)
 - **Audit Events** -- Count of Cloud Connector audit log entries
 - **Access Denied Events** -- Count of `sap:scc:audit` entries with `scc_audit_type="ACCESS_DENIED"`
-- **Request Volume Over Time** -- Daily HTTP request trend
+- **Request Volume Over Time** -- HTTP request trend over time
 - **Status Code Distribution** -- Stacked column chart of 2xx, 3xx, 4xx, and 5xx responses
 - **URIs by Request Count** -- Table of the most requested URIs with average response time and total bytes
-- **Average Response Time** -- Daily mean response time (ms), charted over time
+- **Average Response Time** -- Mean response time (ms), charted over time
 - **HTTP Methods** -- Pie chart breakdown of request methods
 - **Clients** -- Table of the most active client IPs with request counts, total bytes, and unique URI counts
 - **Cloud Connector Audit Log** -- Table of recent audit events with type and account details

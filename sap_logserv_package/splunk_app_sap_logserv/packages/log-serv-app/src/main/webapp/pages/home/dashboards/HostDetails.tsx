@@ -22,8 +22,9 @@ import {
 } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useThemeMode } from '../state/ThemeModeProvider';
-import { chooseTimechartSpan } from '../utils/timechartSpan';
+import { chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 import { buildStmapRawQuery } from '../utils/stmapRaw';
+import { wpCategoryNameEval } from '../utils/wpCategory';
 import {
     buildDashboardUrl,
     buildSplunkSearchUrl,
@@ -559,6 +560,8 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
             ),
         [W, span, provider],
     );
+    // The chart's subtitle scope; spanSubtitle prints the dispatched span.
+    const sourceChartScope = hosts.length === 0 && topHosts !== 'all' ? `top ${topHosts} hosts` : hostLabel(hosts);
 
     const formatBytes = (raw: unknown): string => {
         if (raw === null || typeof raw === 'undefined') return '—';
@@ -697,11 +700,7 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
             <FullWidthPanel>
                 <FramedPanel
                     title="Event Count by Sourcetype"
-                    subtitle={
-                        hosts.length === 0 && topHosts !== 'all'
-                            ? `Volume for top ${topHosts} hosts, by sourcetype — span ${span}`
-                            : `Volume for ${hostLabel(hosts)}, by sourcetype — span ${span}`
-                    }
+                    subtitle={spanSubtitle(`Volume for ${sourceChartScope}, by sourcetype`, eventsBySourceQuery)}
                 >
                     <TimeSeriesChart
                         query={eventsBySourceQuery}
@@ -816,7 +815,13 @@ const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTop
     };
 
     const hanaAudit = useHybridSearch({ cached: roleRead('hana_action', 'action_type'), raw: roleReadRaw('hana_action', 'action_type') });
-    const abapWp = useHybridSearch({ cached: roleRead('abap_wp', 'wp_type'), raw: roleReadRaw('abap_wp', 'wp_type') });
+    // abap_wp stores the dev_w* trace-component letter (wp_category); both arms name
+    // it with props.conf's EVAL-wp_category_name (wpCategory.consistency-test).
+    const WP_NAME = ` | ${wpCategoryNameEval('wp_category', 'wp_category_name')} | fields - wp_category`;
+    const abapWp = useHybridSearch({
+        cached: roleRead('abap_wp', 'wp_category') + WP_NAME,
+        raw: roleReadRaw('abap_wp', 'wp_category') + WP_NAME,
+    });
     const webDisp = useHybridSearch({ cached: roleRead('webdisp_status', 'status'), raw: roleReadRaw('webdisp_status', 'status') });
     const sapRouter = useHybridSearch({ cached: roleRead('saprouter_peer', 'peer_ip'), raw: roleReadRaw('saprouter_peer', 'peer_ip') });
     const winEvents = useHybridSearch({ cached: roleRead('win_eventcode', 'EventCode'), raw: roleReadRaw('win_eventcode', 'EventCode') });
@@ -841,8 +846,8 @@ const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTop
                 <ConditionalPanel title="HANA Audit — Top Actions" subtitle="sap:hana:audit" search={hanaAudit}>
                     <DataTable columns={colsForKey('action_type', 'Action')} rows={hanaAudit.results} />
                 </ConditionalPanel>
-                <ConditionalPanel title="ABAP Work Process Mix" subtitle="sap:abap:workprocess" search={abapWp}>
-                    <DataTable columns={colsForKey('wp_type', 'WP Type')} rows={abapWp.results} />
+                <ConditionalPanel title="ABAP Work Process Trace Components" subtitle="sap:abap:workprocess by trace component" search={abapWp}>
+                    <DataTable columns={colsForKey('wp_category_name', 'Trace Component')} rows={abapWp.results} />
                 </ConditionalPanel>
                 <ConditionalPanel title="Web Dispatcher Traffic" subtitle="sap:webdispatcher:access by status" search={webDisp}>
                     <DataTable columns={colsForKey('status', 'Status')} rows={webDisp.results} />

@@ -24,6 +24,7 @@
     "types:start": "yarn types:build --watch"
   },
   "dependencies": {
+    "@noble/hashes": "1.4.0",
     "@splunk/dashboards": "^0.0.1",
     "@splunk/react-page": "^8.3.1",
     "@splunk/react-time-range": "^12.0.0",

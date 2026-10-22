@@ -287,6 +287,17 @@ eq('C9 a partner on both sides is counted once per direction',
 const emptySplit = splitPartners([], []);
 eq('C10 an isolated node splits to zeros, not NaN',
     [emptySplit.inbound.length, emptySplit.outbound.length, emptySplit.totalCalls], [0, 0, 0]);
+/* Build 380: each group records its edge types, so the panel can name what
+ * its donut counts (an RFC or SAP Router edge counts connections). */
+eq('C11 each group records its edge types, bidirectional edges left out like their calls',
+    [split.inboundTypes, split.outboundTypes], [['http'], ['http']]);
+const typedSplit = splitPartners(
+    [edge('p1', SID_A, 3, 'client', 'rfc'), edge('p2', SID_A, 4, 'client', 'http'),
+        { source: 'p6', target: SID_A, callCount: 1, direction: 'client' }],
+    [edge(SID_A, 'p5', 2, 'client', 'saprouter'), edge(SID_A, TENANT, 7, 'bidi', 'hana_tenant')]);
+eq('C12 the types are sorted, and an edge without a type records \'\' (it counts calls)',
+    [typedSplit.inboundTypes, typedSplit.outboundTypes], [['', 'http', 'rfc'], ['saprouter']]);
+eq('C13 an isolated node records no types', [emptySplit.inboundTypes, emptySplit.outboundTypes], [[], []]);
 interface PartnerLike { id: string; calls: number }
 
 /* =============================================================================
@@ -463,6 +474,99 @@ check('G7 non-numeric counts degrade to 0 instead of NaN-poisoning the sums',
         return out.length === 1 && out[0].calls === 6 && out[0].errors === 0;
     })(),
     'a NaN in one KV row would blank the whole table');
+
+/* =============================================================================
+ * H. Build 378: SAP Router edges and RFC connection edges
+ *
+ * The conf side writes (savedsearches.conf, the edges search):
+ *  - saprouter: source canonical kind "saprouter" (the router host) -> target
+ *    "ip" (the CONNECT TO target), direction client. A router node must never
+ *    read as a host row (its value IS a host name) and never carries an
+ *    ownership badge: it is not folded into a SID.
+ *  - rfc, inbound: "ip" (the caller) -> "sid"; outbound: "sid" -> "ip" or
+ *    "host" (the last /H/ hop of a remote gateway). A host target is a
+ *    receiving host, so the "host rows are inbound" copy still holds.
+ *  - connection-record rows carry no local_ip: they fall to the null row of
+ *    the By-app-server split, and errors never exceed calls on a stored row.
+ * ========================================================================== */
+
+const ROUTER = 'routerid';
+const RTARGET = 'rtargetid';
+const CALLER = 'callerid';
+const RHOST = 'remotehostid';
+const CANON_H: Record<string, { kind: string; value: string }> = {
+    ...CANON,
+    [ROUTER]: { kind: 'saprouter', value: 'hec53v013858' },
+    [RTARGET]: { kind: 'ip', value: '10.186.75.230' },
+    [CALLER]: { kind: 'ip', value: '10.186.64.81' },
+    [RHOST]: { kind: 'host', value: 'vhxsdxcpai19' },
+};
+const canonicalOfH = (id: string) => CANON_H[id] ?? null;
+
+eq('H1 a router endpoint carries no ownership badge (kind saprouter is never owned)',
+    classifyEndpointOwnership(att('saprouter', 'hec53v013858', null)), { state: 'none' });
+eq('H2 even when the inventory knows its host name',
+    classifyEndpointOwnership(att('saprouter', 'hec53v013858', 'XCS')), { state: 'none' });
+
+const SR_GROUP = {
+    retargetedSource: ROUTER,
+    retargetedTarget: RTARGET,
+    splType: 'saprouter',
+    direction: 'client',
+    rows: [row(ROUTER, RTARGET, 12, 1), row(ROUTER, RTARGET, 30, 0)],
+};
+/* An hour with failed connections and no CONNECT TO line: errors > calls on
+ * the stored row is possible for saprouter (the two are counted from
+ * different lines) and must accumulate as stored, not be clamped here. */
+const SR_ERR_ONLY = { ...SR_GROUP, rows: [row(ROUTER, RTARGET, 0, 2)] };
+const RFC_IN_GROUP = {
+    retargetedSource: CALLER,
+    retargetedTarget: SID_A,
+    splType: 'rfc',
+    direction: 'client',
+    rows: [row(CALLER, SID_A, 7, 2)],
+};
+const RFC_OUT_HOST_GROUP = {
+    retargetedSource: SID_A,
+    retargetedTarget: RHOST,
+    splType: 'rfc',
+    direction: 'client',
+    rows: [row(SID_A, RHOST, 5, 0)],
+};
+const tH = buildNodeTraffic([SR_GROUP, SR_ERR_ONLY, RFC_IN_GROUP, RFC_OUT_HOST_GROUP], canonicalOfH);
+eq('H3 the router sees its edges as outbound edge-type rows, never a host row',
+    (tH[ROUTER] ?? []).map((r: { scope: string; key: string; flow: string; calls: number; errors: number }) =>
+        [r.scope, r.key, r.flow, r.calls, r.errors]),
+    [['type', 'saprouter', 'outbound', 42, 3]]);
+eq('H4 the CONNECT TO target sees an inbound saprouter row',
+    (tH[RTARGET] ?? []).map((r: { scope: string; key: string; flow: string; calls: number }) =>
+        [r.scope, r.key, r.flow, r.calls]),
+    [['type', 'saprouter', 'inbound', 42]]);
+eq('H5 an inbound RFC connection is inbound on the SID, outbound on the caller',
+    [findRow(tH[SID_A] ?? [], 'type', 'rfc'), findRow(tH[CALLER] ?? [], 'type', 'rfc')]
+        .map((r) => r && [r.flow, r.calls, r.errors]),
+    [['inbound', 7, 2], ['outbound', 7, 2]]);
+const hostRow = findRow(tH[RHOST] ?? [], 'host', 'vhxsdxcpai19');
+eq('H6 an outbound RFC connection to a remote gateway host is that host\'s inbound host row',
+    hostRow && [hostRow.flow, hostRow.calls], ['inbound', 5]);
+check('H7 the outbound side of that connection is the SID\'s rfc row, not a host row',
+    !!findRow(tH[SID_A] ?? [], 'type', 'rfc')
+    && (tH[SID_A] ?? []).every((r: { scope: string }) => r.scope === 'type'),
+    JSON.stringify(tH[SID_A]));
+eq('H8 the rows still account for 100% of the router\'s calls',
+    trafficTotal(tH[ROUTER] ?? []), SR_GROUP.rows.concat(SR_ERR_ONLY.rows).reduce((s, r) => s + r.call_count, 0));
+
+/* RFC connection records name no local address: the By-app-server split
+ * collects them in the null row, beside the per-address rows of the broken
+ * connections, and still sums to the edge. */
+const appRows = buildEdgeAppServers([
+    { local_ip: '10.186.72.235', call_count: 3, error_count: 3 },
+    { call_count: 9, error_count: 0 },
+    { local_ip: '', call_count: 2, error_count: 0 },
+]);
+eq('H9 connection records without a local address land in the one null row',
+    appRows.map((r: { localIp: string | null; calls: number; errors: number }) => [r.localIp, r.calls, r.errors]),
+    [[null, 11, 0], ['10.186.72.235', 3, 3]]);
 
 /* ===================================================================== */
 

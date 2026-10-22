@@ -9,7 +9,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { useTimeRange } from '../state/TimeRangeProvider';
-import { applySpanToken, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanToken, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 import { logservTheme } from '../styles/logservTheme';
 import { DOCS_ROOT } from '../utils/docsLinks';
 
@@ -235,7 +235,7 @@ const MultiCloudOverview: React.FC = () => {
             </KpiRow>
 
             <FullWidthPanel>
-                <FramedPanel title="Daily Event Volume by Cloud Provider" subtitle="Stacked daily count, split by provider">
+                <FramedPanel title="Event Volume by Cloud Provider" subtitle={spanSubtitle('Stacked count, split by provider', qVolumeByProvider)}>
                     <TimeSeriesChart query={qVolumeByProvider} chartType="column" palette="categorical" />
                 </FramedPanel>
             </FullWidthPanel>

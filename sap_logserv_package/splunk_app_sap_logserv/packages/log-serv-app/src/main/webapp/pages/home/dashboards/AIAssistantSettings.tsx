@@ -578,9 +578,10 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
     const [busy, setBusy] = useState<boolean>(false);
     const [opError, setOpError] = useState<string | null>(null);
     // Two acceptance modals, gated independently by the matching
-    // telemetry.conf stanza version state. Both follow Splunk's
-    // optInVersion pattern: any interaction (yes OR no) bumps the
-    // conf, the choice is recorded, the modal does not re-show until
+    // ai_assistant_acks.conf stanza version state. Both follow Splunk's
+    // optInVersion pattern: any interaction (yes OR no) records the
+    // version in the KV Store, the choice is recorded, the modal does
+    // not re-show until
     // the operator bumps `optInVersion` in default/ai_assistant_acks.conf.
     //
     //   * forwarderTcState — gates the audit-log integrity prompt
@@ -775,27 +776,26 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
     );
 
     /**
-     * Persist the draft to ai_assistant_settings.conf, fire whichever
+     * Persist the draft (a KV Store row since build 240), fire whichever
      * audit events the transition warrants, and reapply forwarder
      * config to the running AuditWriter so subsequent events take the
      * new posture without a page reload.
      *
      * Build 98 introduced this for the audit-integrity modal flow.
-     * Build 99 extended it: the acceptance now records via Splunk's
-     * standard `configs/conf-ai_assistant_acks` endpoint AND in the audit
-     * log, with both yes and no choices captured per Splunk's
-     * `optInVersion` pattern.
+     * Build 99 extended it: the acceptance is recorded in the KV Store
+     * (`logserv_ai_assistant_acks`, since build 240; a conf write before)
+     * AND in the audit log, with both yes and no choices captured per
+     * Splunk's `optInVersion` pattern. Since build 391 that audit event
+     * is posted by handleForwarderChoice as soon as the answer is
+     * recorded, so a failed save no longer loses it.
      */
-    const actuallySave = async (
-        acceptance?: { choice: OptInChoice; disclaimerHash: string; tcVersion: number },
-    ): Promise<void> => {
+    const actuallySave = async (): Promise<void> => {
         setBusy(true);
         setOpError(null);
         try {
             // Capture pre-save state so audit events reflect the actual
             // transition the admin just performed, not post-save state.
             const previousTier = saved.tier;
-            const previousForwarderEnabled = saved.audit_forwarder_enabled;
             await writeAIConfig(draft);
             setSaved(draft);
             onSaved();
@@ -809,8 +809,8 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                 try {
                     await onConfigSaved();
                 } catch (_e) {
-                    // Refresh-side failure is non-fatal — the conf
-                    // is already saved; worst case the admin has
+                    // Refresh-side failure is non-fatal — the settings
+                    // are already saved; worst case the admin has
                     // to refresh manually.
                 }
             }
@@ -856,30 +856,13 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                 void AuditWriter.postOneOff(elevation);
             }
 
-            // Audit-integrity acknowledgement event — fired when the
-            // admin INTERACTED with the modal (yes OR no). Build 99:
-            // both choices are recorded; the version is bumped on
-            // either via the standard Splunk telemetry endpoint.
-            if (acceptance) {
-                const acceptanceEvent: ForwarderDisabledAcceptanceEvent = {
-                    timestamp: new Date().toISOString(),
-                    user: adminUsername || 'unknown',
-                    sessionId: `settings-${Date.now().toString(36)}`,
-                    seq: 1,
-                    category: 'forwarder_disabled_acceptance',
-                    acceptedAt: new Date().toISOString(),
-                    disclaimerHash: acceptance.disclaimerHash,
-                    provider: draft.provider,
-                    previousEnabledState: previousForwarderEnabled,
-                    tcVersion: acceptance.tcVersion,
-                    optInChoice: acceptance.choice,
-                };
-                void AuditWriter.postOneOff(acceptanceEvent);
-            }
-
             setForwarderModalOpen(false);
             setEnableModalOpen(false);
         } catch (e) {
+            // Build 390: close the dialogs so the error is seen (a failed save
+            // after the forwarder's Yes showed it behind that dialog's backdrop).
+            setForwarderModalOpen(false);
+            setEnableModalOpen(false);
             setOpError(e instanceof Error ? e.message : String(e));
         } finally {
             setBusy(false);
@@ -920,8 +903,8 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
      *   (a) the admin is transitioning from enabled=false → true
      *       (every "I'm turning this on" deliberate action shows the
      *        legal disclaimer, regardless of prior ack history); OR
-     *   (b) the conf's optInVersionAcknowledged is behind the current
-     *       optInVersion (operator bumped the version after a
+     *   (b) the acknowledged version (the KV Store row) is behind the
+     *       current optInVersion (the version was bumped after a
      *       wording change).
      *
      * Original build-100 logic was (b) only — the strict Splunk
@@ -967,22 +950,69 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
     /**
      * Enable modal callback — admin made their yes/no choice on the
      * AI Assistant feature-enablement liability disclaimer. Per
-     * Splunk's optInVersion pattern, ANY interaction bumps the
-     * acknowledged version; the boolean choice is recorded in both
-     * the standard Splunk telemetry conf and the audit log.
+     * Splunk's optInVersion pattern, any answer records the version
+     * as acknowledged (a No that has to turn the AI Assistant off
+     * records it only once that write succeeds); the boolean choice
+     * is recorded in both
+     * the acknowledgement row (KV Store `logserv_ai_assistant_acks`) and the
+     * audit log.
      *
      * Save behaviour:
      *   - yes  → close enable modal; if forwarder TC also pending,
      *            open it next; otherwise save immediately.
-     *   - no   → save aborted, `enabled` stays at its previous saved
-     *            value. The forwarder TC chain is NOT triggered (no
-     *            cascading re-prompt for an aborted save).
+     *   - no   → save aborted. An AI Assistant being turned on stays
+     *            off; one that is already on (a re-ask after a
+     *            version bump) is turned off - only `enabled`
+     *            changes, written before the No is recorded (build 388). The
+     *            forwarder TC chain is NOT triggered (no cascading
+     *            re-prompt for an aborted save).
      */
     const handleEnableChoice = async (
         choice: OptInChoice,
         disclaimerHash: string,
     ): Promise<void> => {
         const versionAtChoice = enableTcState.optInVersion;
+        // Build 388: a No while the AI Assistant is already on (the re-ask
+        // after a version bump) turns it off, as the terms' closing sentence
+        // says. Only `enabled` changes - nothing else in the draft - and it
+        // is written before the No is recorded, so a failed write leaves the question
+        // pending for the next save.
+        const turnOff = choice === 'no' && saved.enabled;
+        if (turnOff) {
+            const off: AIConfigSettings = { ...saved, enabled: false };
+            setBusy(true);
+            try {
+                // The page's settings with `enabled` off, written whole as every
+                // Save writes them. Not a partial: writeAIConfig merges a partial
+                // onto readAIConfig(), which falls back to the conf or the
+                // defaults when the KV read fails, and would write those over the
+                // stored settings.
+                await writeAIConfig(off);
+            } catch (e) {
+                setBusy(false);
+                setEnableModalOpen(false);
+                setOpError(
+                    `The terms were declined, but turning the AI Assistant off failed: ${
+                        e instanceof Error ? e.message : String(e)
+                    }. Nothing was recorded; the terms are shown again at the next save.`,
+                );
+                return;
+            }
+            // Build 389: the dialog closes before the page state changes, so it
+            // never shows the turn-on wording while the No is recorded. Build
+            // 390: the page stays busy until the No is recorded (finally below).
+            setEnableModalOpen(false);
+            setSaved(off);
+            setDraft(off);
+            onSaved();
+            if (onConfigSaved) {
+                try {
+                    await onConfigSaved();
+                } catch (_e) {
+                    // Non-fatal, as in actuallySave: the setting is saved.
+                }
+            }
+        }
         try {
             await writeTcAcknowledgement(STANZA_ENABLE_TC, choice, versionAtChoice);
             setEnableTcState((prev) => ({
@@ -992,12 +1022,22 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                 optInChoiceAt: new Date().toISOString(),
             }));
         } catch (e) {
+            // Build 389: close the dialog so the error is seen (it showed
+            // behind the dialog's backdrop).
+            setEnableModalOpen(false);
             setOpError(
-                `Failed to record acknowledgement via Splunk telemetry endpoint: ${
+                `${turnOff ? 'The AI Assistant was turned off, but its answer was not recorded. ' : ''}`
+                + `Failed to record the acknowledgement in the KV Store: ${
                     e instanceof Error ? e.message : String(e)
                 }`,
             );
             return;
+        } finally {
+            // Build 390: a turn-off holds the page busy until this record has
+            // finished, recorded or not; it is released here.
+            if (turnOff) {
+                setBusy(false);
+            }
         }
 
         // Fire the audit event for both yes and no. Per Splunk pattern,
@@ -1010,7 +1050,9 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
             category: 'ai_assistant_enable_acceptance',
             acceptedAt: new Date().toISOString(),
             disclaimerHash,
-            provider: draft.provider,
+            // Build 390: a No saves nothing from the draft, so it records the
+            // provider in effect.
+            provider: choice === 'yes' ? draft.provider : saved.provider,
             previousEnabledState: saved.enabled,
             tcVersion: versionAtChoice,
             optInChoice: choice,
@@ -1021,7 +1063,9 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
 
         if (choice === 'no') {
             setOpError(
-                'Save aborted — AI Assistant liability terms declined. The "Enable AI Assistant" toggle was not changed.',
+                turnOff
+                    ? 'AI Assistant turned off — the liability terms were declined. Nothing else in this save was applied.'
+                    : 'Save aborted — AI Assistant liability terms declined. The "Enable AI Assistant" toggle was not changed.',
             );
             return;
         }
@@ -1042,8 +1086,11 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
      *   - yes  → save proceeds with `audit_forwarder_enabled` still
      *            off (admin accepted that posture)
      *   - no   → save aborted, forwarder remains at its previous saved
-     *            state, but the conf records the interaction so the
-     *            modal won't re-show until `optInVersion` is bumped.
+     *            state, but the KV Store row records the interaction
+     *            so the modal won't re-show until `optInVersion` is
+     *            bumped.
+     * Either answer's audit event is posted as soon as the answer is
+     * recorded (build 391), before the save a Yes goes on to.
      */
     const handleForwarderChoice = async (
         choice: OptInChoice,
@@ -1059,40 +1106,46 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
                 optInChoiceAt: new Date().toISOString(),
             }));
         } catch (e) {
+            // Build 390: close the dialog so the error is seen (it showed
+            // behind the dialog's backdrop).
+            setForwarderModalOpen(false);
             setOpError(
-                `Failed to record acknowledgement via Splunk telemetry endpoint: ${
+                `Failed to record the acknowledgement in the KV Store: ${
                     e instanceof Error ? e.message : String(e)
                 }`,
             );
             return;
         }
 
+        // Fire the audit event for both yes and no, as soon as the answer is
+        // recorded. Build 391: a Yes's event was posted only after a
+        // successful save, so a failed save could leave a recorded Yes
+        // without one (a retry may not ask again).
+        const acceptanceEvent: ForwarderDisabledAcceptanceEvent = {
+            timestamp: new Date().toISOString(),
+            user: adminUsername || 'unknown',
+            sessionId: `settings-${Date.now().toString(36)}`,
+            seq: 1,
+            category: 'forwarder_disabled_acceptance',
+            acceptedAt: new Date().toISOString(),
+            disclaimerHash,
+            // Build 390: a No saves nothing from the draft, so it records the
+            // provider in effect.
+            provider: choice === 'yes' ? draft.provider : saved.provider,
+            previousEnabledState: saved.audit_forwarder_enabled,
+            tcVersion: versionAtChoice,
+            optInChoice: choice,
+        };
+        void AuditWriter.postOneOff(acceptanceEvent);
+
         if (choice === 'yes') {
-            await actuallySave({
-                choice,
-                disclaimerHash,
-                tcVersion: versionAtChoice,
-            });
-        } else {
-            const acceptanceEvent: ForwarderDisabledAcceptanceEvent = {
-                timestamp: new Date().toISOString(),
-                user: adminUsername || 'unknown',
-                sessionId: `settings-${Date.now().toString(36)}`,
-                seq: 1,
-                category: 'forwarder_disabled_acceptance',
-                acceptedAt: new Date().toISOString(),
-                disclaimerHash,
-                provider: draft.provider,
-                previousEnabledState: saved.audit_forwarder_enabled,
-                tcVersion: versionAtChoice,
-                optInChoice: 'no',
-            };
-            void AuditWriter.postOneOff(acceptanceEvent);
-            setForwarderModalOpen(false);
-            setOpError(
-                'Save aborted — audit-forwarder acknowledgement recorded as "No". The forwarder configuration was not changed.',
-            );
+            await actuallySave();
+            return;
         }
+        setForwarderModalOpen(false);
+        setOpError(
+            'Save aborted — audit-forwarder acknowledgement recorded as "No". The forwarder configuration was not changed.',
+        );
     };
 
     const handleRevert = (): void => {
@@ -1852,7 +1905,12 @@ const GeneralPanel: React.FC<GeneralPanelProps> = ({ onSaved, adminUsername, onC
             <AiAssistantEnableAcceptanceModal
                 open={enableModalOpen}
                 adminUsername={adminUsername}
-                providerName={draft.provider}
+                // Build 391: on a re-ask (the AI Assistant is on) the provider in
+                // effect, which a No keeps; on an enable, the page's.
+                providerName={saved.enabled ? saved.provider : draft.provider}
+                // Build 392: on a re-ask whose save also changes the provider, the
+                // one a Yes saves.
+                pendingProviderName={saved.enabled && draft.provider !== saved.provider ? draft.provider : undefined}
                 previousEnabledState={saved.enabled}
                 tcVersion={enableTcState.optInVersion}
                 onChoice={handleEnableChoice}

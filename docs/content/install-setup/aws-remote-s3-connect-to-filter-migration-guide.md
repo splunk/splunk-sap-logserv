@@ -537,7 +537,7 @@ Check the **Enable Filtering** checkbox to activate index-time filtering.
 
 #### :material-crop-square:{ .taiconcolor } Include Filters
 
-Comma-separated patterns specifying which log types to include. Patterns use the format `clz_dir/clz_subdir` with `fnmatch`-style wildcards:
+Comma-separated patterns specifying which log types to include. Patterns use the format `clz_dir/clz_subdir`, where `*` matches any run of characters within the value and `?` one character:
 
 | Pattern | Meaning |
 |---------|---------|
@@ -551,6 +551,10 @@ Comma-separated patterns specifying which log types to include. Patterns use the
 #### :material-crop-square:{ .taiconcolor } Exclude Filters
 
 Comma-separated patterns for log types to exclude. Events matching any exclude pattern are dropped even if they also match an include pattern. Leave empty to exclude nothing.
+
+#### :material-crop-square:{ .taiconcolor } Include Sources and Exclude Sources
+
+These two fields match the event's whole `source` value, such as `/var/log/zypper.log`, rather than its folder. Leave them empty for the migration; see [Configuring Filters](configure-filters.md) for what they do.
 
 #### :material-crop-square:{ .taiconcolor } Days in the Past
 

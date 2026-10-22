@@ -18,11 +18,11 @@ The Windows Events dashboard monitors Windows hosts in the SAP landscape, which 
 - **Total Events** -- Aggregate Windows event count
 - **Critical / Error** -- Count of Windows Critical (Level 1) and Error (Level 2) events. In CIM severity vocabulary these are `severity="critical"` and `severity="high"` — there is no `error` severity value
 - **Active Hosts** -- Count of distinct Windows hosts reporting data
-- **Event Volume by Log** -- Daily trend by Windows log source (Application, Security, System, PowerShell)
+- **Event Volume by Log** -- Trend over time by Windows log source (Application, Security, System, PowerShell)
 - **Severity Distribution Over Time** -- Stacked column chart of severity levels
 - **Event Codes** -- Featured full-width table of the most frequent EventCodes with 7 enriched columns: Event Code, Description (signature), Source log, Severity, Events, Hosts (distinct count), Last Seen. Row drilldown opens the search app filtered by that event code.
 - **Service Events** -- Table of Windows service start/stop activity with latest state
-- **PowerShell Activity** -- Daily column chart of PowerShell operational event volume
+- **PowerShell Activity** -- Column chart of PowerShell operational event volume over time
 
 ## :material-circle-box:{ .taiconcolor } Where the Data Comes From
 

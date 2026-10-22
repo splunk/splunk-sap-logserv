@@ -64,9 +64,10 @@ import { username as splunkUsername } from '@splunk/splunk-utils/config';
  *     trying to rescue. One drawer, one diagnosis, enforced here and again by
  *     the `beginDiagnosis` singleton underneath.
  *
- * NO DESTRUCTIVE CONTROLS, EVER. Every `logserv_*` KV collection is
- * `write: [*]`, so a Clear or backfill button on this surface would actually
- * succeed for a non-admin. Those stay behind the Settings admin gate; this
+ * NO DESTRUCTIVE CONTROLS, EVER. Until build 384 most `logserv_*` KV
+ * collections (all but the AI Assistant's and the backfill stage) were
+ * `write: [*]`, so a Clear or backfill button on this surface would have
+ * succeeded for a non-admin (and still would for an admin). Those stay behind the Settings admin gate; this
  * drawer only ever names where to go.
  */
 

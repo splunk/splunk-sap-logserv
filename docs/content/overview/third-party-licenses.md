@@ -50,7 +50,56 @@ Beyond npm packages, the App bundles three font families (listed in the shipped 
 
 ### Scope
 
-This page covers the **LogServ UI App's** npm dependencies and bundled fonts. The Data TA and the Azure / GCP ingest add-ons vendor their Python runtime libraries (solnlib, splunktaucclib, requests, and their dependencies) under each add-on's `lib/` directory via Splunk's UCC build framework; those libraries carry their own permissive licenses (MIT / Apache-2.0 / BSD) with license texts in their `lib/` dist-info metadata.
+The sections above cover the **LogServ UI App's** npm dependencies and bundled fonts. The add-ons' Python packages follow.
+
+## Python packages in the add-ons
+
+The Data TA and the Azure and GCP ingest add-ons bundle the same nine Python packages, at the same versions, in their `lib/` folder; Splunk's UCC build framework installs them. Each package's own license file ships beside it, in `lib/<package>-<version>.dist-info/`.
+
+| Package | Version | License (SPDX) |
+|---|---|---|
+| defusedxml | 0.7.1 | PSF-2.0 |
+| deprecation | 2.1.0 | Apache-2.0 |
+| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
+| PySocks | 1.7.1 | BSD-3-Clause |
+| solnlib | 7.0.0 | Apache-2.0 |
+| sortedcontainers | 2.4.0 | Apache-2.0 |
+| splunk-sdk | 2.1.1 | Apache-2.0 (the package ships no license file; the notices file below carries the text) |
+| splunktaucclib | 8.2.0 | Apache-2.0 |
+| urllib3 | 1.26.20 | MIT |
+
+- **`requests` and `splunk` are not bundled.** The packages above import them from the Splunk platform's own Python at run time.
+- **The Data TA's notices file.** Since build 1792189743 the Data TA ships `THIRD-PARTY-NOTICES.md` at the root of the add-on, naming these packages, the vendored files inside them (two copies of `six`, urllib3's backports) and the Apache License 2.0 text, and its `lib/requirements.txt` pins each package's exact version with its PyPI file hashes, so a rebuild cannot pick up a newer release unseen.
+- **The add-ons' configuration pages** are compiled by UCC and carry their own notice file for the npm packages they contain: `appserver/static/js/build/licenses.txt` in each add-on.
+
+## Known advisories: urllib3 1.26.20
+
+The Data TA, the Azure and GCP ingest add-ons and the Demo Data Generator TA bundle urllib3 1.26.20, which
+vulnerability scanners report as affected by seven advisories: CVE-2025-50181, CVE-2025-66418, CVE-2025-66471,
+CVE-2026-21441, CVE-2026-44431, CVE-2026-97687 and CVE-2026-97689. We analysed each against the add-ons' code, and none
+affects them as shipped:
+
+- **No add-on code uses urllib3.** It is loaded only by Splunk's solutions library (solnlib), whose REST client talks
+  to the local splunkd management port (by default `127.0.0.1:8089`) with the add-on's own session key. The add-ons'
+  outbound connections (Azure Storage, the Google Cloud APIs and the Demo Data Generator's HTTP Event Collector
+  sender) use Python's standard library, and no script in the Data, Azure or GCP add-ons imports `requests` or
+  `urllib3`, directly or through `splunk_aoblib`.
+- **Three need code paths that are never taken** - urllib3's redirect handling with retries turned off, following
+  redirects while streaming a response, and passing credentials on across redirects through a proxy:
+  CVE-2025-50181, CVE-2026-21441 and CVE-2026-44431.
+- **Three need a malicious server on the splunkd management port** - decompression and chunked-response attacks:
+  CVE-2025-66418, CVE-2025-66471 and CVE-2026-97689. With the default `mgmtHostPort` that is the loopback interface,
+  so an attacker would already need access to the host; if you bind the management port to a network address, the
+  protection rests on that network.
+- **One needs an HTTPS proxy in splunkd's environment** - CVE-2026-97687. If splunkd's environment sets `HTTPS_PROXY`,
+  also set `NO_PROXY=127.0.0.1,localhost` (see [Installing the Data TA](../install-setup/install-ta.md)).
+
+**Why the add-ons do not ship urllib3 2.x.** urllib3 2.x requires OpenSSL 1.1.1 or later, and the Python in Splunk
+Enterprise 9.4.3 is built with OpenSSL 1.0.2 (`OpenSSL 1.0.2zl-fips` on our test systems), so urllib3 2.x cannot load
+there. The releases that fix the newest advisories also require Python 3.10 or later, while Splunk 9.4 runs Python
+3.9, and the current splunktaucclib release requires `urllib3<2`. Splunk Enterprise 9.4.3's own Python includes
+urllib3 1.26.19. We expect to stop bundling urllib3, or to move to a 2.x release, when the add-ons' minimum supported
+Splunk version moves past 9.4.
 
 ## Refresh policy
 

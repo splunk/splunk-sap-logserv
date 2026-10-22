@@ -5,11 +5,19 @@ This module is referenced by globalConfig.json as the restHandlerModule for the
 filter_settings Configuration tab.  It extends the standard UCC
 AdminExternalHandler to:
 
-1. Save filter settings to splunk_ta_sap_logserv_settings.conf (default UCC behaviour)
-2. Generate index-time filter stanzas in local/transforms.conf and local/props.conf
-3. Trigger a conf reload so changes take effect without restart (single-instance)
-4. Check for uncovered supported log types and log warnings
-5. Clear or update the system message banner from the upgrade check
+1. Validate the submitted values before anything is saved: Include Sources and
+   Exclude Sources on EVERY save (their values are written into a conf file
+   whether or not filtering is on), every posted value for line breaks and
+   other control characters on EVERY save, the folder patterns and Days in
+   the Past when filtering is enabled, plus a dry run of the generators
+2. Save filter settings to splunk_ta_sap_logserv_settings.conf (default UCC behaviour)
+3. Generate index-time filter stanzas in local/transforms.conf and local/props.conf
+   (folder includes / excludes, source includes / excludes, time filter) from
+   the settings as saved: each posted field, and the stored value of any
+   field the request did not post (a REST or CLI save may post only some)
+4. Trigger a conf reload so changes take effect without restart (single-instance)
+5. Check for uncovered supported log types and log warnings
+6. Clear or update the system message banner from the upgrade check
 
 The generated filter conf files use marker comments so they can be safely
 regenerated without disturbing other local/ customisations.
@@ -17,6 +25,7 @@ regenerated without disturbing other local/ customisations.
 
 import os
 import sys
+import json
 import logging
 
 # UCC import path setup — must come before any splunktaucclib imports
@@ -37,13 +46,20 @@ import splunk.admin as admin
 
 from splunk_ta_sap_logserv_filter_utils import (
     APP_NAME,
+    SETTINGS_CONF,
+    FILTER_STANZA,
     SYSTEM_MESSAGE_NAME,
     CLOUD_PROVIDER_MARKER_START,
     CLOUD_PROVIDER_MARKER_END,
+    SOURCE_FIELD_MAX_LEN,
+    SOURCE_FIELD_UI_PATTERN,
     discover_supported_types,
     find_uncovered_types,
+    is_pass_all_include,
     parse_comma_patterns,
+    parse_source_patterns,
     validate_patterns,
+    validate_source_field,
     generate_transforms_stanzas,
     generate_props_filter_lines,
     write_local_conf,
@@ -59,6 +75,30 @@ from splunk_ta_sap_logserv_filter_utils import (
 
 # Valid cloud_provider dropdown values (must match globalConfig.json).
 VALID_CLOUD_PROVIDERS = ('aws', 'azure', 'gcp', 'not_set')
+
+# The Filters-tab fields, in form order, with their labels (for messages) and
+# the value used when a save neither posts a field nor finds it stored (the
+# defaults this handler has always used).
+FILTER_FIELDS = (
+    'filter_enabled', 'include_filters', 'exclude_filters',
+    'include_sources', 'exclude_sources', 'days_in_past',
+)
+FILTER_FIELD_LABELS = {
+    'filter_enabled': 'Enable Filtering',
+    'include_filters': 'Include Filters',
+    'exclude_filters': 'Exclude Filters',
+    'include_sources': 'Include Sources',
+    'exclude_sources': 'Exclude Sources',
+    'days_in_past': 'Days in the Past',
+}
+FILTER_FIELD_DEFAULTS = {
+    'filter_enabled': '0',
+    'include_filters': '',
+    'exclude_filters': '',
+    'include_sources': '',
+    'exclude_sources': '',
+    'days_in_past': '7',
+}
 
 logger = logging.getLogger(APP_NAME)
 
@@ -91,6 +131,26 @@ fields = [
         validator=validator.String(min_len=0, max_len=4096),
     ),
     field.RestField(
+        'include_sources',
+        required=False,
+        encrypted=False,
+        default='',
+        validator=validator.AllOf(
+            validator.String(min_len=0, max_len=SOURCE_FIELD_MAX_LEN),
+            validator.Pattern(SOURCE_FIELD_UI_PATTERN),
+        ),
+    ),
+    field.RestField(
+        'exclude_sources',
+        required=False,
+        encrypted=False,
+        default='',
+        validator=validator.AllOf(
+            validator.String(min_len=0, max_len=SOURCE_FIELD_MAX_LEN),
+            validator.Pattern(SOURCE_FIELD_UI_PATTERN),
+        ),
+    ),
+    field.RestField(
         'days_in_past',
         required=False,
         encrypted=False,
@@ -120,7 +180,8 @@ class FilterSettingsHandler(AdminExternalHandler):
     this handler:
 
     1. Reads the saved filter settings.
-    2. Generates (or removes) filter stanzas in ``local/transforms.conf``
+    2. Generates (or removes) filter stanzas - folder includes / excludes,
+       source includes / excludes, time filter - in ``local/transforms.conf``
        and ``local/props.conf``.
     3. Triggers a conf reload via the Splunk REST API.
     4. Compares the user's include patterns against the annotated supported
@@ -133,45 +194,79 @@ class FilterSettingsHandler(AdminExternalHandler):
         Intercept the save action to validate and generate filter configurations.
 
         Validation runs before the save.  If any pattern is invalid, the save
-        is blocked and the user sees an error message in the UI.
+        is blocked and the user sees an error message in the UI.  Include
+        Sources and Exclude Sources are validated on EVERY save, also with
+        filtering disabled: the value is written into the settings conf
+        either way (on the 403 fallback by a plain filesystem write), so a
+        quote, backslash or line break must never get that far.  For the
+        same reason every posted value is checked for line breaks and other
+        control characters (and a trailing backslash, a conf line
+        continuation) on every save.  The folder patterns and Days in the
+        Past are validated when filtering is enabled, as before.
+
+        The filter block is built from the settings as saved: each field the
+        request posts, and for a field it does not post (a REST or CLI save
+        may post only some) the value stored in the settings conf, which the
+        save leaves unchanged.  The Filters form posts every field.
 
         This single handler serves BOTH configuration tabs (the UCC
         MultipleModel settings endpoint uses one handler class for all
         tabs).  The Cloud Provider tab is dispatched first via an early
-        return; everything below is the original, unchanged Filters logic.
+        return; everything below is the Filters logic.
         """
         # --- Cloud Provider tab dispatch (additive; Filters path unchanged) ---
         if 'cloud_provider' in self.callerArgs.data:
             return self._handle_cloud_provider_edit(confInfo)
 
-        # Validate patterns before saving
-        filter_enabled = self._get_arg('filter_enabled', '0') == '1'
-        include_val = self._get_arg('include_filters', '')
+        # Validate before saving: the source fields as posted (grammar and
+        # conf safety), then every posted value (conf safety).
+        include_sources_val = self._posted('include_sources')
+        exclude_sources_val = self._posted('exclude_sources')
+
+        errors = self._validate_source_inputs(include_sources_val, exclude_sources_val)
+        if errors:
+            raise admin.ArgValidationException(errors)
+
+        errors = self._validate_posted_values()
+        if errors:
+            raise admin.ArgValidationException(errors)
+
+        # The settings the filter block is generated from (posted, else stored)
+        settings = self._effective_filter_settings()
+        filter_enabled = settings['filter_enabled'] == '1'
+        include_val = settings['include_filters']
+
         if filter_enabled:
-            errors = self._validate_filter_inputs(include_val)
+            errors = self._validate_filter_inputs(include_val, settings)
             if errors:
                 raise admin.ArgValidationException(errors)
 
         # Perform the default save (writes to settings conf)
         self._safe_super_handle_edit(confInfo)
 
-        # Read the values that were just saved
+        # Generate from the values as saved
         try:
-            exclude_str = self._get_arg('exclude_filters', '')
-            days_in_past = self._get_arg('days_in_past', '7')
+            exclude_str = settings['exclude_filters']
+            days_in_past = settings['days_in_past']
 
             include_patterns = parse_comma_patterns(include_val)
             exclude_patterns = parse_comma_patterns(exclude_str)
+            include_sources = parse_source_patterns(settings['include_sources'])
+            exclude_sources = parse_source_patterns(settings['exclude_sources'])
 
             logger.info(
                 f'Filter settings saved: enabled={filter_enabled}, '
                 f'include={include_patterns}, exclude={exclude_patterns}, '
+                f'include_sources={include_sources}, '
+                f'exclude_sources={exclude_sources}, '
                 f'days_in_past={days_in_past}'
             )
 
             # Generate filter configurations
             self._generate_filter_configs(
-                filter_enabled, include_patterns, exclude_patterns, days_in_past
+                filter_enabled, include_patterns, exclude_patterns, days_in_past,
+                include_sources=include_sources,
+                exclude_sources=exclude_sources,
             )
 
             # Check for uncovered types
@@ -329,15 +424,46 @@ class FilterSettingsHandler(AdminExternalHandler):
         self._mirror_if_deployment_server(app_path)
         self._reload_confs()
 
-    def _validate_filter_inputs(self, include_str):
+    def _validate_source_inputs(self, include_sources_val, exclude_sources_val):
         """
-        Validate include and exclude filter patterns.
+        Validate Include Sources and Exclude Sources (grammar and conf
+        safety).  Runs on every Filters save, whether filtering is enabled
+        or not, on the values the request posts (``None`` = not posted: the
+        stored value is not rewritten; with filtering enabled the generators'
+        dry run re-validates it).
+
+        Returns:
+            str or None: Error message naming the field and the entry if
+            validation fails, None if valid.
+        """
+        for value, field_name in (
+            (include_sources_val, 'Include Sources'),
+            (exclude_sources_val, 'Exclude Sources'),
+        ):
+            is_valid, error = validate_source_field(value, field_name)
+            if not is_valid:
+                return error
+        return None
+
+    def _validate_filter_inputs(self, include_str, settings):
+        """
+        Validate include and exclude filter patterns, Days in the Past, the
+        Include Sources / Include Filters combination, and finally dry-run
+        both generators so that any value they would refuse (for example an
+        entry whose rule would be too long, or an invalid stored value of a
+        field the request did not post) blocks the save instead of failing
+        after it.  Called only when filtering is enabled.
+
+        Args:
+            include_str: The Include Filters value.
+            settings: The effective Filters settings
+                (:meth:`_effective_filter_settings`).
 
         Returns:
             str or None: Error message if validation fails, None if valid.
         """
-        exclude_str = self._get_arg('exclude_filters', '')
-        days_str = self._get_arg('days_in_past', '0')
+        exclude_str = settings['exclude_filters']
+        days_str = settings['days_in_past']
 
         # Validate include patterns
         include_patterns = parse_comma_patterns(include_str)
@@ -373,12 +499,160 @@ class FilterSettingsHandler(AdminExternalHandler):
                         'Days in the Past must be a whole number '
                         '(e.g., 7, 30, 365). Decimal values are not allowed.'
                     )
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, OverflowError):
                 return (
                     'Days in the Past must be a number between 0 and 3650.'
                 )
 
+        # Include Sources only adds events back through the include gate; with
+        # a pass-all Include Filters there is no gate, so it would do nothing.
+        include_sources = parse_source_patterns(settings['include_sources'])
+        exclude_sources = parse_source_patterns(settings['exclude_sources'])
+        if include_sources and is_pass_all_include(include_patterns):
+            return (
+                'Include Sources has no effect while Include Filters keeps every '
+                'log type (it contains */* or *): everything is already kept. '
+                'Narrow Include Filters (e.g., linux/*, hana/*) or clear '
+                'Include Sources.'
+            )
+
+        # Dry run: the generators re-validate every entry and refuse what they
+        # cannot turn into a REGEX - refuse it here, before anything is saved.
+        try:
+            generate_transforms_stanzas(
+                include_patterns,
+                parse_comma_patterns(exclude_str),
+                days_str,
+                include_sources=include_sources,
+                exclude_sources=exclude_sources,
+            )
+        except ValueError as e:
+            return str(e)
+
         return None
+
+    def _posted(self, name):
+        """
+        The value this request posts for ``name``, as the settings save
+        stores it (an emptied field is ``''``: splunktaucclib saves
+        ``value[0]`` or ``''``), or ``None`` when the request does not post
+        the field at all - the save then leaves its stored value unchanged.
+        """
+        if name not in self.callerArgs.data:
+            return None
+        val = self.callerArgs.data.get(name)
+        if isinstance(val, (list, tuple)):
+            val = val[0] if val else None
+        return val if val else ''
+
+    def _validate_posted_values(self):
+        """
+        Conf safety of every value the request posts: each one is written
+        into the settings conf (on the 403 fallback by a plain filesystem
+        write, see :meth:`_persist_settings_filesystem`), so none may carry
+        a line break or any other control character, or end with a
+        backslash (a conf line continuation).  Runs on every Filters save,
+        whether filtering is enabled or not.
+
+        Returns:
+            str or None: Error message naming the field, None if valid.
+        """
+        names = list(FILTER_FIELDS) + sorted(
+            name for name in self.callerArgs.data if name not in FILTER_FIELDS
+        )
+        for name in names:
+            value = self._posted(name)
+            if value is None:
+                continue
+            text = value if isinstance(value, str) else str(value)
+            label = FILTER_FIELD_LABELS.get(name, name)
+            for ch in text:
+                if ord(ch) < 32 or ord(ch) == 127:
+                    return (
+                        f'{label}: the value contains a control character '
+                        f'({ascii(ch)[1:-1]}). Line breaks, tabs and other '
+                        f'control characters are not allowed.'
+                    )
+            if text.endswith('\\'):
+                return f'{label}: the value must not end with a backslash.'
+        return None
+
+    def _stored_filter_settings(self):
+        """
+        The stored ``[filter_settings]`` values (field -> text), read through
+        splunkd as the daily refresh reads them.
+
+        Returns:
+            dict or None: ``{}`` when the stanza does not exist yet, ``None``
+            when it cannot be read.
+        """
+        session_key = self.getSessionKey()
+        if not session_key:
+            return None
+        try:
+            response, content = rest.simpleRequest(
+                f'/servicesNS/nobody/{APP_NAME}/configs/conf-{SETTINGS_CONF}/{FILTER_STANZA}',
+                sessionKey=session_key,
+                getargs={'output_mode': 'json'},
+                method='GET',
+            )
+        except Exception as e:
+            if getattr(e, 'statusCode', None) == 404:
+                return {}
+            logger.warning(f'Could not read the stored filter settings: {e}')
+            return None
+        if response.status == 404:
+            return {}
+        if response.status != 200:
+            logger.warning(
+                f'Could not read the stored filter settings: HTTP {response.status}'
+            )
+            return None
+        try:
+            entries = json.loads(content).get('entry', [])
+            stored = (entries[0].get('content') or {}) if entries else {}
+        except Exception as e:
+            logger.warning(f'Could not parse the stored filter settings: {e}')
+            return None
+        out = {}
+        for name in FILTER_FIELDS:
+            if name not in stored:
+                continue
+            value = stored[name]
+            if isinstance(value, bool):
+                value = '1' if value else '0'
+            out[name] = '' if value is None else str(value)
+        return out
+
+    def _effective_filter_settings(self):
+        """
+        The Filters settings as they stand after this save: each field the
+        request posts (:meth:`_posted`), else its stored value
+        (:meth:`_stored_filter_settings`, read only when a field is missing
+        - the Filters form posts every field), else FILTER_FIELD_DEFAULTS.
+
+        Returns:
+            dict: field -> text, for every name in FILTER_FIELDS.
+        """
+        posted = dict((name, self._posted(name)) for name in FILTER_FIELDS)
+        missing = [name for name in FILTER_FIELDS if posted[name] is None]
+        stored = {}
+        if missing:
+            stored = self._stored_filter_settings()
+            if stored is None:
+                logger.warning(
+                    f'This Filters save does not post {", ".join(missing)} and '
+                    f'the stored values could not be read; the filter rules '
+                    f'are generated with their defaults instead.'
+                )
+                stored = {}
+        settings = {}
+        for name in FILTER_FIELDS:
+            value = posted[name]
+            if value is None:
+                value = stored.get(name, FILTER_FIELD_DEFAULTS[name])
+            settings[name] = value
+        return settings
 
     def _get_arg(self, name, default=''):
         """
@@ -393,10 +667,14 @@ class FilterSettingsHandler(AdminExternalHandler):
         return default
 
     def _generate_filter_configs(
-        self, filter_enabled, include_patterns, exclude_patterns, days_in_past
+        self, filter_enabled, include_patterns, exclude_patterns, days_in_past,
+        include_sources=None, exclude_sources=None,
     ):
         """
         Generate (or clear) the filter transforms and props in local/.
+
+        Both generators run before either file is written, so a refused
+        value (ValueError) leaves the previous block in place.
 
         When running on a deployment server, the generated configs are also
         mirrored to ``etc/deployment-apps/`` so they are staged for the next
@@ -413,16 +691,19 @@ class FilterSettingsHandler(AdminExternalHandler):
             self._reload_confs()
             return
 
-        # Generate transforms.conf (include gate + exclude filter + time filter)
+        # transforms.conf (include gate + source includes + time filter +
+        # folder and source excludes) and props.conf (TRANSFORMS-00-filter)
         transforms_content = generate_transforms_stanzas(
-            include_patterns, exclude_patterns, days_in_past
+            include_patterns, exclude_patterns, days_in_past,
+            include_sources=include_sources,
+            exclude_sources=exclude_sources,
+        )
+        props_content = generate_props_filter_lines(
+            include_patterns, exclude_patterns, days_in_past, filter_enabled,
+            include_sources=include_sources,
+            exclude_sources=exclude_sources,
         )
         write_local_conf(app_path, 'transforms', transforms_content)
-
-        # Generate props.conf (TRANSFORMS-00-filter reference)
-        props_content = generate_props_filter_lines(
-            include_patterns, exclude_patterns, days_in_past, filter_enabled
-        )
         write_local_conf(app_path, 'props', props_content)
 
         logger.info('Generated local filter configs in local/transforms.conf and local/props.conf')
@@ -529,8 +810,8 @@ class FilterSettingsHandler(AdminExternalHandler):
         if not session_key:
             return
 
-        # If filtering is disabled or include is wildcard, clear any warning
-        if not filter_enabled or not include_patterns or include_patterns == ['*/*']:
+        # If filtering is disabled or include is pass-all, clear any warning
+        if not filter_enabled or is_pass_all_include(include_patterns):
             self._clear_system_message(session_key)
             return
 

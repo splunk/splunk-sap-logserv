@@ -75,18 +75,25 @@ export const single = (
  * flight not even "last chunk wins" is deterministic:
  *
  *   logserv_topology_backfill_inventory   _key = canonical_value. Worse than the
- *     overwrite: `mvcount(sids)=1` is a WHOLE-WINDOW predicate. An IP mapping to
- *     one SID in June and another in July passes each chunk individually and
- *     fails the true whole-window test, so chunking would admit mappings that
- *     must be rejected.
+ *     overwrite: the SID it writes is a WHOLE-WINDOW choice (build 379: the SIDs
+ *     whose newest event falls in the endpoint's most recent hour, then the one
+ *     with the most events in the window; an exact tie writes nothing). Per
+ *     chunk, each month would choose on its own counts, and an older chunk
+ *     finishing last would put back a SID the endpoint has since left.
  *   logserv_topology_enrichment_backfill  _key = ip:evidence_source, aggregating
  *     count / values(enr_user) / min(_time) across the window — chunking would
  *     undercount events, drop users seen in earlier chunks and corrupt first_seen.
  *
  * Pinning them to 30 days is not a compromise: both describe CURRENT state, not
- * history, and a longer window makes the inventory strictly worse — over a year
- * more IPs get reassigned, so more fail `mvcount(sids)=1` and are excluded,
- * resolving FEWER partner nodes to SIDs. Session 131.
+ * history. Session 131. (Its second reason - over a year more IPs got reassigned
+ * and failed the one-SID test `mvcount(sids)=1`, so a longer window resolved
+ * FEWER partner nodes to SIDs - ended with build 379's most-recent-SID choice.)
+ *
+ * The same whole-window choice also spans the inventory's ARMS (its tail adds
+ * the arms' event counts per SID before it chooses), and so does the nodes
+ * tail's `sum(event_count)`: since build 378 the panel stages those two
+ * stanzas' arms and combines them in one search per part
+ * (utils/backfillPlan.ts), so the inventory is one part over these 30 days.
  */
 export const FIXED30_BACKFILL_STANZAS: ReadonlySet<string> = new Set([
     'logserv_topology_backfill_inventory',
@@ -102,7 +109,7 @@ export const ROLLUPS: RollupDef[] = [
     single('abapnet', 'ABAP Network & Security'),
     single('xstack_auth', 'Cross-Stack Authentication'),
     single('perimeter', 'Network Perimeter'),
-    single('linux', 'Linux System & Security'),
+    single('linux', 'Linux System & Security / Network Perimeter'),
     single('web_timing', 'Web & API Performance / Web Dispatcher'),
     single('hana_trace', 'HANA Trace'),
     single('windows', 'Windows'),
@@ -160,11 +167,60 @@ export const ROLLUPS: RollupDef[] = [
         ],
         retentionSearches: [
             'logserv_topology_retention',
+            'logserv_topology_edges_retention',
             'logserv_topology_enrichment_retention',
         ],
         bucketField: 'bucket_ts',
     },
 ];
+
+/**
+ * The Dashboard Data panel's upgrade note for the HANA host, HANA trace and RFC
+ * edge changes (build 378; design_impact.md section 4 and findings F3, F4, F8),
+ * by rollup key so the labels it shows are the table's own.
+ *
+ * CLEAR THEN BACKFILL: rows that store a value the upgrade changes in their
+ * _key (the HANA audit `host`, the HANA trace severity / component / file
+ * fields, the RFC edge orientation, and the topology rows hashed from them).
+ * A Backfill without the Clear writes the new keys beside the old ones and the
+ * dashboards sum both - Environment Health included (F3: Total Errors sums
+ * `toterr` across hosts) - and the four all-sourcetype rollups keep rows for
+ * client host names that never sent data. The Environment Topology (graph) row
+ * also repairs any node counts or inventory mappings an earlier per-arm Backfill
+ * of that row wrote short (F1).
+ *
+ * ABAP Network & Security (item icm): the ICM error count keeps its key but
+ * now counts dev_icm ERROR lines (until build 378: sessions in SAP client
+ * 400-599, read as HTTP 4xx/5xx), so a Backfill alone leaves the old count
+ * in every hour with no ERROR line; the Clear also removes the icmstat rows
+ * nothing reads any more. Where metric="icmerr" holds no row the old
+ * count was never written, and a Backfill alone is exact (release notes).
+ *
+ * BACKFILL ONLY: HANA audit records with an empty client field now parse
+ * (h1 decision 3), which adds rows and raises counts under keys that do not
+ * change - no double count, so no Clear.
+ */
+export const UPGRADE_NOTE_CLEAR_THEN_BACKFILL: readonly string[] = [
+    'hana',
+    'hana_trace',
+    'severity',
+    'abapnet',
+    'hostrole',
+    'topology_graph',
+    'topology_detail',
+    'mc',
+    'pipeline',
+    'hostdetails',
+    'stmap',
+];
+export const UPGRADE_NOTE_BACKFILL_ONLY: readonly string[] = ['compliance', 'xstack_auth'];
+/**
+ * Build 381: the work process trace-component names (wp_category_name) are
+ * now SAP's own, and the Work Process Performance rollup keys its metric "wp"
+ * on that name - one Clear then Backfill (or the narrower repair of the
+ * release notes, which deletes metric "wp" only).
+ */
+export const UPGRADE_NOTE_TRACE_NAMES: readonly string[] = ['wp_perf'];
 
 /** Flattened views of the static registry (concat — Array.flat/flatMap need an
  *  ES2019 lib; this tsconfig targets earlier). */

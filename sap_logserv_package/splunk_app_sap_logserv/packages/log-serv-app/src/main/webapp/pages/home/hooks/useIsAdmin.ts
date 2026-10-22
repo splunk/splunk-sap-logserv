@@ -21,10 +21,12 @@ import { useEffect, useState } from 'react';
  * The fetch uses Splunk's Web cookie via `credentials: 'same-origin'`,
  * matching the pattern in `components/ai/providers/credentials.ts`.
  *
- * Server-side ACL still applies: the metadata `[]` global stanza must
- * grant write to the role for any save action to actually succeed. See
- * `metadata/default.meta` for the canonical list. Adding a role here
- * without also granting it write in metadata.meta would give the user a
+ * Server-side ACL still applies: since build 380 the AI Assistant's KV
+ * collections (settings, acks, models) and since build 384 the rollup,
+ * topology and platform-snapshot collections let only these roles write,
+ * and the `[]` global stanza governs the conf writes. See `metadata/default.meta`
+ * for the canonical lists (the aiKvAcl and kvAcl consistency tests hold them equal). Adding a role here
+ * without also granting it write in default.meta would give the user a
  * misleading "you're an admin" UI followed by a 403 on Save.
  */
 

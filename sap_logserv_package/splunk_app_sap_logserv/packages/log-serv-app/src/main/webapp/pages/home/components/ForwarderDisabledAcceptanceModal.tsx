@@ -17,7 +17,9 @@ import { logservTheme } from '../styles/logservTheme';
  * `disclaimerHash`, so future audit reviews can prove which revision
  * of the wording the admin acknowledged.
  *
- * Build 98 / session 022.
+ * Build 98 / session 022. Revision 2 (build 386): the text names the audit
+ * index correctly, and `[logserv-ai-assistant-tc] optInVersion` went to 2
+ * with it; utils/legalAcks.consistency-test.ts pins each text to its version.
  */
 
 // The exact disclaimer text shown to the admin. Edits here MUST be
@@ -28,7 +30,7 @@ export const ACCEPTANCE_DISCLAIMER_TEXT = `Audit log forwarding is currently dis
 
 By submitting this acknowledgement you confirm:
 
-  * You will not edit, delete, modify, alter, redact, omit, fabricate, or otherwise tamper with the ai_assistant_audit index, its bucket files on disk, or any audit event record at any time, by any means, on any host.
+  * You will not edit, delete, modify, alter, redact, omit, fabricate, or otherwise tamper with the AI Assistant audit index (logserv_ai_assistant_audit, or the index set in Settings), its bucket files on disk, or any audit event record at any time, by any means, on any host.
 
   * You understand that disabling audit forwarding does not relieve any compliance, regulatory, contractual, or fiduciary obligation you or your organisation may have to maintain tamper-evident audit records.
 
@@ -209,13 +211,13 @@ interface AcceptanceModalProps {
     tcVersion: number;
     /** Called when the admin makes a yes/no choice. Receives the
      *  binary answer and the SHA-256 of the disclaimer text the
-     *  admin saw, so the caller can record both via the standard
-     *  Splunk telemetry endpoint AND the audit log. Per Splunk's
+     *  admin saw, so the caller can record both in the KV Store
+     *  (logserv_ai_assistant_acks) AND the audit log. Per Splunk's
      *  pattern this fires for BOTH yes (Submit) and no (Cancel) —
      *  the version is bumped either way; only the choice differs. */
     onChoice: (choice: OptInChoice, disclaimerHash: string) => Promise<void> | void;
     /** When true, both buttons show a busy state and are disabled
-     *  (e.g. while the conf write + audit event post). */
+     *  (e.g. while the KV Store write + audit event post). */
     busy?: boolean;
 }
 
@@ -270,8 +272,9 @@ const ForwarderDisabledAcceptanceModal: React.FC<AcceptanceModalProps> = ({
                         of disclaimer version <code>v{tcVersion}</code> will be
                         recorded for administrator account{' '}
                         <code>{adminUsername || 'unknown'}</code> along with
-                        your network address and a timestamp via the standard
-                        Splunk telemetry endpoint.
+                        your network address and a timestamp in the AI
+                        Assistant audit log, and stored in the KV Store of
+                        this deployment.
                     </Identity>
                     <AckRow>
                         <input

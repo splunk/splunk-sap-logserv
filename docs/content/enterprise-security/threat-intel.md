@@ -49,7 +49,7 @@ Splunk replaces the file in place. The existing transforms.conf stanza stays unc
 For TI feeds that update regularly:
 
 1. Author a saved search that pulls from the TI source (REST API, file ingest, etc.) and emits rows matching the `domain,category,source,added_date,notes` shape.
-2. End the SPL with `| outputlookup logserv_ti_malicious_domains` to overwrite the file.
+2. End the SPL with `| outputlookup override_if_empty=false logserv_ti_malicious_domains` to overwrite the file. Without `override_if_empty=false`, Splunk deletes the file when the search returns no rows — so a run during an outage of your TI connector would empty the list; with it, an empty run leaves the previous list in place.
 3. Schedule the saved search at whatever cadence matches your feed (hourly, daily, etc.).
 
 This is the canonical pattern Splunk recommends for managed TI feeds. The customer owns the upstream connector; the LogServ App is just the consumer.
@@ -65,14 +65,15 @@ If you have ES installed, the ES Threat Framework already maintains its own cons
 | rename description AS notes
 | eval source="splunk-es-threat-framework"
 | table domain category source added_date notes
-| outputlookup logserv_ti_malicious_domains
+| outputlookup override_if_empty=false logserv_ti_malicious_domains
 ```
 
 (Adjust field names + filter logic to match your ES Threat Framework configuration.)
 
 ## :material-circle-box:{ .taiconcolor } Tuning + maintenance
 
-- **Stale indicators.** Indicators older than ~30 days have a higher false-positive rate (the upstream threat may already be remediated). Periodically prune via `inputlookup → where added_date >= relative_time(now(), "-30d") → outputlookup` to overwrite with a freshness-filtered view.
+- **Stale indicators.** Indicators older than ~30 days have a higher false-positive rate (the upstream threat may already be remediated). Periodically prune via `inputlookup → where added_date >= relative_time(now(), "-30d") → outputlookup override_if_empty=false` to overwrite with a freshness-filtered view. (With the flag, a prune that would remove every indicator leaves the list as it is; to empty it on purpose, upload a header-only CSV as in workflow 1.)
+- **Upgrades.** The three lists ship in the App's `lookups/` directory as header-only files, so an upgrade that installs the package may replace rows you added. As a precaution, export a list you maintain by hand (workflow 1, or a one-off `outputlookup`) before upgrading and re-upload it afterwards; a list written by a recurring saved search (workflow 2 or 3) is refilled on its next run. See [Upgrading](../getting-started/upgrading.md).
 - **Source weighting.** If a particular `source` produces too many FPs, pre-filter at lookup-write time so it never reaches the correlation search. A source that produces TPs reliably can be tagged as such in the `notes` field for SOC analyst context.
 - **Custom domains.** The `domain` column accepts FQDNs. Wildcard domain patterns (e.g., `*.evil.com`) are NOT directly supported by Splunk's stock `lookup` command — for wildcard support, use a `match=WILDCARD` lookup (configure on the transforms.conf stanza) or a custom-authored detection that uses regex matching against the lookup contents.
 

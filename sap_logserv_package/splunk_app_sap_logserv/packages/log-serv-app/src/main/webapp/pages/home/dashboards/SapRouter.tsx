@@ -13,7 +13,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * SAP Router — honest port of v0.0.4.2 logserv_sap_router.xml.
@@ -264,10 +264,10 @@ const SapRouter: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Connection Actions Over Time" subtitle="Daily volume by action (CONNECT/DISCONNECT/etc.)">
+                <FramedPanel title="Connection Actions Over Time" subtitle={spanSubtitle('Volume by action (CONNECT/DISCONNECT/etc.)', qConnTrend)}>
                     <TimeSeriesChart query={qConnTrend} height={280} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="Router Errors Over Time" subtitle="Daily error count">
+                <FramedPanel title="Router Errors Over Time" subtitle={spanSubtitle('Error count', qErrorTrend)}>
                     <TimeSeriesChart query={qErrorTrend} height={280} palette="errors" />
                 </FramedPanel>
             </PanelGrid2>

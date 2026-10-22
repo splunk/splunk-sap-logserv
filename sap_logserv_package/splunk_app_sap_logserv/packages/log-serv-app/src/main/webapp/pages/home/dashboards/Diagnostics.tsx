@@ -5,8 +5,8 @@
  * Live environment health for the whole data pipeline — index, sourcetypes,
  * every rollup collection, platform facts — plus the saved Data Doctor
  * reports. NOT admin-gated: every check on this page is non-admin-readable,
- * and the page carries NO destructive controls (every logserv_* collection is
- * world-writable, so a Clear button here would actually succeed — destructive
+ * and the page carries NO destructive controls (its own collections - saved
+ * reports, supplied ingest facts - are writable by every role, so a Clear button here would actually succeed — destructive
  * controls stay in the admin-gated Settings page; here admin actions render
  * as text).
  *
@@ -52,8 +52,7 @@ import {
 } from '../utils/diagReport';
 import {
     IngestFacts,
-    scrubPaste,
-    parseIngestPaste,
+    prepareIngestPaste,
     writeIngestFacts,
     ingestFactsSummary,
     provenanceLine,
@@ -426,9 +425,11 @@ const Diagnostics: React.FC = () => {
         void refreshReports();
     }, [refreshReports]);
 
-    /** §15.2 — scrub -> parse -> store -> re-run. Save is disabled while the
-     *  checks run (§15.8a-27), needs no runner discipline (no probes), and
-     *  guards every post-await setState with mountedRef. */
+    /** §15.2 — parse + scrub -> store -> re-run. The structure is read from
+     *  the raw paste and only scrubbed text is stored (`prepareIngestPaste`,
+     *  session 154). Save is disabled while the checks run (§15.8a-27), needs
+     *  no runner discipline (no probes), and guards every post-await setState
+     *  with mountedRef. */
     const handleSaveFacts = useCallback(async (): Promise<void> => {
         if (saveBusy || running) return;
         const raw = paste;
@@ -437,8 +438,7 @@ const Diagnostics: React.FC = () => {
         setSaveMsg(null);
         try {
             const nowSec = Math.floor(Date.now() / 1000);
-            const scrubbed = scrubPaste(raw);
-            const parsed = parseIngestPaste(scrubbed, nowSec);
+            const { scrubbed, parsed } = prepareIngestPaste(raw, nowSec);
             const facts: IngestFacts = {
                 ...parsed,
                 suppliedAt: nowSec,
@@ -1128,7 +1128,7 @@ const Diagnostics: React.FC = () => {
                                             <th>Scope</th>
                                             <th>Report</th>
                                             <th>Summary</th>
-                                            <th>By</th>
+                                            <th title="The name the browser recorded with the report; not verified">By (not verified)</th>
                                             <th>Build</th>
                                             <th>Download</th>
                                         </tr>
@@ -1187,8 +1187,9 @@ const Diagnostics: React.FC = () => {
                             </div>
                         )}
                         <Muted>
-                            Saved reports are visible to all users of this app and, like every
-                            app collection, writable by them — treat them as shared,
+                            Saved reports are visible to all users of this app and writable by
+                            them (one of the few app collections every user can write), so a stored
+                            report's contents and author are not verified — treat them as shared,
                             unauthenticated-integrity artifacts. The authoritative copy of a
                             report is the one downloaded when it was generated.
                         </Muted>

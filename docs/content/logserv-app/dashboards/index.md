@@ -52,7 +52,7 @@ Use this page as an index — click any dashboard below to see its full purpose,
 
 | Dashboard | Purpose | Key Data Sources |
 |-----------|---------|-----------------|
-| [Network Perimeter](security/network-perimeter.md) | Unified network-boundary view: firewall drops (inbound), proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation | `linux_secure`, `squid:access`, `isc:bind:query` |
+| [Network Perimeter](security/network-perimeter.md) | Unified network-boundary view: firewall drops at the host and in transit, proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation | `linux_secure`, `squid:access`, `isc:bind:query` |
 | [Cross-Stack Authentication](security/cross-stack-authentication.md) | Unified authentication failure analysis across SAP, HANA, and Windows layers | `sap:sapstartsrv`, `sap:hana:audit`, `XmlWinEventLog` |
 | [Change & Configuration Activity](security/change-config.md) | Cross-stack audit trail: HANA user/role/privilege changes, Windows account and group modifications, Linux sudo and user-management activity, with compliance-focused privileged and after-hours views | `sap:hana:audit`, `XmlWinEventLog`, `linux:sudolog`, `linux_messages_syslog` (plus the other `linux:*` sourcetypes) |
 
@@ -118,6 +118,23 @@ Sparklines come in a few flavors depending on what the KPI measures:
 - **Rate KPIs** (e.g., HTTP Error Rate, Web Error Rate %) — sparkline shows daily error percentage
 - **Volume KPIs** (e.g., Total Volume, Total Bandwidth) — sparkline shows daily MB; headline shows formatted KB/MB/GB
 - **No-data rendering** — while a KPI's search runs, the card shows a small spinner; a search that returns no rows renders an em-dash (—) plus a short inline explanation of why (see [Data Doctor](platform/diagnostics.md)). KPIs with an empty-safe SPL wrap render `0` instead, with a flat-zero sparkline
+
+Hovering a sparkline shows the value of the nearest day and its date. A sparkline's days follow your Splunk time-zone preference, and the hover shows the date in that zone. The **Beaconing Domains** sparklines are the exception: beaconing is detected per UTC day, so each of their points is one UTC day and the hover shows its date labelled *(UTC day)*. A day's beaconing count is written once that UTC day has ended, so on DNS Analytics and Network Perimeter, whose lines run to the end of the selected range, a UTC day that has not ended yet is drawn at 0 and its hover reads *(UTC day, not yet computed)*. That is today's UTC day, and west of UTC also the next one, which begins before your local day ends.
+
+### :material-lightning-bolt:{ .taiconcolor } Chart Time Buckets
+
+Time charts follow the time-range picker: the wider the range, the wider each bar or line point (its **bucket**), so a chart stays readable from *Last 24 hours* to *Last 90 days*. Every time chart prints the bucket it is drawing in its subtitle -- for example *Proxy request count — span 6h*.
+
+| Selected range | Charts counted from the index | Summary-backed charts |
+|---|---|---|
+| Under 90 minutes | 1 minute | 1 minute (they read raw events at this range) |
+| 90 minutes to 6 hours | 1 minute | 1 hour |
+| Up to 24 hours (*Last 24 hours*) | 15 minutes | 1 hour |
+| Up to 7 days (*Last 7 days*) | 1 hour | 1 hour |
+| Up to 30 days (*Last 30 days*) | 6 hours | 6 hours |
+| Longer (*Last 90 days*) | 1 day | 1 day |
+
+Summary-backed charts never draw buckets finer than an hour, because the summaries they read are hourly (see [Performance & Data Freshness](performance.md)). Day-sized buckets, and the days of the KPI sparklines, follow your Splunk time-zone preference; shorter buckets are aligned to UTC, so a 6-hour bucket starts at 00:00, 06:00, 12:00 or 18:00 UTC.
 
 ### :material-lightning-bolt:{ .taiconcolor } Click-Through Drilldowns
 

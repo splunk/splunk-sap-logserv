@@ -12,7 +12,7 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import PromptBrowser from './PromptBrowser';
 import ToolResultPanel from './ToolResultPanel';
-import PrivacyBanner, { AuditModal } from './PrivacyBanner';
+import PrivacyBanner, { AuditModal, AuditWriteWarning } from './PrivacyBanner';
 import { buildSplunkSearchUrl } from '../../../utils/drilldownUrls';
 
 const DEFAULT_LEFT_PCT = 40;
@@ -465,6 +465,10 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
                 models={ctx.effectiveModels}
                 templatesOnlyMode={templatesOnlyMode}
             />
+            {/* Writes to the audit index are failing (for a user without
+              * edit_tcp or edit_log_alert_event, every one is). Fail-open: the
+              * assistant keeps working, so say so where the user is. */}
+            {ctx.auditWriteProblem && <AuditWriteWarning problem={ctx.auditWriteProblem} />}
             {!mcpRequired && (
                 <ChatOnlyBanner role="status">
                     <span aria-hidden>⚠</span>
@@ -611,6 +615,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({
             {showAuditModal && (
                 <AuditModal
                     events={ctx.state.auditEvents}
+                    writeProblem={ctx.auditWriteProblem}
                     onClose={() => setShowAuditModal(false)}
                 />
             )}

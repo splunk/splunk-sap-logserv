@@ -17,6 +17,9 @@ Application Settings
 
 The two top-level tabs render with the standard tab chrome; the AI Assistant sub-tabs render as a lighter, secondary text-tab row beneath them.
 
+!!! note "Who can save AI Assistant settings"
+    The AI Assistant's settings, its legal acknowledgements and its discovered-model cache are stored in the App's KV Store collections `logserv_ai_assistant_settings`, `logserv_ai_assistant_acks` and `logserv_ai_models`. Every role can read them, because every page load needs them; since App build 383 only the **admin**, **sc_admin** and **sc_subadmin** roles can write them (the App's `metadata/default.meta`). Earlier builds let every role write them, so any signed-in user could change, through Splunk's REST API, where an admin's browser sends the audit forwarder's HEC token and the MCP bearer token, and the privacy tier. The Settings page itself is shown to the same three roles.
+
 ![Application Settings — two-level tab hierarchy (AI Assistant ▸ General sub-tab)](../../images/settings-general.png)
 
 ## :material-circle-box:{ .taiconcolor } The Two Top-Level Tabs
@@ -70,7 +73,7 @@ A **Discovered models** status row also renders beneath the model fields — the
 
 | Field | Default | Description |
 |---|---|---|
-| **`tier2_pii_redaction`** | `true` | When Tier 2 is active, redact known identifier columns (`email`, `user(name)`, the six `src/source/client/remote/dest/destination` IP prefixes, `mac`, `account` — see [Privacy Tiers](privacy-tiers.md) for the exact pattern list) before sending to the LLM. Stable per-value `<redacted-XXXXXXX>` tags so cardinality reasoning still works. |
+| **`tier2_pii_redaction`** | `true` | When Tier 2 is active, redact the values of identifier columns (every field the App defines is classified one by one — user names, statements that name users, addresses, and host names with the hostname opt-in — and name patterns cover every other field: `email`, `user(name)` and `user_name` and their plurals, every `*_ip`, `*_addr` and `*_address` and a bare `ip`, the CIM `src`, `dest`, `dst` and `dvc`, `peer`, `mac`, `account`, camelCase `…User` / `…UserName` / `…Email`, and id names such as `user_id`, also after `.`, `:`, `-` or a space as in `Authentication.user` — see [Privacy Tiers](privacy-tiers.md) for the exact rules) before sending to the LLM. It fails closed: a text column's values are sent in clear only when the App can trace the column through the SPL to fields that mark no identifier. `values(user)` or an alias of `user` count as `user`, and a pivot's text cells or a column computed by an `eval` expression, `rex`, `spath` or any other construct the App does not trace are redacted whatever they hold. Per-value `<redacted-XXXXXXX>` tags — a keyed hash under a random key per chat session — stay the same within a chat session, so cardinality reasoning still works, and cannot be linked across sessions or reversed by hashing candidates. While on, it also redacts every value of a text column shown as `col_N` and sends `values withheld` for numeric columns whose name or a field they read marks an identifier, or that mix many fields. Column names are withheld as `col_N` whatever this setting, unless Splunk generates them or the query wrote every word of them. |
 | **`tier2_redact_hostnames`** | `false` | Whether to redact hostname columns under the Tier 2 PII rule. Default off — hostname is often non-sensitive in SAP environments. |
 
 ### Power Users
@@ -118,7 +121,7 @@ The model pickers (Settings → General `default_model` and the chat panel's per
 
 **Audit trail.** Every refresh — success or failure, any trigger — writes a **`model_discovery`** audit event (provider, trigger, ok, model count, duration, error) to the `logserv_ai_assistant_audit` index, browsable on the Audit Log sub-tab.
 
-**Cost estimates stay honest.** The vendor cost table used for spend tracking is exact-id keyed. A discovered model with no known price reports **$0** — the App never guesses a price from an id prefix. The `daily_spend_cap_usd` limit therefore only counts models with known pricing.
+**Cost estimates stay honest.** The vendor cost table used for spend tracking is exact-id keyed. A discovered model with no known price reports **$0** — the App never guesses a price from an id prefix. The `daily_spend_cap_usd` limit therefore only counts models with known pricing. The Claude 5.x models (`claude-opus-5-5`, `claude-opus-5`, `claude-sonnet-5-5`, `claude-sonnet-5`, `claude-fable-5-1`, `claude-fable-5`, `claude-haiku-5-5`) are priced at Anthropic's published first-party rates, cache reads and writes included, so their turns count toward the cap. `claude-haiku-5-5` is priced at its rate for prompts up to 100K tokens; a longer prompt costs more than the estimate. Bedrock and Vertex prices are set by AWS and Google and are not derived from these.
 
 **How to disable it.** Turn off **`model_discovery_enabled`** on the General sub-tab and save. From that point the App makes **no** vendor model-listing calls (all three triggers are gated), and the pickers offer the curated static baseline only. Existing cached rows in `logserv_ai_models` are ignored while the toggle is off and simply overwritten on the next refresh if it is re-enabled.
 
@@ -174,9 +177,9 @@ HEC token for tamper-evident audit forwarding to a separate Splunk / SIEM. The d
 
 ![Settings — Audit Log tab](../../images/settings-audit.png)
 
-Read-only browser of every event in the `logserv_ai_assistant_audit` index. The search window is driven by the global time range in the header — the viewer re-runs on every picker change, and there is no separate time-range control. Filters: category multi-select (13 categories — `local_only`, `vendor_tier1`, `vendor_tier2`, `security_blocked_spl`, `rate_limited_prompt`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, `vendor_tier2_elevation`, `forwarder_disabled_acceptance`, `ai_assistant_enable_acceptance`, `model_discovery`), user-contains text filter, result limit (50 / 100 / 250 / 500, default 100).
+Read-only browser of every event in the `logserv_ai_assistant_audit` index. The tab searches the index as the signed-in admin, whose role must allow it ([Restricting who can read the audit index](audit-log.md#restricting-who-can-read-the-audit-index)). The search window is driven by the global time range in the header — the viewer re-runs on every picker change, and there is no separate time-range control. Filters: category multi-select (13 categories — `local_only`, `vendor_tier1`, `vendor_tier2`, `security_blocked_spl`, `rate_limited_prompt`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, `vendor_tier2_elevation`, `forwarder_disabled_acceptance`, `ai_assistant_enable_acceptance`, `model_discovery`), user-contains text filter, result limit (50 / 100 / 250 / 500, default 100).
 
-Clicking a row's **+** expand button reveals the full event JSON. The page is paginated client-side at 25 rows per page; "Showing N-M of T events" + Previous / Next buttons render below the table when T > 25.
+Clicking a row's **+** expand button reveals the full event JSON. The page is paginated client-side at 25 rows per page; a "Showing N-M of T events" line sits above the table, and "Page X of Y" with Previous / Next buttons renders below it when T > 25.
 
 **Tamper-resistance disclaimer** at the top of the panel:
 
@@ -197,25 +200,25 @@ is available to **every** user (no admin role needed) on the
 
 ## :material-circle-box:{ .taiconcolor } Legal Acknowledgement Modals
 
-Two legal acknowledgement modals gate specific Settings save flows. Both follow Splunk's `splunk_instrumentation` `optInVersion` framework — once acknowledged at version V, future saves with the same disclaimer revision skip the modal; bumping the version forces re-ack.
+Two legal acknowledgement modals gate the General panel's **Save Defaults**. Both follow Splunk's `splunk_instrumentation` `optInVersion` framework — once acknowledged at version V, future saves with the same disclaimer revision skip the modal; bumping the version forces re-ack.
 
 ### Enable Acceptance Modal (orange-bordered)
 
 Triggers when:
 - `saved.enabled === false && draft.enabled === true` (every "I'm turning this on" deliberate action), OR
-- The current `optInVersion` of the enable-TC stanza is higher than the user's last acknowledgement.
+- The current `optInVersion` of the enable-TC stanza is higher than the version last acknowledged on this deployment (one acknowledgement per deployment, recorded in the KV Store collection `logserv_ai_assistant_acks`). It is at version 3 since build 388 (build 387's version 2 corrected clause 7, where the answer is recorded; version 3 corrected the closing sentence), so a deployment that runs with the AI Assistant enabled is asked once more at its next **Save Defaults**.
 
 The modal disclaimer covers seven clauses: data egress acknowledgement, customer responsibility, AS-IS warranty disclaimer, indemnification, limitation of liability, authority warrant, record-of-acknowledgement. Aligned to Splunk MSA + Cisco EULA conventions.
 
-User identity, Splunk-stamped IP (`host` field), timestamp, and SHA-256 of the disclaimer revision are recorded in an `ai_assistant_enable_acceptance` audit event. **Yes** path: save proceeds + bumps the user's `optInVersionAcknowledged`. **No** path: save aborts + records the No choice.
+User identity, Splunk-stamped IP (`host` field), timestamp, and SHA-256 of the disclaimer revision are recorded in an `ai_assistant_enable_acceptance` audit event. **Yes** path: save proceeds + records the acknowledged version for the deployment. **No** path: the save aborts. If the AI Assistant was being turned on, it stays off. If it was already on (a re-ask after a version bump), it is turned off, since build 388: only `enabled` changes, nothing else in that save, and it is written before the No is recorded, so a failed write records nothing and leaves the question pending; the dialog closes as soon as the AI Assistant is off (build 389). Otherwise the No is recorded with the same version (Splunk's `optInVersion` pattern records both answers); switching the AI Assistant on again asks every time. On a re-ask, the dialog's *Active LLM provider* line names the provider in effect, the one a No keeps (build 391); when the same save also changes the provider, it names that one too, the provider a Yes saves (build 392).
 
 ### Forwarder Disabled Acceptance Modal (red-bordered)
 
 Triggers when:
 - `saved.audit_forwarder_enabled === true && draft.audit_forwarder_enabled === false` (every "I'm turning this protection off" deliberate action), OR
-- The current `optInVersion` of the forwarder-TC stanza is higher than the user's last acknowledgement.
+- The current `optInVersion` of the forwarder-TC stanza is higher than the version last acknowledged on this deployment. It is at version 2 since build 386, whose disclaimer names the audit index correctly, so a deployment that runs with forwarding off is asked once more at its next **Save Defaults**.
 
-The disclaimer covers integrity-mitigation responsibility: with the forwarder off, audit events are recoverable only from the local index, which a host-root admin can edit. Same identity + IP + timestamp + disclaimer-hash recording as the enable modal. Records `forwarder_disabled_acceptance` audit event.
+The disclaimer covers integrity-mitigation responsibility: with the forwarder off, audit events are recoverable only from the local index, which a host-root admin can edit. Same identity + IP + timestamp + disclaimer-hash recording as the enable modal. Records `forwarder_disabled_acceptance` audit event. **Yes** saves with forwarding off; **No** aborts the save and leaves the forwarder setting as it was, but records the version too, so the next save does not ask again unless forwarding is switched from on to off. If the answer cannot be recorded, or the save after a Yes fails, the dialog closes and the error shows on the page (build 390). Its audit event is posted as soon as the answer is recorded, for either answer, so a Yes is logged even when the save after it fails (build 391). It goes where the audit settings in place when the answer is given send it: a Yes that turns forwarding off is also sent to the forwarder being turned off (an attempt with the forwarder settings the page has applied), and if that send fails, its failure record goes to the event's audit index even when the same save renames the index (build 392).
 
 ### Why the hybrid trigger logic
 

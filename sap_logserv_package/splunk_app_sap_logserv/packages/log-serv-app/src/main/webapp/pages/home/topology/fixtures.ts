@@ -11,9 +11,9 @@ import type { TopologyNode, TopologyEdge, ActivityRow } from './types';
  */
 
 export const FIXTURE_NODES: TopologyNode[] = [
-    // Focused SIDs — center, big red rings
-    { id: 'XCP', label: 'XCP', kind: 'sid_focused', tag: 'ECC', eventCount: 18_953_968, healthPct: 88 },
-    { id: 'XHQ', label: 'XHQ', kind: 'sid_focused', tag: 'S4',  eventCount: 7_176_241,  healthPct: 94 },
+    // Focused SIDs — center
+    { id: 'XCP', label: 'XCP', kind: 'sid_focused', tag: 'ECC', eventCount: 18_953_968 },
+    { id: 'XHQ', label: 'XHQ', kind: 'sid_focused', tag: 'S4',  eventCount: 7_176_241 },
 
     // Secondary internal SIDs — medium white circles
     { id: 'XCD', label: 'XCD', kind: 'sid_secondary', tag: 'ECC', eventCount: 3_329_493 },

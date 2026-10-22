@@ -33,7 +33,7 @@ The dashboard is organized into three tabs:
 Role-specific panels. Each panel only appears when the host has data for that role; irrelevant panels auto-hide.
 
 - **HANA Audit - Top Actions** -- Table of audit action types from `sap:hana:audit`, with count and share
-- **ABAP Work Process Mix** -- Table of work-process types from `sap:abap:workprocess`, with count and share
+- **ABAP Work Process Trace Components** -- Table of the trace components of `sap:abap:workprocess` (`dev_w*`) lines: the letter that starts each line, with its name (for example `B = Database Interface`; a letter without a name shows as `<letter> = Other`), with count and share. Lines without a component letter are not counted
 - **Web Dispatcher Traffic** -- Table of HTTP status codes from `sap:webdispatcher:access` (individual codes, not 2xx/3xx buckets)
 - **SAP Router Peers** -- Connection counts by peer IP from `sap:saprouter`
 - **Windows Event Codes** -- Table of `EventCode` values from `XmlWinEventLog*` (paginated, not capped)
@@ -47,9 +47,9 @@ Role-specific panels. Each panel only appears when the host has data for that ro
     This means the dashboard adapts its layout to what the host actually is:
 
     - A **HANA host** sees the HANA Audit - Top Actions panel on Role Activity and hides ABAP, Web Dispatcher, Router, Windows, Sudo, and DNS.
-    - An **ABAP application server** sees the ABAP Work Process Mix panel and hides the HANA / Windows / DNS panels.
+    - An **ABAP application server** sees the ABAP Work Process Trace Components panel and hides the HANA / Windows / DNS panels.
     - A **Windows host** sees Windows Event Codes and hides the SAP-specific panels.
-    - A **full-stack Linux host** (with osquery + sudo + SAP ABAP) sees all of Host Inventory, Sudo Commands, and ABAP WP Mix.
+    - A **full-stack Linux host** (with osquery + sudo + SAP ABAP) sees all of Host Inventory, Sudo Commands, and ABAP Work Process Trace Components.
     - A **sparse host** with only one or two sourcetypes will see just the universal Overview panels plus whichever Role Activity panels match.
     - Selecting **All Hosts** aggregates across every host — most panels populate because at least one host in the environment contributes data to each.
 

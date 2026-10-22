@@ -14,7 +14,7 @@ The title row carries the app-wide **Cloud Provider** picker (All / aws / azure 
 - **SAP Auth Failures** -- Count of sapstartsrv authentication failures
 - **HANA Auth Failures** -- Count of HANA audit events where the connection/authentication was rejected
 - **Windows Auth Failures** -- Count of Windows Security-channel events (sourcetype `XmlWinEventLog`) where the CIM `action` field is `failure` (the classification comes from the Splunk Add-on for Windows on the search-head tier)
-- **Auth Failures Over Time by Layer** -- Stacked column chart showing daily totals per layer (SAP / HANA / Windows) so correlated spikes across layers are visible at a glance
+- **Auth Failures Over Time by Layer** -- Stacked column chart showing totals per layer over time (SAP / HANA / Windows) so correlated spikes across layers are visible at a glance
 - **Users by Auth Failures** -- Table of failing usernames ranked by failure count, summed across all three layers (paginated)
 - **Auth Failure Source IPs** -- Table of source IPs ranked by failure count, showing how many layers each IP hit and which ones, plus last-seen time (paginated); row drilldown opens that IP's full cross-stack auth history in Search
 - **HANA Auth Activity by User** -- Table of HANA users across ALL authentication activity (successes included), showing total events, distinct action types, failure count, risk level, and last-seen time, sorted by failures; row drilldown opens that user's full HANA auth log

@@ -10,8 +10,8 @@ The DNS Analytics dashboard transforms DNS query data into a security detection 
 
 - **Total Queries** -- Aggregate count of DNS queries in the selected time range
 - **Unique Clients** -- Count of distinct client IPs generating DNS queries
-- **Beaconing Domains** -- Count of domains exhibiting periodic query patterns consistent with C2 beaconing
-- **Clients - Request Volume** -- Line chart of DNS query volume per client IP. Defaults to all clients; the panel header carries a client-IP filter (Multiselect) and a Top-N picker (All / Top 5 / 10 / 20 / 50) — picking specific clients overrides the Top-N setting
+- **Beaconing Domains** -- Count of domains exhibiting periodic query patterns consistent with C2 beaconing; hovering its sparkline shows the UTC day of each point (beaconing is detected per UTC day). A UTC day that has not ended yet is drawn at 0 and labelled *not yet computed*
+- **Clients - Request Volume** -- Line chart of DNS query volume per client IP. Defaults to all clients; the panel header carries a client-IP filter (Multiselect) and a Top-N picker (All / Top 5 / 10 / 20 / 50) — picking specific clients overrides the Top-N setting. The chart, the client-IP filter's list and **Requests by Record Type** follow the global **Cloud** dropdown like every other panel
 - **Query Type Distribution** -- Donut chart showing the breakdown of DNS record types. Codes are shown in expanded form (e.g. `A = IPv4 Address`, `TXT = Text Record`); any code not in the label map is displayed as-is
 - **DNS Resolvers** -- Table of the BIND resolvers (the DNS hosts processing queries), ranked by query count, with unique-domain and unique-client counts. The resolver is the `host` field (the BIND server that logged the query); `src` is the querying client and drives the Unique Clients KPI and the Clients by Domain Diversity table
 - **Requests by Record Type** -- Line chart trending DNS query types (A, AAAA, PTR, MX, etc.) over time

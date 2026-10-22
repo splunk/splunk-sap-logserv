@@ -1,2 +1,32 @@
-splunktaucclib>=5.0.0
-solnlib>=5.0.0,<8.0.0
+# Exact pins of every Python package this add-on bundles: the closure pip resolved for the builds of
+# 2026-10-13 and earlier from the old ranges (splunktaucclib>=5.0.0, solnlib>=5.0.0,<8.0.0). Pinning keeps a
+# rebuild from picking up a newer release unseen - splunk-sdk 3.x, for one, needs Python 3.13 and would break
+# Splunk 9.4. The --hash lines are the sha256 digests PyPI publishes for each release file; any --hash puts pip
+# in hash-checking mode, so a file that does not match is refused. solnlib stays below 8 (Splunk Cloud vetting).
+defusedxml==0.7.1 \
+    --hash=sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69 \
+    --hash=sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61
+deprecation==2.1.0 \
+    --hash=sha256:72b3bde64e5d778694b0cf68178aed03d15e15477116add3fb773e581f9518ff \
+    --hash=sha256:a10811591210e1fb0e768a8c25517cabeabcba6f0bf96564f8ff45189f90b14a
+packaging==26.3 \
+    --hash=sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79 \
+    --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
+PySocks==1.7.1 \
+    --hash=sha256:08e69f092cc6dbe92a0fdd16eeb9b9ffbc13cadfe5ca4c7bd92ffb078b293299 \
+    --hash=sha256:2725bd0a9925919b9b51739eea5f9e2bae91e83288108a9ad338b2e3a4435ee5 \
+    --hash=sha256:3f8804571ebe159c380ac6de37643bb4685970655d3bba243530d6558b799aa0
+solnlib==7.0.0 \
+    --hash=sha256:00c5f4efe8d57720bea383132ee34ee8e90042102bf86de1d26649585c2a4aa3 \
+    --hash=sha256:c7e4494dad2a37963fc0319a834f7fdd65c666b3bc811d3cde4f147915f6bf56
+sortedcontainers==2.4.0 \
+    --hash=sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88 \
+    --hash=sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0
+splunk-sdk==2.1.1 \
+    --hash=sha256:46300d52f09e0aed7e5962ce2ba08ef54421ffb3a538c6af6164dcbf9f075faa
+splunktaucclib==8.2.0 \
+    --hash=sha256:30d4e4659a9a3221d8b01dc3eb4503a9a2cfa50ae87dfd5ee847145391b1968c \
+    --hash=sha256:6a4a2fa2aad3f4fcc35822259c066510233a27afa758c6561ebf15aa0d010155
+urllib3==1.26.20 \
+    --hash=sha256:0ed14ccfbf1c30a9072c7ca157e4319b70d65f623e91e7b32fadb2853431016e \
+    --hash=sha256:40c2dc0c681e47eb8f90e7e27bf6ff7df2e677421fd46756da1161c39ca70d32

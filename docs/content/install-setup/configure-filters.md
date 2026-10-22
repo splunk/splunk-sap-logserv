@@ -11,7 +11,7 @@ The Splunk TA for SAP LogServ provides two complementary approaches to filtering
 | **Works with** | All deployment scenarios (Connect, Filter, Copy) | S3 Filter and Connect-to-Filter migration only |
 | **What it filters** | Raw NDJSON events via TRANSFORMS queue routing | S3 event notifications via Lambda function |
 | **License impact** | Filtered events consume zero Splunk license | Filtered notifications never reach Splunk |
-| **Pattern syntax** | `clz_dir/clz_subdir` fnmatch patterns | `clz_dir/clz_subdir` fnmatch patterns (same) |
+| **Pattern syntax** | `clz_dir/clz_subdir` wildcard patterns, plus patterns on the event's `source` value (Include Sources / Exclude Sources) | `clz_dir/clz_subdir` fnmatch patterns on the S3 object key; no `source` patterns |
 | **Time filtering** | Days in the Past (epoch regex, refreshed daily) | Days in the Past (Lambda evaluation) |
 | **AWS resources needed** | None | Lambda function, local SQS queue, DLQ |
 | **Deployment Server support** | ✅ Auto-distributes to Heavy Forwarders | N/A (AWS-side only) |
@@ -26,7 +26,7 @@ The Splunk TA for SAP LogServ provides two complementary approaches to filtering
 
     **Use Lambda-based filtering** if you want to reduce the volume of SQS messages that Splunk processes. Because the Lambda filters S3 event notifications *before* they reach Splunk, unwanted objects are never downloaded from S3 at all. This can reduce S3 GET request costs and Splunk ingestion overhead in very high-volume environments.
 
-    **Use both together** for defense-in-depth. The Lambda filters at the AWS pipeline level, and the native TA filters catch anything that slips through at the Splunk level. Since both use the same `clz_dir/clz_subdir` pattern syntax, you can keep the configurations aligned.
+    **Use both together** for defense-in-depth. The Lambda filters at the AWS pipeline level, and the native TA filters catch anything that slips through at the Splunk level. Since both use the same `clz_dir/clz_subdir` pattern syntax, you can keep the configurations aligned. **Include Sources** and **Exclude Sources** have no Lambda equivalent: the Lambda sees the S3 object key, not the `source` value inside each event, so file-level rules exist only on the Filters tab.
 
 The remainder of this page covers **Native TA Index-Time Filtering** in detail. For Lambda-based filtering setup, see the [AWS Lambda-Based Filtering](#aws-lambda-based-filtering) section at the bottom of this page or the [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md).
 
@@ -41,11 +41,16 @@ The remainder of this page covers **Native TA Index-Time Filtering** in detail. 
 The TA includes built-in **index-time filtering** configured entirely through the Splunk Web UI — no manual editing of configuration files is required.
 
 ??? tip "How It Works"
-    - **Include Filters** — Only events matching at least one include pattern are eligible for indexing. Everything else is dropped before indexing (zero license cost).
-    - **Exclude Filters** — Events matching any exclude pattern are dropped, even if they also match an include pattern. Excludes override includes.
+    - **Include Filters** — Folder patterns (`clz_dir/clz_subdir`). Only events matching at least one include pattern — or one Include Sources entry — are eligible for indexing. Everything else is dropped before indexing (zero license cost). An entry of `*/*` or `*` keeps everything.
+    - **Exclude Filters** — Folder patterns. Events matching any exclude pattern are dropped, even if they also match an include pattern. Excludes override includes.
+    - **Include Sources** — Patterns on the event's whole `source` value (the log file's path, such as `/var/log/zypper.log`, or a name such as `ps`). Keeps matching events even when their folder is not in Include Filters — including events that carry no folder fields at all.
+    - **Exclude Sources** — Patterns on the event's `source` value. Drops matching events even when their folder is included — for example the zypper and YaST2 logs that share the `linux/linux_secure` folder with primary log types.
     - **Time Filter (Days in the Past)** — Events with a `_time` older than the configured number of days are dropped. This prevents backfill of very old log data during initial setup or recovery scenarios.
 
-    All filtering happens at index time via TRANSFORMS-based queue routing, so filtered events never consume Splunk license.
+    All filtering happens at index time via TRANSFORMS-based queue routing, so filtered events never consume Splunk license. [How the Rules Combine](#how-the-rules-combine) gives the order in which they are applied.
+
+!!! note "The Filters tab does not reduce Heavy Forwarder CPU"
+    The filter rules run on the Heavy Forwarder in the same chain of index-time transforms as the Data TA's sourcetype routing, so an event they drop has already been downloaded, split into lines, timestamped and run through that chain. They save license and indexing, not forwarder CPU, and they add rules of their own to the chain. To lower the forwarder's load, drop data before the forwarder downloads it: with the [AWS Lambda pre-filter](#aws-lambda-based-filtering) on AWS, or with the Azure and GCP inputs' path filters. See [Heavy Forwarder Sizing](hf-sizing.md).
 
 <br>
 
@@ -81,16 +86,18 @@ In this model:
 ??? note "Example"
     ![image](../../images/filter-tab-overview.png "Filters Tab Overview")
 
+    On the tab the fields appear in this order: **Enable Filtering**, **Include Filters**, **Exclude Filters**, **Include Sources**, **Exclude Sources**, **Days in the Past**.
+
 
 ### :material-circle-box:{ .taiconcolor } Set Your Filter Options
 
 #### :material-crop-square:{ .taiconcolor } Enable Filtering
 
-Check the **Enable Filtering** checkbox to activate index-time filtering. **Default: unchecked** — out of the box no index-time filtering is applied, and the Include / Exclude / Days-in-the-Past values below take effect only once this box is checked. When disabled, all events are indexed without any filtering.
+Check the **Enable Filtering** checkbox to activate index-time filtering. **Default: unchecked** — out of the box no index-time filtering is applied, and the Include Filters, Exclude Filters, Include Sources, Exclude Sources and Days in the Past values below take effect only once this box is checked. When disabled, all events are indexed without any filtering.
 
 #### :material-crop-square:{ .taiconcolor } Include Filters
 
-Comma-separated patterns specifying which log types to include. Patterns use the format `clz_dir/clz_subdir` with `fnmatch`-style wildcards:
+Comma-separated patterns specifying which log types to include. Patterns use the format `clz_dir/clz_subdir` with `*` and `?` wildcards:
 
 | Pattern | Meaning |
 |---------|---------|
@@ -103,8 +110,10 @@ Comma-separated patterns specifying which log types to include. Patterns use the
 :material-lightning-bolt:{ .taiconcolor } **Rules:**
 
 - Each pattern must be in `dir/subdir` format or a standalone `*`
-- A standalone `*` is equivalent to `*/*` (include everything)
+- An entry of `*/*` or a standalone `*` — anywhere in the list — includes everything: the include gate is left out and the other include entries have no effect (see [Include Everything](#include-everything))
 - Valid characters: letters, numbers, `*`, `?`, `.`, `-`, `:`, `_`
+- `*` matches any run of characters within its segment and `?` exactly one character: `linux/*` covers every `linux` subfolder, `*/cron` every `cron` subfolder. Matching is case-sensitive
+- A folder pattern needs the event's `clz_dir` and `clz_subdir` fields — an event without them matches no folder pattern (see [Events Without Folder Fields](#events-without-folder-fields))
 - This field cannot be empty when filtering is enabled — use `*/*` to include everything
 
 ??? tip "Supported Log Types Reference"
@@ -119,24 +128,161 @@ Comma-separated patterns for log types to exclude. Same pattern format as includ
 - Include: `linux/*`
 - Exclude: `linux/cron, linux/slapd`
 
-Leave this field empty to exclude nothing.
+Leave this field empty to exclude nothing. A standalone `*` in Exclude Filters excludes nothing (unlike in Include Filters); `*/*` there drops every event that has folder fields.
+
+#### :material-crop-square:{ .taiconcolor } Include Sources
+
+Comma-separated patterns matched against the event's whole `source` value — see [Source Pattern Syntax](#source-pattern-syntax). An event whose `source` matches an entry is kept even when its folder is not in Include Filters, and even when it carries no folder fields at all. **Default: empty** (none).
+
+- Use it beside an Include Filters allow-list, to keep particular files the allow-list would drop — for example the HANA trace files and Unix command output that real Azure deliveries send without folder fields ([Recipe 4](#recipe-4)).
+- It only adds to an allow-list. When Include Filters includes everything (`*/*` or `*`), every event is kept already, and with Enable Filtering checked a save that sets Include Sources is refused because its entries would have no effect.
+- Days in the Past and both exclude fields still apply to the events it keeps.
+
+**Example:** Include Filters `hana/hanaaudit, hana/tracelogs`, Include Sources `/usr/sap/*/HDB??/*/trace/*` keeps the HANA audit and trace folders, plus HANA trace files that arrive without folder fields.
+
+#### :material-crop-square:{ .taiconcolor } Exclude Sources
+
+Comma-separated patterns matched against the event's whole `source` value — see [Source Pattern Syntax](#source-pattern-syntax). An event whose `source` matches an entry is dropped, even when its folder is included and even when Include Sources matches it: excludes always win. **Default: empty** (nothing is dropped by source).
+
+- Use it for log files that share a folder with a primary log type — YaST2 and zypper in `linux/linux_secure`, corosync in `linux/pacemaker`. A folder pattern cannot drop them without dropping the primary type too ([Recipe 3](#recipe-3)).
+- **Example:** `/var/log/zypper.log*, /var/log/YaST2/*`
+
+!!! warning "A broad source pattern drops primary log types too"
+    Exclude Sources acts on every event whose `source` matches, whatever its folder. `/var/log/*` drops `/var/log/messages`, `/var/log/firewall`, `/var/log/cron` and every other file under `/var/log`. Name the files, or limit an entry to one folder (`linux/linux_secure=/var/log/zypper.log*`). The [upgrade notification](#upgrade-notifications) does not read source rules, so a pattern that drops a primary log type raises no banner.
+
+#### :material-crop-square:{ .taiconcolor } Source Pattern Syntax
+
+Both source fields take a comma-separated list. Each entry is either a source pattern on its own, or a folder and a source pattern joined by `=`:
+
+| Entry | Matches |
+|---|---|
+| `/var/log/zypper.log` | Events whose `source` is exactly `/var/log/zypper.log`, in any folder or none |
+| `/var/log/zypper.log*` | The same file and its rotated copies, such as `/var/log/zypper.log-20260823` |
+| `/var/log/YaST2/*` | Every file under `/var/log/YaST2/`, subfolders included |
+| `ps` | Events whose `source` is `ps` (Unix command output, which carries no folder fields) |
+| `/usr/sap/*/HDB??/*/trace/*` | HANA trace files of every SID, instance and host |
+| `linux/linux_secure=/var/log/YaST2/*` | YaST2 files, only in the `linux/linux_secure` folder |
+| `linux/proxy=/var/log/squid/*` | Squid files, only in the `linux/proxy` folder (the Azure layout) |
+
+:material-lightning-bolt:{ .taiconcolor } **Rules:**
+
+- A pattern must match the **whole** `source` value: `/var/log/zypper` does not match `/var/log/zypper.log`. The value is the one the indexed event carries in its `source` field (one exception: see [Long Lines](#long-lines)). To list the values a folder delivers:
+
+    ```spl
+    | tstats count where `sap_logserv_idx_macro` by clz_dir, clz_subdir, source
+    ```
+
+- `*` matches any run of characters, **including `/`** — unlike a shell glob, `/var/log/YaST2/*` also covers files in subfolders. `?` matches exactly one character
+- Any number of `*` is fine: a pattern is matched in linear time however many it has, and `**` means the same as `*`
+- Every other character is literal: `.`, `+`, `-` and `:` have no special meaning
+- A pattern is matched against the `source` value as it is written in the event's JSON envelope. Real LogServ `source` values contain no backslash, quote or non-ASCII character; a value that did would be written escaped there (a backslash as `\\`, `é` as `\u00e9`, a quote as `\"`), so a `?` would not stand for one such character — match a backslash or a non-ASCII character with `*` instead. A wildcard never crosses a quote; a pattern that ends in `*` or `?` can still match the part of such a value before its first quote
+- Matching is case-sensitive: `/var/log/yast2/*` does not match `/var/log/YaST2/mkinitrd.log`
+- A folder entry (`dir/subdir=pattern`) matches only when the folder part and the source pattern both match. The folder part follows the Include Filters rules, except that a standalone `*` is not accepted. Events without folder fields never match a folder entry; a plain entry matches them
+- Allowed characters in a source pattern: letters, numbers and `/ . _ : * ? + @ ~ -`. A pattern has at most 512 characters and at least one character that is not `*`, `?` or `/` — patterns that match everything (`*`, `**`, `/*`, `*/*`) are refused: use the folder filters, or turn filtering off
+- Not allowed: spaces inside an entry, `"`, `\`, `[`, `]`, a second `=`, control characters and non-ASCII characters. A comma always separates entries. Spaces around entries are ignored; an empty entry (two commas in a row, or a trailing comma) is refused. The whole field is limited to 4,096 characters
+- A repeated entry is used once
 
 #### :material-crop-square:{ .taiconcolor } Days in the Past
 
 Whole number (0–3650) specifying the maximum age of events to index. Events with a `_time` older than this many days from today are dropped before indexing.
 
 - Set to `7` to only index events from the last 7 days
-- Set to `0` to disable time-based filtering
+- Set to `0`, or leave the field empty, to disable time-based filtering
 - Default: `7`
 
 ??? tip "How the time filter works"
-    The time filter uses a pre-computed epoch-based regex that is refreshed automatically once per day by a built-in scripted input. If the refresh fails to run for a day, the filter becomes slightly more restrictive (one extra day filtered) — the safer failure mode.
+    The time filter uses a pre-computed epoch-based regex that is refreshed automatically once per day by a built-in scripted input. If the refresh does not run, the cutoff does not move forward and the filter becomes slightly less restrictive: it keeps up to one extra day of older events for each missed day, until the next refresh or Save. The daily refresh rewrites all the generated filter rules, the source rules included, from the saved settings.
+
+    On a Deployment Server the refresh also copies the new rules to `deployment-apps/` and reloads the `SAP_LogServ_HeavyForwarders` server class, so the Heavy Forwarders get the new cutoff at their next phone-home. The cutoff changes every day, and the server class the TA creates maps the TA with `restartSplunkd = true`, so while filtering is enabled and Days in the Past is above 0, each Heavy Forwarder in that server class restarts about once a day to apply it, at a time of day set by when the Deployment Server last started. With filtering disabled, or Days in the Past at 0, the refresh changes nothing and no restart follows.
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } How the Rules Combine
+
+The Data TA turns the fields into one chain of index-time transforms. Each step that matches an event decides where it goes — kept for indexing or dropped — and the last step that matched wins:
+
+```
+  one NDJSON line (up to 100,000 characters)
+    |
+    v
+  1. Include gate       drop every event                   -+
+    |                                                       |  only when Include
+    v                                                       |  Filters does not
+  2. Include Filters    keep events whose folder matches    |  include everything
+    |                                                       |
+    v                                                       |
+  3. Include Sources    keep events whose source matches   -+
+    |
+    v
+  4. Days in the Past   drop events older than the cutoff
+    |
+    v
+  5. Exclude Filters    drop events whose folder matches
+    |
+    v
+  6. Exclude Sources    drop events whose source matches
+    |
+    v
+  last step that matched: keep -> indexed, drop -> discarded (nullQueue)
+  no step matched:        kept
+```
+
+In effect, an event is indexed when all of these hold:
+
+- Include Filters includes everything, **or** its folder matches Include Filters, **or** its `source` matches Include Sources
+- it is not older than Days in the Past
+- its folder matches no Exclude Filters entry
+- its `source` matches no Exclude Sources entry
+
+The time filter and both excludes come after the include steps, so they always win. A step whose field is empty is left out of the chain.
+
+#### :material-crop-square:{ .taiconcolor } Include Everything
+
+If any Include Filters entry is `*/*` or a standalone `*`, there is no include gate: steps 1–3 are left out, every event passes them — events without folder fields included — and the other Include Filters entries have no effect. With Enable Filtering checked, a save that also sets Include Sources is refused; a value that reaches the rules anyway (a hand-edited settings file) is ignored, and the Data TA logs a warning. Days in the Past, Exclude Filters and Exclude Sources still apply.
+
+!!! note "Behaviour change"
+    Earlier Data TA builds — those without the Include Sources and Exclude Sources fields — skipped the include gate only when `*/*` or `*` stood on its own in Include Filters. A list that mixed `*/*` with other entries (`*/*, linux/cron`) dropped every event without folder fields, and a standalone `*` beside other entries was ignored, so `*, linux/cron` kept only `linux/cron`. Both lists now keep everything. To keep an allow-list, remove `*/*` and `*` from it.
+
+#### :material-crop-square:{ .taiconcolor } Events Without Folder Fields
+
+Not every LogServ event carries `clz_dir` and `clz_subdir`. SAP files some Azure data in a storage folder named `undefined/undefined` (`<prefix>/undefined/undefined/<YYYY>/<MM>/<DD>/`), and its events have neither field. In real Azure deliveries on the reference system that was about 19.9 million events in four weeks, each kind from a single host ([Data Delivered Without Folder Fields](../getting-started/supported-log-types.md#data-delivered-without-folder-fields)):
+
+- the output of Unix commands — about 19.4 million events, with `source` values such as `ps`, `netstat`, `iostat`, `cpu`, `nfsiostat`, `top`, `openPorts`, `interfaces`, `df`, `bandwidth`, `vmstat` and `Unix:ListeningPorts`. They stay under the base `sap_logserv_logs` sourcetype.
+- HANA trace directory files, `/usr/sap/<SID>/HDB<nn>/<host>/trace/...` (the `.trc` files and `backup.log`) — about 566,000 events. The Data TA routes them to `sap:hana:tracelogs` by their `source` path ([SAP HANA Trace Logs](../getting-started/supported-log-types.md#sap-hana-trace-logs-logserv-app)); events indexed by an earlier Data TA build keep `sap_logserv_logs`.
+
+Routing does not give an event folder fields, so folder patterns cannot see any of these events, the routed HANA trace files included:
+
+- With Include Filters at `*/*` they are kept.
+- With an allow-list — any Include Filters value that does not include everything — **they are all dropped**, unless an Include Sources entry keeps them ([Recipe 4](#recipe-4)). Listing `hana/tracelogs` in Include Filters does not keep the HANA trace files that arrive this way.
+- Exclude Filters never drops them: `hana/tracelogs` there leaves these HANA trace files in place. Only Exclude Sources can drop them.
+- A folder entry in a source field (`dir/subdir=pattern`) never matches them; a plain source pattern does.
+- The [upgrade notification](#upgrade-notifications) reasons about folders only, so it does not point to an allow-list that drops these events. The filter verdict of the LogServ App's [Data Doctor](../logserv-app/dashboards/platform/diagnostics.md#supplying-the-ingest-filter-configuration) for `sap:hana:tracelogs` does take the HANA trace files that arrive this way into account. Wherever it judges that type, it does not treat their arrival as contradicting an Exclude Filters rule on `hana/tracelogs`, and it does not call such a rule a full exclusion. On a HANA Trace panel it also names an allow-list that keeps the `hana/tracelogs` folder but drops these files, as an additional finding listed after the panel's main verdict (such as *Never received* or *Summary not built*), never in its place, because the pasted configuration does not show whether SAP delivers such files to you. A verdict they change is at most *possible*, because the pasted configuration does not show whether your forwarders route these files by their `source` path either. The Data Doctor does not judge the Unix command output, which stays under `sap_logserv_logs`.
+
+:material-lightning-bolt:{ .taiconcolor } **Drop the Unix command output if you do not use it.** It is almost all of this data — about 0.7 million events and roughly 125 MB of text a day on the reference system, about 80% of it `ps` — and the LogServ App does not parse it; it only counts it in its volume dashboards. Exclude Sources `ps, top, netstat, iostat, vmstat, df, cpu, interfaces, bandwidth, openPorts, nfsiostat, Unix:ListeningPorts` drops all twelve wherever they arrive. If you keep them, note that a `ps` row can carry the arguments a process was started with — up to 34% of the real `ps` rows checked on the reference system did — and arguments can contain passwords, keys or tokens.
+
+Before you narrow Include Filters, check what your deliveries carry without folder fields (over a short time range — the search reads raw events):
+
+```spl
+`sap_logserv_idx_macro` | where isnull(clz_dir) | stats count by source, sourcetype
+```
+
+#### :material-crop-square:{ .taiconcolor } Long Lines
+
+Every rule reads the whole line, up to 100,000 characters — the longest line the Data TA indexes. An index-time transform reads only the first 4,096 characters unless told otherwise, so every filter stanza the Data TA generates sets `LOOKAHEAD = 100000`. This matters for the AWS envelope, which carries the log text (`_raw`) before `source`, `clz_dir` and `clz_subdir`: on a line whose log text ran past about 4,000 characters, earlier Data TA builds could not see the folder fields, so an Include Filters allow-list dropped the line and an exclude missed it.
+
+The rules expect the envelope's metadata keys to sit together, all before or all after the `_raw` value, as in every LogServ delivery seen so far (Azure and GCP put them first, AWS after `_raw`). An envelope that put `_raw` between the keys an entry needs would not match that entry: a folder pattern needs `clz_dir` and `clz_subdir`, and a `dir/subdir=` entry also `source`, on the same side of `_raw`. A plain source pattern needs only `source`, so it would still match.
+
+The sourcetype routing and the indexed `host`, `source`, `clz_dir` and `clz_subdir` fields read the same 100,000 characters as the filters. Data TA builds of 2026-10-13 and earlier read only the first 4,096 characters there, so an AWS line whose log text was longer than that was judged by the filters on its envelope but indexed under the base `sap_logserv_logs` sourcetype, without folder fields and with the input's own `host` and `source`. A line longer than 100,000 characters is cut there (`TRUNCATE`), so an AWS line that long loses its envelope keys whatever the rules read.
 
 <br>
 
 ### :material-circle-box:{ .taiconcolor } Save
 
 Click **Save**. The TA validates your patterns and generates the necessary configuration files. If there are any validation errors (invalid characters, empty include field, etc.), the save is blocked and an error message is displayed.
+
+Include Sources and Exclude Sources are checked on every save, even with Enable Filtering unchecked, because their values are written to a configuration file either way. For the same reason every field is refused on every save if it contains a line break, a tab or another control character, or ends with a backslash. The folder patterns are checked when Enable Filtering is checked, as before. [Validation Error on Save](#validation-error-on-save) lists the rules.
+
+The rules are generated from the settings as saved. A save through the REST API or the CLI that sends only some of the fields keeps the saved values of the others, so the generated rules always match what the Filters tab shows.
 
 <br>
 
@@ -244,6 +390,14 @@ You should see data only for log types matching your include patterns.
 
 If you configured exclude patterns, verify those log types are absent from search results.
 
+For source rules, list the `source` values per folder over a window that starts after the Save (or, on a Deployment Server, after the forwarders received the change) — events indexed earlier stay in the index:
+
+```spl
+| tstats count where `sap_logserv_idx_macro` by clz_dir, clz_subdir, source
+```
+
+The files named in Exclude Sources must be gone, while the other files of the same folder still arrive — for `linux/linux_secure`, for example, `/var/log/firewall`, `/var/log/kernel`, `/var/log/sssd/...`, `lastlog` and `who`. `tstats … by clz_dir` leaves out events without folder fields; to check those, use the search in [Events Without Folder Fields](#events-without-folder-fields).
+
 <br>
 
 ### :material-circle-box:{ .taiconcolor } Check Time Filtering
@@ -272,7 +426,8 @@ curl -k -u <splunk-admin> "https://<deployment-server>:8089/servicesNS/nobody/sp
 ```
 
 Omit `?output_mode=json` for the XML form. The response carries `filter_enabled`,
-`include_filters`, `exclude_filters` and `days_in_past` exactly as configured.
+`include_filters`, `exclude_filters`, `include_sources`, `exclude_sources` and `days_in_past`
+exactly as configured.
 
 **File — the only reliable artifact on a DS-managed Heavy Forwarder:**
 
@@ -289,6 +444,27 @@ The LogServ App's **Platform → Diagnostics** page prints these same commands a
 pasted output, turning the ingest filters into evidence its missing-data diagnosis can reason
 about — see [Supplying the ingest-filter configuration](../logserv-app/dashboards/platform/diagnostics.md#supplying-the-ingest-filter-configuration).
 
+!!! note "Source rules make the Data Doctor's folder verdicts approximate"
+    A source rule acts on single files, not on whole folders. When a pasted configuration
+    has Include Sources or Exclude Sources in effect, the Data Doctor cannot say for certain
+    whether a folder's events are kept, and its verdict notes that source rules may drop or
+    keep some files of a folder. Its verdict for `sap:hana:tracelogs` also accounts for the
+    HANA trace files that arrive without folder fields, which the `hana/tracelogs` folder
+    rules do not reach: any Include Filters allow-list drops them unless an Include Sources
+    entry without a folder keeps them, and of the exclude rules only Exclude Sources drops
+    them. Where those files change the verdict, it reads *Partly excluded?* at no more than
+    *possible*: an Exclude Filters rule on `hana/tracelogs` leaves them in place wherever the
+    trace type is judged, and on a HANA Trace panel an allow-list that keeps the folder but
+    drops them is listed as an additional finding after the panel's main verdict, with
+    evidence that explains these files (see
+    [Events Without Folder Fields](#events-without-folder-fields)).
+
+    This needs LogServ App build 377 or later, which follows the Data TA build that added
+    Include Sources and Exclude Sources. App build 376 and earlier do not know the source
+    rules: they ignore them, read a paste that holds only source rules as filtering with
+    everything included, read only the first stanza of a list split over several, and
+    report folder patterns with `*` or `?` as not reconstructable (a partial read).
+
 !!! tip "The transforms paste also carries the Cloud Provider stamp"
     A pasted `local/transforms.conf` includes the generated `[logserv_set_cloud_provider]`
     stanza when the [Cloud Provider Attribution](#cloud-provider-attribution) dropdown is set,
@@ -300,7 +476,7 @@ about — see [Supplying the ingest-filter configuration](../logserv-app/dashboa
 
 ### :material-circle-box:{ .taiconcolor } Log Type Reference
 
-The table below lists the **Primary** log types — those with dedicated sourcetype routing. The `clz_dir` and `clz_subdir` columns show the values used in filter patterns; use these values when configuring your include and exclude filters. The canonical, complete reference (including the **Secondary** log types, which have no dedicated routing but can still be filtered by their own `clz_dir/clz_subdir` paths) is [Supported Log Types](../getting-started/supported-log-types.md).
+The table below lists the **Primary** log types — those with dedicated sourcetype routing. The `clz_dir` and `clz_subdir` columns show the values used in filter patterns; use these values when configuring your include and exclude filters. The canonical, complete reference (including the **Secondary** log types, which have no dedicated routing but can still be filtered by their own `clz_dir/clz_subdir` paths — or, where they share a primary type's folder, by their `source` values; see [Filter Recipes](#filter-recipes)) is [Supported Log Types](../getting-started/supported-log-types.md).
 
 | clz_dir | clz_subdir | Splunk Sourcetype |
 |---------|------------|-------------------|
@@ -344,13 +520,87 @@ The table below lists the **Primary** log types — those with dedicated sourcet
 ??? tip "Filter pattern examples using this table"
     - To include all DNS logs: `dns/*` or `dns/binddns`
     - To include all Linux logs except cron: Include `linux/*`, Exclude `linux/cron`
-    - To exclude Squid on every cloud: Exclude `proxy/squid, linux/proxy` (an Include of `linux/*` also keeps Azure's Squid logs)
+    - To exclude Squid on every cloud: Exclude Filters `proxy/squid`, Exclude Sources `linux/proxy=/var/log/squid/*`. Excluding the whole `linux/proxy` folder would also drop the `/var/log/messages` lines a proxy VM delivers there. Likewise, an Include of `linux/*` also keeps Azure's Squid logs
     - To include only HANA audit and web dispatcher logs: `hana/hanaaudit, webdispatcher/accesslog`
     - To include all Windows event logs: `windows/*`
     - To include all ABAP application logs: `abap/*`
     - To include specific ABAP types: `abap/icm, abap/gateway`
     - To include all SAP Cloud Connector logs: `scc/*`
     - To include all SAP service logs: `sap/*`
+    - To drop the zypper and YaST2 logs but keep the rest of `linux/linux_secure`: Exclude Sources `/var/log/zypper.log*, /var/log/YaST2/*`
+    - To drop zypper's log only where it arrives under `linux/linux_secure`: Exclude Sources `linux/linux_secure=/var/log/zypper.log*` ([Recipe 5](#recipe-5))
+    - To keep HANA trace files that arrive without folder fields while Include Filters is an allow-list: Include Sources `/usr/sap/*/HDB??/*/trace/*`
+    - Do not drop `/var/log/messages` under `sap/saprouter` as operating-system syslog: there it carries the SAP Router's own records ([Recipe 5](#recipe-5))
+
+<br>
+
+---
+
+## Filter Recipes
+
+Each recipe below is a Filters-tab setting for one goal; several can be combined. Primary log types are routed to their own sourcetypes; Secondary ones stay under the base `sap_logserv_logs` sourcetype ([Supported Log Types](../getting-started/supported-log-types.md#secondary-supported-log-types)), so this search lists the unrouted events by folder and file — the ones these recipes are about:
+
+```spl
+| tstats count where `sap_logserv_idx_macro` sourcetype=sap_logserv_logs by clz_dir, clz_subdir, source
+```
+
+Enable Filtering must be checked for any recipe to take effect. On a Deployment Server, Save and then **Deploy to Forwarders**; the change applies to events parsed after the forwarders receive it.
+
+### :material-circle-box:{ .taiconcolor } Recipe 1: Allow-list of the Primary Log Types { #recipe-1 }
+
+Keep the folders of the Primary log types and drop every other folder.
+
+- **Include Filters:** `abap/audit, abap/dispatcher, abap/enqueueserver, abap/event, abap/gateway, abap/icm, abap/messageserver, abap/sapstartsrv, abap/workprocess, dns/binddns, hana/hanaaudit, hana/tracelogs, linux/cron, linux/localmessages, linux/messages, linux/linux_secure, linux/pacemaker, linux/proxy, linux/slapd, linux/sudolog, linux/warn, proxy/squid, sap/saphostexec, sap/saprouter, sap/sapstartsrv, scc/audit, scc/tracelogs, webdispatcher/accesslog, windows/*`
+
+The ABAP and Web Dispatcher folders are listed one by one because `abap/*` would also keep the Secondary `abap/transport` and `abap/httpaccess`, and `webdispatcher/*` the Secondary Web Dispatcher traces. `abap/dispatcher`, `abap/event` and `abap/workprocess` stay in the list although SAP discontinued them in April 2026: they keep a backfill of older data, and the Data TA still counts them as supported. Without them, every Save of this list, and every later Data TA upgrade, raises the [upgrade notification](#upgrade-notifications) banner naming the three folders as dropped before indexing; it clears only when they are added.
+
+- **Drops:** every folder not named, including the Secondary folders whose names are not known (Network / Flow, WAF / F5, MSSQL) and any folder a future SAP delivery adds. With this list the upgrade notification stays quiet until a Data TA upgrade adds a Primary log type; it then names the folder to add.
+- **Also drops:** every event without folder fields — Unix command output and HANA trace files on Azure (see [Events Without Folder Fields](#events-without-folder-fields)). Add [Recipe 4](#recipe-4) to keep the ones you want.
+- **Still keeps:** zypper and YaST2 (they share `linux/linux_secure`) and corosync (it shares `linux/pacemaker`). Add [Recipe 3](#recipe-3).
+
+### :material-circle-box:{ .taiconcolor } Recipe 2: Deny-list of the Secondary Folders { #recipe-2 }
+
+Keep everything except the Secondary folders that have names of their own.
+
+- **Include Filters:** `*/*`
+- **Exclude Filters:** `abap/transport, abap/httpaccess, webdispatcher/process, webdispatcher/icm, webdispatcher/sapstartsrv, webdispatcher/devicm, sybase/*, java/*, bobj_bi/*, bobj_bods/*, bobj_sacagent/*, dpagent/*`
+
+The folder names come from the SAP LogServ service description; none of them has appeared in the reference system's real deliveries. Check the folders your own deliveries use with the search above.
+
+- **Keeps:** any folder the list does not name — the Network / Flow, WAF / F5 and MSSQL logs, whose folders are not known, and any folder a future SAP delivery adds. Events without folder fields are kept. With `*/*` the upgrade notification never fires.
+- **Still keeps:** zypper, YaST2 and corosync. Add [Recipe 3](#recipe-3).
+
+### :material-circle-box:{ .taiconcolor } Recipe 3: Drop zypper and YaST2, Keep the Rest of linux/linux_secure { #recipe-3 }
+
+zypper and YaST2 write to `linux/linux_secure`, the folder of the Primary firewall, kernel, sssd, `lastlog` and `who` logs. Exclude them by `source`:
+
+- **Exclude Sources:** `/var/log/zypper.log*, /var/log/YaST2/*`
+
+`/var/log/zypper.log*` also covers rotated copies; `/var/log/YaST2/*` covers every YaST2 file, such as `/var/log/YaST2/mkinitrd.log` and `/var/log/YaST2/config_diff_2026_09_28.log` (both seen in real deliveries). To drop them only from that folder, write `linux/linux_secure=/var/log/zypper.log*, linux/linux_secure=/var/log/YaST2/*`.
+
+For corosync in `linux/pacemaker`, add `/var/log/cluster/corosync.log*` — that path is the one the SAP LogServ service description names; corosync has not appeared in the reference system's real deliveries, so check the `source` value your deliveries carry before relying on it.
+
+Combine with Recipe 1 or Recipe 2. Afterwards, the `tstats` search in [Check Excluded Data Is Not Present](#check-excluded-data-is-not-present) must show the other `linux/linux_secure` files still arriving.
+
+### :material-circle-box:{ .taiconcolor } Recipe 4: Keep HANA Trace Files with an Allow-list { #recipe-4 }
+
+An Include Filters allow-list drops every event without folder fields, and real Azure deliveries send HANA trace files without them. Keep them by `source`:
+
+- **Include Filters:** your allow-list, for example Recipe 1's
+- **Include Sources:** `/usr/sap/*/HDB??/*/trace/*`
+
+The pattern covers `/usr/sap/<SID>/HDB<nn>/<host>/trace/` and its subfolders for every SID, instance and host. The Data TA routes the `.trc` files and `backup.log` there, and in its `DB_<tenant>/` subfolder, to `sap:hana:tracelogs`; any other file the pattern keeps stays under the base `sap_logserv_logs` sourcetype. To keep the Unix command output too, add the `source` values you want, for example `ps, netstat, iostat, vmstat, df, top`; it stays under `sap_logserv_logs`. Mind the arguments in `ps` rows ([Events Without Folder Fields](#events-without-folder-fields)).
+
+### :material-circle-box:{ .taiconcolor } Recipe 5: Limit a Source Rule to One Folder { #recipe-5 }
+
+A plain source pattern acts in every folder, and on events without folder fields. To make it act in one folder only, write the folder and `=` before it. For example, to drop zypper's log from `linux/linux_secure` and nowhere else:
+
+- **Exclude Sources:** `linux/linux_secure=/var/log/zypper.log*`
+
+The entry matches only events whose folder is `linux/linux_secure` and whose `source` matches `/var/log/zypper.log*`, so a `zypper.log` that a delivery files under another folder is kept. A folder entry never matches an event without folder fields.
+
+!!! warning "Under sap/saprouter, /var/log/messages is SAP Router data"
+    On GCP, LogServ files `/var/log/messages` lines under the `sap/saprouter` folder, and the Data TA gives them the `sap:saprouter` sourcetype, so they feed the SAP Router dashboard. On the reference system at least 70% of them, in the one hour measured, were the router's own connection and trace records, and the rest the router container's wrapper output and other text; every line had the same tagged syslog form, and the newest lines carry the router container's tag. An Exclude Sources entry `sap/saprouter=/var/log/messages` drops router records.
 
 <br>
 
@@ -373,6 +623,10 @@ To resolve the notification:
 
 The banner clears automatically once all supported types are covered.
 
+The same check runs on every Save of the Filters tab with Enable Filtering checked, so an Include Filters list that leaves out a supported folder raises the banner as soon as it is saved, not only after an upgrade.
+
+The check compares the supported folders with Include Filters only. Exclude Filters, Include Sources and Exclude Sources neither raise nor clear the banner, so an exclude that drops a supported log type, or a source rule that drops a primary file, goes unannounced. An Include Filters list with `*/*` or `*` never raises it. It does not know about events without folder fields either: an allow-list that drops the HANA trace files of [Events Without Folder Fields](#events-without-folder-fields) raises no banner, even when it lists `hana/tracelogs`.
+
 <br>
 
 ---
@@ -382,12 +636,28 @@ The banner clears automatically once all supported types are covered.
 ### :material-circle-box:{ .taiconcolor } Filters Not Taking Effect (Single Instance)
 
 - Verify filtering is enabled: Check the **Enable Filtering** checkbox
-- Check `local/transforms.conf` in the app directory for the generated filter stanzas
+- Check `local/transforms.conf` in the app directory for the generated filter stanzas: `logserv_filter_include_drop`, `logserv_filter_include_allow`, `logserv_filter_include_sources`, `logserv_filter_time_drop`, `logserv_filter_exclude` and `logserv_filter_exclude_sources`, each present only when its field is in use, and each ending in `LOOKAHEAD = 100000`. A long list is split over several stanzas: `logserv_filter_exclude`, `logserv_filter_exclude_2`, and so on
+- Check `local/props.conf` for the `TRANSFORMS-00-filter` line under `[sap_logserv_logs]`; it names every generated stanza in the order above
+- A source rule matches the whole `source` value and is case-sensitive: compare the entry with the values the folder really delivers (see [Source Pattern Syntax](#source-pattern-syntax))
 - Check `_internal` for errors:
 
 ```spl
 index=_internal sourcetype=splunkd component=PersistentScript splunk_ta_sap_logserv
 ```
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } Daily Refresh Reports an Invalid Setting
+
+The daily refresh regenerates the filter rules from the saved settings (it runs while Enable Filtering is checked and Days in the Past is above 0). If a saved Include Filters, Exclude Filters, Include Sources or Exclude Sources value breaks the rules for that field — for example after a hand edit of `local/splunk_ta_sap_logserv_settings.conf` — the refresh logs an ERROR and leaves the rules it generated last in place; it never writes a rule built from the invalid value. Find the message with:
+
+```spl
+index=_internal sourcetype=splunkd component=ExecProcessor logserv_filter_time_refresh "level=ERROR"
+```
+
+Days in the Past is read the same way the Save reads it, so a value the Save accepted is refreshed: `7.0` counts as `7`. A saved value that is not a whole number — such as `7.5`, or text from a hand edit — is reported by the same search: an ERROR that names Days in the Past, and the rules generated last stay in place. Until the value is corrected and saved, the time cutoff does not move forward, so the filter keeps more older events each day.
+
+Open **Configuration → Filters**, correct the field and click **Save**.
 
 <br>
 
@@ -401,6 +671,12 @@ cat /opt/splunk/etc/deployment-apps/splunk_ta_sap_logserv/local/transforms.conf
 ```
 
 - Click **Deploy to Forwarders** and wait for phone-home
+- If only the time cutoff lags behind, check the daily refresh on the Deployment Server: it reloads the server class itself and logs a WARNING when it cannot (the Heavy Forwarders then keep the previous cutoff until the next **Deploy to Forwarders**):
+
+```spl
+index=_internal sourcetype=splunkd component=ExecProcessor logserv_filter_time_refresh "level=WARNING"
+```
+
 - Check HF configs:
 
 ```bash
@@ -427,12 +703,21 @@ curl -sk -u admin:<password> \
 - Include patterns must not be empty when filtering is enabled — use `*/*` to include all
 - Patterns must use `dir/subdir` format with only valid characters (letters, numbers, `*`, `?`, `.`, `-`, `:`, `_`)
 - Days in the Past must be a whole number between 0 and 3650
+- Include Sources and Exclude Sources (checked on every save, even with filtering disabled):
+    - each entry is a source pattern, or `dir/subdir=` followed by a source pattern
+    - a source pattern uses only letters, numbers and `/ . _ : * ? + @ ~ -`, has at most 512 characters, and has at least one character that is not `*`, `?` or `/` — `*`, `**`, `/*` and `*/*` are refused
+    - no spaces inside an entry, no `"`, `\`, `[`, `]`, control characters or non-ASCII characters, and only one `=` per entry
+    - no empty entries (two commas in a row, or a trailing comma); at most 4,096 characters per field
+    - the folder part of a `dir/subdir=` entry follows the Include Filters rules, without a standalone `*`
+- With filtering enabled, Include Sources is refused while Include Filters includes everything (`*/*` or `*`): its entries would have no effect — see [Include Everything](#include-everything)
+- A single entry whose generated rule would pass 8,000 characters (a very long pattern with many wildcards) is refused; shorten it
+- On every save, even with filtering disabled, no field may contain a line break, a tab or another control character, or end with a backslash
 
 <br>
 
 ### :material-circle-box:{ .taiconcolor } Time Filter Seems Off by a Day
 
-The time filter epoch cutoff is refreshed once per day by a scripted input. After changing the Days in Past value, the cutoff regex is regenerated immediately on Save. If the daily refresh fails, the filter becomes slightly more restrictive (safer failure mode).
+The time filter epoch cutoff is refreshed once per day by a scripted input. After changing the Days in Past value, the cutoff regex is regenerated immediately on Save. If the daily refresh does not run, or skips because it cannot read the saved settings (see [Daily Refresh Reports an Invalid Setting](#daily-refresh-reports-an-invalid-setting)), the cutoff stays where it was and the filter becomes slightly less restrictive: it keeps up to one extra day of older events for each missed day, until the next refresh or Save.
 
 <br>
 
@@ -558,7 +843,7 @@ The Lambda function uses three environment variables for its filter configuratio
 | `INCLUDE_FILTERS` | Comma-separated fnmatch patterns for paths to include | `linux/*,hana/*` |
 | `EXCLUDE_FILTERS` | Comma-separated fnmatch patterns for paths to exclude | `linux/cron,linux/slapd` |
 
-:material-lightning-bolt:{ .taiconcolor } These use the same `clz_dir/clz_subdir` pattern format as the native TA filters. If you are using both approaches, keep the patterns aligned for consistent behavior.
+:material-lightning-bolt:{ .taiconcolor } These use the same `clz_dir/clz_subdir` pattern format as the native TA filters. If you are using both approaches, keep the patterns aligned for consistent behavior. The Lambda has no equivalent of **Include Sources** or **Exclude Sources**: it reads the S3 object key, not the `source` value of each event, so file-level rules apply only on the Filters tab.
 
 <br>
 

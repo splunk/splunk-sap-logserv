@@ -393,6 +393,11 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
     /* Build 324 — tenant_db endpoints carry the TENANT tag (assigned in
      * useTopologyData) and get the SID-format circle + combo icon. */
     const isTenant = d.tag === 'TENANT';
+    /* Build 378 (U29 / S2) — a SAP Router host (canonical kind saprouter,
+     * tag ROUTER) keeps the partner square — same geometry, so the edge
+     * anchors and layout boxes need no lockstep change — with a routing
+     * glyph, the "SAP ROUTER" chip and its own tooltip kind. */
+    const isRouter = d.tag === 'ROUTER';
     /* Build 329 / session 112 — IP-keyed enrichment index (context, never
      * node data — the HostCountContext delivery rule). Hostname-labeled
      * partners simply miss the map. */
@@ -427,7 +432,7 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
               * hedge a sentence can carry (review fold, session 110). */}
             <NodeTooltip
                 name={d.label}
-                kind="Remote partner"
+                kind={isRouter ? 'SAP Router' : 'Remote partner'}
                 tag={displayTag(d.tag as never)}
                 events={d.eventCount}
                 anchorRect={anchorRect}
@@ -498,7 +503,7 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
                         />
                     )}
                     <div className="square" aria-label={d.label}>
-                        {'⬢'}
+                        {isRouter ? '⇄' : '⬢'}
                     </div>
                 </div>
             )}

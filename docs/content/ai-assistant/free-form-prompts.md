@@ -48,6 +48,8 @@ AWS Bedrock support currently requires Bedrock API Keys. IAM-only credentials (n
 
 Tool dispatch is **parallelized** — when the AI emits multiple `tool_use` blocks in a single turn (e.g., dispatching 5 saved searches at once for a "find the top issues" question), the orchestrator dispatches all of them concurrently via `Promise.all`. The slowest one bounds the turn latency, not the sum.
 
+**Failed tool calls.** In every tier, a tool call that fails reaches the AI only as its HTTP status and a fixed error class, for example `Tool error (HTTP 400, class=parse_error): Splunk could not parse the query; check the SPL syntax. The error text is shown to the user only.` Splunk's or the MCP server's error text is never sent, because it repeats the search and can carry event data. The full error stays in the tile in the right pane. A call the App refuses itself (the SPL guard, the saved-search catalog, an undeclared tool, the session tool-call cap) reaches the AI as `Tool call refused by the App before it ran: <reason>`, with the App's own reason. See [Privacy Tiers](privacy-tiers.md#failed-tool-calls-every-tier).
+
 ## :material-circle-box:{ .taiconcolor } The Two MCP Tools the AI Sees
 
 The AI's tool definitions on every free-form request are:
@@ -55,6 +57,8 @@ The AI's tool definitions on every free-form request are:
 ### `splunk_run_saved_search`
 
 Dispatch a saved search from the LogServ App's catalog (one of the catalogued prompts described in [Predefined Prompts](predefined-prompts.md)).
+
+Only the catalog's names are dispatched. The orchestrator checks the name where every saved-search call is sent to the MCP Server; any other name — a rollup aggregation, retention or backfill, an Enterprise Security feed, or a name the AI made up — is refused with a synthetic error tool_result and a `security_blocked_spl` audit event, and nothing reaches the MCP Server. The MCP arguments are built from the vetted name, the App (`app` = `splunk_app_sap_logserv`) and the time range; other keys the AI supplies are not forwarded. A tool name other than the two on this page is refused the same way.
 
 | Arg | Type | Description |
 |---|---|---|
@@ -70,13 +74,43 @@ Dispatch ad-hoc SPL written by the AI. Used when no saved search fits the user's
 
 | Arg | Type | Description |
 |---|---|---|
-| `query` | string (required) | SPL string. Must start with the LogServ macro `\`sap_logserv_idx_macro\`` (the AI's primer enforces this) and use only read-only commands. |
+| `query` | string (required) | SPL string. Must start with the LogServ macro `\`sap_logserv_idx_macro\`` as its first term — or with `\| inputlookup` of one of the App's lookups, `\| tstats` with the macro right after `WHERE` or `\| makeresults` — and use only the allowed commands. The App enforces both (below). |
 | `earliest_time` | string (optional) | Defaults to the user's currently selected time range when omitted. |
 | `latest_time` | string (optional) | Same as above. |
 | `render_hint` | string (optional) | Same as above. |
 | `top_n` | integer (optional) | Same as above. |
 
-**SPL static-analysis guard** ([LLM06 — Excessive Agency](owasp-llm-compliance.md)): the orchestrator runs every `splunk_run_query` SPL through a guard that blocks `collect`, `outputlookup`, `outputcsv`, `delete`, `sendalert`, `sendemail`, `script`, `run`, `tscollect`. Blocked SPL produces a synthetic error tool_result + a `security_blocked_spl` audit event. The AI sees the error and can recover by writing a different query.
+**SPL guard** ([LLM06 — Excessive Agency](owasp-llm-compliance.md)): the orchestrator checks every `splunk_run_query` query three times before dispatch, and a query any check refuses is never sent to Splunk:
+
+1. **The denylist** of known risky commands (below), the first fence.
+2. **The allow-list.** The App reads the query with a strict lexer and refuses it unless every command in it, subsearches included, is on the list, and it reads only what free-form analysis needs (details after the denylist).
+3. **Splunk's own search parser.** The App then sends the query to `search/parser` (parse only, nothing runs; through Splunk Web's splunkd proxy, as the signed-in user, in this App's namespace) and refuses it when the parser reads it differently from the App: another list of commands, a command not on the list, a query starting with the data macro whose expansion is not the App's definition (a macro of the same name the user's context shadows — where the macro stands after `WHERE` in `tstats` or starts a subsearch, only an index term its expansion brings in is caught), an index term other than the LogServ index, or a `lookup` / `inputlookup` outside a subsearch whose lookup, as the parser reports it, is not one of the App's or cannot be read. The parser reports a subsearch as text inside the command that holds it, not as commands of its own, so the commands and lookups inside a subsearch are checked by the App's lexer only: a command or lookup that a shadowed macro brings into a subsearch is not caught (an index term it brings in is). If the parser cannot be asked — the call fails, times out or returns no command list — the query is refused (`parser_unavailable`); a query the parser rejects as invalid SPL is refused too (`parser_rejected`). It fails closed.
+
+The denylist refuses these commands at the start of the query, after a `|` or after a `[`, outside quoted strings — also when double or single quotes are written into the command word, as in `| "delete"` or `| de'lete'`:
+
+- **Write to an index:** `collect` and its aliases `stash`, `summaryindex` and `sumindex`; `mcollect`; `meventcollect`.
+- **Write lookups, files or other output:** `outputlookup`, `outputcsv`, `outputtext`, `dump`, `tscollect`, `createrss`.
+- **Delete events:** `delete`.
+- **Trigger alerts or email:** `sendalert`, `sendemail`.
+- **Run scripts:** `script` and its alias `run`; `runshellscript`.
+- **Read REST endpoints:** `rest` — `storage/passwords` returns stored credentials decrypted.
+- **Send data out:** `outputtelemetry`, and the third-party `curl`, `wget` and `sendresults`.
+- **Machine Learning Toolkit:** `ai` (it sends the rows to an LLM) and `deletemodel`.
+- **Run other searches:** `map`, and `savedsearch`'s aliases `macro` and `savedsplunk`.
+
+It also refuses `savedsearch` and `savedsplunk` as words anywhere in the query, quoted text included (`| from savedsearch:X`), also when quotes split them (`| "saved"search X`, `| sav"edsearch" X`); the external lookup `dnslookup` anywhere, also split by quotes (`| lookup "dns"lookup`), because each row becomes a DNS query to an outside name server; a `fit` command (plain, quoted or split by quotes) followed anywhere later in the query by the word `into`, because `fit ... into` saves a model (`fit` with no `into` after it, and `apply`, stay allowed); an SPL inline comment (three backticks); an unmatched backtick; a double quote that is never closed, or a backslash-escaped double quote outside a quoted string; and a macro other than the App's own (`sap_logserv_idx_macro`, `sap_logserv_audit_idx_macro`, `sap_logserv_cloud_provider_default_macro`), because a comment, ambiguous quoting or another macro could hide a command. Apart from those words, `dnslookup`, an `into` after a `fit`, and backticks, double-quoted text is read as data, so a bracketed tag inside a quoted string, such as `search "[DELETE]"`, is not mistaken for a command. Where Splunk's reading of quotes is uncertain, the guard assumes the worst and refuses. That includes a word that forms only once the quotes are removed (`"saved""search"`), a `|` or `[` inside single quotes (read as a command position), and any `into` after a `fit`, even one that belongs to another command or to quoted text (`| fit X | stats count by into`, `| fit X by "a into b"`).
+
+**The allow-list.** A query the denylist passes must also pass these rules (operators in brackets, as the audit event records them):
+
+- **Commands** (`command_not_allowed`): only `search`, `where`, `eval`, `stats`, `eventstats`, `streamstats`, `tstats`, `chart`, `timechart`, `top`, `rare`, `sort`, `head`, `tail`, `dedup`, `reverse`, `table`, `fields`, `rename`, `fillnull`, `filldown`, `bin`, `bucket`, `rex`, `regex`, `spath`, `lookup`, `inputlookup`, `makeresults`, `addinfo`, `transaction`, `convert`, `iplocation`, `strcat`, `xyseries`, `untable`, `transpose`, `fieldsummary`, `addtotals`, `addcoltotals`, `makemv`, `nomv`, `mvcombine`, `append`, `appendcols`, `join`, `appendpipe`. Everything else is refused, whatever it does and whichever app ships it — custom search commands of other apps, `fit` and `apply`, `datamodel`, `metadata`, `loadjob`, `inputcsv`, `foreach`, `map`, `mvexpand`, `fieldformat`, `rangemap`, `return`, `format`, `multisearch`, `union`. Every allowed command is one the Tier 2 summarizer reads in full. `union` is refused because Splunk's search parser rewrites it before it runs (into `search … | append [...]`, or `multisearch` when every arm streams), so the App cannot check it against the parser's reading; **use `append` to combine two searches** — `` `sap_logserv_idx_macro` sourcetype=a | stats count by host | append [search `sap_logserv_idx_macro` sourcetype=b | stats count by host] `` — and the refusal of a `union` tells the model so.
+- **Where a query starts** (`query_start`): the query, and every subsearch arm, starts with `` `sap_logserv_idx_macro` `` as the first term of its search, or with `| inputlookup <one of the App's lookups>`, ``| tstats … WHERE `sap_logserv_idx_macro` `` or `| makeresults`; an `appendpipe […]` group starts with a command (`stats`, `eval`, …), never with the macro. Every `tstats`, anywhere in the query, names the macro right after `WHERE`.
+- **Data scope** (`index_not_allowed`): no `index=`, `index!=`, `index::` or `index IN` term anywhere, no audit macro, and no `OR` or `NOT` right next to the LogServ macro — Splunk binds `OR` tighter than the implied `AND`, so `` `sap_logserv_idx_macro` OR index=main `` would leave the index. Put alternatives after the macro, in parentheses: `` `sap_logserv_idx_macro` (sourcetype=a OR sourcetype=b) ``.
+- **Lookups** (`lookup_not_allowed`, `eval_lookup`): `lookup` and `inputlookup` only name the App's own lookups — its rollups, its threat-intel lookups, its sourcetype metadata and the ISC BIND and Squid lookups. The Data Doctor's collections, the Enterprise Security asset and identity feeds and the Settings backfill's scratch collection (`logserv_backfill_stage`) are excluded, and so is every other app's lookup and the eval `lookup()` function (also written `lookup (` or across a line break). The lookup's name must be the one Splunk reads too: an option before it may not have a quoted value (`max="5"`, `event_time_field='…'`), and nothing may be written against the name (`logserv_mc_rollup"_x"`). Splunk's parser must agree: for every `lookup` and `inputlookup` outside a subsearch the App reads the lookup again from the parser's reply (step 3 above) and refuses the query (`parser_mismatch`) unless it is one of the App's.
+- **Subsearches** (`subsearch_not_allowed`, `subsearch_fields`): only as a filter in `search`, ending with `| fields` or `| table` naming the fields it returns (no wildcard, not `search` or `query`, whose values Splunk would insert as text), or in `append`, `appendcols`, `join` and `appendpipe` (one group).
+- **Macros** (`macro_position`): the LogServ macro only as the first term of a search or right after `WHERE` in `tstats`; a macro inside quoted text is refused. A macro must stand apart, with a space, a `|` or a square bracket on each side: Splunk expands a macro as text, so anything written against it joins its expansion (`` `sap_logserv_idx_macro`* `` would become `index="sap_logserv_logs"*`, `` where`sap_logserv_idx_macro` `` would lose the `WHERE`).
+- **Quoting and brackets** (`ambiguous_single_quote`, `unbalanced_bracket`, `escaped_outside_quotes`): single quotes only around field names (`eval 'User Name'=user`) — every `'` pairs with the next one, with no `|`, bracket, double quote, backtick, backslash or line break between them. A search term that contains an apostrophe goes in double quotes: `"don't"`. Square brackets must balance outside quoted text. A backslash may appear only inside double-quoted text (a `rex` or `regex` pattern, a quoted value): Splunk reads `\|` as a pipe character passed to the command rather than the end of a command, so an escaped pipe, bracket or quote outside double quotes would make Splunk and the App see different commands.
+
+The AI's primer lists the allowed commands exactly, and a refusal names the command, lookup or macro it is about, so the model can rewrite the query. Splunk role permissions remain the authoritative gate. Blocked SPL produces a synthetic error tool_result + a `security_blocked_spl` audit event (with the `operator` and, when the refusal is about one, the `command`). The AI is told `Tool call refused by the App before it ran:` followed by the guard's reason, which is text the App wrote, so it can recover by writing a different query.
 
 ## :material-circle-box:{ .taiconcolor } The System Primer
 
@@ -85,7 +119,7 @@ A system-message prelude is sent on every free-form request. The primer teaches 
 - A data-boundary rule that distinguishes customer data from instructions (mitigates [LLM01 / LLM04](owasp-llm-compliance.md))
 - The full saved-search catalog, built from the intent map at compile time (so the AI prefers `splunk_run_saved_search` when a saved search fits)
 - The LogServ data model (sourcetypes + key fields) for ad-hoc SPL
-- The read-only-operators list for `splunk_run_query`
+- The exact list of commands allowed in `splunk_run_query`, and where a query must start, what it may read and how to quote
 - The [time-window reasoning rules](time-window-reasoning.md) that kick in for severity claims
 - Synthesis rules — lettered findings, severity dots, citation format
 

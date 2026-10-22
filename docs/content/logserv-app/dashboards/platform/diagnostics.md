@@ -211,7 +211,7 @@ An hourly scheduled search (`logserv_diag_platform_aggregate`, two minutes past 
 
 - When the snapshot is **stale, empty or unreadable**, the panel says *NOT AVAILABLE* with the verified reason (the producing search is disabled / has not run yet / has run but written nothing) — it never renders stale numbers as current facts.
 - All snapshot figures are **context, never a cause**: the scheduler tables include this app's own hourly summarisation jobs, and the queue-depth gauge does not measure ingest-filter drops (the operator-supplied ingest-filter configuration below is the drop evidence).
-- A stale dashboard summary's diagnosis can cite matching scheduler skips from the snapshot as an evidence line — always badged as *recorded by the hourly platform snapshot, a collection any authenticated Splunk user can write*, and never able to raise a verdict's confidence.
+- A stale dashboard summary's diagnosis can cite matching scheduler skips from the snapshot as an evidence line — always badged as *recorded by the hourly platform snapshot, a collection only Splunk administrators can write*, and never able to raise a verdict's confidence (rows from before App build 384, when every role could write it, may be forged).
 
 The snapshot keeps 30 days (daily retention at 01:58). It needs no backfill — it warms within the hour of install.
 
@@ -283,14 +283,30 @@ Several refinements sharpen how the supplied configuration is used as evidence:
   events with no provider at all, so a stamp mismatch never by itself explains an empty AWS
   panel. Absence of the stamp block in a paste is never read as "Not set" (the paste may be
   truncated).
+- **HANA trace files that arrive without folder fields are judged apart from their folder.**
+  SAP delivers some HANA trace files with no `clz_dir` / `clz_subdir`, and the Data TA can
+  route them to `sap:hana:tracelogs` by their file path, where folder filters do not reach
+  them. The diagnosis therefore does not read trace events that keep arriving despite an
+  Exclude Filters rule on `hana/tracelogs` as an out-of-date configuration, and does not
+  call that rule a full exclusion. On a HANA Trace panel it also names an Include Filters
+  allow-list that keeps the `hana/tracelogs` folder but drops these files: as an additional
+  finding, listed after the panel's main verdict in *Show technical detail* and in the
+  report's *All findings*, never in its place, because the paste does not show whether SAP
+  delivers such files to you. Panels that also read other log types do not report it. Any
+  verdict these files change reads *Partly excluded?* at no more than *possible*, because the
+  paste does not show whether your forwarders route these files this way either. See
+  [Events Without Folder Fields](../../../install-setup/configure-filters.md#events-without-folder-fields).
 - **The drawer points back here.** When a panel diagnosis lands on an ingest-ambiguous
   verdict and no usable configuration has been supplied, the "Why is this empty?" drawer (and
   its *Copy technical summary* text) adds: *"If a Splunk administrator supplies the Data TA's
   ingest-filter configuration on the Diagnostics page, this diagnosis can take those filters
   into account."* The pointer is suppressed when the stored supply merely could not be read.
 
-Like every `logserv_*` collection, the stored configuration is world-writable by
-authenticated users and is validated on read; treat it as a shared, unauthenticated-integrity
+The stored configuration is writable by every authenticated user and is validated on read, like the
+saved reports and the per-user preferences (since App build 384 the dashboard rollups, the topology
+collections and the platform snapshot, and since App build 383 the AI Assistant's settings,
+acknowledgements and model cache, can be written by the admin tier only); the supplier's name is shown as
+*(name not verified)*. Treat it as a shared, unauthenticated-integrity
 artifact. The supplied values steer *wording and attribution*, but the strong verdicts still
 require the diagnostic's own first-hand observations (an actually-empty window, an
 actually-absent sourcetype) to fire.
@@ -300,8 +316,8 @@ actually-absent sourcetype) to fire.
 Every downloaded Data Doctor report — panel, dashboard or environment, from any surface — is
 also saved automatically into the app's KV Store (`logserv_diag_reports`), and the Diagnostics
 page lists them: when it was generated, its scope, a one-line verdict summary, who generated
-it, and the app build it came from. Any listed report can be re-downloaded as the identical
-PDF or its JSON twin — useful for comparing a report from before and after a fix, or for
+it, and the app build it came from. Any listed report can be re-downloaded as the same PDF
+or its JSON twin, both marking the author as *(name not verified)* — useful for comparing a report from before and after a fix, or for
 retrieving a report a colleague generated.
 
 Housekeeping and integrity:
@@ -310,8 +326,9 @@ Housekeeping and integrity:
   at 01:56 search-head local time enforces both).
 - Very large reports (over ~200 KB of model data) are listed but not stored for re-download —
   the row says so; the copy downloaded at generation time is the complete one.
-- Saved reports are visible to **all** users of the app and, like every app KV collection,
-  writable by them. Treat them as shared, unauthenticated-integrity artifacts — the
+- Saved reports are visible to **all** users of the app and writable by them (one of the six
+  App KV collections every user can write; a re-downloaded report marks its author as
+  *(name not verified)* wherever it prints the name, its JSON copy included). Treat them as shared, unauthenticated-integrity artifacts — the
   authoritative copy of any report is the one downloaded when it was generated. Stored rows
   are validated before re-rendering; anything malformed is skipped.
 
@@ -325,7 +342,7 @@ Housekeeping and integrity:
   Dashboard Data shows the per-rollup schedule and enable state).
 - **A sourcetype with recent "Last seen" but zero events in your window** — the feed is alive;
   your window simply predates or postdates its activity. The panel-level diagnosis states this
-  explicitly ("the most recent one is from <date>, after this range … Nothing is stopped").
+  explicitly ("the most recent one is from `<date>`, after this range … Nothing is stopped").
 - **A sourcetype whose "Last seen" is days old** — the upstream feed for that log type may have
   stopped. That is an ingest-side question (Heavy Forwarder inputs, the LogServ feed itself) —
   the "What cannot be checked from here" section names the exact owner to ask — and once an

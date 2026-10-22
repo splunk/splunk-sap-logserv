@@ -26,7 +26,7 @@
                             "field": "filter_enabled",
                             "label": "Enable Filtering",
                             "type": "checkbox",
-                            "help": "Controls whether index-time filtering is active. When enabled, incoming log events are evaluated against the Include, Exclude, and Days in the Past rules below — events that don't pass are routed to nullQueue and never indexed (no license usage). When disabled, all events are indexed regardless of the filter rules. On a single instance, changes take effect immediately after Save. On a deployment server, changes are staged to deployment-apps/ and a Deploy to Forwarders button appears below.",
+                            "help": "Controls whether index-time filtering is active. When enabled, incoming log events are evaluated against the Include Filters, Exclude Filters, Include Sources, Exclude Sources, and Days in the Past rules below — events that don't pass are routed to nullQueue and never indexed (no license usage). When disabled, all events are indexed regardless of the filter rules. On a single instance, changes take effect immediately after Save. On a deployment server, changes are staged to deployment-apps/ and a Deploy to Forwarders button appears below.",
                             "defaultValue": 0,
                             "required": false
                         },
@@ -59,6 +59,48 @@
                                     "minLength": 0,
                                     "maxLength": 4096,
                                     "errorMsg": "Exclude filters must be less than 4096 characters."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "include_sources",
+                            "label": "Include Sources",
+                            "type": "text",
+                            "help": "Keep events from these sources even when their folder is not in Include Filters. Comma-separated patterns matched against the event's whole source value, e.g. /usr/sap/*/trace/* or ps. Prefix a folder to limit an entry to it: linux/linux_secure=/var/log/sssd/*. Only used when Include Filters is narrower than */* - with */* everything is already kept. Leave empty for none.",
+                            "defaultValue": "",
+                            "required": false,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 0,
+                                    "maxLength": 4096,
+                                    "errorMsg": "Include Sources must be less than 4096 characters."
+                                },
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[A-Za-z0-9/._:*?=,+@~ -]*$",
+                                    "errorMsg": "Include Sources may contain only letters, numbers, spaces and / . _ : * ? = , + @ ~ - (no quotes, backslashes, brackets or line breaks)."
+                                }
+                            ]
+                        },
+                        {
+                            "field": "exclude_sources",
+                            "label": "Exclude Sources",
+                            "type": "text",
+                            "help": "Drop events from these sources, even if their folder is included (excludes always win). Comma-separated patterns matched against the event's whole source value, e.g. /var/log/zypper.log, /var/log/YaST2/*. Prefix a folder to limit an entry to it: linux/linux_secure=/var/log/zypper.log. * matches any run of characters (including /), ? one character; matching is case-sensitive. Leave empty to drop nothing by source.",
+                            "defaultValue": "",
+                            "required": false,
+                            "validators": [
+                                {
+                                    "type": "string",
+                                    "minLength": 0,
+                                    "maxLength": 4096,
+                                    "errorMsg": "Exclude Sources must be less than 4096 characters."
+                                },
+                                {
+                                    "type": "regex",
+                                    "pattern": "^[A-Za-z0-9/._:*?=,+@~ -]*$",
+                                    "errorMsg": "Exclude Sources may contain only letters, numbers, spaces and / . _ : * ? = , + @ ~ - (no quotes, backslashes, brackets or line breaks)."
                                 }
                             ]
                         },

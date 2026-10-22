@@ -15,7 +15,7 @@ import { shouldUseRawSource } from '../utils/hybridRouting';
 import { recordRawTwin } from '../utils/rawTwin';
 import { useCloudProvider, mapCloudProviderQueries, withCloudProvider } from '../state/CloudProviderProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanToken, applySpanTokens, chooseTimechartSpan, SPAN_TOKEN, spanSubtitle } from '../utils/timechartSpan';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
 import { useThemeMode } from '../state/ThemeModeProvider';
@@ -246,18 +246,21 @@ const WebDispatcher: React.FC = () => {
     // Traffic by Status Code — multi-line chart so 4xx/5xx trends remain
     // visible alongside the much larger 2xx series instead of getting
     // crushed under stacked bars.
+    // Build 377: both arms go through applySpanToken, so the cached arm (hourly
+    // rollup rows) never bins under 1h - at Last 24 hours it had put each
+    // hour's count into one 15-minute bin and filled the other three with 0.
     const trafficByStatusQuery = useMemo(
         () => {
-            const rawQ = withCloudProvider(
+            const rawQ = applySpanToken(withCloudProvider(
                 `${WRAW} | eval status_group=case(tonumber(status)<300,"Success (2xx)",tonumber(status)<400,"Redirect (3xx)",tonumber(status)<500,"Client Error (4xx)",tonumber(status)>=500,"Server Error (5xx)",1==1,"Other") ` +
-                    `| timechart span=${span} count by status_group | fillnull value=0`,
+                    `| timechart span=${SPAN_TOKEN} count by status_group | fillnull value=0`,
                 provider,
-            );
-            const cachedQ = withCloudProvider(
+            ), span);
+            const cachedQ = applySpanToken(withCloudProvider(
                 `${WD_STATUS} | eval _time=bucket_ts ` +
-                    `| timechart span=${span} sum(count) by status_group | fillnull value=0`,
+                    `| timechart span=${SPAN_TOKEN} sum(count) by status_group | fillnull value=0`,
                 provider,
-            );
+            ), span);
             recordRawTwin(cachedQ, rawQ); // §17.8a-17
             return useRawSrc ? rawQ : cachedQ;
         },
@@ -271,18 +274,18 @@ const WebDispatcher: React.FC = () => {
     // Max=null) matches the cached arm byte-for-byte.
     const responseTimeTrendQuery = useMemo(
         () => {
-            const rawQ = withCloudProvider(
+            const rawQ = applySpanToken(withCloudProvider(
                 `${WRAW} | eval response_time_ms=tonumber(total_us)/1000 ` +
-                    `| timechart span=${span} sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" ` +
+                    `| timechart span=${SPAN_TOKEN} sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" ` +
                     `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
                 provider,
-            );
-            const cachedQ = withCloudProvider(
+            ), span);
+            const cachedQ = applySpanToken(withCloudProvider(
                 `${WD_CORE} | eval _time=bucket_ts ` +
-                    `| timechart span=${span} sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" ` +
+                    `| timechart span=${SPAN_TOKEN} sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" ` +
                     `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
                 provider,
-            );
+            ), span);
             recordRawTwin(cachedQ, rawQ); // §17.8a-17
             return useRawSrc ? rawQ : cachedQ;
         },
@@ -372,7 +375,7 @@ const WebDispatcher: React.FC = () => {
             </KpiRow>
 
             <FullWidthPanel>
-                <FramedPanel title="Request Volume Over Time" subtitle="Daily HTTP request count">
+                <FramedPanel title="Request Volume Over Time" subtitle={spanSubtitle('HTTP request count', Q.requestVolumeOverTime)}>
                     <TimeSeriesChart query={Q.requestVolumeOverTime} height={260} palette="volume" />
                 </FramedPanel>
             </FullWidthPanel>
@@ -380,7 +383,7 @@ const WebDispatcher: React.FC = () => {
             <PanelGrid2>
                 <FramedPanel
                     title="Traffic by Status Code"
-                    subtitle={`Volume per status class (2xx/3xx/4xx/5xx) — span ${span}`}
+                    subtitle={spanSubtitle('Volume per status class (2xx/3xx/4xx/5xx)', trafficByStatusQuery)}
                 >
                     <TimeSeriesChart
                         query={trafficByStatusQuery}
@@ -391,7 +394,7 @@ const WebDispatcher: React.FC = () => {
                 </FramedPanel>
                 <FramedPanel
                     title="Response Time Trend"
-                    subtitle={`Average and peak latency (ms) — span ${span}`}
+                    subtitle={spanSubtitle('Average and peak latency (ms)', responseTimeTrendQuery)}
                 >
                     <TimeSeriesChart
                         query={responseTimeTrendQuery}

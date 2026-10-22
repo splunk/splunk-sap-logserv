@@ -12,7 +12,7 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * Web and API Performance — honest port of v0.0.4.2 logserv_web_api_performance.xml.
@@ -272,10 +272,10 @@ const WebApiPerformance: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Four-Stage Request Timing Breakdown (avg ms per stage)" subtitle="Web Dispatcher dt1–dt4 average timing per day">
+                <FramedPanel title="Four-Stage Request Timing Breakdown (avg ms per stage)" subtitle={spanSubtitle('Web Dispatcher dt1–dt4 average timing', qTiming)}>
                     <TimeSeriesChart query={qTiming} height={280} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="Response Time (Avg / Max) Over Time" subtitle="Average and peak response time per day across both sources">
+                <FramedPanel title="Response Time (Avg / Max) Over Time" subtitle={spanSubtitle('Average and peak response time across both sources', qPercentiles)}>
                     <TimeSeriesChart query={qPercentiles} height={280} palette="volume" />
                 </FramedPanel>
             </PanelGrid2>
@@ -287,7 +287,7 @@ const WebApiPerformance: React.FC = () => {
             </FullWidthPanel>
 
             <FullWidthPanel>
-                <FramedPanel title="HTTP Error Rate vs Cloud Connector Auth Failure Rate" subtitle="Two correlated rates — daily">
+                <FramedPanel title="HTTP Error Rate vs Cloud Connector Auth Failure Rate" subtitle={spanSubtitle('Two correlated rates', qErrorAuth)}>
                     <TimeSeriesChart query={qErrorAuth} height={280} palette="errors" />
                 </FramedPanel>
             </FullWidthPanel>

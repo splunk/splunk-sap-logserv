@@ -17,7 +17,8 @@ import {
     openInNewTab,
 } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
+import { FW_AT_HOST, FW_AT_HOST_SUB } from '../utils/firewallChains';
 
 /**
  * Environment Health — honest port of v0.0.4.2 logserv_environment_health.xml.
@@ -74,29 +75,43 @@ const TOTERR = `| inputlookup ${ROLL} where metric="toterr" ${RANGE}`;
 const TREND = `| inputlookup ${ROLL} where metric="trend" ${RANGE}`;
 const TOPHOST = `| inputlookup ${ROLL} where metric="tophost" ${RANGE}`;
 const WEB = `| inputlookup ${ROLL} where metric="web" ${RANGE}`;
-const ICMSTAT = `| inputlookup ${ROLL} where metric="icmstat" ${RANGE}`;
+const ICMSEV = `| inputlookup ${ROLL} where metric="icmsev" ${RANGE}`;
 const AUTHFAIL = `| inputlookup ${ROLL} where metric="authfail" ${RANGE}`;
 // Beaconing now precomputed DAILY into its own KV collection (logserv_beaconing_rollup) by
 // logserv_beaconing_aggregate. The per-event streamstats gap-variance detection is too heavy
 // to run raw at scale (scanned 37.6M DNS events / ~3.75 min at 335M). Per-DAY grain (day_ts).
 const BEACON = `| inputlookup logserv_beaconing_rollup | addinfo | where day_ts>=info_min_time AND day_ts<info_max_time`;
+// The rollup stores the linux_secure series as trend_src="Firewall Drops", which
+// counts IN_DROP only: drops at the host (INPUT chain). Build 374 renames it at
+// read time, in the cached and the raw arm alike, so the legend names the chain;
+// the stored value is never renamed (trend_src is part of the rollup _key).
+const FW_TREND_RELABEL = `| eval trend_src=if(trend_src="Firewall Drops", "${FW_AT_HOST}", trend_src)`;
 // One error-trend chart = the trend metric filtered to a category, timechart by
 // src. `| fillnull value=0` matches raw `count by src`'s 0-fill on empty bins.
 const trendChart = (cat: string): string =>
-    `${TREND} | search trend_cat="${cat}" | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by trend_src | fillnull value=0`;
+    `${TREND} | search trend_cat="${cat}" ${FW_TREND_RELABEL} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by trend_src | fillnull value=0`;
 
 const Q_BASE = {
-    // KPIs (rollup). HANA Failed Ops + Firewall Drops derive from the toterr
-    // metric by sourcetype (their conditions ARE toterr's hana/linux subsets).
+    // KPIs (rollup). HANA Failed Ops + Firewall Drops at Host derive from the
+    // toterr metric by sourcetype (their conditions ARE toterr's hana/linux
+    // subsets). toterr's linux subset is IN_DROP only, the INPUT chain: drops in
+    // transit (FWD_DROP, FORWARD chain) are not errors here. Linux and Network
+    // Perimeter show both chains (utils/firewallChains.ts).
     totalErrors: `${TOTERR} | stats sum(count) as count`,
     hanaFailures: `${TOTERR} | search sourcetype="sap:hana:audit" | stats sum(count) as count`,
     authFailures: `${AUTHFAIL} | stats sum(count) as count`,
     firewallDrops: `${TOTERR} | search sourcetype="linux_secure" | stats sum(count) as count`,
     webErrorRate: `${WEB} | stats sum(web_err) as errors, sum(web_total) as total | eval pct = if(total>0, round(errors/total*100, 1), 0) | table pct`,
     // beaconing now reads the precomputed daily rollup (logserv_beaconing_rollup).
-    beaconing: `${BEACON} | rename day_ts as _time | sort _time | eventstats sum(count) as total`,
+    // Build 377: one row per UTC day (the rollup holds one per day AND cloud, so
+    // "All clouds" drew up to three points a day), each carrying its day_ts for
+    // the sparkline's UTC-day tooltip. The KPI total is the same sum.
+    beaconing: `${BEACON} | stats sum(count) as count by day_ts | eval _time=day_ts | sort _time | eventstats sum(count) as total`,
     // pipeline KPI stays tstats-now (build 200) — pure tsidx count, already fast.
-    pipelineEventsPerDay: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=__LSV_SPAN__ | timechart span=__LSV_SPAN__ sum(count) as daily | stats avg(daily) as total | eval total=round(total, 0)`,
+    // span=1d in BOTH places: the span IS the unit of a per-day average. Build
+    // 345 tokenised it, and at Last 30 days the card averaged 6-hour bins (about
+    // a quarter of the true figure); build 377 restores the day.
+    pipelineEventsPerDay: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=1d | timechart span=1d sum(count) as daily | stats avg(daily) as total | eval total=round(total, 0)`,
 
     // KPI sparklines (rollup)
     sparkTotalErrors: `${TOTERR} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
@@ -115,12 +130,13 @@ const Q_BASE = {
     errOsinfra: trendChart('OS-Infra'),
     errScc: trendChart('Cloud-Connector'),
 
-    // Other charts (rollup). webResponseTime avg = Σrt_sum/Σrt_cnt per day
+    // Other charts (rollup). webResponseTime avg = Σrt_sum/Σrt_cnt per bin
     // (reproduces raw avg(response_time_ms); ~1e-13 float diff is invisible).
     webResponseTime: `${WEB} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(web_rt_sum) as rt_sum, sum(web_rt_cnt) as rt_cnt | eval "Avg Response Time (ms)"=rt_sum/rt_cnt | fields _time, "Avg Response Time (ms)"`,
-    icmStatus: `${ICMSTAT} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by status_cat | fillnull value=0`,
+    // status_cat on an icmsev row is the dev_icm message class (ERROR / WARNING).
+    icmSeverity: `${ICMSEV} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by status_cat | fillnull value=0`,
     // pipeline trend stays tstats-now (build 200)
-    pipelineTrend: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=__LSV_SPAN__ | timechart span=__LSV_SPAN__ sum(count) as "Events/Day"`,
+    pipelineTrend: `| tstats count WHERE \`sap_logserv_idx_macro\` BY _time span=__LSV_SPAN__ | timechart span=__LSV_SPAN__ sum(count) as "Events"`,
 
     // Tables. criticalEvents stays RAW (event listing — needs the actual events) but is
     // | head 200-capped: Splunk's default newest-first event scan short-circuits after 200,
@@ -148,8 +164,9 @@ const Q_BASE = {
  * ------------------------------------------------------------------------- */
 
 // Shared raw error-classification base for the 6 error-trend charts — mirrors
-// the logserv_severity_aggregate `trend` arm. trendChartRaw() appends the
-// per-category filter + daily timechart (matching trendChart() above).
+// the logserv_severity_aggregate `trend` arm, stored labels included.
+// trendChartRaw() appends the per-category filter, FW_TREND_RELABEL and the
+// daily timechart (matching trendChart() above).
 const TREND_RAW_BASE =
     '`sap_logserv_idx_macro` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR ' +
     '(sourcetype="sap:abap:icm" icm_is_error="true") OR (sourcetype="sap:abap:gateway" gw_error_detail=* gw_error_detail!="") OR ' +
@@ -169,7 +186,7 @@ const TREND_RAW_BASE =
     'sourcetype="XmlWinEventLog" AND severity="medium", "Windows Medium", sourcetype="sap:scc:http_access" AND status>=500, "5xx Server", ' +
     'sourcetype="sap:scc:http_access" AND status>=400, "4xx Client")';
 const trendChartRaw = (cat: string): string =>
-    `${TREND_RAW_BASE} | search trend_cat="${cat}" | timechart span=__LSV_SPAN__ count by trend_src | fillnull value=0`;
+    `${TREND_RAW_BASE} | search trend_cat="${cat}" ${FW_TREND_RELABEL} | timechart span=__LSV_SPAN__ count by trend_src | fillnull value=0`;
 
 const QRAW_BASE = {
     totalErrors:
@@ -199,11 +216,9 @@ const QRAW_BASE = {
     webResponseTime:
         '`sap_logserv_idx_macro` sourcetype="sap:webdispatcher:access" | eval response_time_ms=tonumber(total_us)/1000 ' +
         '| timechart span=__LSV_SPAN__ avg(response_time_ms) as "Avg Response Time (ms)"',
-    icmStatus:
-        '`sap_logserv_idx_macro` sourcetype="sap:abap:icm" icm_status_code=* ' +
-        '| eval status_cat=case(icm_status_code>=200 AND icm_status_code<300, "2xx", icm_status_code>=300 AND icm_status_code<400, "3xx", ' +
-        'icm_status_code>=400 AND icm_status_code<500, "4xx", icm_status_code>=500, "5xx", 1=1, "Other") ' +
-        '| timechart span=__LSV_SPAN__ count by status_cat | fillnull value=0',
+    icmSeverity:
+        '`sap_logserv_idx_macro` sourcetype="sap:abap:icm" icm_severity=* ' +
+        '| eval status_cat=icm_severity | timechart span=__LSV_SPAN__ count by status_cat | fillnull value=0',
     // reconstructed from the logserv_severity_aggregate `tophost` arm.
     topHosts:
         '`sap_logserv_idx_macro` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR ' +
@@ -288,7 +303,9 @@ const TOP_HOSTS_COLS: ColumnDef[] = [
     { key: 'ABAP', label: 'ABAP', align: 'right', render: (v) => formatInteger(v) },
     { key: 'HANA', label: 'HANA', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Services', label: 'Services', align: 'right', render: (v) => formatInteger(v) },
-    { key: 'Firewall', label: 'Firewall', align: 'right', render: (v) => formatInteger(v) },
+    // error_cat "Firewall" is IN_DROP only (drops at the host); the key is the
+    // stored rollup value, the label names the chain (build 374).
+    { key: 'Firewall', label: 'Firewall (at host)', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Other', label: 'Other', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Total', label: 'Total', align: 'right', render: (v) => formatInteger(v) },
 ];
@@ -320,7 +337,7 @@ const EnvironmentHealth: React.FC = () => {
     const qErrOsinfra = useRoutedQuery(Q.errOsinfra, QRAW.errOsinfra);
     const qErrScc = useRoutedQuery(Q.errScc, QRAW.errScc);
     const qWebResponseTime = useRoutedQuery(Q.webResponseTime, QRAW.webResponseTime);
-    const qIcmStatus = useRoutedQuery(Q.icmStatus, QRAW.icmStatus);
+    const qIcmSeverity = useRoutedQuery(Q.icmSeverity, QRAW.icmSeverity);
 
     const criticalEvents = useSearch({ query: Q.criticalEvents });
     const topHosts = useHybridSearch({ cached: Q.topHosts, raw: QRAW.topHosts });
@@ -373,7 +390,7 @@ const EnvironmentHealth: React.FC = () => {
                     sparkline={<SparklineFromQuery query={Q.sparkAuthFailures} valueField="count" color={logservTheme.colors.red} fill />}
                     onClick={goTo('sap-services')}
                     clickTitle="Open SAP Services dashboard (new tab)" />
-                <KpiCard label="Firewall Drops" value={firewallDrops.value} loading={firewallDrops.loading} error={firewallDrops.error} search={firewallDrops.search} formatValue={formatInteger} tone={fwTone}
+                <KpiCard label={FW_AT_HOST} sub={FW_AT_HOST_SUB} value={firewallDrops.value} loading={firewallDrops.loading} error={firewallDrops.error} search={firewallDrops.search} formatValue={formatInteger} tone={fwTone}
                     sparkline={<SparklineFromQuery query={Q.sparkFirewallDrops} valueField="count" color={logservTheme.colors.red} fill />}
                     onClick={goTo('linux')}
                     clickTitle="Open Linux dashboard (new tab)" />
@@ -385,7 +402,7 @@ const EnvironmentHealth: React.FC = () => {
                     onClick={goTo('web-dispatcher')}
                     clickTitle="Open Web Dispatcher dashboard (new tab)" />
                 <KpiCard label="Beaconing Domains" value={beaconing.value} loading={beaconing.loading} error={beaconing.error} search={beaconing.search} formatValue={formatInteger}
-                    sparkline={<SparklineFromQuery query={Q.beaconing} valueField="count" color={logservTheme.colors.purple} fill />}
+                    sparkline={<SparklineFromQuery query={Q.beaconing} valueField="count" utcDayField="day_ts" color={logservTheme.colors.purple} fill />}
                     onClick={goTo('dns-analytics')}
                     clickTitle="Open DNS Analytics dashboard (new tab)" />
                 <KpiCard label="Data Pipeline — Events/Day (Avg)" value={pipelineEvents.value} loading={pipelineEvents.loading} error={pipelineEvents.error} search={pipelineEvents.search} formatValue={formatInteger}
@@ -395,7 +412,7 @@ const EnvironmentHealth: React.FC = () => {
             </KpiRow3>
 
             <FullWidthPanel>
-                <FramedPanel title="Daily Event Volume Trend" subtitle="Total events per day across all sourcetypes"
+                <FramedPanel title="Event Volume Trend" subtitle={spanSubtitle('Total events across all sourcetypes', Q.pipelineTrend)}
                     onClick={goTo('data-pipeline-overview')}
                     clickTitle="Open Data Pipeline Overview dashboard (new tab)">
                     <TimeSeriesChart query={Q.pipelineTrend} height={260} palette="volume" />
@@ -403,17 +420,17 @@ const EnvironmentHealth: React.FC = () => {
             </FullWidthPanel>
 
             <PanelGrid3>
-                <FramedPanel title="ABAP Error Trend" subtitle="Dispatcher / ICM / Gateway errors"
+                <FramedPanel title="ABAP Error Trend" subtitle={spanSubtitle('Dispatcher / ICM / Gateway errors', qErrAbap)}
                     onClick={goTo('abap-security')}
                     clickTitle="Open ABAP Security dashboard (new tab)">
                     <TimeSeriesChart query={qErrAbap} height={240} palette="errors" />
                 </FramedPanel>
-                <FramedPanel title="HANA Error Trend" subtitle="Audit failures + trace errors"
+                <FramedPanel title="HANA Error Trend" subtitle={spanSubtitle('Audit failures + trace errors', qErrHana)}
                     onClick={goTo('hana-audit')}
                     clickTitle="Open HANA Audit dashboard (new tab)">
                     <TimeSeriesChart query={qErrHana} height={240} palette="errors-2" />
                 </FramedPanel>
-                <FramedPanel title="Security Error Trend" subtitle="Auth failures + firewall drops"
+                <FramedPanel title="Security Error Trend" subtitle={spanSubtitle('Auth failures + firewall drops at the host (INPUT chain)', qErrSecurity)}
                     onClick={goTo('sap-services')}
                     clickTitle="Open SAP Services dashboard (new tab)">
                     <TimeSeriesChart query={qErrSecurity} height={240} palette="errors-3" />
@@ -421,17 +438,17 @@ const EnvironmentHealth: React.FC = () => {
             </PanelGrid3>
 
             <PanelGrid3>
-                <FramedPanel title="Web/Network Error Trend" subtitle="Web Disp 4xx/5xx + Router errors + Proxy denied"
+                <FramedPanel title="Web/Network Error Trend" subtitle={spanSubtitle('Web Disp 4xx/5xx + Router errors + Proxy denied', qErrWebnet)}
                     onClick={goTo('web-dispatcher')}
                     clickTitle="Open Web Dispatcher dashboard (new tab)">
                     <TimeSeriesChart query={qErrWebnet} height={240} palette="errors" />
                 </FramedPanel>
-                <FramedPanel title="OS/Infra Error Trend" subtitle="Windows high/medium severity events"
+                <FramedPanel title="OS/Infra Error Trend" subtitle={spanSubtitle('Windows high/medium severity events', qErrOsinfra)}
                     onClick={goTo('windows')}
                     clickTitle="Open Windows dashboard (new tab)">
                     <TimeSeriesChart query={qErrOsinfra} height={240} palette="errors-2" />
                 </FramedPanel>
-                <FramedPanel title="Cloud Connector Error Trend" subtitle="SCC HTTP 4xx/5xx"
+                <FramedPanel title="Cloud Connector Error Trend" subtitle={spanSubtitle('SCC HTTP 4xx/5xx', qErrScc)}
                     onClick={goTo('cloud-connector')}
                     clickTitle="Open Cloud Connector dashboard (new tab)">
                     <TimeSeriesChart query={qErrScc} height={240} palette="errors-3" />
@@ -439,15 +456,15 @@ const EnvironmentHealth: React.FC = () => {
             </PanelGrid3>
 
             <PanelGrid2>
-                <FramedPanel title="Web Dispatcher Response Time" subtitle="Daily average response time (ms)"
+                <FramedPanel title="Web Dispatcher Response Time" subtitle={spanSubtitle('Average response time (ms)', qWebResponseTime)}
                     onClick={goTo('web-dispatcher')}
                     clickTitle="Open Web Dispatcher dashboard (new tab)">
                     <TimeSeriesChart query={qWebResponseTime} height={240} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="ICM Status Codes" subtitle="ABAP ICM status-class breakdown over time"
+                <FramedPanel title="ICM Warnings & Errors" subtitle={spanSubtitle('ABAP ICM trace messages by class (ERROR / WARNING)', qIcmSeverity)}
                     onClick={goTo('abap-security')}
                     clickTitle="Open ABAP Security dashboard (new tab)">
-                    <TimeSeriesChart query={qIcmStatus} height={240} palette="status" />
+                    <TimeSeriesChart query={qIcmSeverity} height={240} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 

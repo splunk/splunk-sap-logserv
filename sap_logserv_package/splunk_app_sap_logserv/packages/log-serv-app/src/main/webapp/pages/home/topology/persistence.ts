@@ -24,6 +24,16 @@ import { DEFAULT_PANEL_LAYOUT, type PanelLayoutState, type SavedLayout, type Vie
  *   _key, username, layout_name, layout_name_slug, saved_at, version,
  *   nodes_json, panels_json, viewport_json, enabled_types_json,
  *   selected_node_id, right_tab_id, snap_mode
+ *   (+ selected_edge_id since build 188, layout_mode since build 215 and
+ *   known_types_json since build 378 — still version 5: every added field
+ *   is optional, and the collection stores fields it does not declare.)
+ *
+ * Integration-type filters on load (build 378): a layout records which types
+ * were ENABLED, so a type added to the view after it was saved would be read
+ * as unchecked and its edges dimmed. restoreEnabledTypes() below enables
+ * every type the layout could not have known about; layouts now also record
+ * the types they knew (known_types_json), so an unchecked box for a type that
+ * existed at save time stays unchecked.
  *
  * One-time legacy localStorage migration: on first call to
  * `migrateLegacyLocalStorageLayout()`, if KV Store has zero records for this
@@ -73,6 +83,51 @@ export const slugifyLayoutName = (name: string): string => {
 };
 
 const recordKey = (slug: string): string => `${safeUser()}::${slug}`;
+
+// ---- Integration-type filters across layout versions (build 378) ----
+
+/** The integration types every layout saved before build 378 knew: the eight
+ *  ALL_INTEGRATION_TYPES of builds 169-377, in their display order. FROZEN —
+ *  never append to it. A new type goes into ALL_INTEGRATION_TYPES only;
+ *  being absent from this list is exactly what makes old layouts enable it. */
+export const LEGACY_INTEGRATION_TYPES_V5: readonly string[] = Object.freeze([
+    'rfc',
+    'idoc',
+    'qrfc',
+    'trfc',
+    'bgrfc',
+    'web_service',
+    'odata',
+    'btp_iflow',
+]);
+
+/**
+ * The enabled integration types to apply when a saved layout loads, or null
+ * to leave the live filter as it is (the layout recorded none, or an empty
+ * list — the pre-378 behaviour, unchanged).
+ *
+ *   enabled = (saved ∩ allTypes) ∪ (allTypes − knownAtSave)
+ *
+ * where knownAtSave is the layout's own `knownTypes` when it recorded them
+ * (saved by build 378 or later) and LEGACY_INTEGRATION_TYPES_V5 otherwise.
+ * So a type added after the layout was saved starts ENABLED, and a type the
+ * layout knew but had switched off stays OFF. Unknown names in the saved list
+ * (a retired type) are dropped. The result follows allTypes' display order.
+ * Pure, so utils/topologyTypes.consistency-test.ts can hold the rule.
+ */
+export const restoreEnabledTypes = <T extends string>(
+    saved: readonly string[] | null | undefined,
+    knownAtSave: readonly string[] | null | undefined,
+    allTypes: readonly T[],
+): T[] | null => {
+    if (!Array.isArray(saved) || saved.length === 0) return null;
+    const known = Array.isArray(knownAtSave) && knownAtSave.length > 0
+        ? knownAtSave
+        : LEGACY_INTEGRATION_TYPES_V5;
+    const savedSet = new Set<string>(saved);
+    const knownSet = new Set<string>(known);
+    return allTypes.filter((t) => savedSet.has(t) || !knownSet.has(t));
+};
 
 // ---- CSRF / auth helpers (mirror telemetryConfApi pattern) ----
 
@@ -230,6 +285,10 @@ export interface SavePayload {
      * Restored on load so saved positions only apply to the matching
      * mode. */
     layoutMode?: 'force' | 'layered' | 'tree';
+    /* Build 378 — the integration types that exist at save time
+     * (ALL_INTEGRATION_TYPES), so restoreEnabledTypes can tell a type the
+     * layout switched off from one it never knew. */
+    knownTypes?: string[];
 }
 
 interface KvStoreRecord {
@@ -254,6 +313,12 @@ interface KvStoreRecord {
     /* Build 215 / session 036 — layout algorithm at save time. Optional
      * for back-compat with pre-215 records (default 'force' on load). */
     layout_mode?: string;
+    /* Build 378 — JSON array of the integration types known at save time.
+     * Absent on older records (restoreEnabledTypes then assumes the frozen
+     * eight). It is declared in collections.conf as a string
+     * (field.known_types_json); the collection does not enforce types, so it
+     * round-trips as-is. */
+    known_types_json?: string;
 }
 
 /** Defensive JSON.parse helper — returns undefined on any failure or
@@ -273,6 +338,7 @@ const recordToSavedLayout = (rec: KvStoreRecord): SavedLayout | null => {
     if (rec.version !== 5) return null;
     const viewport = parseViewport(safeParseJson<unknown>(rec.viewport_json));
     const enabledTypes = safeParseJson<unknown>(rec.enabled_types_json);
+    const knownTypes = safeParseJson<unknown>(rec.known_types_json);
     return {
         version: 5,
         savedAt: rec.saved_at,
@@ -282,6 +348,9 @@ const recordToSavedLayout = (rec: KvStoreRecord): SavedLayout | null => {
         viewport,
         enabledTypes: Array.isArray(enabledTypes)
             ? enabledTypes.filter((t): t is string => typeof t === 'string')
+            : undefined,
+        knownTypes: Array.isArray(knownTypes)
+            ? knownTypes.filter((t): t is string => typeof t === 'string')
             : undefined,
         selectedNodeId:
             typeof rec.selected_node_id === 'string' && rec.selected_node_id.length > 0
@@ -385,6 +454,7 @@ export const saveLayoutNamed = async (
         panels: { ...payload.panels },
         viewport: payload.viewport,
         enabledTypes: payload.enabledTypes,
+        knownTypes: payload.knownTypes,
         selectedNodeId: payload.selectedNodeId,
         rightTabId: payload.rightTabId,
         snapMode: payload.snapMode,
@@ -406,6 +476,9 @@ export const saveLayoutNamed = async (
         ...(layout.viewport ? { viewport_json: JSON.stringify(layout.viewport) } : {}),
         ...(layout.enabledTypes
             ? { enabled_types_json: JSON.stringify(layout.enabledTypes) }
+            : {}),
+        ...(layout.knownTypes
+            ? { known_types_json: JSON.stringify(layout.knownTypes) }
             : {}),
         ...(typeof layout.selectedNodeId === 'string'
             ? { selected_node_id: layout.selectedNodeId }

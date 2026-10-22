@@ -13,23 +13,25 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
+import { FW_AT_HOST, FW_AT_HOST_SUB, FW_IN_TRANSIT, FW_IN_TRANSIT_SUB, KERNEL_REX } from '../utils/firewallChains';
 
 /**
  * Network Perimeter — honest port of v0.0.4.2 logserv_network_perimeter.xml.
  *
- * 6 KPIs (FW Drops / Proxy / DNS / Beaconing / Denied / Bandwidth) + Activity Over Time +
- * Top Blocked Source IPs + Top Blocked Dest Ports + Firewall Drops by Protocol +
+ * 7 KPIs (FW Drops at Host / FW Drops in Transit / Proxy / DNS / Beaconing / Denied /
+ * Bandwidth) + Activity Over Time + Top Blocked Source IPs + Top Blocked Dest Ports +
+ * Firewall Drops at Host by Protocol +
  * Proxy Denied Traffic + Top Outbound Domains + DNS Query Type pie + Top Queried Domains +
  * Suspicious Activity Indicator (synthesis).
  */
 
 const KpiRow = styled.div`
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: ${logservTheme.elevation.panelGap};
     margin-bottom: ${logservTheme.elevation.panelGap};
-    @media (max-width: 1500px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    @media (max-width: 1500px) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     @media (max-width: 900px) { grid-template-columns: 1fr; }
 `;
 const FullWidthPanel = styled.div`
@@ -79,6 +81,15 @@ const PanelGrid30_70 = styled.div`
  * `| fillnull value=0` (raw count 0-fills, rollup sum(count) null-fills) — but
  * sparkBw (a sum-measure timechart) does NOT (both null-fill empty bins).
  * decode-at-read for proto_name / query_type_label.
+ *
+ * Build 374 (firewall chains, utils/firewallChains.ts). `fw` stores FWD_DROP
+ * lines (FORWARD chain) under fw_action="(none)" — the rex tags only IN_DROP /
+ * IN_ACCEPT, and fw_action is a _key field, so re-tagging would need a metric=fw
+ * clear. The block tables therefore split each row at read time into AtHost
+ * (fw_action="IN_DROP") and InTransit (the rest: FWD_DROP plus a few untagged
+ * lines), and the in-transit KPI reads the Linux rollup's exact `kernel` metric
+ * (KERNEL below). The activity arm's stored "Firewall Drops" (IN_DROP only) is
+ * relabelled at read time; stored values are never renamed.
  */
 const ROLL = 'logserv_perimeter_rollup';
 const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
@@ -89,6 +100,11 @@ const DNSCOUNT = `| inputlookup ${ROLL} where metric="dnscount" ${RANGE}`;
 const DNSTYPE = `| inputlookup ${ROLL} where metric="dnstype" ${RANGE}`;
 const DNSQ = `| inputlookup ${ROLL} where metric="dnsq" ${RANGE}`;
 const ACTIVITY = `| inputlookup ${ROLL} where metric="activity" ${RANGE}`;
+// Build 374: drops in transit (FWD_DROP) come from the Linux rollup's `kernel`
+// metric (kernel_event per hour and cloud_provider, no host), which this
+// collection lacks. The identical RANGE string keeps the cloud splice working;
+// the KPI reads 0 when the Linux rollup is turned off.
+const KERNEL = `| inputlookup logserv_linux_rollup where metric="kernel" ${RANGE}`;
 // Beaconing KPI + spark reuse the per-day beaconing rollup (build 232).
 const BEACON = '| inputlookup logserv_beaconing_rollup | addinfo | where day_ts>=info_min_time AND day_ts<info_max_time';
 // Build 237 — per-day beaconing DETAIL rollup (qs gap-stats + denied counts).
@@ -103,6 +119,7 @@ const QTYPE_LABEL = 'case(query_type="A", "A (IPv4 Address)", query_type="AAAA",
 
 const Q_BASE = {
     kpiFw: `${FW} | search fw_action="IN_DROP" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    kpiFwd: `${KERNEL} | search kernel_event="FWD_DROP" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiProxy: `${PROXY} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiDns: `${DNSCOUNT} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
     kpiBeacon: `${BEACON} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
@@ -110,19 +127,25 @@ const Q_BASE = {
     kpiBw: `${PROXY} | stats count as n, sum(bytes_sum) as total_bytes | fillnull value=0 total_bytes | eval display = ${bytesFmt('total_bytes')} | fields display`,
 
     sparkFw: `${FW} | search fw_action="IN_DROP" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
+    sparkFwd: `${KERNEL} | search kernel_event="FWD_DROP" | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkProxy: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
     sparkDns: `${DNSCOUNT} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
-    sparkBeacon: `${BEACON} | eval _time=day_ts | timechart span=1d sum(count) as daily | fillnull value=0`,
+    // Build 377: each point carries its UTC day (day_ts) for the tooltip; only
+    // the count is 0-filled, so a filled day carries none.
+    sparkBeacon: `${BEACON} | eval _time=day_ts | timechart span=1d sum(count) as daily max(day_ts) as day_ts | fillnull value=0 daily`,
     sparkDenied: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(denied_count) as count | fillnull value=0`,
     // sparkBw is a SUM-measure timechart -> NO fillnull-0 (both raw and rollup
     // null-fill empty bins; the count-spark 0-fill rule does NOT apply here).
     sparkBw: `${PROXY} | eval _time=bucket_ts | timechart span=1d sum(bytes_sum) as bytes_daily | eval daily = round(bytes_daily/1048576, 2)`,
 
-    activity: `${ACTIVITY} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by source_type | fillnull value=0`,
-    blockedSrc: `${FW} | search fw_src!="(none)" | stats sum(count) as Drops, dc(eval(if(fw_dst="(none)",null(),fw_dst))) as "Unique Targets", values(eval(if(fw_proto="(none)",null(),fw_proto))) as Protocols by fw_src | sort -Drops | rename fw_src as "Source IP"`,
+    // The stored series value stays "Firewall Drops" (a _key field); relabelled at read time.
+    activity: `${ACTIVITY} | eval source_type=if(source_type="Firewall Drops", "${FW_AT_HOST}", source_type) | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by source_type | fillnull value=0`,
+    // Build 374: each row splits into AtHost (IN_DROP) and InTransit (the rest —
+    // FWD_DROP plus a few untagged lines, all stored as fw_action="(none)").
+    blockedSrc: `${FW} | search fw_src!="(none)" | stats sum(count) as Drops, sum(eval(if(fw_action="IN_DROP",count,0))) as AtHost, dc(eval(if(fw_dst="(none)",null(),fw_dst))) as "Unique Targets", values(eval(if(fw_proto="(none)",null(),fw_proto))) as Protocols by fw_src | eval InTransit=Drops-AtHost | sort -Drops | rename fw_src as "Source IP"`,
     // blockedPort adds fw_proto!="(none)" because raw `stats by fw_dpt, fw_proto`
     // drops a null-proto group (a DPT-present-but-PROTO-absent event).
-    blockedPort: `${FW} | search fw_dpt!="(none)" fw_proto!="(none)" | stats sum(count) as Drops, dc(eval(if(host="(none)",null(),host))) as Hosts by fw_dpt, fw_proto | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
+    blockedPort: `${FW} | search fw_dpt!="(none)" fw_proto!="(none)" | stats sum(count) as Drops, sum(eval(if(fw_action="IN_DROP",count,0))) as AtHost, dc(eval(if(host="(none)",null(),host))) as Hosts by fw_dpt, fw_proto | eval InTransit=Drops-AtHost | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
     fwProto: `${FW} | search fw_action="IN_DROP" fw_proto!="(none)" | eval proto_name = ${PROTO_NAME} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by proto_name | fillnull value=0`,
     proxyDenied: `${PROXY} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(denied_count) as "Denied Requests" | fillnull value=0`,
     outDomains: `${PROXYDOM} | stats sum(count) as Requests, sum(bytes_sum) as bytes, dc(eval(if(src_ip="(none)",null(),src_ip))) as "Unique Clients" by url_domain | eval Bandwidth = ${bytesFmt('bytes')} | sort -bytes | table url_domain, Requests, Bandwidth, "Unique Clients" | rename url_domain as "Domain"`,
@@ -140,7 +163,8 @@ const Q_BASE = {
  * linux_secure / squid:access / DNS scan its rollup metric precomputes,
  * reconciled to the cached read's exact output columns (byte-verified equal at
  * wide windows — the np_v_* staged pairs). fw_* fields are rex'd from _raw (same
- * patterns the fw metric was built from); PROTO_NAME / QTYPE_LABEL / bytesFmt
+ * patterns the fw metric was built from), kernel_event with KERNEL_REX (the Linux
+ * `kernel` metric's rex, build 374); PROTO_NAME / QTYPE_LABEL / bytesFmt
  * are reused. COUNT timecharts append `| fillnull value=0` (both arms 0-fill).
  * Beaconing panels (kpiBeacon / sparkBeacon / suspicious) + sparklines stay
  * cached — beaconing has no meaningful sub-hour answer.
@@ -151,13 +175,14 @@ const RAW_SQUID = '`sap_logserv_idx_macro` sourcetype="squid:access" source="*ac
 const RAW_DNS = '`sap_logserv_idx_macro` tag=dns message_type="Query"';
 const QRAW_BASE = {
     kpiFw: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | stats count`,
+    kpiFwd: `${RAW_LSEC} | ${KERNEL_REX} | where kernel_event="FWD_DROP" | stats count`,
     kpiProxy: `${RAW_SQUID} | stats count`,
     kpiDns: `${RAW_DNS} | stats count`,
     kpiDenied: `${RAW_SQUID} (status=403 OR vendor_action="TCP_DENIED") | stats count`,
     kpiBw: `${RAW_SQUID} bytes_out=* | stats sum(bytes_out) as total_bytes | eval display = ${bytesFmt('total_bytes')} | table display`,
-    activity: `\`sap_logserv_idx_macro\` (sourcetype="linux_secure" OR (sourcetype="squid:access" source="*access.log*") OR (tag=dns message_type="Query")) | eval source_type = case(sourcetype="linux_secure" AND match(_raw, "IN_DROP"), "Firewall Drops", sourcetype="squid:access", "Proxy Requests", sourcetype="isc:bind:query", "DNS Queries", 1=1, "other") | where source_type != "other" | timechart span=__LSV_SPAN__ count by source_type | fillnull value=0`,
-    blockedSrc: `${RAW_LSEC} | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops, dc(fw_dst) as "Unique Targets", values(fw_proto) as Protocols by fw_src | sort -Drops | rename fw_src as "Source IP"`,
-    blockedPort: `${RAW_LSEC} | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops, dc(host) as Hosts by fw_dpt, fw_proto | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
+    activity: `\`sap_logserv_idx_macro\` (sourcetype="linux_secure" OR (sourcetype="squid:access" source="*access.log*") OR (tag=dns message_type="Query")) | eval source_type = case(sourcetype="linux_secure" AND match(_raw, "IN_DROP"), "${FW_AT_HOST}", sourcetype="squid:access", "Proxy Requests", sourcetype="isc:bind:query", "DNS Queries", 1=1, "other") | where source_type != "other" | timechart span=__LSV_SPAN__ count by source_type | fillnull value=0`,
+    blockedSrc: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops, count(eval(fw_action="IN_DROP")) as AtHost, dc(fw_dst) as "Unique Targets", values(fw_proto) as Protocols by fw_src | eval InTransit=Drops-AtHost | sort -Drops | rename fw_src as "Source IP"`,
+    blockedPort: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops, count(eval(fw_action="IN_DROP")) as AtHost, dc(host) as Hosts by fw_dpt, fw_proto | eval InTransit=Drops-AtHost | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
     fwProto: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | where fw_action="IN_DROP" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_proto) | eval proto_name = ${PROTO_NAME} | timechart span=__LSV_SPAN__ count by proto_name | fillnull value=0`,
     proxyDenied: `${RAW_SQUID} (status=403 OR vendor_action="TCP_DENIED") | timechart span=__LSV_SPAN__ count as "Denied Requests" | fillnull value=0`,
     outDomains: `${RAW_SQUID} url_domain=* bytes_out=* | stats count as Requests, sum(bytes_out) as bytes, dc(src_ip) as "Unique Clients" by url_domain | eval Bandwidth = ${bytesFmt('bytes')} | sort -bytes | table url_domain, Requests, Bandwidth, "Unique Clients" | rename url_domain as "Domain"`,
@@ -189,14 +214,18 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
 
 const BLOCKED_SRC_COLS: ColumnDef[] = [
     { key: 'Source IP', label: 'Source IP' },
-    { key: 'Drops', label: 'Drops', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Drops', label: 'Total', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'AtHost', label: 'At Host', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'InTransit', label: 'In Transit / Other', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Unique Targets', label: 'Unique Targets', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Protocols', label: 'Protocols' },
 ];
 const BLOCKED_PORT_COLS: ColumnDef[] = [
     { key: 'Dest Port', label: 'Dest Port' },
     { key: 'Protocol', label: 'Protocol' },
-    { key: 'Drops', label: 'Drops', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Drops', label: 'Total', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'AtHost', label: 'At Host', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'InTransit', label: 'In Transit / Other', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Hosts', label: 'Hosts', align: 'right', render: (v) => formatInteger(v) },
 ];
 const OUT_DOMAIN_COLS: ColumnDef[] = [
@@ -231,6 +260,7 @@ const NetworkPerimeter: React.FC = () => {
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
     const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
     const fw = useFirstRowFieldHybrid(Q.kpiFw, QRAW.kpiFw, 'count');
+    const fwd = useFirstRowFieldHybrid(Q.kpiFwd, QRAW.kpiFwd, 'count'); // in transit (FWD_DROP)
     const proxy = useFirstRowFieldHybrid(Q.kpiProxy, QRAW.kpiProxy, 'count');
     const dns = useFirstRowFieldHybrid(Q.kpiDns, QRAW.kpiDns, 'count');
     const beacon = useFirstRowField(Q.kpiBeacon, 'count'); // beaconing — cached (no sub-hour answer)
@@ -249,6 +279,9 @@ const NetworkPerimeter: React.FC = () => {
     const qProxyDenied = useRoutedQuery(Q.proxyDenied, QRAW.proxyDenied);
     const qDnsType = useRoutedQuery(Q.dnsType, QRAW.dnsType);
 
+    // Drops at the host keep their tone; drops in transit stay neutral (build 374):
+    // on a gateway they are traffic its forwarding policy does not allow, often a
+    // monitoring or discovery job.
     const fwTone = Number(fw.value ?? 0) > 1000 ? 'critical' : Number(fw.value ?? 0) > 0 ? 'warning' : 'neutral';
     const beaconTone = Number(beacon.value ?? 0) > 0 ? 'critical' : 'neutral';
     const deniedTone = Number(denied.value ?? 0) > 0 ? 'warning' : 'neutral';
@@ -286,17 +319,19 @@ const NetworkPerimeter: React.FC = () => {
         <DashboardLayout
             category="SECURITY"
             title="Network Perimeter"
-            subtitle="Unified network-boundary view — firewall drops (inbound rejections), proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation"
+            subtitle="Unified network-boundary view — firewall drops at the host and in transit, proxy outbound traffic, DNS resolution, and cross-source suspicious-activity correlation"
         >
             <KpiRow>
-                <KpiCard label="Firewall Drops" value={fw.value} loading={fw.loading} error={fw.error} search={fw.search} formatValue={formatInteger} tone={fwTone}
+                <KpiCard label={FW_AT_HOST} sub={FW_AT_HOST_SUB} value={fw.value} loading={fw.loading} error={fw.error} search={fw.search} formatValue={formatInteger} tone={fwTone}
                     sparkline={<SparklineFromQuery query={Q.sparkFw} valueField="count" color={logservTheme.colors.red} fill />} />
+                <KpiCard label={FW_IN_TRANSIT} sub={FW_IN_TRANSIT_SUB} value={fwd.value} loading={fwd.loading} error={fwd.error} search={fwd.search} formatValue={formatInteger}
+                    sparkline={<SparklineFromQuery query={Q.sparkFwd} valueField="count" color={logservTheme.colors.orange} fill />} />
                 <KpiCard label="Proxy Requests" value={proxy.value} loading={proxy.loading} error={proxy.error} search={proxy.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkProxy} valueField="count" fill />} />
                 <KpiCard label="DNS Queries" value={dns.value} loading={dns.loading} error={dns.error} search={dns.search} formatValue={formatInteger}
                     sparkline={<SparklineFromQuery query={Q.sparkDns} valueField="count" fill />} />
                 <KpiCard label="Beaconing Domains" value={beacon.value} loading={beacon.loading} error={beacon.error} search={beacon.search} formatValue={formatInteger} tone={beaconTone}
-                    sparkline={<SparklineFromQuery query={Q.sparkBeacon} valueField="daily" color={logservTheme.colors.red} fill />} />
+                    sparkline={<SparklineFromQuery query={Q.sparkBeacon} valueField="daily" utcDayField="day_ts" color={logservTheme.colors.red} fill />} />
                 <KpiCard label="Denied Requests" value={denied.value} loading={denied.loading} error={denied.error} search={denied.search} formatValue={formatInteger} tone={deniedTone}
                     sparkline={<SparklineFromQuery query={Q.sparkDenied} valueField="count" color={logservTheme.colors.orange} fill />}
                     onClick={goDeniedKpi} clickTitle="Open denied-traffic SPL in Splunk Search" />
@@ -305,12 +340,12 @@ const NetworkPerimeter: React.FC = () => {
             </KpiRow>
 
             <FullWidthPanel>
-                <FramedPanel title="Perimeter Activity Over Time" subtitle="Firewall + proxy + DNS daily counts overlaid">
+                <FramedPanel title="Perimeter Activity Over Time" subtitle={spanSubtitle('Firewall + proxy + DNS counts overlaid', qActivity)}>
                     <TimeSeriesChart
                         query={qActivity}
                         height={300}
                         seriesColorsByField={{
-                            'Firewall Drops': '#b50101',
+                            [FW_AT_HOST]: '#b50101',
                             'Proxy Requests': '#dc4e41',
                             'DNS Queries': '#f1813f',
                         }}
@@ -319,19 +354,19 @@ const NetworkPerimeter: React.FC = () => {
             </FullWidthPanel>
 
             <PanelGrid2>
-                <FramedPanel search={blockedSrc} title="Blocked Source IPs" subtitle="Source IPs being dropped by firewall, ranked by drop count">
+                <FramedPanel search={blockedSrc} title="Blocked Source IPs" subtitle="Source IPs in the kernel firewall log, ranked by total and split into drops at the host and in transit">
                     <DataTable columns={BLOCKED_SRC_COLS} rows={blockedSrc.results} loading={blockedSrc.loading} error={blockedSrc.error} emptyMessage="No firewall drops in this time range." initialSortKey="Drops" initialSortDir="desc" pageSize={10} onRowClick={goBlockedSrc} />
                 </FramedPanel>
-                <FramedPanel search={blockedPort} title="Blocked Destination Ports" subtitle="Destination ports being dropped, ranked by drop count">
+                <FramedPanel search={blockedPort} title="Blocked Destination Ports" subtitle="Destination ports in the kernel firewall log, ranked by total and split into drops at the host and in transit">
                     <DataTable columns={BLOCKED_PORT_COLS} rows={blockedPort.results} loading={blockedPort.loading} error={blockedPort.error} emptyMessage="No firewall drops in this time range." initialSortKey="Drops" initialSortDir="desc" pageSize={10} />
                 </FramedPanel>
             </PanelGrid2>
 
             <PanelGrid2>
-                <FramedPanel title="Firewall Drops by Protocol" subtitle="Daily protocol mix (TCP / UDP / ICMP)">
+                <FramedPanel title="Firewall Drops at Host by Protocol" subtitle={spanSubtitle('Protocol mix of drops at the host (INPUT chain)', qFwProto)}>
                     <TimeSeriesChart query={qFwProto} height={280} palette="errors" />
                 </FramedPanel>
-                <FramedPanel title="Proxy Denied Traffic Over Time" subtitle="Daily denied request count">
+                <FramedPanel title="Proxy Denied Traffic Over Time" subtitle={spanSubtitle('Denied request count', qProxyDenied)}>
                     <TimeSeriesChart query={qProxyDenied} height={280} palette="errors" />
                 </FramedPanel>
             </PanelGrid2>

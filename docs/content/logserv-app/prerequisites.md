@@ -18,7 +18,7 @@ The Squid Proxy and ISC BIND add-ons are **not** required — their parsing is a
 
 The LogServ App includes a built-in **AI Assistant** panel that dispatches predefined prompts (saved searches) against your data via the Splunk MCP Server. To use it, install:
 
-- <a href="https://splunkbase.splunk.com/app/7931" target="_blank">Splunk MCP Server (Splunkbase App 7931)</a> — v1.1.0 or later is the version this release is tested against (the App's version gate accepts 1.0.3 up to, but not including, 3.0.0, so the 2.x major is supported).
+- <a href="https://splunkbase.splunk.com/app/7931" target="_blank">Splunk MCP Server (Splunkbase App 7931)</a> — v1.1.0 or later is the version this release is tested against (the App's version gate accepts 1.0.3 and later, with no upper bound since build 393).
 
 Install on the same Search Head as the LogServ App. Cookie auth from the same Splunk Web session works by default; no bearer token required for HTTP-only Splunk (on Splunk Cloud Victoria, see the JWT-audience note in [Splunk MCP Setup](../ai-assistant/mcp-setup.md)).
 

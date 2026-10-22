@@ -18,23 +18,29 @@ Most panels read the hourly summary layer, so wide-range figures can lag by up t
 - **Audit Category Breakdown** -- Table of audit event categories (`action_category`) with event counts
 - **Security Events Timeline** -- Shows failed operations, object modifications, and permission grants
 - **Password Management Activities** -- Table of password-related audit events with user and IP details, classified as Password Change, Disable Lifetime, Reset Attempts or Other in any letter case (build 365)
-- **Failed Operations by Host** -- Table showing which hosts generate the most failed operations; click a row to open Host Details for that host
+- **Failed Operations by HANA Host** -- Table showing which HANA hosts recorded the most failed operations: the host that wrote the audit record, not the client that connected (build 378); click a row to open Host Details for that host
 - **Users by Activity** -- Table ranking executing users by event count, with the number of distinct action types and failure count; click a row to open Cross-Stack Authentication
 - **Activity by Hour of Day** -- Column chart showing successes vs. failures by hour for after-hours detection
 - **Client IP Analysis** -- Table of connecting IPs with user counts, failures, and last-seen time
-- **Risk-Tiered Event Timeline** -- Stacked column chart of daily events grouped by `risk_level` (HIGH / MEDIUM / LOW), so severe events never get hidden inside overall volume
-- **After-Hours / Weekend Admin Activity** -- Table of admin activity (`is_admin_user=true`) falling outside business hours (weekday 08:00-18:59) or on a weekend, surfacing privileged activity outside normal windows; the Period column labels each row Weekend, After Hours, or Weekend / After Hours. Click a row to drill down by user
-- **High-Risk Events** -- Full-width table filtered to `is_critical=true`, showing up to the 500 most recent critical audit events with time, user, action, category, risk, status, host, client IP, and SQL statement; click a row to drill down by user
+- **Risk-Tiered Event Timeline** -- Stacked column chart of events over time grouped by `risk_level` (HIGH / MEDIUM / LOW), so severe events never get hidden inside overall volume
+- **After-Hours / Weekend Admin Activity** -- Table of admin activity (`is_admin_user=true`) falling outside business hours (weekday 08:00-18:59) or on a weekend, surfacing privileged activity outside normal windows; the Period column labels each row Weekend, After Hours, or Weekend / After Hours. The **HANA Host** and **Client Host** columns show the HANA host that wrote the record and the host name of the client that ran the action. Click a row to drill down by user and HANA host
+- **High-Risk Events** -- Full-width table filtered to `is_critical=true`, showing up to the 500 most recent critical audit events with time, user, action, category, risk, status, HANA host, client host, client IP, and SQL statement; click a row to drill down by user
 
 ## :material-circle-box:{ .taiconcolor } Where the Data Comes From
 
 The single source is `sap:hana:audit`. The action status and target principal are read from their fixed positions in the audit record, so every action has them; earlier builds found them for connect-type actions only (build 364). The SQL Statement column shows user and privilege management statements, in any letter case and also when the record quotes them; quoted identifiers read as in the database — `grant "ROLE" to USER` — without the JSON escapes real ingest keeps (build 365).
 
+**Which host is which (build 378).** Every audit record names two machines: the HANA host that wrote it and the client that ran the action. In this App, `host` on `sap:hana:audit` events is the HANA host — the LogServ host that delivered the record, as the index stores it for the event. The client's host name (the record's *Client Name* field) is `src_host`, beside `src_ip` (the client IP, also `client_ip`) and `dest_host` (the database host the record names). Up to build 377 the App put the client's name into `host`, so panels and searches grouped by host listed client workstations and application servers, and the Host Details drilldown could open a host with no events of its own. The **HANA Host** columns read `host` and the **Client Host** columns read `src_host`; a record that names no client leaves its Client Host and Client IP cells empty.
+
 - **Summary-backed panels** — the KPIs, category/action/user/client breakdowns and the
   compliance timelines read the `logserv_hana_category_rollup` KV Store collection: metric `main`
-  carries an hourly grain over (executing user, client IP, status, host, action type), and metrics
-  `useradmin`, `security` and `password` pre-compute the three classified activity timelines.
-  Populated at minute :11 of every hour by `logserv_hana_aggregate`.
+  carries an hourly grain over (executing user, client IP, status, HANA host, action type), and
+  metrics `useradmin`, `security` and `password` pre-compute the three classified activity
+  timelines. Populated at minute :11 of every hour by `logserv_hana_aggregate`. Rows written
+  before build 378 hold the client's host name in the host dimension: after upgrading, **Clear**
+  and then **Backfill** the HANA Audit row once in **Settings → Dashboard Data**, as
+  [Upgrading](../../../getting-started/upgrading.md) describes, or Failed Operations by HANA Host
+  lists client hosts beside the HANA hosts for the days before the upgrade.
 - **Live panels** — the High-Risk Events and After-Hours / Weekend Admin Activity tables are
   per-event listings dispatched against the raw audit events at view time (capped at the 500 most
   recent matches each) — deliberately raw, so a compliance reviewer sees the actual event rows.
@@ -45,6 +51,7 @@ Summary-backed panels switch automatically to their exact raw-equivalent search 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 
 - **Failed operations from unusual IPs** -- Authentication failures from IP addresses not in your expected range may indicate brute-force attacks or credential stuffing attempts.
+- **Privileged actions from an unexpected client host** -- The High-Risk Events and After-Hours / Weekend Admin Activity tables name both the HANA host and the client host. An administrative action run from a machine that does not normally administer that database is worth a check against your change records.
 - **Critical events in the High-Risk Events table** -- Any non-empty row here warrants investigation. The SQL Statement column makes it straightforward to see whether a critical event was a privilege grant, a schema change, or a failed auth.
 - **After-hours privileged activity** -- The After-Hours / Weekend Admin Activity table surfaces admin operations outside business hours; correlate with change management records to separate planned maintenance from suspicious activity.
 - **Risk-tier shifts over time** -- A rising HIGH stack in the Risk-Tiered Event Timeline often precedes an incident. A sudden spike in MEDIUM may point to scripted workloads that need review.

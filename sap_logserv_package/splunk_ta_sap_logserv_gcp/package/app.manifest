@@ -15,7 +15,7 @@
             }
         ],
         "releaseDate": null,
-        "description": "GCP Pub/Sub ingest for SAP LogServ. Consumes Pub/Sub blob-created notifications, fetches each LogServ blob over a SAS, and emits its NDJSON for index-time routing. Install on Heavy Forwarders alongside the LogServ Data TA (which provides the sourcetype routing, filtering, and stamping). The GCP counterpart to the Splunk Add-on for AWS SQS-based S3 input.",
+        "description": "GCP Pub/Sub ingest for SAP LogServ. Consumes Pub/Sub OBJECT_FINALIZE notifications, fetches each LogServ object with its service-account key, and emits its NDJSON for index-time routing. Install on Heavy Forwarders alongside the LogServ Data TA (which provides the sourcetype routing, filtering, and stamping); installing it on a search head is strongly recommended against (ingest load on the search tier), though not blocked. The GCP counterpart to the Splunk Add-on for AWS SQS-based S3 input.",
         "classification": {
             "intendedAudience": "IT Professionals",
             "categories": [
@@ -47,9 +47,11 @@
     "platformRequirements": null,
     "supportedDeployments": [
         "_standalone",
-        "_distributed"
+        "_distributed",
+        "_search_head_clustering"
     ],
     "targetWorkloads": [
-        "_forwarders"
+        "_forwarders",
+        "_search_heads"
     ]
 }

@@ -64,8 +64,9 @@ import {
     sanitizeFetchedFactsRow,
     ingestFactsSummary,
     scrubPaste,
+    suppliedByText,
 } from './diagIngestFacts';
-import { redactFreeTextPii } from './piiRedaction';
+import { newTagKey, redactFreeTextPii } from './piiRedaction';
 import { SplProbe } from './splProbe';
 import {
     SNAPSHOT_COLLECTION,
@@ -156,7 +157,8 @@ export interface PanelEvidence {
      *  stale. null = not probed; [] = probed, none matched — which is NEVER
      *  negative evidence. Matches may only ever ADD a provenance-badged
      *  evidence line to `rollup-stale`; they can never raise its confidence
-     *  (SS16.8a-1: the snapshot collection is world-writable). */
+     *  (SS16.8a-1: the snapshot collection was world-writable before build 384, and a
+     *  local.meta can reopen it). */
     platformSkips: ProducerSkipEvidence[] | null;
     /** §20.2 — the FULL SPL of the saved searches that populate this panel's
      *  rollup collection(s), for DISPLAY (drawer + panel report). Deep-gated
@@ -618,6 +620,10 @@ export const collectRawSamples = async (
         out.error = r.error;
         return out;
     }
+    // Build 377: one redaction-tag key per collection (one report), so a
+    // value keeps one tag across the report's samples and a tag cannot be
+    // reversed by hashing candidates (piiRedaction.redactionTag).
+    const tagKey = newTagKey();
     out.events = (r.rows as Array<Record<string, unknown>>)
         .slice(0, RAW_SAMPLE_MAX)
         .map((row) => {
@@ -626,7 +632,7 @@ export const collectRawSamples = async (
             // §20.8a-3 — clip BEFORE redaction (order is load-bearing: the
             // mutation kill-test plants an email straddling the ceiling).
             const clipped = overCeiling ? rawFull.slice(0, RAW_SAMPLE_EVENT_MAX_CHARS) : rawFull;
-            const redacted = redactFreeTextPii(scrubPaste(clipped));
+            const redacted = redactFreeTextPii(scrubPaste(clipped), tagKey);
             return {
                 time: typeof row._time === 'string' ? row._time : String(row._time ?? ''),
                 sourcetype: typeof row.sourcetype === 'string' ? row.sourcetype : '',
@@ -1054,7 +1060,7 @@ export const gatherPanelEvidence = async (
                 ev.notes.push({
                     check: INGEST_FACTS_CHECK_NAME,
                     status: 'ok',
-                    detail: `Recorded as supplied by ${facts.suppliedBy || 'an unknown user'}: ${ingestFactsSummary(facts)}`,
+                    detail: `Recorded as supplied by ${suppliedByText(facts.suppliedBy)}: ${ingestFactsSummary(facts)}`,
                     durationMs: fx.durationMs,
                 });
             }
@@ -1712,7 +1718,7 @@ export const gatherPanelEvidence = async (
          * to match on. Deduped by the memoizing runner across a sweep. The
          * result may only ever ADD a provenance-badged evidence line to
          * `rollup-stale` — never raise its confidence (SS16.8a-1: the
-         * snapshot collection is world-writable). Silent when not triggered,
+         * snapshot collection was world-writable before build 384). Silent when not triggered,
          * like the KV-status probe above. */
         if (
             ev.collectionExtentProbed &&

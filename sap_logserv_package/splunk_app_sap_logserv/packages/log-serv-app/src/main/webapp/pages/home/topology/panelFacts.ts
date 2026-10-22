@@ -38,11 +38,12 @@ import { darken, lighten } from '../utils/colorMath';
  * What the hook knows about one edge endpoint, keyed by NODE ID.
  *
  * `owner` is the SID `logserv_topology_inventory` attributes the endpoint to,
- * or null when the inventory has no entry for it. That absence has at least
- * four causes (never emitted a system identifier; failed the per-hour
- * `mvcount(sids)=1` unambiguity test; two arms disagreed; not observed since
- * the collection was populated), which is why the verdict below says
- * "unestablished" and never "shared".
+ * or null when the inventory has no entry for it. That absence has several
+ * causes (never emitted a system identifier an inventory arm reads; every run
+ * that saw it ended in an exact tie between SIDs, which writes no row - since
+ * build 379 the inventory otherwise records each endpoint's most recent SID;
+ * not observed since the collection was populated), which is why the verdict
+ * below says "unestablished" and never "shared".
  */
 export interface EndpointAttribution {
     /** Canonical kind: 'sid' | 'ip' | 'host' | 'tenant_db'. */
@@ -259,9 +260,10 @@ export const trafficTotal = (rows: readonly TrafficRow[]): number =>
 
 /** The stored fields an RFC member row must expose for the app-server split.
  *  Structural, like TrafficMemberRow, so the gate can drive this without the
- *  hook's private interfaces. `local_ip` is the SID-side gateway listening
- *  address the build-325 key change projects onto RFC rows; rows stored
- *  before that change simply lack it. */
+ *  hook's private interfaces. `local_ip` is the `L=` address of the gateway
+ *  that wrote the record - the SAP system's side of the connection, whichever
+ *  direction it was made. Connection records (GwDiscRemGw, GwDisconnectClient)
+ *  name none; rows stored before the per-app-server key lack it. */
 export interface AppServerMemberRow {
     local_ip?: string;
     call_count: number;
@@ -269,8 +271,9 @@ export interface AppServerMemberRow {
 }
 
 /** One "By app server" row of the edge Overview tab. `localIp === null`
- *  collects the pre-build-325 rows (no stored address) — the panel names
- *  them "(not recorded)" and points at Clear + Backfill. */
+ *  collects the rows with no stored address (connection records, and rows
+ *  stored before the per-app-server key) - the panel names them
+ *  "(not recorded)". */
 export interface EdgeAppServerRow {
     localIp: string | null;
     calls: number;
@@ -282,12 +285,13 @@ export interface EdgeAppServerRow {
  * the rendered edge's buckets, so `calls` sums to the edge's `callCount` by
  * construction — the same self-checking property as buildNodeTraffic (§8a-1).
  *
- * What the rows are — and are not: the gateway log records the LISTENING
- * ADDRESS a call was handled on, so these are the SID-side app servers as the
- * data names them, not a full instance inventory. The panel's caption says so.
+ * What the rows are — and are not: the gateway log names a local address
+ * only on its broken-connection lines (P=/L=), so these are the SAP system's
+ * app servers as the data names them, not a full instance inventory. The
+ * panel's caption says so.
  *
  * Sorted by calls desc; ties break by localIp asc with the null
- * (pre-upgrade) row last — deterministic across re-renders (the session-108
+ * (not recorded) row last — deterministic across re-renders (the session-108
  * tie-break lesson: a fixture already in sorted order proves nothing, and an
  * unstable order repaints rows under the user's cursor).
  */
@@ -333,7 +337,9 @@ export interface PartnerEdgeLike {
     target: string;
     callCount: number;
     direction: string;
-    /** Optional; only used to name the bidirectional types in the panel note. */
+    /** Optional; names the bidirectional types in the panel note and, since
+     *  build 380, decides what each direction's donut counts (an edge without
+     *  a type counts calls). */
     splType?: string;
 }
 
@@ -360,6 +366,12 @@ export interface PartnerSplit {
     /** Distinct SPL types carrying those bidirectional edges, so the panel can
      *  name them instead of asserting a generic claim. Sorted, de-duplicated. */
     bidiTypes: string[];
+    /** Build 380: distinct SPL types of the edges in each group (bidirectional
+     *  edges excluded, like their calls), sorted, '' for an edge without a
+     *  type. The panel names a donut's unit from them: an RFC or SAP Router
+     *  edge counts connections, the other types count calls. */
+    inboundTypes: string[];
+    outboundTypes: string[];
     /** inboundCalls + outboundCalls + bidiCalls. Equals the panel's
      *  `Total calls` because incoming and outgoing partition the node's
      *  incident edges (self-loops are already filtered upstream). */
@@ -369,8 +381,9 @@ export interface PartnerSplit {
 const collectPartners = (
     edges: readonly PartnerEdgeLike[],
     endpointOf: (e: PartnerEdgeLike) => string,
-): { list: PartnerEntry[]; calls: number } => {
+): { list: PartnerEntry[]; calls: number; types: string[] } => {
     const counts = new Map<string, number>();
+    const types = new Set<string>();
     let calls = 0;
     edges.forEach((e) => {
         if (!e || e.direction === 'bidi') return;
@@ -379,11 +392,12 @@ const collectPartners = (
         const c = typeof e.callCount === 'number' ? e.callCount : 0;
         counts.set(id, (counts.get(id) ?? 0) + c);
         calls += c;
+        types.add(e.splType ?? '');
     });
     const list = Array.from(counts.entries())
         .map(([id, c]) => ({ id, calls: c }))
         .sort((a, b) => (b.calls !== a.calls ? b.calls - a.calls : (a.id < b.id ? -1 : 1)));
-    return { list, calls };
+    return { list, calls, types: Array.from(types).sort() };
 };
 
 /**
@@ -418,6 +432,8 @@ export const splitPartners = (
         bidiCalls,
         bidiEdges,
         bidiTypes: Array.from(bidiTypeSet).sort(),
+        inboundTypes: inb.types,
+        outboundTypes: outb.types,
         totalCalls: inb.calls + outb.calls + bidiCalls,
     };
 };

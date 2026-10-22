@@ -13,14 +13,15 @@ import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProvide
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildDashboardUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
-import { applySpanTokens, chooseTimechartSpan } from '../utils/timechartSpan';
+import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 
 /**
  * ABAP Network & Security — honest port of v0.0.4.2 logserv_abap_security.xml.
  *
  * 3 KPIs (Total / ICM Errors / Gateway Errors) + Volume by Sourcetype line +
- * ICM Status Codes column + ICM Peers table + ICM Request Types pie + Gateway
- * Hosts table + Gateway Errors line + SID/Instance column.
+ * ICM Warnings & Errors column + ICM Peers table + ICM Request Types pie +
+ * ICM Session Entries by SAP System and Client pie + Gateway Hosts table +
+ * Gateway Errors line + SID/Instance column.
  */
 
 const KpiRow = styled.div`
@@ -62,16 +63,17 @@ const PieStack = styled.div`
  * [logserv_abapnet_aggregate] (one-time [logserv_abapnet_backfill]). The schema
  * was adversarially design-reviewed pre-build.
  *
- * 7 metrics: `vol` (sourcetype/sid/instance) → Total KPI + Volume-by-Sourcetype
+ * 8 metrics: `vol` (sourcetype/sid/instance) → Total KPI + Volume-by-Sourcetype
  * + SID/Instance (sid+instance fillnull'd so the KPI/volume panels sum over ALL
- * rows — raw doesn't group by sid; only sidInstance excludes "(none)"); `icmstat`
- * (status_cat, classified in-aggregate) → ICM Status timechart+pie; `icmreq`
- * (raw request_type, decoded at READ) → ICM Request Types pie; `icmpeer`
- * (peer_ip/txn/protocol) → ICM Peers (dc/values); `icmerr` (per-bucket count,
- * `icm_is_error="true"` — build-218 fix of the original `=1` string-vs-number
- * bug; props.conf EVAL sets icm_is_error="true" iff icm_status_code is 4xx/5xx;
- * 0 on data with no 4xx/5xx ICM events, real count otherwise; task_7e242b2b)
- * → ICM Errors KPI; `gwhost`
+ * rows — raw doesn't group by sid; only sidInstance excludes "(none)"); `icmsev`
+ * (status_cat = the dev_icm message class ERROR / WARNING) → ICM Warnings &
+ * Errors timechart; `icmclient` (sap_sid + sap_client of a session-list line;
+ * a client number belongs to its system) → ICM Session Entries by SAP System
+ * and Client pie; `icmreq` (raw request_type, decoded at READ) → ICM Request
+ * Types pie; `icmpeer` (peer_ip/txn/protocol) → ICM Peers (connections +
+ * protocols); `icmerr` (per-bucket count, `icm_is_error="true"`, a dev_icm
+ * "*** ERROR =>" line since build 378 - until then the SAP client column read
+ * as an HTTP status) → ICM Errors KPI; `gwhost`
  * (rhost/func/svc) → Gateway Hosts Events + Services; `gwlatest` (rhost/func +
  * count + latest(error_detail), error events only) → Gateway Errors KPI/timeline
  * + the Gateway Hosts "Last Error" column (left-joined on rhost+func).
@@ -82,7 +84,8 @@ const PieStack = styled.div`
 const ROLL = 'logserv_abapnet_rollup';
 const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
 const VOL = `| inputlookup ${ROLL} where metric="vol" ${RANGE}`;
-const ICMSTAT = `| inputlookup ${ROLL} where metric="icmstat" ${RANGE}`;
+const ICMSEV = `| inputlookup ${ROLL} where metric="icmsev" ${RANGE}`;
+const ICMCLIENT = `| inputlookup ${ROLL} where metric="icmclient" ${RANGE}`;
 const ICMREQ = `| inputlookup ${ROLL} where metric="icmreq" ${RANGE}`;
 const ICMPEER = `| inputlookup ${ROLL} where metric="icmpeer" ${RANGE}`;
 const ICMERR = `| inputlookup ${ROLL} where metric="icmerr" ${RANGE}`;
@@ -101,9 +104,13 @@ const Q_BASE = {
     sparkGwErrors: `${GWLATEST} | eval _time=bucket_ts | timechart span=1d sum(count) as count | fillnull value=0`,
 
     volumeByType: `${VOL} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by sourcetype | fillnull value=0`,
-    icmStatus: `${ICMSTAT} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by status_cat | fillnull value=0`,
-    icmStatusPie: `${ICMSTAT} | stats sum(count) as count by status_cat | sort status_cat`,
-    icmPeers: `${ICMPEER} | stats sum(count) as Requests, dc(eval(if(icm_transaction_id="(none)",null(),icm_transaction_id))) as Transactions, values(eval(if(icm_protocol="(none)",null(),icm_protocol))) as Protocols by icm_peer_ip | sort -Requests | rename icm_peer_ip as "Peer IP"`,
+    // status_cat on an icmsev row is the dev_icm message class (ERROR / WARNING).
+    icmSeverity: `${ICMSEV} | eval _time=bucket_ts | timechart span=__LSV_SPAN__ sum(count) by status_cat | fillnull value=0`,
+    // A client number belongs to its system: a slice is SID / client ("(none)" = no SID in the path).
+    icmClientPie: `${ICMCLIENT} | eval sap_client=if(sap_sid="(none)", sap_client, sap_sid . " / " . sap_client) | stats sum(count) as count by sap_client | sort -count`,
+    // A connection line never carries a session ID (icm_transaction_id is
+    // "(none)" on every icmpeer row), so the table counts connections only.
+    icmPeers: `${ICMPEER} | stats sum(count) as Connections, values(eval(if(icm_protocol="(none)",null(),icm_protocol))) as Protocols by icm_peer_ip | sort -Connections | rename icm_peer_ip as "Peer IP"`,
     // Decode ICM request type codes (ASYNC_RFC / HTTP_NORMAL / INTERNAL → plain
     // English) at READ — the rollup stores the raw code (code-agnostic precompute).
     icmRequestTypes: `${ICMREQ} `
@@ -125,7 +132,7 @@ const Q_BASE = {
 /* ---------------------------------------------------------------------------
  * RAW fallbacks for the sub-hour hybrid (session 086). Each is the raw ABAP
  * scan its rollup metric precomputes (reconstructed from
- * [logserv_abapnet_aggregate] — status_cat + the ICM request-type decode are
+ * [logserv_abapnet_aggregate] — the icmsev class + the ICM request-type decode are
  * reused). "(none)" sentinels map to raw `field=*` / stats-by null-drop. gwHosts
  * folds latest(gw_error_detail) into one pass (latest = latest NON-NULL, and
  * gw_error_detail is null on non-error events, so it = the latest error detail —
@@ -135,16 +142,15 @@ const Q_BASE = {
 const RAW_ABAP3 = '`sap_logserv_idx_macro` sourcetype IN ("sap:abap:audit","sap:abap:gateway","sap:abap:icm")';
 const RAW_ICM = '`sap_logserv_idx_macro` sourcetype="sap:abap:icm"';
 const RAW_GW = '`sap_logserv_idx_macro` sourcetype="sap:abap:gateway"';
-const STATUS_CAT = 'eval status_cat=case(icm_status_code>=200 AND icm_status_code<300, "2xx", icm_status_code>=300 AND icm_status_code<400, "3xx", icm_status_code>=400 AND icm_status_code<500, "4xx", icm_status_code>=500, "5xx", 1=1, "Other")';
 const ICM_REQ_DECODE = 'eval icm_request_type = case(icm_request_type=="ASYNC_RFC", "Asynchronous RFC", icm_request_type=="HTTP_NORMAL", "HTTP Request", icm_request_type=="INTERNAL", "Internal Call", 1=1, icm_request_type)';
 const QRAW_BASE = {
     kpiTotal: `${RAW_ABAP3} | stats count`,
     kpiIcmErrors: `${RAW_ICM} icm_is_error="true" | stats count`,
     kpiGwErrors: `${RAW_GW} gw_error_detail=* gw_error_detail!="" | stats count`,
     volumeByType: `${RAW_ABAP3} | timechart span=__LSV_SPAN__ count by sourcetype | fillnull value=0`,
-    icmStatus: `${RAW_ICM} icm_status_code=* | ${STATUS_CAT} | timechart span=__LSV_SPAN__ count by status_cat | fillnull value=0`,
-    icmStatusPie: `${RAW_ICM} icm_status_code=* | ${STATUS_CAT} | stats count by status_cat | sort status_cat`,
-    icmPeers: `${RAW_ICM} icm_peer_ip=* | stats count as Requests, dc(icm_transaction_id) as Transactions, values(icm_protocol) as Protocols by icm_peer_ip | sort -Requests | rename icm_peer_ip as "Peer IP"`,
+    icmSeverity: `${RAW_ICM} icm_severity=* | eval status_cat=icm_severity | timechart span=__LSV_SPAN__ count by status_cat | fillnull value=0`,
+    icmClientPie: `${RAW_ICM} sap_client=* | fillnull value="(none)" sap_sid | eval sap_client=if(sap_sid="(none)", sap_client, sap_sid . " / " . sap_client) | stats count by sap_client | sort -count`,
+    icmPeers: `${RAW_ICM} icm_peer_ip=* | stats count as Connections, values(icm_protocol) as Protocols by icm_peer_ip | sort -Connections | rename icm_peer_ip as "Peer IP"`,
     icmRequestTypes: `${RAW_ICM} icm_request_type=* | ${ICM_REQ_DECODE} | stats count by icm_request_type | sort -count`,
     gwHosts: `${RAW_GW} | stats count as Events, values(gw_service) as Services, latest(gw_error_detail) as "Last Error" by gw_remote_host gw_function | sort -Events | rename gw_remote_host as "Remote Host" gw_function as "Function"`,
     gwErrorsTimeline: `${RAW_GW} gw_error_detail=* gw_error_detail!="" | timechart span=__LSV_SPAN__ count as "Gateway Errors" | fillnull value=0`,
@@ -175,8 +181,7 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
 
 const ICM_PEER_COLS: ColumnDef[] = [
     { key: 'Peer IP', label: 'Peer IP' },
-    { key: 'Requests', label: 'Requests', align: 'right', render: (v) => formatInteger(v) },
-    { key: 'Transactions', label: 'Transactions', align: 'right', render: (v) => formatInteger(v) },
+    { key: 'Connections', label: 'Connections', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Protocols', label: 'Protocols' },
 ];
 const GW_HOST_COLS: ColumnDef[] = [
@@ -206,8 +211,8 @@ const AbapSecurity: React.FC = () => {
 
     // Charts / pies take a query string → route once each (sub-hour -> raw).
     const qVolumeByType = useRoutedQuery(Q.volumeByType, QRAW.volumeByType);
-    const qIcmStatus = useRoutedQuery(Q.icmStatus, QRAW.icmStatus);
-    const qIcmStatusPie = useRoutedQuery(Q.icmStatusPie, QRAW.icmStatusPie);
+    const qIcmSeverity = useRoutedQuery(Q.icmSeverity, QRAW.icmSeverity);
+    const qIcmClientPie = useRoutedQuery(Q.icmClientPie, QRAW.icmClientPie);
     const qIcmRequestTypes = useRoutedQuery(Q.icmRequestTypes, QRAW.icmRequestTypes);
     const qGwErrorsTimeline = useRoutedQuery(Q.gwErrorsTimeline, QRAW.gwErrorsTimeline);
     const qSidInstance = useRoutedQuery(Q.sidInstance, QRAW.sidInstance);
@@ -248,24 +253,24 @@ const AbapSecurity: React.FC = () => {
             </KpiRow>
 
             <PanelGrid2>
-                <FramedPanel title="Event Volume by Sourcetype" subtitle="Daily volume across audit / gateway / ICM">
+                <FramedPanel title="Event Volume by Sourcetype" subtitle={spanSubtitle('Volume across audit / gateway / ICM', qVolumeByType)}>
                     <TimeSeriesChart query={qVolumeByType} height={280} palette="volume" />
                 </FramedPanel>
-                <FramedPanel title="ICM Status Codes Over Time" subtitle="Daily ICM responses bucketed 2xx/3xx/4xx/5xx">
-                    <TimeSeriesChart query={qIcmStatus} height={280} palette="status" />
+                <FramedPanel title="ICM Warnings & Errors Over Time" subtitle={spanSubtitle('dev_icm messages logged as WARNING or ERROR', qIcmSeverity)}>
+                    <TimeSeriesChart query={qIcmSeverity} height={280} palette="status" />
                 </FramedPanel>
             </PanelGrid2>
 
             <PanelGrid3>
-                <FramedPanel search={icmPeers} title="ICM Peer Connections" subtitle="ICM peer IPs ranked by request count — click a row for that peer's full ICM event log">
+                <FramedPanel search={icmPeers} title="ICM Peer Connections" subtitle="Addresses at the other end of ICM connections, ranked by connection count — click a row for that peer's full ICM event log">
                     <DataTable columns={ICM_PEER_COLS} rows={icmPeers.results} loading={icmPeers.loading} error={icmPeers.error} emptyMessage="No ICM peer activity in this time range." pageSize={17} onRowClick={goIcmPeerRow} />
                 </FramedPanel>
                 <PieStack>
-                    <FramedPanel title="ICM Request Types" subtitle="Distribution by HTTP method">
+                    <FramedPanel title="ICM Request Types" subtitle="Session-list entries by request type">
                         <PieChart query={qIcmRequestTypes} categoryField="icm_request_type" valueField="count" height={310} donut />
                     </FramedPanel>
-                    <FramedPanel title="ICM Status Code Distribution" subtitle="Overall mix of 2xx / 3xx / 4xx / 5xx responses">
-                        <PieChart query={qIcmStatusPie} categoryField="status_cat" valueField="count" height={310} donut palette="status" />
+                    <FramedPanel title="ICM Session Entries by SAP System and Client" subtitle="Session-list entries by SID / SAP client (000 is the system client)">
+                        <PieChart query={qIcmClientPie} categoryField="sap_client" valueField="count" height={310} donut />
                     </FramedPanel>
                 </PieStack>
                 <FramedPanel search={gwHosts} title="Gateway Remote Hosts" subtitle="Gateway peer hosts + functions ranked by event count — click a row for that host's full gateway event log">
@@ -274,7 +279,7 @@ const AbapSecurity: React.FC = () => {
             </PanelGrid3>
 
             <PanelGrid2>
-                <FramedPanel title="Gateway Errors Over Time" subtitle="Daily gateway error count">
+                <FramedPanel title="Gateway Errors Over Time" subtitle={spanSubtitle('Gateway error count', qGwErrorsTimeline)}>
                     <TimeSeriesChart query={qGwErrorsTimeline} height={280} palette="errors" />
                 </FramedPanel>
                 <FramedPanel title="Activity by SID / Instance" subtitle="SID + instance combos ranked by event volume — click to open ABAP Operations"

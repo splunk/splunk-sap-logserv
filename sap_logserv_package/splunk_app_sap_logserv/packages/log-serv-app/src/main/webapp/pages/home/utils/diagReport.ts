@@ -47,6 +47,11 @@ import {
     isPassAllInclude,
     factsUsableForBoundary,
     knownStamp,
+    includeSourcesOf,
+    excludeSourcesOf,
+    hasSourceRules,
+    SOURCE_RULES_NOTE,
+    suppliedByText,
 } from './diagIngestFacts';
 import { EnvironmentEvidence, RollupHealthRow, COMPANION_APPS } from './diagEnvironment';
 import {
@@ -139,7 +144,7 @@ export const CANNOT_CHECK_LINES: string[] = [
 export const cannotCheckLines = (facts?: IngestFacts | null): string[] => {
     if (!facts || facts.parseStatus === 'unparsed') return CANNOT_CHECK_LINES;
     const summary =
-        `The Data TA’s ingest filters were supplied by ${facts.suppliedBy || 'an unknown user'} ` +
+        `The Data TA’s ingest filters were supplied by ${suppliedByText(facts.suppliedBy)} ` +
         `(see the “Ingest-tier filters (supplied by operator)” section): ${ingestFactsSummary(facts)} ` +
         'They are operator-supplied, not observed from this search head.';
     if (!factsUsableForBoundary(facts)) {
@@ -286,7 +291,7 @@ export const ingestFactsSection = (
     nowSec: number,
 ): ReportSection => {
     const items: ReportKeyValue[] = [
-        { label: 'Recorded as supplied by', value: facts.suppliedBy || '(unknown user)' },
+        { label: 'Recorded as supplied by', value: suppliedByText(facts.suppliedBy) },
         {
             label: 'Supplied at',
             value:
@@ -321,6 +326,23 @@ export const ingestFactsSection = (
         ],
         ['Exclude', facts.excludeFilters.join(', ') || '(none)'],
     ];
+    // Session 154 — the source-rule lists, only when supplied (rows from
+    // before them carry none, and their tables stay as they were).
+    const incSrcR = includeSourcesOf(facts);
+    const excSrcR = excludeSourcesOf(facts);
+    if (incSrcR.length > 0) {
+        rows.push([
+            'Include sources',
+            incSrcR.join(', ') +
+                (isPassAllInclude(facts.includeFilters)
+                    ? ' (no effect: every log type is already included)'
+                    : ''),
+        ]);
+    }
+    if (excSrcR.length > 0) rows.push(['Exclude sources', excSrcR.join(', ')]);
+    if (hasSourceRules(facts)) {
+        rows.push(['Source rules', `${SOURCE_RULES_NOTE} — per-type verdicts are approximate`]);
+    }
     // §19.8a-9 — the stamp row, only when known (never a fabricated "not set").
     const stampR = knownStamp(facts);
     if (stampR !== null) {
@@ -356,6 +378,9 @@ export const ingestFactsJson = (facts: IngestFacts | null | undefined): Record<s
               cutoffEpoch: facts.cutoffEpoch,
               includeFilters: facts.includeFilters,
               excludeFilters: facts.excludeFilters,
+              includeSources: includeSourcesOf(facts),
+              excludeSources: excludeSourcesOf(facts),
+              sourceRulesApproximate: hasSourceRules(facts),
               filtersApproximate: facts.filtersApproximate,
               cloudProviderStamp: knownStamp(facts),
               defaultsShape: isDefaultsShape(facts),
@@ -406,8 +431,8 @@ export const ROLLUP_SEARCHES_HEADING = 'Rollup-populating saved searches';
  *  is removed first. Opened verbatim, one Enter press in the Search app over
  *  a window that is not hour-aligned-and-complete would compute partial
  *  bucket rows and `append=true`-upsert them over correct summary rows
- *  (every `logserv_*` collection is `write: [*]`, so the write succeeds for
- *  any user). The drawer is a no-destructive-controls surface, so the write
+ *  (it would write: since build 384 only the admin tier can write the
+ *  rollup collections, and admins open this drawer too). The drawer is a no-destructive-controls surface, so the write
  *  never reaches the URL. The clipboard copy is unaffected — it stays the
  *  verbatim definition, because a copy is inert.
  *
