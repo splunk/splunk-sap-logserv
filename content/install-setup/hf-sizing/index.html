@@ -1,0 +1,3489 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/install-setup/hf-sizing/">
+      
+      
+        <link rel="prev" href="../configure-filters/">
+      
+      
+        <link rel="next" href="../splunk-cloud-victoria-notes/">
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.0, mkdocs-material-9.5.32">
+    
+    
+      
+        <title>Heavy Forwarder Sizing - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.3cba04c6.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings1.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings2.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings3.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings4.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings5.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-enum-headings6.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#heavy-forwarder-sizing" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Heavy Forwarder Sizing
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3Z"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.6.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Getting Started
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Getting Started
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    About
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Third-Party Software
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Supported Log Types
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/quick-install-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Quick Install Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Upgrading to this release
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ Data TA
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ Data TA
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install-ta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the Data TA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure-filters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Configuring Filters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Heavy Forwarder Sizing
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Heavy Forwarder Sizing
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-data-ta-does-with-each-event" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the Data TA Does With Each Event
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measured-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      Measured Cost
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Measured Cost">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lab-heavy-forwarder-before-build-1791935359-index-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lab Heavy Forwarder, Before Build 1791935359 (Index Time)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-build-1791935359-on-index-time-not-measured-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      From Build 1791935359 On (Index Time): Not Measured Yet
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-time-splunks-own-regex-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      Search Time, Splunk&rsquo;s Own Regex Library
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sizing-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sizing Method
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding Capacity
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding Capacity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#update-the-data-ta" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the Data TA
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-a-second-pipeline-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      Add a Second Pipeline Set
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-heavy-forwarders-on-the-same-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      Add Heavy Forwarders on the Same Queue
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-does-not-add-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Does Not Add Capacity
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-reduces-the-load" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Reduces the Load
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measure-your-own-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Measure Your Own Heavy Forwarder
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Measure Your Own Heavy Forwarder">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-which-pipeline-is-busiest" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Which Pipeline Is Busiest
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-which-queue-fills" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Which Queue Fills
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cost-per-event-and-capacity-per-pipeline-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Cost per Event and Capacity per Pipeline Set
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-where-the-cpu-goes-by-processor" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Where the CPU Goes, by Processor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-peak-arrival-rate-at-the-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Peak Arrival Rate at the Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-peak-rate-before-you-have-a-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Peak Rate Before You Have a Forwarder
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-log-type-mix" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Log-Type Mix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-parsing-warnings-and-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Parsing Warnings and Errors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-regex-cpu-per-sourcetype-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Regex CPU per Sourcetype (Optional)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#version-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      Version Check
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../splunk-cloud-victoria-notes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk Cloud Victoria Notes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guides/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup Guides Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AWS Setup Guides
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            AWS Setup Guides
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Connect Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Filter Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Remote S3 Copy Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-direct-s3-polling/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AWS Direct S3 Polling (Backfill & Recovery)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../azure-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Azure Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    GCP Setup Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    LogServ UI App
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            LogServ UI App
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Prerequisites
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installing the LogServ App
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Performance & Data Freshness
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Doctor (Diagnostics)
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5" id="__nav_3_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Dashboards Overview
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5">
+            <span class="md-nav__icon md-icon"></span>
+            Dashboards Overview
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Health
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Environment Topology
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_4" id="__nav_3_5_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            Applications
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Applications
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Network & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ABAP Operations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Work Process Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Audit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    HANA Trace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_5" id="__nav_3_5_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Services
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAP Router
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cloud Connector
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web Dispatcher
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Web and API Performance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_6" id="__nav_3_5_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            Security
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Network Perimeter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cross-Stack Authentication
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Change & Configuration Activity
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_5_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_5_7" id="__nav_3_5_7_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            Platform
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Platform
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Data Pipeline Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Multi-Cloud Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    DNS Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Linux System & Security
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Windows Events
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Proxy Analytics
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Host Details
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Enterprise Security Integration
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Enterprise Security Integration
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CIM Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Correlation Searches & RBA
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Asset & Identity Feed
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Threat Intelligence Integration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Behavioral & Anomaly Detections
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            AI Assistant
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Predefined Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Drill-down Chips
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Splunk MCP Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Settings & Configuration
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Audit Log
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Build Variants
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_8" id="__nav_5_8_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Free-form LLM Features
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            Free-form LLM Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Free-form Prompts
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Privacy Tiers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Power Mode
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Time-Window Reasoning
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OWASP LLM Top 10 Compliance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SAIF Security Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Developer Reference
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Developer Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Testing Guide
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/developer-reference/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture and Internals
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    AI Assistant Implementation Reference
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-data-ta-does-with-each-event" class="md-nav__link">
+    <span class="md-ellipsis">
+      What the Data TA Does With Each Event
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measured-cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      Measured Cost
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Measured Cost">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#lab-heavy-forwarder-before-build-1791935359-index-time" class="md-nav__link">
+    <span class="md-ellipsis">
+      Lab Heavy Forwarder, Before Build 1791935359 (Index Time)
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#from-build-1791935359-on-index-time-not-measured-yet" class="md-nav__link">
+    <span class="md-ellipsis">
+      From Build 1791935359 On (Index Time): Not Measured Yet
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-time-splunks-own-regex-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      Search Time, Splunk&rsquo;s Own Regex Library
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sizing-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sizing Method
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adding Capacity
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding Capacity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#update-the-data-ta" class="md-nav__link">
+    <span class="md-ellipsis">
+      Update the Data TA
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-a-second-pipeline-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      Add a Second Pipeline Set
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#add-heavy-forwarders-on-the-same-queue" class="md-nav__link">
+    <span class="md-ellipsis">
+      Add Heavy Forwarders on the Same Queue
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-does-not-add-capacity" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Does Not Add Capacity
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-reduces-the-load" class="md-nav__link">
+    <span class="md-ellipsis">
+      What Reduces the Load
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#measure-your-own-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      Measure Your Own Heavy Forwarder
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Measure Your Own Heavy Forwarder">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-which-pipeline-is-busiest" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Which Pipeline Is Busiest
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-which-queue-fills" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Which Queue Fills
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cost-per-event-and-capacity-per-pipeline-set" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Cost per Event and Capacity per Pipeline Set
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-where-the-cpu-goes-by-processor" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Where the CPU Goes, by Processor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-peak-arrival-rate-at-the-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Peak Arrival Rate at the Forwarders
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-peak-rate-before-you-have-a-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Peak Rate Before You Have a Forwarder
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-log-type-mix" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Log-Type Mix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-parsing-warnings-and-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      8. Parsing Warnings and Errors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-regex-cpu-per-sourcetype-optional" class="md-nav__link">
+    <span class="md-ellipsis">
+      9. Regex CPU per Sourcetype (Optional)
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#version-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      Version Check
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      Next Steps
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="heavy-forwarder-sizing">Heavy Forwarder Sizing<a class="headerlink" href="#heavy-forwarder-sizing" title="Permanent link">&para;</a></h1>
+<p>The Data TA does its work where LogServ data is parsed: on the Heavy Forwarders in a distributed deployment, or on the single instance. There every LogServ event passes through the same chain of index-time rules, so the CPU those rules spend per event decides how many events a Heavy Forwarder can take. This page explains what the Data TA does with each event, what that cost was measured at, how to size Heavy Forwarders from a measurement on your own, and what does and does not add capacity.</p>
+<div class="admonition warning">
+<p class="admonition-title">Update the Data TA first</p>
+<p>Data TA builds from 0.0.4.1 up to, but not including, <strong>0.1.2 build 1791935359</strong> carry five or six sourcetype routes (six from 0.0.4.2 on) whose cost grows with the square of the line length. With them, the index-time rules cost 2.4 ms of CPU per event on the lab Heavy Forwarder, which limits one pipeline set to about 400 events a second. Builds up to 1791935359 also read only the first 4,096 characters of a line, so long AWS lines lost their routing. Before you size or add hardware, update the Data TA to build 1792189743 or later on every instance that parses LogServ data; see <a href="#version-check">Version Check</a>.</p>
+</div>
+<p><br></p>
+<h3 id="what-the-data-ta-does-with-each-event"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> What the Data TA Does With Each Event<a class="headerlink" href="#what-the-data-ta-does-with-each-event" title="Permanent link">&para;</a></h3>
+<p>A Splunk instance handles each event in a fixed series of <em>pipelines</em>, linked by queues. Each pipeline runs on one thread. One parsing, merging, typing and index pipeline together form a <em>pipeline set</em>; a Heavy Forwarder has one pipeline set unless <code>parallelIngestionPipelines</code> says otherwise. The slowest pipeline sets the pace of the whole set: when it cannot keep up, its queue fills and the queues in front of it fill after it.</p>
+<div class="highlight"><pre><span></span><code>  LogServ object in S3, Azure Blob Storage or Google Cloud Storage
+  (gzipped NDJSON, one event per line)
+    |
+    v
+  Input                 Splunk Add-on for AWS (SQS-Based S3), or the LogServ
+    |                   Azure / GCP add-on: read the notification, download the
+    |                   object, decompress it, hand its lines to Splunk
+    v
+  [parsingQueue]
+    |
+    v
+  Parsing pipeline      split into lines (LINE_BREAKER), keep lines of up to
+    |                   100,000 bytes whole (TRUNCATE)
+    v
+  [aggQueue]
+    |
+    v
+  Merging pipeline      read the timestamp from the "_time" key
+    |
+    v
+  [typingQueue]
+    |
+    v
+  Typing pipeline       the Data TA's index-time transforms, in order:
+    |                   filters (only with Filtering on), host / source /
+    |                   folder fields, 34 sourcetype routes, splunk_solution /
+    |                   cloud_provider, unwrap "_raw"
+    v
+  [indexQueue]
+    |
+    v
+  Index pipeline        on a Heavy Forwarder: send the event to the indexers
+                        or Splunk Cloud (tcpout); on a single instance: index it
+</code></pre></div>
+<p>The typing pipeline is where the Data TA&rsquo;s rules run, in the <code>regexreplacement</code> processor. Splunk tries every rule of the chain on every event, so a route that does not match an event still costs its search:</p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Rules</th>
+<th>What it does</th>
+<th>How its cost grows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Filters</td>
+<td>up to 6, only with Filtering on</td>
+<td>keep or drop the event (<a href="../configure-filters/">Configuring Filters</a>)</td>
+<td>with the line length</td>
+</tr>
+<tr>
+<td>Metadata</td>
+<td>3</td>
+<td>set <code>host</code> and <code>source</code>; write the <code>clz_dir</code> and <code>clz_subdir</code> fields</td>
+<td>with the line length</td>
+</tr>
+<tr>
+<td>Sourcetype routes</td>
+<td>34</td>
+<td>give the event its sourcetype: 26 routes look for one key and value, such as <code>"clz_subdir":"dispatcher"</code> or <code>"source":"/var/log/cron"</code>; 1 checks the <code>source</code> path of events without folder fields; 7 look for two folder keys, such as <code>"clz_dir":"abap"</code> and <code>"clz_subdir":"audit"</code> (6 before build 1792189743, which adds the ICM route)</td>
+<td>with the line length; the two-key routes with the square of the line length before build 1791935359</td>
+</tr>
+<tr>
+<td>Stamps</td>
+<td>2</td>
+<td>write <code>splunk_solution</code> and <code>cloud_provider</code></td>
+<td>small</td>
+</tr>
+<tr>
+<td>Unwrap</td>
+<td>1</td>
+<td>keep only the <code>"_raw"</code> text of the envelope</td>
+<td>with the line length</td>
+</tr>
+</tbody>
+</table>
+<p>From build 1792189743 on, the routes and the metadata rules read up to 100,000 characters of a line, like the filters and the unwrap. Builds up to 1791935359 read the first 4,096 there, so an AWS line longer than about 4 KB (the AWS envelope puts <code>_raw</code> first) kept the input&rsquo;s own <code>host</code> and <code>source</code>, got no folder fields and stayed <code>sap_logserv_logs</code>. Lines up to 4,096 characters cost the same with the wider window; a longer line costs each rule a read to its end, in proportion to its length, and is now routed.</p>
+<p>The six two-key routes, for <code>abap/audit</code>, <code>abap/sapstartsrv</code>, <code>hana/tracelogs</code>, <code>scc/audit</code>, <code>scc/tracelogs</code> and <code>sap/sapstartsrv</code>, are the ones build 1791935359 changes. Without a <code>^</code> at its start, the regex engine tried each of them again at every character of an event it did not match, and each try read to the end of the 4,096-character window. Each route fails to match nearly every event, so all six ran this way on almost every LogServ event. Splunk&rsquo;s regex match limit counts the work of each start position on its own, so it never stopped these searches and nothing was logged. From build 1791935359 on, the six start with <code>(?s)^</code> and are tried once per event, with the same routing (<a href="../../overview/release-notes/#data-ta-six-routing-rules-are-tried-once-per-event-not-at-every-character-build-1791935359-2026-10-13">release notes</a>). Build 1792189743 moves them, and the ICM route, to the filter generator&rsquo;s shape, which stays linear at the 100,000-character window (<a href="../../overview/release-notes/#data-ta-every-rule-reads-the-whole-line-and-the-icm-route-takes-only-the-abap-folder-build-1792189743-2026-10-16">release notes</a>).</p>
+<p><br></p>
+<h3 id="measured-cost"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Measured Cost<a class="headerlink" href="#measured-cost" title="Permanent link">&para;</a></h3>
+<h4 id="lab-heavy-forwarder-before-build-1791935359-index-time"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Lab Heavy Forwarder, Before Build 1791935359 (Index Time)<a class="headerlink" href="#lab-heavy-forwarder-before-build-1791935359-index-time" title="Permanent link">&para;</a></h4>
+<p>These are lab numbers from one Heavy Forwarder and one feed: Splunk 9.4.3, 2 vCPUs, one pipeline set, real SAP LogServ data delivered through Azure Blob Storage and read by the LogServ Azure add-on&rsquo;s queue input, and Data TA builds with the six old routes. The cost per event is CPU time from Splunk&rsquo;s <code>metrics.log</code> divided by the LogServ events the forwarder passed on in the same hour, over every hour with at least 10,000 LogServ events.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Lab Heavy Forwarder</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hours measured</td>
+<td>418 hours between 2026-09-14 and 2026-10-01</td>
+</tr>
+<tr>
+<td>LogServ events</td>
+<td>80.0 million, with 84 bytes of event text on average in Splunk&rsquo;s throughput metrics; those count after the unwrap, so the lines the routes read were longer (see the note <em>The events were short</em> below)</td>
+</tr>
+<tr>
+<td>Regex CPU per LogServ event (<code>regexreplacement</code>, the Data TA&rsquo;s rules)</td>
+<td>median <strong>2.42 ms</strong>, 10th percentile 2.02 ms, 90th percentile 2.93 ms</td>
+</tr>
+<tr>
+<td>Typing pipeline CPU per LogServ event (all its processors)</td>
+<td>median 2.44 ms, 90th percentile 2.94 ms</td>
+</tr>
+<tr>
+<td>Busiest hour by regex CPU</td>
+<td>1,298 CPU seconds, 36% of one core, at 118 events a second</td>
+</tr>
+<tr>
+<td>Busiest hour by events</td>
+<td>470,869 events (131 a second), 1,102 CPU seconds</td>
+</tr>
+<tr>
+<td>Regex CPU in hours without LogServ data</td>
+<td>0.37 CPU seconds an hour (median)</td>
+</tr>
+</tbody>
+</table>
+<p>Both CPU figures count everything the processor or pipeline did in the hour, divided by the LogServ events. On a forwarder that also parses other data with index-time transforms, they are an upper bound for LogServ.</p>
+<p>In the busiest hour the typing pipeline used 1,304 CPU seconds, 1,298 of them in <code>regexreplacement</code>; the merging pipeline used 28, the index pipeline 6 and the parsing pipeline 2. The Data TA&rsquo;s rules were nearly all of the CPU in the forwarder&rsquo;s pipelines.</p>
+<p>At the typing pipeline&rsquo;s median of 2.44 ms per event, one pipeline set runs out of time at about 410 events a second (1 second / 2.44 ms), or about 340 at its 90th-percentile cost of 2.94 ms. That ceiling is arithmetic: averaged over an hour, the lab forwarder&rsquo;s typing pipeline used at most 36% of one core. Over shorter spans it came closer. In the busiest hour it used 0.81 of a core over 5 minutes, and the queues in front of it (typingqueue, aggqueue, parsingqueue) were at times full while the index queue stayed empty (<a href="#1-which-pipeline-is-busiest">search 1</a>, <a href="#2-which-queue-fills">search 2</a>). The data arrives in bursts, which is why the sizing method below plans for half the ceiling.</p>
+<p>The cost per event depends on the log type. Splunk&rsquo;s regex CPU per sourcetype (<a href="#9-regex-cpu-per-sourcetype-optional">search 9</a>) for the same busiest hour, for the LogServ sourcetypes with more than 1,000 events:</p>
+<table>
+<thead>
+<tr>
+<th>Sourcetype after routing</th>
+<th>Events</th>
+<th>Regex CPU per event</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sap_logserv_logs</code> (no route matched)</td>
+<td>334,510</td>
+<td>2.4 ms</td>
+</tr>
+<tr>
+<td><code>linux_messages_syslog</code></td>
+<td>32,062</td>
+<td>6.4 ms</td>
+</tr>
+<tr>
+<td><code>isc:bind:query</code></td>
+<td>18,026</td>
+<td>5.0 ms</td>
+</tr>
+<tr>
+<td><code>sap:sapstartsrv</code></td>
+<td>3,722</td>
+<td>3.6 ms</td>
+</tr>
+<tr>
+<td><code>linux:cron</code></td>
+<td>2,056</td>
+<td>15 ms</td>
+</tr>
+<tr>
+<td><code>linux_secure</code></td>
+<td>1,936</td>
+<td>21 ms</td>
+</tr>
+<tr>
+<td><code>linux:warn</code></td>
+<td>1,378</td>
+<td>62 ms</td>
+</tr>
+</tbody>
+</table>
+<p>In the same hour the cost per event differed by a factor of about 25 between log types, so the mix matters as much as the volume.</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14v-8Z"/></svg></span> <strong>The events were short.</strong> The 84 bytes is the event text after the unwrap, which is what Splunk&rsquo;s throughput metrics count. The routes read the whole NDJSON line, which also carries the envelope keys around <code>"_raw"</code> (<code>_time</code>, <code>host</code>, <code>source</code>, <code>clz_dir</code>, <code>clz_subdir</code> and others); in LogServ sample data they add about 150 characters a line. With the old routes the cost rises steeply with line length. One hour on a second lab Heavy Forwarder, 845 events with 566 bytes of event text on average, came to about 50 ms per event; that is a single hour, so treat it as an indication only. At search time (below), the six old routes alone took 5.8 ms per event on whole lines of about 460 characters and 442 ms on lines of about 4,160. Byte sizes from the throughput metrics do not give the line length the routes read, so measure your forwarder&rsquo;s cost per event with <a href="#3-cost-per-event-and-capacity-per-pipeline-set">search 3</a> or <a href="#9-regex-cpu-per-sourcetype-optional">search 9</a> rather than scaling the lab figure by event size.</p>
+<h4 id="from-build-1791935359-on-index-time-not-measured-yet"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> From Build 1791935359 On (Index Time): Not Measured Yet<a class="headerlink" href="#from-build-1791935359-on-index-time-not-measured-yet" title="Permanent link">&para;</a></h4>
+<p>The update reached the lab Heavy Forwarders on 2026-10-14, and no LogServ data has passed through them since, so there is no fair index-time figure for the new build yet. What is known:</p>
+<ul>
+<li>The update is active: both lab forwarders run build 1791935359 with the six anchored routes.</li>
+<li>Without LogServ data, their regex CPU is unchanged: a median of 0.36 and 0.38 CPU seconds an hour on the two forwarders, against 0.35 and 0.37 before the update.</li>
+<li>At search time, on the same regex library, the anchored routes are 179 to 1,778 times faster than the old ones (below).</li>
+</ul>
+<p>How much of the 2.42 ms the update removes on a forwarder has not been measured. Until a measured figure is published here, size from your own measurement after the update; one busy hour is enough (<a href="#measure-your-own-heavy-forwarder">Measure Your Own Heavy Forwarder</a>).</p>
+<h4 id="search-time-splunks-own-regex-library"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Search Time, Splunk&rsquo;s Own Regex Library<a class="headerlink" href="#search-time-splunks-own-regex-library" title="Permanent link">&para;</a></h4>
+<p>Splunk 9.4.3 uses the same PCRE2 library (10.40) for index-time transforms and for <code>regex</code> and <code>match()</code> at search time. Measured at search time on generated LogServ events, the six routes cost per event:</p>
+<table>
+<thead>
+<tr>
+<th>Line length (characters)</th>
+<th>Six old routes</th>
+<th>Six anchored routes</th>
+<th>Anchored routes are faster by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>about 460</td>
+<td>5.8 ms</td>
+<td>0.032 ms</td>
+<td>179 times</td>
+</tr>
+<tr>
+<td>about 1,160</td>
+<td>35 ms</td>
+<td>0.073 ms</td>
+<td>485 times</td>
+</tr>
+<tr>
+<td>about 2,660</td>
+<td>181 ms</td>
+<td>0.162 ms</td>
+<td>1,120 times</td>
+</tr>
+<tr>
+<td>about 4,160</td>
+<td>442 ms</td>
+<td>0.249 ms</td>
+<td>1,778 times</td>
+</tr>
+</tbody>
+</table>
+<p>The anchored routes in this table start with <code>^</code>; the shipped <code>(?s)^</code> form measured no slower (0.185 ms per event at about 4,160 characters). Every event got the same result from the old and the anchored routes. Search time is not index time: the table shows the direction and how the cost depends on line length, not what the routes cost on your forwarder.</p>
+<p><br></p>
+<h3 id="sizing-method"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Sizing Method<a class="headerlink" href="#sizing-method" title="Permanent link">&para;</a></h3>
+<p>Size from the busiest pipeline&rsquo;s cost per event and your peak arrival rate. For LogServ data the busiest pipeline is normally the typing pipeline; <a href="#1-which-pipeline-is-busiest">search 1</a> shows whether it is on your forwarder.</p>
+<ol>
+<li><strong>Peak arrival rate.</strong> Take the busiest hour of LogServ events and divide by 3,600 to get events a second (<a href="#5-peak-arrival-rate-at-the-forwarders">search 5</a>, or <a href="#6-peak-rate-before-you-have-a-forwarder">search 6</a> before you have a forwarder).</li>
+<li><strong>Cost per event.</strong> Measure the busiest pipeline&rsquo;s CPU per LogServ event at the 90th percentile, in microseconds (<a href="#3-cost-per-event-and-capacity-per-pipeline-set">search 3</a>).</li>
+<li><strong>Ceiling per pipeline set</strong> = 1,000,000 / cost per event, in events a second.</li>
+<li><strong>Plan rate per pipeline set</strong> = half the ceiling. The other half absorbs bursts, because the input fetches objects in batches and the rate within an hour is uneven, and the catch-up after an outage or a delivery delay, when the backlog arrives at once.</li>
+<li><strong>Plan rate per Heavy Forwarder</strong> = plan rate per pipeline set x pipeline sets: one, or two on a forwarder with spare cores (<a href="#add-a-second-pipeline-set">Add a Second Pipeline Set</a>).</li>
+<li><strong>Heavy Forwarders needed</strong> = peak arrival rate / plan rate per Heavy Forwarder, rounded up. Add one if a forwarder must be able to fail without the others falling behind.</li>
+</ol>
+<p>Worked with the lab figures, before the update:</p>
+<div class="highlight"><pre><span></span><code>  cost per event (typing pipeline, p90)   2,944 microseconds
+  ceiling per pipeline set                1,000,000 / 2,944  =  340 events/s
+  plan rate per pipeline set              340 / 2            =  170 events/s  (about 0.6 million an hour)
+  plan rate per HF, 1 pipeline set                              170 events/s
+  plan rate per HF, 2 pipeline sets                             340 events/s  (about 1.2 million an hour)
+</code></pre></div>
+<p>At that cost per event, a feed whose busiest hour carries 12 million events (3,333 events a second) would need 10 Heavy Forwarders with two pipeline sets each. That is why the update comes first.</p>
+<table>
+<thead>
+<tr>
+<th>Data TA</th>
+<th>Cost per event (90th percentile)</th>
+<th>Ceiling per pipeline set</th>
+<th>Plan rate per pipeline set</th>
+<th>Plan rate per HF, 1 set</th>
+<th>Plan rate per HF, 2 sets</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Before build 1791935359, lab feed (short events: 84 bytes of event text)</td>
+<td>2.94 ms</td>
+<td>340 events/s</td>
+<td>170 events/s</td>
+<td>170 events/s</td>
+<td>340 events/s</td>
+</tr>
+<tr>
+<td>Before build 1791935359, longer lines</td>
+<td>higher, with the square of the line length</td>
+<td>lower</td>
+<td>lower</td>
+<td>lower</td>
+<td>lower</td>
+</tr>
+<tr>
+<td>Build 1791935359 or later</td>
+<td>measure (<a href="#3-cost-per-event-and-capacity-per-pipeline-set">search 3</a>)</td>
+<td>1,000,000 / cost</td>
+<td>half the ceiling</td>
+<td>plan rate per set</td>
+<td>2 x plan rate per set</td>
+</tr>
+</tbody>
+</table>
+<p>Your log-type mix and line lengths differ from the lab feed, so measure on your own forwarder, and measure again when the mix changes, for example when log types with long lines are added.</p>
+<p>The typing pipeline is not the only limit. The input itself uses CPU outside the pipelines to download and decompress the objects, and the output to the indexers or Splunk Cloud needs network bandwidth. Leave room on the forwarder for the input and the operating system as well.</p>
+<p>On a single instance the same chain runs on the instance that also indexes and searches, so the same method applies to its typing pipeline, with less spare CPU around it.</p>
+<p><br></p>
+<h3 id="adding-capacity"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Adding Capacity<a class="headerlink" href="#adding-capacity" title="Permanent link">&para;</a></h3>
+<h4 id="update-the-data-ta"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Update the Data TA<a class="headerlink" href="#update-the-data-ta" title="Permanent link">&para;</a></h4>
+<p>Install Data TA build 1792189743 or later on every instance that parses LogServ data: through the Deployment Server for its Heavy Forwarders, directly on a single instance. See <a href="../../getting-started/upgrading/">Upgrading to this release</a> and <a href="#version-check">Version Check</a>. Then measure again (<a href="#3-cost-per-event-and-capacity-per-pipeline-set">search 3</a>) before you add hardware.</p>
+<h4 id="add-a-second-pipeline-set"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Add a Second Pipeline Set<a class="headerlink" href="#add-a-second-pipeline-set" title="Permanent link">&para;</a></h4>
+<p>Each input sends its data through one pipeline set, so a second pipeline set gets work only from a second input. Both are needed:</p>
+<ol>
+<li>
+<p>On the Heavy Forwarder, add to <code>$SPLUNK_HOME/etc/system/local/server.conf</code> (or a small app of your own) and restart Splunk:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[general]</span>
+<span class="na">parallelIngestionPipelines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">2</span>
+</code></pre></div>
+</li>
+<li>
+<p>Add a second input that reads the same queue:</p>
+<ul>
+<li><strong>AWS:</strong> a second SQS-Based S3 input with the same settings as the first, including the same SQS queue URL and Source Type <code>sap_logserv_logs</code> (step 7 of the <a href="../aws-remote-s3-connect-guide/">AWS Remote S3 Connect Setup Guide</a>). The queue hands each message to one input at a time, so the two inputs share the work.</li>
+<li><strong>Azure</strong> and <strong>GCP:</strong> see <em>Multiple landscapes / fleets</em> in the <a href="../azure-setup/#multiple-landscapes-fleets">Azure Setup Guide</a> and the <a href="../gcp-setup/#multiple-landscapes-fleets">GCP Setup Guide</a>, including the at-least-once trade-off of several inputs on one queue or subscription. Those notes are about how fast the input fetches objects: for typical volumes they find one input enough, and suggest a larger <code>batch_size</code> or <code>max_blobs_per_fire</code> / <code>max_objects_per_fire</code>, or a shorter <code>interval</code>, before a second input. On a forwarder whose typing pipeline is the limit (<a href="#1-which-pipeline-is-busiest">search 1</a>) those settings do not help (<a href="#what-does-not-add-capacity">What Does Not Add Capacity</a>); the second pipeline set gets work only from a second input.</li>
+</ul>
+</li>
+</ol>
+<p>Splunk&rsquo;s guidance is to add a second pipeline set only on a forwarder that is significantly under-utilized, and not to go beyond two without Splunk Professional Services (<a href="https://help.splunk.com/en/splunk-enterprise/administer/manage-indexers-and-indexer-clusters/9.4/manage-indexes/manage-pipeline-sets-for-index-parallelization">Manage pipeline sets</a>). A pipeline set keeps several threads busy, so check the forwarder&rsquo;s CPU and <a href="#1-which-pipeline-is-busiest">search 1</a> first. <code>server.conf</code> is not part of the Data TA, so a Deployment Server push of the Data TA does not change it.</p>
+<h4 id="add-heavy-forwarders-on-the-same-queue"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> Add Heavy Forwarders on the Same Queue<a class="headerlink" href="#add-heavy-forwarders-on-the-same-queue" title="Permanent link">&para;</a></h4>
+<p>Forwarders that read the same queue share its messages, so adding a forwarder adds a full set of pipelines. The Splunk Add-on for AWS documents scaling SQS-Based S3 inputs this way (<a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/SQS-basedS3/">SQS-Based S3 input</a>). Give each new forwarder the Data TA (through your Deployment Server&rsquo;s server class), the ingest add-on, and the same input or inputs as the first.</p>
+<div class="highlight"><pre><span></span><code>                              +--&gt; Heavy Forwarder 1
+                              |      input A  --&gt; pipeline set 0
+                              |      input B  --&gt; pipeline set 1
+  one queue  -----------------+
+  (SQS queue, Azure Storage   |
+   Queue or Pub/Sub           +--&gt; Heavy Forwarder 2
+   subscription)                     input A  --&gt; pipeline set 0
+                                     input B  --&gt; pipeline set 1
+</code></pre></div>
+<p><br></p>
+<h3 id="what-does-not-add-capacity"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> What Does Not Add Capacity<a class="headerlink" href="#what-does-not-add-capacity" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>The Data TA&rsquo;s own filters.</strong> The Filters tab saves license and indexing, not forwarder CPU. Its rules run in the typing pipeline as the first steps of the same chain, and the keep-or-drop decision goes to the last filter step that matched, so a dropped event is downloaded, split into lines, timestamped and run through the transforms like any other event before it is discarded. The filters also add rules of their own to the chain (<a href="../configure-filters/">Configuring Filters</a>).</li>
+<li><strong>More inputs on one pipeline set.</strong> They download in parallel, but every event still passes through the same typing pipeline thread.</li>
+<li><strong>More cores alone.</strong> A pipeline is one thread. If the typing pipeline already uses one full core, more cores help only through a second pipeline set or another forwarder.</li>
+<li><strong>The input&rsquo;s batch size or interval.</strong> They change how fast objects are fetched, not how fast their events are parsed. The Azure and GCP setup guides suggest them before a second input; that advice is for an input that falls behind on fetching, not for a forwarder whose typing pipeline is busy.</li>
+<li><strong>A smaller <code>LOOKAHEAD</code> on the routing rules.</strong> It saves CPU only on lines longer than 4,096 characters, and on AWS those lines would lose their <code>host</code>, <code>source</code>, folder fields and sourcetype again, as with builds up to 1791935359.</li>
+</ul>
+<p><br></p>
+<h3 id="what-reduces-the-load"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> What Reduces the Load<a class="headerlink" href="#what-reduces-the-load" title="Permanent link">&para;</a></h3>
+<p>Data that never reaches the forwarder costs nothing to parse:</p>
+<ul>
+<li><strong>AWS: the Lambda pre-filter.</strong> The Lambda drops the notifications of folders you do not want, so the forwarder never downloads those objects and its load falls with the volume. See the <a href="../aws-remote-s3-filter-guide/">AWS Remote S3 Filter Setup Guide</a> and <a href="../configure-filters/#aws-lambda-based-filtering">Configuring Filters: AWS Lambda-Based Filtering</a>.</li>
+<li><strong>Azure and GCP: the input&rsquo;s <code>include_filters</code> / <code>exclude_filters</code>.</strong> They match the object path before the download (<a href="../azure-setup/#configure-the-input">Azure Setup Guide</a>, <a href="../gcp-setup/#configure-the-input">GCP Setup Guide</a>).</li>
+<li><strong>Log types you do not use, left out at the source.</strong> Where your SAP LogServ subscription lets you choose the log types delivered, leave out the ones you do not need. <a href="#7-log-type-mix">Search 7</a> shows which log types make up your volume.</li>
+</ul>
+<p><br></p>
+<h3 id="measure-your-own-heavy-forwarder"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Measure Your Own Heavy Forwarder<a class="headerlink" href="#measure-your-own-heavy-forwarder" title="Permanent link">&para;</a></h3>
+<p>Run these searches from a search head that sees the forwarder&rsquo;s <code>_internal</code> data; forwarders send it by default. Replace <code>&lt;HF&gt;</code> with the forwarder&rsquo;s host name as it appears in <code>_internal</code>, and <code>sap_logserv_logs</code> with your index name if you renamed it. Use a time range with busy LogServ hours: one busy hour for searches 1, 2, 4 and 9, the last 7 days for searches 3 and 5. <code>_internal</code> usually keeps about 30 days. All of them are read-only.</p>
+<h4 id="1-which-pipeline-is-busiest"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 1. Which Pipeline Is Busiest<a class="headerlink" href="#1-which-pipeline-is-busiest" title="Permanent link">&para;</a></h4>
+<p>CPU per pipeline thread, in cores, in 5-minute steps. A pipeline near <strong>1.0</strong> is saturated, however many cores the forwarder has.</p>
+<div class="highlight"><pre><span></span><code>index=_internal host=&lt;HF&gt; source=*metrics.log* group=pipeline
+| eval pipeline=name.":".coalesce(ingest_pipe, "0")
+| timechart span=5m per_second(cpu_seconds) by pipeline
+</code></pre></div>
+<p>The number after the colon is the pipeline set: <code>typing:0</code>, <code>typing:1</code> and so on.</p>
+<h4 id="2-which-queue-fills"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 2. Which Queue Fills<a class="headerlink" href="#2-which-queue-fills" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>index=_internal host=&lt;HF&gt; source=*metrics.log* group=queue
+| eval fill_pct=round(100*coalesce(current_size_kb/max_size_kb, current_size/max_size), 1)
+| timechart span=5m perc90(fill_pct) by name
+</code></pre></div>
+<p>The pipeline queues report their size in KB and the output queue in bytes; the <code>coalesce</code> covers both, so the output queue gets a column too.</p>
+<p>Events flow parsingqueue, aggqueue, typingqueue, indexqueue, then the output queue (<code>tcpout_*</code>). The bottleneck is the last queue in that order that is full. A full typingqueue with a mostly empty indexqueue points at the index-time transforms; a full indexqueue or output queue points at the output to the indexers or Splunk Cloud.</p>
+<h4 id="3-cost-per-event-and-capacity-per-pipeline-set"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 3. Cost per Event and Capacity per Pipeline Set<a class="headerlink" href="#3-cost-per-event-and-capacity-per-pipeline-set" title="Permanent link">&para;</a></h4>
+<p>The CPU of the typing pipeline (and of its <code>regexreplacement</code> processor, which runs the Data TA&rsquo;s rules) per LogServ event, over the hours with at least 10,000 LogServ events, and the rates of the <a href="#sizing-method">Sizing Method</a> from it:</p>
+<div class="highlight"><pre><span></span><code>index=_internal host=&lt;HF&gt; source=*metrics.log*
+    ((group=per_index_thruput series=sap_logserv_logs) OR (group=pipeline name=typing))
+| bin _time span=1h
+| eval typing_cpu=if(group="pipeline", cpu_seconds, null()),
+       regex_cpu=if(group="pipeline" AND processor="regexreplacement", cpu_seconds, null()),
+       logserv_ev=if(group="per_index_thruput", ev, null())
+| stats sum(typing_cpu) as typing_cpu_s, sum(regex_cpu) as regex_cpu_s, sum(logserv_ev) as logserv_events by _time
+| where logserv_events&gt;=10000
+| eval typing_us=typing_cpu_s*1000000/logserv_events, regex_us=regex_cpu_s*1000000/logserv_events
+| stats count as busy_hours, sum(logserv_events) as logserv_events,
+        median(regex_us) as regex_median_us, perc90(regex_us) as regex_p90_us,
+        median(typing_us) as typing_median_us, perc90(typing_us) as typing_p90_us,
+        max(typing_cpu_s) as typing_peak_cpu_s_in_an_hour
+| eval ceiling_eps_per_set=round(1000000/typing_p90_us, 0), plan_eps_per_set=round(500000/typing_p90_us, 0),
+       typing_peak_pct_of_one_core=round(100*typing_peak_cpu_s_in_an_hour/3600, 1)
+| foreach *_us [ eval &lt;&lt;FIELD&gt;&gt;=round('&lt;&lt;FIELD&gt;&gt;', 1) ]
+</code></pre></div>
+<ul>
+<li><code>typing_p90_us</code> is the cost per event of step 2 of the sizing method; <code>ceiling_eps_per_set</code> and <code>plan_eps_per_set</code> are steps 3 and 4.</li>
+<li><code>regex_median_us</code> and <code>regex_p90_us</code> are the figures in the lab table above.</li>
+<li>On a forwarder that also parses other data, the CPU includes that data, so the cost per LogServ event is an upper bound.</li>
+<li>Splunk writes <code>per_index_thruput</code> (and <code>per_sourcetype_regex_cpu</code>, search 9) only for the busiest series of each metrics sample: <code>maxseries</code> in the <code>[metrics]</code> stanza of <code>limits.conf</code>, 10 by default. On a forwarder that writes to many indexes, a sample that leaves out <code>sap_logserv_logs</code> makes the search count too few LogServ events, and so overstate the cost per event.</li>
+<li>With two pipeline sets the search adds up both sets. The cost per event stays right; <code>typing_peak_pct_of_one_core</code> is then for both sets together.</li>
+<li>If search 1 shows another pipeline as the busiest, replace <code>name=typing</code> with its name.</li>
+<li>After an update of the Data TA, run it once over hours before the update and once over hours after it, and compare.</li>
+</ul>
+<h4 id="4-where-the-cpu-goes-by-processor"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 4. Where the CPU Goes, by Processor<a class="headerlink" href="#4-where-the-cpu-goes-by-processor" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>index=_internal host=&lt;HF&gt; source=*metrics.log* group=pipeline
+| stats sum(cpu_seconds) as cpu_s by name processor
+| addinfo
+| eval avg_cores=round(cpu_s/(info_max_time-info_min_time), 3)
+| sort - cpu_s
+| head 15
+</code></pre></div>
+<p>Run it over a fixed time range, such as one busy hour. <code>name=typing processor=regexreplacement</code> is the Data TA&rsquo;s rules; <code>name=merging processor=aggregator</code> is the timestamp; <code>name=parsing processor=linebreaker</code> is the line breaking.</p>
+<h4 id="5-peak-arrival-rate-at-the-forwarders"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 5. Peak Arrival Rate at the Forwarders<a class="headerlink" href="#5-peak-arrival-rate-at-the-forwarders" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>index=_internal source=*metrics.log* group=per_index_thruput series=sap_logserv_logs host IN (&lt;HF1&gt;, &lt;HF2&gt;)
+| bin _time span=1h
+| stats sum(ev) as events by _time
+| stats max(events) as peak_events_hour, median(events) as median_events_hour
+| eval peak_events_per_s=round(peak_events_hour/3600, 0), median_events_per_s=round(median_events_hour/3600, 0)
+</code></pre></div>
+<p>List every forwarder that reads LogServ data. The median counts only hours with LogServ data. The same top-series limit as in search 3 applies: on a forwarder with many indexes the counts can come out low.</p>
+<h4 id="6-peak-rate-before-you-have-a-forwarder"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 6. Peak Rate Before You Have a Forwarder<a class="headerlink" href="#6-peak-rate-before-you-have-a-forwarder" title="Permanent link">&para;</a></h4>
+<p>If the data already arrives somewhere, for example on a test forwarder or under another sourcetype, count it by hour in the index instead (replace the macro with <code>index=&lt;your index&gt;</code> if the data is in another index):</p>
+<div class="highlight"><pre><span></span><code>| tstats count where `sap_logserv_idx_macro` earliest=-7d@h latest=@h by _time span=1h
+| stats max(count) as peak_events_hour, median(count) as median_events_hour
+| eval peak_events_per_s=round(peak_events_hour/3600, 0)
+</code></pre></div>
+<p>This counts by event time, not arrival time, so it smooths out delivery bursts; keep the headroom of step 4.</p>
+<h4 id="7-log-type-mix"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 7. Log-Type Mix<a class="headerlink" href="#7-log-type-mix" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>| tstats fillnull_value="(none)" count where `sap_logserv_idx_macro` earliest=-24h by sourcetype, clz_dir, clz_subdir
+| sort - count
+| head 20
+</code></pre></div>
+<p>The folders with the most events are the first to consider for the Lambda pre-filter or for leaving out at the source. The folder fields exist on data the Data TA has parsed; events without them show as <code>(none)</code>.</p>
+<h4 id="8-parsing-warnings-and-errors"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 8. Parsing Warnings and Errors<a class="headerlink" href="#8-parsing-warnings-and-errors" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>index=_internal host=&lt;HF&gt; sourcetype=splunkd (log_level=WARN OR log_level=ERROR)
+    (component=DateParserVerbose OR component=LineBreakingProcessor OR component=AggregatorMiningProcessor OR component=regexExtractionProcessor OR component=Regex)
+| timechart span=15m count by component
+</code></pre></div>
+<p>Each warning is CPU and log volume too. <code>PCRE_ERROR_DEPTHLIMIT</code> errors, or lines truncated at 10,000 bytes, mean a Data TA without the long-line fix of 0.1.2 (<a href="../../overview/release-notes/#data-ta-long-ndjson-lines-are-unwrapped-and-kept-whole-2026-09-24">release notes</a>).</p>
+<h4 id="9-regex-cpu-per-sourcetype-optional"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg></span> 9. Regex CPU per Sourcetype (Optional)<a class="headerlink" href="#9-regex-cpu-per-sourcetype-optional" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code>index=_internal host=&lt;HF&gt; source=*metrics.log* group=per_sourcetype_regex_cpu
+| stats sum(cpu) as cpu_ms, sum(ev) as events by series
+| eval ms_per_event=round(cpu_ms/events, 2)
+| sort - cpu_ms
+</code></pre></div>
+<p>Splunk reports <code>cpu</code> in milliseconds; across all series it comes to about the <code>regexreplacement</code> CPU of search 4. Events count under the sourcetype they end up with, so add up <code>sap_logserv_logs</code> and the sourcetypes the Data TA routes to. This group, too, lists only the busiest series of each sample (<code>maxseries</code>, 10 by default), so its totals can fall short of search 3: in the lab&rsquo;s busiest hour its LogServ sourcetypes added up to 394,452 events, against 423,531 in <code>per_index_thruput</code>, about 7% fewer. Splunk reports this group only where <code>regex_cpu_profiling</code> is on; the lab&rsquo;s Splunk 9.4.3 forwarders report it with nothing set in <code>limits.conf</code>. If it returns nothing, use search 3.</p>
+<p><br></p>
+<h3 id="version-check"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Version Check<a class="headerlink" href="#version-check" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Data TA</th>
+<th>The two-key routes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1.2 build 1792189743 and later</td>
+<td>seven, in the filter generator&rsquo;s shape with a 100,000-character window: linear, the whole line</td>
+</tr>
+<tr>
+<td>0.1.2 build 1791935359</td>
+<td>six, anchored with <code>(?s)^</code>: tried once per event, first 4,096 characters</td>
+</tr>
+<tr>
+<td>0.1.2 builds before 1791935359, 0.1.1, 0.0.6, 0.0.5.x, 0.0.4.2</td>
+<td>unanchored: tried at every character</td>
+</tr>
+<tr>
+<td>0.0.4.1</td>
+<td>five of them, unanchored</td>
+</tr>
+<tr>
+<td>0.0.3.x</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>Check on each Heavy Forwarder, or on the single instance, not only on the Deployment Server: the forwarders are where the rules run.</p>
+<p>The installed version and build:</p>
+<div class="highlight"><pre><span></span><code>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">"^(version|build)"</span><span class="w"> </span><span class="nv">$SPLUNK_HOME</span>/etc/apps/splunk_ta_sap_logserv/default/app.conf
+</code></pre></div>
+<p>The routing-cost fix is in place with <code>version = 0.1.2</code> and <code>build = 1791935359</code> or higher, the 100,000-character window with <code>build = 1792189743</code> or higher. In Splunk Web on the forwarder, the same from a search:</p>
+<div class="highlight"><pre><span></span><code>| rest /services/apps/local splunk_server=local
+| search title=splunk_ta_sap_logserv
+| table title version build
+</code></pre></div>
+<p>The rules in effect, including any <code>local/</code> override:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">$SPLUNK_HOME</span>/bin/splunk<span class="w"> </span>btool<span class="w"> </span>transforms<span class="w"> </span>list<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-cF<span class="w"> </span><span class="s1">'(?=.*"clz_dir"'</span>
+<span class="nv">$SPLUNK_HOME</span>/bin/splunk<span class="w"> </span>btool<span class="w"> </span>transforms<span class="w"> </span>list<span class="w"> </span>set_srctype_abap_icm<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s1">'^(REGEX|LOOKAHEAD)'</span>
+</code></pre></div>
+<p>The first command prints the number of routes still in an older two-key form, <code>(?s)^(?=.*...)</code> or unanchored: <strong>0</strong> after the update to build 1792189743. The second shows the ICM route in the generator&rsquo;s shape and <code>LOOKAHEAD = 100000</code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Remove a local override of the routes before you update</p>
+<p>If you added the six anchored routes (<code>(?s)^(?=.*...)(?=.*...)</code>) to the Data TA&rsquo;s <code>local/transforms.conf</code> as a test, remove them, and restart Splunk, before you install build 1792189743. <code>local/</code> wins over <code>default/</code> key by key, so the old REGEX would stay in effect together with the build&rsquo;s new <code>LOOKAHEAD = 100000</code>, and on lines near 100,000 characters that combination exceeds Splunk&rsquo;s regex match limit. The first command above prints <strong>0</strong> when no such override is left.</p>
+</div>
+<p><br></p>
+<h2 id="next-steps"><span class="twemoji cboxmove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4Z"/></svg></span> Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../install-ta/">Installing the Data TA</a> and <a href="../../getting-started/upgrading/">Upgrading to this release</a></li>
+<li><a href="../configure-filters/">Configuring Filters</a>, including <a href="../configure-filters/#aws-lambda-based-filtering">AWS Lambda-Based Filtering</a></li>
+<li><a href="../aws-remote-s3-connect-guide/">AWS Remote S3 Connect Setup Guide</a> and <a href="../aws-remote-s3-filter-guide/">AWS Remote S3 Filter Setup Guide</a></li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.copy", "navigation.instant.preview"], "search": "../../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.471ce7a9.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+    
+  </body>
+</html>
