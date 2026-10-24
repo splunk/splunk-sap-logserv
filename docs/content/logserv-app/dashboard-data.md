@@ -1,0 +1,246 @@
+# Dashboard Data: Backfill and Freshness
+
+Most LogServ App dashboard panels read hourly summaries (rollups) kept in KV Store. This page covers the admin tasks on **Settings → Dashboard Data**: filling the rollups with history after an install, rebuilding days whose data arrived late, and clearing a rollup. It then explains how fresh each panel is, and ends with the reference for the scheduled searches behind the rollups.
+
+## :material-circle-box:{ .taiconcolor } The Dashboard Data settings tab
+
+The **Dashboard Data** tab on the **Application Settings** page (**Settings → Dashboard Data**) is the single control surface for the KV-Store rollup layer, for every dashboard **and** the Environment Topology view. It holds the hourly-aggregation master switch, the retention window, the backfill, the late-arriving data check, a per-rollup status and action table, and a global clear.
+
+**Who can use it.** The Settings page opens only for users who hold a role named exactly `admin`, `sc_admin` or `sc_subadmin`, and the rollup collections accept writes only from those roles. A user who holds none of them does not see **Settings** in the navigation rail and gets "Admin access required" on the page's URL, so Backfill and Clear need one of those three roles.
+
+The Environment Topology graph and its detail tabs are rows in the same table: their aggregation, backfill, retention and clear work exactly as for every dashboard rollup. The backfill runs each of their searches as its own top-level job, so it does not truncate at high event volume.
+
+!!! tip "Non-admins can SEE this health without Settings access"
+    The **[Data Doctor's Diagnostics page](dashboards/platform/diagnostics.md)** (*Platform → Diagnostics*)
+    shows every rollup collection's freshness and its 30-day-history completeness — the same
+    completeness convention this tab uses — read-only, to every user. It names this tab as the
+    remedy when a backfill is needed, but the controls themselves stay here.
+
+![Settings — Dashboard Data tab (merged rollup management)](../../images/settings-dashboard-data.png)
+
+### Backfilling on first install
+
+A freshly installed rollup collection is empty until its scheduled aggregation has run, and those runs read only the most recent hours. Any install whose index already holds events (data loaded with AWS S3 Direct, ingest that ran before the App was installed, or a few days of normal arrival) needs a backfill to show that history.
+
+1. Open **Settings → Dashboard Data**.
+2. Review the per-rollup status. Rollups with no history show a "Dashboard history backfill needed" banner and a warning row. Rollups whose history could not be measured just now get a banner of their own with **Re-check**; they are not counted as needing a backfill.
+3. In **Backfill window**, pick the window (see below).
+4. Click **Run backfill** (the button targets only the incomplete rollups; once all are complete it becomes **Re-run backfill (all)**).
+
+By default the backfill seeds **30 days** of history into every rollup collection. The **Backfill window** control above the button also offers 60, 90, 180 and 365 days, or a custom range of whole UTC days, reaching back as far as the 365-day retention (an earlier start is refused rather than silently clamped). A window longer than a month is dispatched in monthly chunks per search, and choosing one longer than 90 days shows a cost warning. The two flat Environment Topology collections (inventory, IP enrichment) always refresh over the last 30 days: they describe current state rather than history — the inventory maps each IP address or host to its most recent SAP system. When backfilling after a historical S3 ingest, match the **dates in the S3 keys** you ingested — on the Data TA's AWS S3 Direct screen, its **Scan from** and **Scan until** — not a hand-made input's write-time scan window; see [AWS S3 Direct: Backfill and Recovery](../install-setup/aws-s3-direct.md).
+
+The backfill dispatches each rollup's component aggregation searches as **top-level Splunk jobs** — this matters at scale: the bundled `*_backfill` saved searches use a single `\| union` that Splunk auto-finalizes at a subsearch wall-clock limit, which silently truncates results at high event volume. The Dashboard Data button avoids that by running each component as its own unrestricted job. It shows a progress bar, is **idempotent** (re-running upserts the same rows), and is **resumable** (it detects collections that are already complete and skips them).
+
+After the initial backfill, the hourly aggregation keeps each collection current and the 365-day retention grows the cached history toward a full year (seed-and-grow). You only need to run the backfill again if you reinstall, deliberately clear a collection, an upgrade note asks for one, or you roll the App back to an earlier build across one that changed a rollup key: the restored build writes rows under its old keys beside the newer build's rows, and those hours are counted twice until you **Clear** and **Backfill** the rows that build changed (see [Upgrading](../getting-started/upgrading.md)).
+
+**How long it waits.** Each search is waited on for as long as Splunk reports it running — there is no fixed time limit, because one month of a large estate can take hours. A rollup is marked **failed — re-run** only on Splunk's own verdict: the job failed, its search process died, or the job disappeared. If you cancel, or the panel stops waiting (after 24 hours, or after 15 minutes without being able to reach Splunk), a search that is still running is marked **still running on server** instead: it finishes on its own and writes its rows. Hover the row for the search IDs to follow them under **Activity → Jobs**; re-running that rollup before they finish repeats their work.
+
+**Environment Topology node counts and inventory.** Two of the Environment Topology (graph) collections combine the results of several searches: a node's event count is the sum over every log source that reports it, and an IP address or host is mapped to its most recent SAP system with its events counted over every source (of the systems seen in its most recent hour, the one with the most events; an exact tie keeps the previous mapping). For those two, each search writes its results into a scratch KV Store collection, `logserv_backfill_stage`, and once every search of a month (for the inventory, of its 30 days) has finished, one more search adds them up and writes the rows — but only after the page has counted every collected result back from the scratch collection, before and after. Keep the page open until the Environment Topology (graph) row has finished: a month whose searches did not all finish, or whose results did not all read back (KV Store still starting after a restart, for example), is discarded rather than written in part — the row reads **failed — re-run**, also when the panel stopped waiting for one of those searches — and the next backfill rebuilds it. The scratch rows are deleted once a month is written; rows a closed page or a failed month left behind are deleted by a later backfill after seven days.
+
+!!! warning "Keep long backfills clear of the nightly retention run"
+    Each rollup's `*_retention` search rewrites its whole collection once a night (00:34–00:58, 01:30–01:58 and 02:34–02:36 in the search head's time zone). Rows a backfill writes into a collection *while* that collection's retention is running can be lost. Start a long backfill so that it does not overlap that window — or re-run it afterwards, which restores anything lost (the backfill is idempotent).
+
+!!! note "If you skip the backfill"
+    You don't have to run it. Without a backfill, rolled-up panels simply start populating from the next hourly aggregation onward, filling in one hour at a time. The backfill is purely to make that history available immediately.
+
+### Late-arriving data
+
+SAP LogServ data reaches Splunk through S3, Azure Blob and GCS notification queues, and some of it arrives after its hour has been aggregated: a log file delivered a few minutes after the hour, a weekly log rotation that delivers a week of lines at once, a queue backlog drained after an outage. Each hourly aggregation re-reads the hour before as well, so an event up to about an hour late is still counted, and an hour whose aggregation was skipped is rebuilt by the next run. Anything later is missing from the rolled-up panels until its hours are rebuilt.
+
+The **Late-arriving data** row at the top of the Backfill section finds those hours. It compares the index with the **Multi-Cloud Overview** rollup — which counts every event, per cloud provider, sourcetype and hour — per hour and sourcetype over the last 30 days (UTC), and lists the days on which the index holds events the rollups do not, most recent first:
+
+```
+2026-09-26: 28,193 events in 42 hours (linux_secure, sap_logserv_logs)
+```
+
+It leaves out the last three hours, which the hourly schedule may still rebuild, and anything older than the Multi-Cloud Overview rollup's oldest hour. It also finds hours whose aggregation was switched off or skipped. Fewer events in the index than in a rollup — deleted or frozen data — is never reported. **Backfill N days** rebuilds every rollup for exactly those days, one window per run of consecutive days, with the same per-search dispatch as the backfill above, and the check runs again when it finishes; **check again** re-runs it at any time. A banner at the top of the tab repeats the count while any day is listed.
+
+The check needs the Multi-Cloud Overview aggregation switched on and that rollup's history measured; otherwise the row says why it did not run.
+
+The same check also runs **every day at 05:40** (search-head time) as the saved search `logserv_late_arrival_check`, over the last 30 days up to three hours ago, and records a **triggered alert** (*Activity → Triggered Alerts*, kept 2 days) when it finds a day — so a delivery that arrived days late is reported even if nobody opens this tab. Add an alert action, an email for example, to be told. The daily run never judges an hour older than the Multi-Cloud Overview rollup's oldest, so a new install that has not run its first backfill raises no alert; it does raise one while hourly aggregation is switched off, because the rollups then fall behind the index. To run it at another time, change its schedule in *Settings → Searches, reports, and alerts*; keep the window ending at least three hours back, and keep it out of the nightly retention window (00:34–02:36), which rewrites the rollup it compares against.
+
+!!! note "Why the schedule does not re-read days"
+    Each rollup's search is one `| union` of several searches, and Splunk stops a union's inner searches after about 30 seconds. An hourly run that re-read days would hit that limit on a large estate and overwrite good rows with lower counts. The backfill avoids it by running each inner search on its own — which is why late days are rebuilt from this tab rather than by the schedule.
+
+### Per-rollup table
+
+One row per logical rollup (each dashboard, plus **Environment Topology (graph)**, **Environment Topology (detail tabs)**, and **Beaconing detection**). Some rows serve more than one dashboard, and their labels name each one: **ABAP Operations** is rebuilt with *Work Process Performance / ABAP Operations*, **Web Dispatcher** reads *Web & API Performance / Web Dispatcher* as well as its own *Web Dispatcher Slowest Traces*, and **Network Perimeter** reads its **Firewall Drops in Transit** count from *Linux System & Security / Network Perimeter*. Rebuild every row a dashboard reads. Columns:
+
+| Column | Meaning |
+|---|---|
+| **Dashboard** | The dashboard / view this rollup powers. |
+| **Schedule** | The aggregate search's cron (e.g. `5 * * * *`); hover for the next scheduled run. |
+| **Aggregation** | Per-rollup enable toggle (acts on that rollup's aggregate search(es); a multi-collection rollup like the topology graph toggles all of its searches). |
+| **History** | How far back the rollup reaches, measured from its oldest bucket — e.g. `106.7d of history` (about 30 days or more counts as complete), `empty`, or live `backfilling N/M` while a backfill runs, then `refreshing…` for the moment it takes to re-measure the depth once that row's searches have finished. After a run it can also read `failed — re-run`, `truncated — re-run`, or `still running on server` (hover for the search IDs). When the panel could not measure the history — Splunk had no free search slot, as is common just after a backfill, or the check search itself failed — the cell reads `check failed — re-check`: hover for the reason, and **re-check** measures that row again (`checking…` meanwhile). The checks run three at a time, and one that Splunk turns away is tried again after 2, 4 and 8 seconds. |
+| **Actions** | **Backfill** (this rollup only, per-arm top-level dispatch) · **Clear** (delete this rollup's collection(s), confirm-gated). |
+
+### Aggregation & retention (global controls)
+
+- **Hourly aggregation — master switch.** Enables/disables the scheduled saved searches that populate every rollup collection. Reads the live state of all aggregate searches and shows **Enabled (all)**, **Disabled (all)**, or **Mixed (N/M on)**. Toggling flips them all (Mixed → enable all). Use the per-rollup toggles in the table to control one at a time.
+- **Retention window — 365 days** (read-only). Bucket rows older than this are trimmed daily by each rollup's `*_retention` saved search. The trim never empties a collection on an empty read (`override_if_empty=false`), so a collection whose rows are all older than 365 days keeps them until new rows arrive. Uniform across all rollups; change `default/savedsearches.conf` to alter, and keep `override_if_empty=false` on every `outputlookup` of a retention search you change.
+
+### Danger zone
+
+**Clear all rollups** — a confirm-gated button that deletes every row from all rollup collections at once. Use sparingly (e.g. to wipe a contaminated dataset before re-running a backfill against a corrected schema). Every dashboard is empty until the hourly aggregation or a backfill repopulates it.
+
+## :material-circle-box:{ .taiconcolor } What "data freshness" means per panel
+
+- **`tstats` and raw panels are real-time** — they reflect events the instant they are indexed.
+- **Rolled-up panels are accurate to the most-recently-completed hour, for time ranges of 90 minutes or wider.** The hourly aggregation runs in the first half of each hour (`:03`–`:28`, one rollup per minute), so within the current partial hour a rolled-up panel shows data through the last completed hour, not the live partial hour. An event that reaches Splunk more than about an hour after its hour is counted once its days are rebuilt — see [Late-arriving data](#late-arriving-data).
+- **Sub-hour time ranges are real-time** — every rolled-up panel switches to raw events automatically (see below).
+
+### Sub-hour time ranges (automatic)
+
+The rollups are keyed on whole-hour buckets, so a **sub-hour** time range — anything narrower than 90 minutes, such as Splunk's *Last 15 minutes* or *Last 60 minutes* — cannot be answered correctly from the hourly cache alone: a window that falls inside a single hour matches no completed bucket (the panel would read **empty**), and a window that straddles an hour boundary would pull the whole hour (**over-counting**). To keep short ranges correct, every rolled-up panel **automatically routes a sub-hour window to its underlying raw-event query** instead of the cache — so a *Last 15 minutes* range shows accurate, real-time data at minute granularity with **no action needed**. For a window of 90 minutes or wider, the panel reads the fast hourly cache as usual.
+
+The switch is based purely on the selected range's span (a 90-minute threshold), is transparent to the user, and applies across every rolled-up dashboard — including the two Sourcetype Mapping link graphs and the Host Details Role Activity tab. At 90 minutes and wider, a rolled-up chart never draws buckets finer than one hour, because the summaries are hourly; at *Last 24 hours* it draws hourly bars where a chart counted from the index draws 15-minute ones. Every time chart prints its bucket in its subtitle (see [Chart Time Buckets](dashboards/index.md#chart-time-buckets)). Because the sub-hour path runs the panel's actual raw query, it is **exact** — not an approximation of the cache. (The trade-off is only speed, not correctness: a sub-hour raw query is inexpensive because it scans a small window, while a multi-day raw scan is what the hourly cache exists to avoid.)
+
+!!! lightning "Investigating live activity"
+    Sub-hour ranges are already real-time (above), so you can simply narrow the time-range picker to see live activity on any rolled-up dashboard. For deeper ad-hoc investigation at any range, a panel's **Open in Search** toolbar action jumps into Splunk's Search app with the panel's actual query and your selected time range pre-applied — the rollup read for a cached panel at a wide range, the raw query at sub-hour ranges.
+
+## :material-circle-box:{ .taiconcolor } How the dashboards source their data
+
+Every panel reads from the cheapest *correct* data source for what it shows. There are two fast tiers plus a small set of panels that stay on raw events.
+
+| Tier | Used for | Freshness | Cost |
+|---|---|---|---|
+| **`tstats` on indexed fields** | Pure counts and averages over indexed dimensions (event volumes, host / sourcetype / cloud-provider breakdowns) | Real-time | Very low — reads the index's tsidx, no raw-event scan |
+| **KV-Store precompute rollups** | Most charts, tables, and KPIs across the dashboard suite | Hourly for wide ranges; **real-time for sub-hour ranges** (automatic — see above) | Near-zero at read time — a scheduled search precomputes the data once per hour |
+| **Raw events** | Per-event listings, streamstats periodicity (beaconing), and a few timing traces that cannot be rolled up | Real-time | Bounded with `\| head N` where the panel is a time-ordered listing |
+
+!!! info "No CIM data-model acceleration is required"
+    The dashboards do **not** depend on accelerating the Common Information Model (CIM) Web / Authentication / Network data models. The fast path is the app's own KV-Store rollups, which work regardless of whether you have accelerated any CIM model. (The app's CIM *tagging* for Splunk Enterprise Security correlation is a separate, independent feature — see [Enterprise Security → CIM Compliance](../enterprise-security/cim-compliance.md).)
+
+### The KV-Store rollup layer
+
+Behind the rolled-up panels is a set of **KV-Store rollup collections** (`logserv_*_rollup`, plus the Environment Topology graph collections). For each, a scheduled saved search (one per rollup) aggregates the last two completed hours of raw events into hour-bucketed rows — the previous hour, and the one before it again, so an event that arrives a little late is still counted (see [Late-arriving data](#late-arriving-data)); the aggregates are staggered one per minute across `:03`–`:28` of every hour. (Three rollups aggregate **daily** rather than hourly and are day-bucketed: the two beaconing detections and the topology IP-enrichment names.) The dashboard reads the collection back, filtered to the global time-range picker's window via a `bucket_ts` range. Because the heavy aggregation happens once per hour in the background, opening a dashboard re-reads precomputed rows in roughly **0.1–0.6 seconds** instead of dispatching a full raw scan.
+
+A daily retention search trims each collection to a rolling **365-day** window. It never empties a collection on an empty read (`override_if_empty=false`), so a KV Store that is still starting up after a Splunkd restart cannot wipe a rollup.
+
+## :material-circle-box:{ .taiconcolor } Reference
+
+### :material-circle-box:{ .taiconcolor } Scheduled-search schedule
+
+The app's scheduled searches are organized into three non-overlapping bands, plus one daily check, so that no two enabled scheduled searches ever fire in the same minute and the hourly aggregation never contends with the daily retention. This keeps the scheduler from bursting at high event volume.
+
+| Band | When | What runs |
+|---|---|---|
+| **Hourly aggregates** | `:03`–`:28` every hour, one per minute | The always-on rollup-aggregate searches (`logserv_*_aggregate` / `logserv_topology_aggregate_*`), plus the Data Doctor's platform snapshot at `:02` |
+| **Daily retention + daily aggregates** | `00:30`–`00:58`, `01:30`–`01:58` and `02:32`–`02:36`, two minutes apart | Every rollup's retention trim, the two daily beaconing aggregates, the topology IP-enrichment aggregate, and the Data Doctor report/snapshot trims |
+| **Enterprise Security** | `:00`–`:01`, `:29`, odd `:31`–`:59`, plus `:30` in hours `02`–`05` (the daily anomaly scans) | The `splunk_sap_logserv_es_*` searches (enabled by default) — see note below |
+| **Late-arriving data check** | `05:40` daily | `logserv_late_arrival_check` — a read-only `tstats` comparison of the index with the Multi-Cloud Overview rollup (about 5 s on the reference box); see [Late-arriving data](#late-arriving-data) |
+
+The per-search tables below give each search's **run time** as *typical / busy* — the average and worst single-run duration observed on the validation fleet (~10.7M events/day). Aggregate run times scale with the **per-hour event volume**; retention run times scale with the **collection size**. Run times are indicative, measured on a ~10.7M events/day validation instance. Every hourly aggregate completes well within its one-minute slot; the heaviest daily retention trims take about a minute and sit in the two-minutes-apart daily band.
+
+#### :material-crop-square:{ .taiconcolor } Hourly aggregate band (`:03`–`:28`)
+
+Each rollup aggregate dispatches the last two completed hours (`-2h@h`..`@h`) and rewrites both. The newest bucket is still the just-completed hour, so the firing minute is freshness-neutral — spreading them one-per-minute simply avoids a burst at `:05`. Peak concurrency is ~1–2 instead of 26. The run times below were measured when each run read one hour; reading two roughly doubles them. Two keep a one-hour window: `logserv_topology_aggregate_inventory` (keyed by value, not by hour) and the Data Doctor's platform snapshot at `:02`.
+
+| Fires | Aggregate search | Powers (dashboard) | Run time (typ. / busy) |
+|---|---|---|---|
+| `:03` | `logserv_stmap_aggregate` | Host Details · Sourcetype Mapping **+** Data Pipeline Overview · Linked Graph | 1 / 2 s |
+| `:04` | `logserv_hostrole_aggregate` | Host Details · Role Activity | 4 / 5 s |
+| `:05` | `logserv_topology_aggregate_nodes` | Environment Topology (graph) | 6 / 20 s |
+| `:06` | `logserv_topology_aggregate_edges` | Environment Topology (graph) | 3 / 12 s |
+| `:07` | `logserv_topology_aggregate_inventory` | Environment Topology (graph) | 3 / 13 s |
+| `:08` | `logserv_topology_detail_aggregate` | Environment Topology (detail tabs) | 13 / 35 s |
+| `:09` | `logserv_wp_perf_aggregate` | Work Process Performance **+** ABAP Operations | 5 / 16 s |
+| `:10` | `logserv_severity_aggregate` | Environment Health | 5 / 18 s |
+| `:11` | `logserv_hana_aggregate` | HANA Audit | 3 / 12 s |
+| `:12` | `logserv_compliance_aggregate` | Change & Configuration Activity | 3 / 15 s |
+| `:13` | `logserv_saprouter_aggregate` | SAP Router | 2 / 7 s |
+| `:14` | `logserv_abapnet_aggregate` | ABAP Network & Security | 6 / 21 s |
+| `:15` | `logserv_xstack_auth_aggregate` | Cross-Stack Authentication | 3 / 10 s |
+| `:16` | `logserv_perimeter_aggregate` | Network Perimeter | 6 / 22 s |
+| `:17` | `logserv_linux_aggregate` | Linux System & Security **+** Network Perimeter | 7 / 24 s |
+| `:18` | `logserv_web_timing_aggregate` | Web & API Performance **+** Web Dispatcher | 8 / 21 s |
+| `:19` | `logserv_hana_trace_aggregate` | HANA Trace | 2 / 6 s |
+| `:20` | `logserv_windows_aggregate` | Windows | 2 / 6 s |
+| `:21` | `logserv_sapservices_aggregate` | SAP Services | 2 / 6 s |
+| `:22` | `logserv_mc_aggregate` | Multi-Cloud Overview | 2 / 7 s |
+| `:23` | `logserv_cloudconn_aggregate` | Cloud Connector | 4 / 10 s |
+| `:24` | `logserv_proxy_aggregate` | Proxy | 4 / 12 s |
+| `:25` | `logserv_dns_aggregate` | DNS Analytics | 2 / 5 s |
+| `:26` | `logserv_pipeline_aggregate` | Data Pipeline Overview | 2 / 5 s |
+| `:27` | `logserv_hostdetails_aggregate` | Host Details (Overview tab) | 2 / 7 s |
+| `:28` | `logserv_webdisp_slowtrace_aggregate` | Web Dispatcher · Slowest Request Traces | 1 / 3 s |
+
+#### :material-crop-square:{ .taiconcolor } Daily band (`00:30`–`02:36`)
+
+Retention trims and the daily aggregates run off-peak — 15 searches at `00:30`–`00:58`, 15 more at `01:30`–`01:58`, and 3 at `02:32`–`02:36`, all two minutes apart. Keeping them at minute `:30` or later guarantees they never collide with the hourly aggregate band (which fires at `:03`–`:28` of *every* hour); the two Data Doctor trims take the last two slots of hour `01`, `01:56` and `01:58`. Each retention search trims its collection to the rolling 365-day window and never empties it on an empty read (`override_if_empty=false`); the two beaconing aggregates (`00:30`, `00:32`) precompute the per-day DNS/perimeter beaconing statistics. (Retention run times scale with collection size, so the larger rollups — Environment Topology detail, Host Role Activity, DNS, Web & API, Network Perimeter — take longest; all are off-peak and collision-free.)
+
+| Fires | Daily search | Action (dashboard) | Run time (typ. / busy) |
+|---|---|---|---|
+| `00:30` | `logserv_beaconing_aggregate` | Aggregate daily beaconing counts → Environment Health · DNS Analytics | 2 / 4 s |
+| `00:32` | `logserv_beaconing_detail_aggregate` | Aggregate daily beaconing gap-stats → DNS Analytics · Network Perimeter | 1 / 2 s |
+| `00:34` | `logserv_topology_retention` | Trim Environment Topology (graph — nodes) | about 22 s |
+| `00:36` | `logserv_wp_perf_retention` | Trim Work Process Performance | 10 / 14 s |
+| `00:38` | `logserv_severity_retention` | Trim Environment Health | 7 / 8 s |
+| `00:40` | `logserv_hana_retention` | Trim HANA Audit | 5 / 7 s |
+| `00:42` | `logserv_compliance_retention` | Trim Change & Configuration Activity | 2 / 2 s |
+| `00:44` | `logserv_saprouter_retention` | Trim SAP Router | 2 / 2 s |
+| `00:46` | `logserv_abapnet_retention` | Trim ABAP Network & Security | 4 / 5 s |
+| `00:48` | `logserv_xstack_auth_retention` | Trim Cross-Stack Authentication | 3 / 3 s |
+| `00:50` | `logserv_perimeter_retention` | Trim Network Perimeter | 28 / 31 s |
+| `00:52` | `logserv_linux_retention` | Trim Linux System & Security | 7 / 8 s |
+| `00:54` | `logserv_web_timing_retention` | Trim Web & API Performance | 25 / 36 s |
+| `00:56` | `logserv_hana_trace_retention` | Trim HANA Trace | 5 / 7 s |
+| `00:58` | `logserv_windows_retention` | Trim Windows | 4 / 5 s |
+| `01:30` | `logserv_sapservices_retention` | Trim SAP Services | 1 / 2 s |
+| `01:32` | `logserv_mc_retention` | Trim Multi-Cloud Overview | 13 / 15 s |
+| `01:34` | `logserv_beaconing_retention` | Trim beaconing counts | < 1 s |
+| `01:36` | `logserv_cloudconn_retention` | Trim Cloud Connector | 4 / 4 s |
+| `01:38` | `logserv_proxy_retention` | Trim Proxy | 4 / 5 s |
+| `01:40` | `logserv_dns_retention` | Trim DNS Analytics | 35 / 38 s |
+| `01:42` | `logserv_pipeline_retention` | Trim Data Pipeline Overview | 5 / 6 s |
+| `01:44` | `logserv_hostdetails_retention` | Trim Host Details | 8 / 8 s |
+| `01:46` | `logserv_webdisp_slowtrace_retention` | Trim Web Dispatcher · Slowest Traces | 2 / 2 s |
+| `01:48` | `logserv_beaconing_detail_retention` | Trim beaconing gap-stats | 1 / 1 s |
+| `01:50` | `logserv_topology_detail_retention` | Trim Environment Topology (detail tabs) | 63 / 69 s |
+| `01:52` | `logserv_stmap_retention` | Trim Sourcetype Mapping | 24 / 24 s |
+| `01:54` | `logserv_hostrole_retention` | Trim Host Role Activity | 38 / 38 s |
+| `01:56` | `logserv_diag_reports_retention` | Trim the Data Doctor's saved diagnostic reports (365 d + row cap) | < 1 s |
+| `01:58` | `logserv_diag_platform_retention` | Trim the Data Doctor's platform snapshot (30 d) | < 1 s |
+| `02:32` | `logserv_topology_enrichment_aggregate` | Recompute the topology IP-node hostname/user names (daily, last 30 d) | 5 / 8 s |
+| `02:34` | `logserv_topology_enrichment_retention` | Trim the topology IP-enrichment names (365 d on last-seen) | < 1 s |
+| `02:36` | `logserv_topology_edges_retention` | Trim Environment Topology (graph — edges) | about 8 s |
+
+The two Environment Topology (graph) trim times are single-night estimates, not typical / busy measurements like the other rows.
+
+#### :material-crop-square:{ .taiconcolor } Enterprise Security band (enabled by default)
+
+The 22 `splunk_sap_logserv_es_*` searches ship **enabled** (see [Enterprise Security → The ES schedule](../enterprise-security/overview.md#the-es-schedule-collision-free)) on crons that sit entirely in the minutes the always-on bands leave free — `:00`–`:01`, `:29`, and the odd minutes `:31`–`:59` — so they are collision-free with both the aggregate band (`:02`–`:28`, including the Data Doctor’s `:02` platform snapshot) and the daily band (`00:30`–`00:58`, `01:30`–`01:58` and `02:32`–`02:36`). 16 correlation searches run hourly, the 2 Asset/Identity feeds every 4 hours, and the 4 behavioral-anomaly searches once a day each, at `:30` (hours 02–05). Two of them (`splunk_sap_logserv_es_anomaly_user_auth_volume` and `splunk_sap_logserv_es_anomaly_after_hours_admin`) scan 30 days of raw events, and the other two read the KV Store rollups.
+
+#### :material-crop-square:{ .taiconcolor } Measured behavior
+
+On the validation fleet (335M events), the hourly aggregates each complete in seconds and the slowest daily retention trim is ~1 minute (see the per-search tables above); the scheduler logs **0 skipped / 0 deferred**. The two heaviest ES searches — the 30-day anomaly scans (~150–340 s and ~50–120 s) — run **once a day**, so they add no hourly load.
+
+The Data Doctor adds two scheduled searches: `logserv_diag_platform_aggregate` (hourly at `:02`, a seconds-fast scan of the last hour of `index=_internal`) and `logserv_diag_platform_retention` (daily at 01:58, trims the platform snapshot to 30 days). The shipped schedule is verified by a permanent build gate: **every enabled scheduled search has a unique (hour, minute) — zero cron collisions**.
+
+### :material-circle-box:{ .taiconcolor } Behavior with multiple search heads
+
+How these scheduled searches behave depends on the search-head topology:
+
+**Search Head Cluster (SHC) — the supported multi-SH topology.** Works cleanly, with no extra configuration:
+
+- The SHC **captain delegates each scheduled search to a single member** per fire, so every aggregate and retention search runs **once cluster-wide per interval — not once per member**. There is no multiplication of load by the number of search heads.
+- **KV Store is automatically replicated across the cluster.** Whichever member runs an aggregate writes the rollup to its local KV Store, and Splunk replicates the collection to every member — so **all search heads serve the dashboards from the same rolled-up data**, regardless of which member computed it. (The rollup design depends on KV Store, which is cluster-replicated by default.)
+- The app's saved searches and collection definitions deploy to all members via the **SHC deployer** (`splunk apply shcluster-bundle`), Splunk's standard process. The one-click **Settings → Dashboard Data → Run backfill** also works cluster-wide — an admin runs it from any member and the results replicate.
+- The one-search-per-minute staggering helps here too: it keeps the per-minute scheduled load at ~1, which the captain can place on any member without bunching.
+
+**Independent (non-clustered) search heads.** If the app is installed on two or more **standalone** search heads that are *not* in a SHC, each one runs its **own** copy of the schedule against its **own** KV Store (there is no replication between independent search heads). The aggregates therefore run N times — once per search head — which is redundant indexer load, and each search head maintains its rollups independently (they can drift slightly in timing). It is not broken — each search head's dashboards work off its own rollups — but it is wasteful. **Recommendation:** use a SHC for multi-SH deployments. If independent search heads are unavoidable, keep the schedule enabled, and run the backfill, on every one of them: each search head's dashboards read only the rollups in its own KV Store, so a search head whose aggregates are switched off shows empty rolled-up panels at ranges of 90 minutes or wider.
+
+**Single search head** (the default — one SH, with or without separate indexers): the search head runs the whole schedule itself, dispatching the raw scans to its indexer peers and writing the rollups to its own KV Store. Nothing special is required.
+
+!!! info "KV Store must be enabled and healthy"
+    The rollups live in Splunk's KV Store, so KV Store must be enabled on the search head(s) — it is by default, and is already required for the Environment Topology view and the AI Assistant settings. On a SHC, KV Store replication must be healthy for rollups computed on one member to appear on the others.
+
+## :material-lightning-bolt:{ .taiconcolor } What to know at a glance
+
+- **Most panels are hourly-fresh; counts and per-event listings are real-time.** If a rolled-up trend looks an hour behind at a multi-day range, that's expected.
+- **Sub-hour time ranges (under 90 minutes) are real-time automatically** — a rolled-up panel routes a *Last 15 minutes*-style window to its raw query, so short ranges stay minute-accurate with no manual step.
+- **Scheduled searches are staggered into collision-free bands** — hourly aggregates at `:03`–`:28` (plus the platform snapshot at `:02`), daily retention + maintenance at `00:30`–`00:58`, `01:30`–`01:58` and `02:32`–`02:36`, the late-arriving data check at `05:40`, and the ES content (enabled by default) in the minutes those bands leave free — `:00`/`:01` for the feeds, `:29` and odd `:31`–`:59` for the hourly correlations, and `:30` at hours 02–05 for the daily anomaly searches — so no two enabled scheduled searches collide.
+- **After installing on an index that already holds history, run Settings → Dashboard Data → Run backfill once** — 30 days by default, or a longer window up to 365 days, or a custom range. It needs a role named `admin`, `sc_admin` or `sc_subadmin`.
+- **Late-arriving data is listed and rebuilt in Settings → Dashboard Data.** The hourly aggregation re-reads the hour before, which catches events up to about an hour late; the days holding anything later are listed under *Late-arriving data*, with a one-click backfill of exactly those days.
+- **No CIM acceleration is needed** for dashboard performance.
+- **Use a panel's Open in Search action** for ad-hoc raw-event investigation at any range (sub-hour ranges are already real-time on the dashboard itself). The panel toolbar is described in the [Dashboards Overview](dashboards/index.md#per-panel-toolbar).

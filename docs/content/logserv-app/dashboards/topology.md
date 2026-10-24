@@ -88,17 +88,7 @@ With **Snap mode** on, releasing a group drag applies *one shared* grid offset t
 
 ### :material-circle-box:{ .taiconcolor } Where the Data Comes From
 
-The view reads from a **time-bucketed KV Store** fed by hourly scheduled saved searches. (An earlier design ran six SPL searches on demand every time the view opened, which produced a 5–15 second page load on busy Splunk instances; the data layer was rewritten to the KV Store design described here.)
-
-| KV Store collection | Schema | Populated by |
-|---|---|---|
-| `logserv_topology_nodes` | one row per (canonical entity, hourly bucket); 9 fields including `event_count`, `last_seen` | `logserv_topology_aggregate_nodes` (hourly cron `5 * * * *`) |
-| `logserv_topology_detail_rollup` | one row per (metric, scope, hourly bucket); powers the right pane's per-node and per-edge tabs. Edge metrics (`edge_op` / `edge_perf` / `edge_err`) are keyed by the same stored edge id as `logserv_topology_edges.id` | `logserv_topology_detail_aggregate` (hourly cron `8 * * * *`) |
-| `logserv_topology_edges` | one row per (edge, hourly bucket) — RFC edges one row per (edge, app-server `local_ip`, hourly bucket), so multi-app-server counts stay exact; SAP Router edges one row per (router host, target address, hourly bucket); 20 fields including pre-computed `response_time_p50` / `_p95` / `_max`, `hana_op_p95_ms` / `hana_op_max_ms`, `auth_success_count` / `auth_fail_count`, `error_count`, `warning_count`, plus canonical `spl_sourcetype` + `spl_filter_clauses` for right-pane drilldowns | `logserv_topology_aggregate_edges` (hourly cron `6 * * * *`) |
-| `logserv_topology_inventory` | flat (no bucket dimension), keyed by canonical_value; IP / host → SID mapping for retargeting raw IPs to their owning SID node | `logserv_topology_aggregate_inventory` (hourly cron `7 * * * *`) |
-| `logserv_topology_ip_enrichment` | flat (no bucket dimension), keyed by `<ip>:<evidence_source>`; hostname + user names behind IP endpoints | `logserv_topology_enrichment_aggregate` (daily cron `32 2 * * *`) |
-
-Retention searches keep the KV Store sized, one search per collection: `logserv_topology_retention` (daily, `34 0 * * *`) trims `logserv_topology_nodes`, `logserv_topology_edges_retention` (daily, `36 2 * * *`) trims `logserv_topology_edges`, and `logserv_topology_detail_retention` (daily, `50 1 * * *`) trims `logserv_topology_detail_rollup`, each to 365 days of bucket history; `logserv_topology_enrichment_retention` (daily, `34 2 * * *`) trims enrichment rows unseen for 365 days. None of the four empties a collection on an empty read (`override_if_empty=false`). The `logserv_topology_backfill_*` searches (disabled by default) let an admin re-populate the 30-day window after a fresh install via Settings → Dashboard Data.
+The view reads a **time-bucketed KV Store** that hourly scheduled searches fill, so opening it does not run a search over raw events. The searches, their minutes and their run times are listed in the [schedule reference](../dashboard-data.md#scheduled-search-schedule).
 
 The aggregation searches read from these SPL sources:
 
@@ -113,7 +103,18 @@ The aggregation searches read from these SPL sources:
 | `XmlWinEventLog` / `sap:sapstartsrv` / sshd session lines | IP-node **name enrichment** only — the daily pass that puts a hostname / user line under unresolved IP squares. |
 | Default Splunk `host` field (cross-source fallback) | Picks up hosts that aren't surfaced in the above, and attributes a host to the one SAP system its SAP events name (`sap_sid`) — a Web Dispatcher's access log and ICM trace excepted (see below). |
 
-When you open the view, the React app fetches a time-window slice of these collections via the Splunk Web REST proxy (`/en-US/splunkd/__raw/servicesNS/nobody/<APP>/storage/collections/data/<NAME>?query={"bucket_ts":{"$gte":...,"$lte":...}}`). The fetch returns in well under a second on production-scale data — orders of magnitude faster than the legacy on-demand path. Clicking an edge dispatches three small searches against the hourly `logserv_topology_detail_rollup` — Operations, Performance and Errors — scoped by the stored edge id(s) behind the edge you clicked. Overview and Activity need no search at all: both are derived from the rows already in the browser. Because inventory retargeting can collapse several stored edges into one you see on the canvas, those three reads cover the whole set, and say so if an edge ever spans more than one.
+The node, edge and detail collections are trimmed nightly to 365 days of hourly history, and the IP-name enrichment to the names seen in the last 365 days; none of the trims empties a collection on an empty read (`override_if_empty=false`). To fill the view with history after an install, use **Settings → Dashboard Data** and backfill the **Environment Topology (graph)** and **Environment Topology (detail tabs)** rows: they take the window you choose (30 days by default, up to 365 days, or a custom range), while the inventory and the IP-name enrichment always refresh over the last 30 days. See [Backfilling on first install](../dashboard-data.md#backfilling-on-first-install).
+
+??? info "The KV Store collections behind the view, and how the view reads them"
+    | KV Store collection | Schema | Populated by |
+    |---|---|---|
+    | `logserv_topology_nodes` | one row per (canonical entity, hourly bucket); 9 fields including `event_count`, `last_seen` | `logserv_topology_aggregate_nodes` (hourly) |
+    | `logserv_topology_detail_rollup` | one row per (metric, scope, hourly bucket); powers the right pane's per-node and per-edge tabs. Edge metrics (`edge_op` / `edge_perf` / `edge_err`) are keyed by the same stored edge id as `logserv_topology_edges.id` | `logserv_topology_detail_aggregate` (hourly) |
+    | `logserv_topology_edges` | one row per (edge, hourly bucket) — RFC edges one row per (edge, app-server `local_ip`, hourly bucket), so multi-app-server counts stay exact; SAP Router edges one row per (router host, target address, hourly bucket); 20 fields including pre-computed `response_time_p50` / `_p95` / `_max`, `hana_op_p95_ms` / `hana_op_max_ms`, `auth_success_count` / `auth_fail_count`, `error_count`, `warning_count`, plus canonical `spl_sourcetype` + `spl_filter_clauses` for right-pane drilldowns | `logserv_topology_aggregate_edges` (hourly) |
+    | `logserv_topology_inventory` | flat (no bucket dimension), keyed by canonical_value; IP / host → SID mapping for retargeting raw IPs to their owning SID node | `logserv_topology_aggregate_inventory` (hourly) |
+    | `logserv_topology_ip_enrichment` | flat (no bucket dimension), keyed by `<ip>:<evidence_source>`; hostname + user names behind IP endpoints | `logserv_topology_enrichment_aggregate` (daily) |
+
+    When you open the view, the React app fetches a time-window slice of these collections via the Splunk Web REST proxy (`/en-US/splunkd/__raw/servicesNS/nobody/<APP>/storage/collections/data/<NAME>?query={"bucket_ts":{"$gte":...,"$lte":...}}`). The fetch returns in well under a second on production-scale data. Clicking an edge dispatches three small searches against the hourly `logserv_topology_detail_rollup` — Operations, Performance and Errors — scoped by the stored edge id(s) behind the edge you clicked. Overview and Activity need no search at all: both are derived from the rows already in the browser. Because inventory retargeting can collapse several stored edges into one you see on the canvas, those three reads cover the whole set, and say so if an edge ever spans more than one.
 
 ### :material-circle-box:{ .taiconcolor } Self-Derived IP→SID Inventory
 
@@ -144,7 +145,7 @@ The LAYOUT dropdown switches between three layout algorithms:
 - **Layered** — ELK Sugiyama-layered top-to-bottom flow with orthogonal edges and near-zero edge crossings. Best for traffic-flow analysis where you want to see "what flows into what" structurally.
 - **Tree** — ELK mrtree classic top-down tree with hubs at top and spokes radiating downward. Best when the topology is approximately hub-and-spoke shaped.
 
-Both ELK-based modes (Layered + Tree) share the same lazy-loaded elkjs chunk, fetched only when you first pick a Layered or Tree layout, so adding Tree mode after Layered shipped was a near-zero-cost extension. Force mode remains synchronous (no bundle hit on initial load).
+Both ELK-based modes (Layered + Tree) share the same lazy-loaded elkjs chunk, fetched only when you first pick a Layered or Tree layout. Force mode remains synchronous (no bundle hit on initial load).
 
 Each layout mode has its own **saved-layout slot** — saving a layout in Force doesn't bleed into Layered or Tree. Switching layouts via the LAYOUT dropdown drops the current saved-positions cache so each mode renders fresh from its own algorithm. The Manage Layouts modal (⚙ entry at the top of the Load Layout dropdown) lets you set a per-mode default layout that auto-loads on mount.
 
@@ -172,22 +173,14 @@ Both preferences are persisted to Splunk KV Store keyed by Splunk username (coll
 
 ### :material-circle-box:{ .taiconcolor } Data Refresh Cadence
 
-The topology data layer is **populated by four hourly scheduled saved searches plus one daily enrichment pass**, all writing to the KV Store:
-
-- `logserv_topology_aggregate_nodes` — cron `5 * * * *`, rolls up event activity per (canonical entity, hour bucket)
-- `logserv_topology_aggregate_edges` — cron `6 * * * *`, rolls up call and connection counts + per-type aggregates (HTTP latency, HANA tenant hdbcons command duration, etc.)
-- `logserv_topology_aggregate_inventory` — cron `7 * * * *`, updates the IP/host → SID mapping, recording each endpoint seen in the past hour under its most recent SID
-- `logserv_topology_detail_aggregate` — cron `8 * * * *`, precomputes the per-node / per-edge detail-tab rows
-- `logserv_topology_enrichment_aggregate` — cron `32 2 * * *` (daily), recomputes the IP-node hostname/user name lines over the last 30 days
-
-So the KV Store gets a new hourly bucket in the first minutes of each hour. The view re-reads the KV Store:
+The topology collections get a new hourly bucket in the first minutes of each hour: four hourly searches run at `:05`–`:08`, and the IP-node name enrichment runs once a day at `02:32`, recomputing the names over the last 30 days (see the [schedule reference](../dashboard-data.md#scheduled-search-schedule)). The view re-reads the KV Store:
 
 - On initial page load
 - On global TimeRange picker change
-- When the user clicks the toolbar's **Refresh** button (useful right after dispatching a backfill saved search)
+- When the user clicks the toolbar's **Refresh** button (useful right after a backfill from Settings → Dashboard Data)
 - When the user selects a different node (dispatches on-demand reads against the hourly `logserv_topology_detail_rollup` KV Store collection — same data layer, dispatched per selection rather than at page load)
 
-There is **no client-side auto-polling**. An earlier Live | Lookup mode toggle polled every 30 seconds — a leftover from the original on-demand SPL data layer; it was removed once the data layer moved to hourly KV Store aggregation, because ~119 of every 120 ticks returned byte-identical data. The hourly cron is what governs data freshness now; tightening the cron schedule (e.g., to `*/15 * * * *`) is the right lever if a customer needs sub-hour data freshness, at the cost of more search-job dispatches.
+The graph itself does not poll. The title row's **Refresh** picker and the header's **Refresh** button re-run only the searches behind the selected node's or edge's detail tabs and the **Hosts (in range)** count; to re-read the graph, use the toolbar's **Refresh** button. The hourly aggregation governs data freshness, and the newest bucket is the last completed hour. Running the aggregates more often would add no newer data, because each run reads whole completed hours.
 
 ### :material-lightning-bolt:{ .taiconcolor } What to Look For
 
@@ -208,6 +201,4 @@ There is **no client-side auto-polling**. An earlier Live | Lookup mode toggle p
 - Layout persistence works across browser tabs and across Splunk Web sessions — your KV Store records survive Splunkd restarts.
 - Layouts are saved **per Splunk user** — every KV Store record is keyed by `<username>::<slug>`, so different users have completely separate records and can't overwrite each other's layouts. If the same user edits the topology in two browser tabs concurrently, the tabs race each other and last-tab-save wins (multi-tab edit-collision protection is planned for a future release).
 - The minimap supports drag-only panning. Single-click and scroll-zoom inside the minimap rectangle are intentionally inert — drag is the one interaction.
-- RFC edges count connections in the direction they were made, HANA audit edges end on the HANA host that wrote each record (the search-time `host`; the client's host name is now `src_host`), and SAP Router edges are new. Rows written by earlier builds keep the old values under the old keys, and a **Backfill** writes the new keys beside them without removing them: the old RFC rows would draw a second, reversed RFC edge, and the old HANA audit rows an edge to the client's host name, with a node for it. So installs upgrading from an earlier build **Clear** and then **Backfill** the two Environment Topology rows once, **after** the upgrade (Settings → Dashboard Data), with a window that covers the history each row shows — the Clear removes the row's whole history. The Backfill also gives the SAP Router edges their history. [Upgrading](../../getting-started/upgrading.md) lists every row the upgrade touches, the order and the times to avoid; the [release notes](../../overview/release-notes.md) describe the change.
-
-
+- Upgrading from an earlier build? See [Upgrading](../../getting-started/upgrading.md): it lists the Environment Topology rows an upgrade must rebuild.

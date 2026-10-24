@@ -13,6 +13,27 @@ It has four surfaces, from smallest to widest scope:
  (automatic, free)     ("Run full diagnosis")     (Actions menu)       (#/diagnostics)
 ```
 
+## :material-circle-box:{ .taiconcolor } First health check after install
+
+Run this check once the LogServ App is installed, and again after the first Dashboard Data backfill. It needs no admin role.
+
+1. Open **Platform → Diagnostics**. The checks start on their own and finish within about two minutes.
+2. In **Summary**, check that the index the app macro resolves to is your SAP data index, that events and sourcetypes are
+   present in the selected window, and that the search-tier add-ons are installed: `Splunk_SA_CIM`, `Splunk_TA_windows`
+   and `Splunk_TA_nix`. On a dedicated search head `splunk_ta_sap_logserv` is expected to be absent, and `Splunk_MCP_Server`
+   matters only for the AI Assistant.
+3. In **Summarised data**, the **History** column reads **NEVER BUILT** on a fresh install, or **INCOMPLETE** once the
+   first hourly run has written an hour or two. That is expected until an admin runs the one-time backfill
+   (**Settings → Dashboard Data → Run backfill**, see
+   [Backfilling on first install](../../dashboard-data.md#backfilling-on-first-install)); until then the dashboards show
+   only the last hour or two of data. After the backfill, click **Re-run checks**. A row reads **COMPLETE** once its
+   rollup holds data reaching back at least 29 days, so it needs events of that rollup's log types at least that old in
+   the index. A row whose log types you do not collect stays **NEVER BUILT**, and a row with less history in the index
+   reads **INCOMPLETE**; neither means the backfill failed. A backfill that finishes with issues says so on
+   **Settings → Dashboard Data** and marks the affected rollups there; running it again retries them.
+4. Click **Download report (PDF)** and keep the report. It records the install's starting state, and it is the one file
+   to attach to a support case.
+
 ## :material-circle-box:{ .taiconcolor } Empty-panel hints (automatic)
 
 Every chart, table and KPI card that comes back empty explains itself. Without running any
@@ -110,8 +131,8 @@ Missing data is not always an empty panel: a table can have rows with one column
 KPI can display a zero you believe should not be zero. The Data Doctor covers both, with two
 entry points that work on **populated** panels:
 
-- **The Diagnose toolbar icon.** Every chart and table panel's toolbar gained a fifth icon,
-  **Diagnose this panel** — it sits first, ahead of Open-in-Search / Download CSV / Inspect /
+- **The Diagnose toolbar icon.** Every chart and table panel's toolbar carries a
+  **Diagnose this panel** icon — first, ahead of Open-in-Search / Download CSV / Inspect /
   Refresh. On a populated
   panel it opens the drawer under the header **"Panel diagnosis"** (rather than *"Why is this
   empty?"*) and runs the partial-data checks below.
@@ -190,7 +211,7 @@ Refresh button — it runs the environment checks (120-second budget) and render
 - **Sourcetypes** — per-sourcetype events in the window plus all-time last-seen.
 - **What was checked** — the same honest ledger as the drawer, including anything skipped.
 - **What cannot be checked from here** — the explicit list of things a browser session on the
-  search head can never see for itself (the Data TA's ingest filters on the Heavy Forwarders —
+  search head can never see for itself (the Data TA's ingest filters on the heavy forwarders —
   unless an operator supplies them, see below — the upstream
   LogServ feed, `index=_internal` for a restricted role), each with who to ask.
 - **Saved Data Doctor reports** — see below.
@@ -211,7 +232,7 @@ An hourly scheduled search (`logserv_diag_platform_aggregate`, two minutes past 
 
 - When the snapshot is **stale, empty or unreadable**, the panel says *NOT AVAILABLE* with the verified reason (the producing search is disabled / has not run yet / has run but written nothing) — it never renders stale numbers as current facts.
 - All snapshot figures are **context, never a cause**: the scheduler tables include this app's own hourly summarisation jobs, and the queue-depth gauge does not measure ingest-filter drops (the operator-supplied ingest-filter configuration below is the drop evidence).
-- A stale dashboard summary's diagnosis can cite matching scheduler skips from the snapshot as an evidence line — always badged as *recorded by the hourly platform snapshot, a collection only Splunk administrators can write*, and never able to raise a verdict's confidence (rows from before App build 384, when every role could write it, may be forged).
+- A stale dashboard summary's diagnosis can cite matching scheduler skips from the snapshot as an evidence line — always badged as *recorded by the hourly platform snapshot, a collection only Splunk administrators can write*, and never able to raise a verdict's confidence (rows written by an earlier App build, when every role could write the collection, may be forged).
 
 The snapshot keeps 30 days (daily retention at 01:58). It needs no backfill — it warms within the hour of install.
 
@@ -222,7 +243,7 @@ The panel diagnosis drawer's **Download PDF** offers an *Include raw event sampl
 ## :material-circle-box:{ .taiconcolor } Supplying the ingest-filter configuration
 
 The one thing the Data Doctor cannot see for itself is the Data TA's ingest-tier filtering —
-the include/exclude rules and the days-in-past cutoff run on the Heavy Forwarder / indexer
+the include/exclude rules and the days-in-past cutoff run on the heavy forwarder / indexer
 tier and silently discard events **before they are indexed**. Historically this is the single
 most common cause of "I see zero events".
 
@@ -238,15 +259,44 @@ verdict:
   configured include list `<list>`"* (the include/exclude reconciliation), with the reminder
   that an intentional exclusion means nothing is broken.
 
-Four paste formats are accepted: the REST response as JSON or XML, the generated
-`local/transforms.conf`, and the settings conf. Practical notes:
+Run **one** of these commands where your Data TA configuration lives, and paste the output into
+the panel.
 
-- **Where to run the command matters.** On a distributed install the deployment server's
-  REST endpoint is authoritative; on a single instance, this host's. On a **Heavy
-  Forwarder** the REST endpoint reports shipped defaults regardless of the pushed
-  configuration — paste the HF's `local/transforms.conf` file instead. If a paste exactly
-  matches the shipped defaults, the diagnosis says so and keeps asking rather than treating
-  filtering as ruled out.
+**Deployment Server** (distributed install), or this host on a single instance:
+
+```bash
+curl -k -u <splunk-admin> "https://<deployment-server>:8089/servicesNS/nobody/splunk_ta_sap_logserv/splunk_ta_sap_logserv_settings/filter_settings?output_mode=json"
+```
+
+Omit `?output_mode=json` for the XML form. The response carries `filter_enabled`,
+`include_filters`, `exclude_filters`, `include_sources`, `exclude_sources` and `days_in_past`.
+
+**Heavy forwarder** managed by a Deployment Server: the generated filter file.
+
+```bash
+sudo cat /opt/splunk/etc/apps/splunk_ta_sap_logserv/local/transforms.conf
+```
+
+**Heavy forwarder** that no Deployment Server manages: it holds its own configuration, because its
+Filters saves are made on it. Run the REST command against that forwarder
+(`https://<heavy-forwarder>:8089/...`), or paste its `local/transforms.conf`.
+
+Four paste formats are accepted: the REST response as JSON or XML, the generated
+`local/transforms.conf`, and the settings conf (`local/splunk_ta_sap_logserv_settings.conf`).
+Practical notes:
+
+- **Where to run the command matters.** On a distributed install the Deployment Server's
+  REST endpoint is authoritative; on a single instance, this host's; on a heavy forwarder that no
+  Deployment Server manages, that forwarder's. On a deployment-server-managed
+  **heavy forwarder**, do not use the REST endpoint: it returns the shipped defaults with the
+  HF's copy of the settings file on top, and the Deployment Server sends that file only when it
+  copies the whole Data TA (on the first Filters or Cloud Provider save, and on the first save
+  after a Data TA version change; later saves send only `local/transforms.conf` and
+  `local/props.conf`). So the endpoint can show an earlier save's settings, or the shipped
+  defaults, and neither tells you what the HF filters now. Paste the HF's generated
+  `local/transforms.conf` instead. If a paste exactly matches the shipped defaults, the diagnosis
+  says so and keeps asking rather than treating filtering as ruled out; a paste taken from an
+  HF's REST endpoint can be out of date even when it does not match the defaults.
 - **The paste is credential-scrubbed before it is stored** (curl `-u` credentials,
   Authorization headers, passwords, tokens, session cookies), and for a fully parsed paste
   the raw text is not retained at all — only the parsed settings.
@@ -259,9 +309,9 @@ Four paste formats are accepted: the REST response as JSON or XML, the generated
 - Saving re-runs the checks, so the page, the boundary text and any report you download move
   together. Re-pasting overwrites the previous supply; there is no delete.
 
-Several refinements sharpen how the supplied configuration is used as evidence:
+The supplied configuration is used as evidence as follows:
 
-- **Replayed or backdated arrivals no longer evade the out-of-date check.** The diagnosis
+- **Replayed or backdated arrivals are caught by the out-of-date check.** The diagnosis
   compares the supply time against both the newest *event timestamp* and the newest *index
   time* (from bucket metadata) of a supposedly excluded type. Events *recorded as indexed*
   after the supply — even when their event timestamps are old — soften the exclusion verdict
@@ -277,7 +327,7 @@ Several refinements sharpen how the supplied configuration is used as evidence:
   now would be dropped at ingest; the cutoff slides forward daily"* aside is attached to the
   verdict, so the sliding cutoff is considered without over-claiming it as the cause.
 - **The Data TA's Cloud Provider stamp rides the paste.** A `local/transforms.conf` paste (or
-  a settings-conf paste, which can also carry the explicit *Not set*) now records the
+  a settings-conf paste, which can also carry the explicit *Not set*) records the
   configured `cloud_provider` stamp; on provider-filtered panels the diagnosis explains how
   the stamp interacts with the panel's filter — including that an `aws` filter also matches
   events with no provider at all, so a stamp mismatch never by itself explains an empty AWS
@@ -303,10 +353,9 @@ Several refinements sharpen how the supplied configuration is used as evidence:
   into account."* The pointer is suppressed when the stored supply merely could not be read.
 
 The stored configuration is writable by every authenticated user and is validated on read, like the
-saved reports and the per-user preferences (since App build 384 the dashboard rollups, the topology
-collections and the platform snapshot, and since App build 383 the AI Assistant's settings,
-acknowledgements and model cache, can be written by the admin tier only); the supplier's name is shown as
-*(name not verified)*. Treat it as a shared, unauthenticated-integrity
+saved reports and the per-user preferences (the dashboard rollups, the topology collections, the platform
+snapshot and the AI Assistant's settings, acknowledgements and model cache can be written by the admin
+tier only); the supplier's name is shown as *(name not verified)*. Treat it as a shared, unauthenticated-integrity
 artifact. The supplied values steer *wording and attribution*, but the strong verdicts still
 require the diagnostic's own first-hand observations (an actually-empty window, an
 actually-absent sourcetype) to fire.
@@ -334,9 +383,10 @@ Housekeeping and integrity:
 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 
-- **"NEVER BUILT" in the History column on a fresh install** — expected until the one-time
-  backfill is run (Settings → Dashboard Data → Run backfill). Dashboards show only the last
-  hour or two of data until then.
+- **"NEVER BUILT" or "INCOMPLETE" in the History column on a fresh install** — expected until
+  the one-time backfill is run (Settings → Dashboard Data → Run backfill). Dashboards show only
+  the last hour or two of data until then. After the backfill, a row whose log types you do not
+  collect stays NEVER BUILT, and one with under 29 days of history in the index stays INCOMPLETE.
 - **"STALE" Freshness on one collection while its neighbours are OK** — that rollup's hourly
   aggregation has stopped writing. An administrator should check its saved search (Settings →
   Dashboard Data shows the per-rollup schedule and enable state).
@@ -344,7 +394,7 @@ Housekeeping and integrity:
   your window simply predates or postdates its activity. The panel-level diagnosis states this
   explicitly ("the most recent one is from `<date>`, after this range … Nothing is stopped").
 - **A sourcetype whose "Last seen" is days old** — the upstream feed for that log type may have
-  stopped. That is an ingest-side question (Heavy Forwarder inputs, the LogServ feed itself) —
+  stopped. That is an ingest-side question (heavy forwarder inputs, the LogServ feed itself) —
   the "What cannot be checked from here" section names the exact owner to ask — and once an
   operator supplies the ingest-filter configuration, the days-in-past / include-exclude class
   of emptiness gets a named verdict instead of a boundary note.

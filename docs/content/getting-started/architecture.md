@@ -1,216 +1,165 @@
 # Architecture
 
-## :material-circle-box:{ .taiconcolor } Two-Package Model
+This page shows how Splunk for SAP LogServ moves SAP LogServ data from your cloud into Splunk, and what each package does on the way. Read it while you plan; which package goes on which Splunk instance is on [Where Each Package Goes](package-placement.md).
 
-The SAP LogServ solution for Splunk is delivered as **two core packages** — plus first-party **Azure and GCP ingest add-ons** for deployments where SAP ECS data lands in Azure Blob Storage or Google Cloud Storage:
+## :material-circle-box:{ .taiconcolor } The Packages { #two-package-model }
 
-| Package | App ID | Purpose |
-|---------|--------|---------|
-| **Data TA** | `splunk_ta_sap_logserv` | Data collection, index-time filtering, deployment server automation, configuration UI, ships the `indexes.conf` for `sap_logserv_logs` (SAP data) and `logserv_ai_assistant_audit` (AI Assistant audit log) |
-| **LogServ App** | `splunk_app_sap_logserv` | Dashboards, AI Assistant, Environment Topology view, search-time field extractions, macros |
-| **LogServ Azure add-on** *(Azure deployments only)* | `splunk_ta_sap_logserv_azure` | Queue-based Azure Blob ingest — the `sap_logserv_azure_queue` modular input consumes Azure Event Grid → Storage Queue notifications, fetches each blob over a SAS, and emits `sourcetype = sap_logserv_logs` into the same pipeline as the AWS path. Installed **per Heavy Forwarder** (its SAS lives in the add-on's own `local/`), **not** distributed by the Deployment Server. The Azure counterpart to the Splunk Add-on for AWS. See the [Azure Setup Guide](../install-setup/azure-setup.md). |
-| **LogServ GCP add-on** *(GCP deployments only)* | `splunk_ta_sap_logserv_gcp` | Notification-driven Google Cloud Storage ingest — the `sap_logserv_gcp_pubsub` modular input pulls a Pub/Sub subscription fed by the LogServ bucket's `OBJECT_FINALIZE` notifications, fetches each object with a service-account key, and emits `sourcetype = sap_logserv_logs` into the same pipeline. Installed **per Heavy Forwarder** (its key lives in the add-on's own `local/`), **not** distributed by the Deployment Server. The GCP counterpart to the Splunk Add-on for AWS. See the [GCP Setup Guide](../install-setup/gcp-setup.md). |
+Splunk for SAP LogServ is four packages of its own, plus the Splunk Add-on for AWS when your SAP ECS data is in AWS:
 
-The **Data TA** handles everything that happens at index time: routing events to the correct sourcetype, applying index-time filters, and defining the two indexes the solution writes to. The raw data reaches the Heavy Forwarders through the cloud-ingest add-on that matches where your SAP ECS data lands — the **Splunk Add-on for AWS** (S3), the **LogServ Azure add-on** (Blob Storage), or the **LogServ GCP add-on** (Google Cloud Storage) — and the Data TA routes and filters it identically regardless of channel. It includes Python scripts, REST handlers, a configuration UI built with Splunk's UCC framework, and `default/indexes.conf` so Splunk auto-creates `sap_logserv_logs` and `logserv_ai_assistant_audit` on first install. Both index names are **macro-configurable** via `sap_logserv_idx_macro` (SAP data) and `sap_logserv_audit_idx_macro` (audit log); customers who rename either index update the matching macro definition. The `logserv_ai_assistant_audit` index is required for the AI Assistant's audit log to function — without it, audit events have no destination index.
+| Package | Splunk Web label | App ID | What it does |
+|---------|------------------|--------|--------------|
+| **Data TA** | Splunk TA for SAP LogServ | `splunk_ta_sap_logserv` | Index-time parsing, sourcetype routing and the optional filters for the data your ingest add-on collects. It has no data inputs of its own: its two scripted inputs are maintenance jobs that write to `_internal`. It also carries the Configuration page (Filters, Cloud Provider), the Deployment Server automation, the AWS S3 Direct backfill screen, and the definitions of the two indexes, `sap_logserv_logs` (SAP data) and `logserv_ai_assistant_audit` (AI Assistant audit log). |
+| **LogServ App** | Splunk App for SAP LogServ | `splunk_app_sap_logserv` | Dashboards, search-time field extractions, macros, the scheduled searches that fill the dashboards' KV Store rollups, Environment Topology, the Enterprise Security content and the AI Assistant (ships disabled). It contains no Python and no inputs. |
+| **Splunk Add-on for AWS** | Splunk Add-on for AWS | `Splunk_TA_aws` (Splunkbase 1876) | Collects from AWS S3: its SQS-Based S3 inputs read the notifications of new LogServ objects and download the objects. The AWS S3 Direct screen creates Generic S3 inputs in it for backfill. |
+| **LogServ Azure add-on** | Splunk TA for SAP LogServ on Azure | `splunk_ta_sap_logserv_azure` | Collects from Azure Blob Storage: its `sap_logserv_azure_queue` input reads the Storage Queue that Event Grid fills with `BlobCreated` notifications and fetches each blob with a SAS. See the [Azure Setup Guide](../install-setup/azure-setup.md). |
+| **LogServ GCP add-on** | Splunk TA for SAP LogServ on GCP | `splunk_ta_sap_logserv_gcp` | Collects from Google Cloud Storage: its `sap_logserv_gcp_pubsub` input pulls a Pub/Sub subscription fed by the bucket's `OBJECT_FINALIZE` notifications and fetches each object with a service-account key. See the [GCP Setup Guide](../install-setup/gcp-setup.md). |
 
-The **LogServ App** handles everything that happens at search time: field extractions, field aliases, computed fields, and the dashboards you use to visualize and analyze the data. It contains no Python code and no data collection components.
+Each NDJSON line of a LogServ object becomes one event with sourcetype `sap_logserv_logs` (on AWS you set it on the SQS-Based S3 input, and it must be exactly `sap_logserv_logs`: the Data TA parses and routes only events that arrive with that sourcetype; the Azure and GCP inputs always use it). The Azure and GCP inputs also stamp `cloud_provider` on their events. From there the Data TA handles every cloud the same way.
 
-!!! tip "Why two packages?"
-    The split follows Splunk best practices for distributed deployments. The Data TA runs at the ingest tier (Heavy Forwarders for distributed deployments, plus the Indexer where the bundled `indexes.conf` provisions storage) and the LogServ App runs on the Search Head where users interact with dashboards. Keeping these tiers separate means search-only logic (field extractions, dashboards, the AI Assistant chat panel) doesn't bloat the forwarders, and ingest logic (sourcetype routing, REST handlers, UCC config UI) doesn't leak into the Search Head.
+The **Data TA** works where the data is parsed: on the heavy forwarders that run the ingest inputs, or on a single instance. A heavy forwarder parses each event before it forwards it, so the indexers receive finished events and the Data TA's index-time settings do nothing there. The indexers only need the two indexes; in a distributed deployment you create them on the indexer tier. A Deployment Server, if you use one, holds the Data TA to distribute it to the heavy forwarders. The `logserv_ai_assistant_audit` index is where the AI Assistant writes its audit events; without it they have nowhere to go.
+
+The **LogServ App** works at search time on the search head (or the single instance). It finds the SAP data through the macro `sap_logserv_idx_macro` and the audit events through `sap_logserv_audit_idx_macro`, so a renamed index needs the macros changed rather than the App; see [Renaming an index](../install-setup/install-ta.md#renaming-an-index).
+
+!!! tip "Why separate packages?"
+    Index-time work and search-time work run on different Splunk tiers. Keeping them apart means the forwarders carry no dashboards, search-time extractions or AI Assistant code, and the search head carries no ingest logic. On a single instance both packages are installed on the same instance and Splunk merges their configuration.
 
 ## :material-circle-box:{ .taiconcolor } Install Matrix
 
-Where you install each package depends on your Splunk topology:
-
-| Topology | Data TA | LogServ App |
-|----------|---------|-------------|
-| **Single instance** | Same instance | Same instance |
-| **DS + HFs + on-prem SH** | Deployment Server + each HF + Indexer | Search Head only |
-| **DS + HFs + Splunk Cloud** | Deployment Server + each HF (the Cloud indexer tier is Splunk-managed — create the indexes through the Cloud console or ACS) | Splunk Cloud SH only |
-
-!!! warning "Important"
-    - The Data TA is **never** installed directly on Heavy Forwarders when using a Deployment Server -- the DS distributes it automatically.
-    - The LogServ App is **never** installed on Heavy Forwarders or the Deployment Server.
-    - The Data TA and the Azure / GCP add-ons are **strongly recommended against** on a search head (Splunk Cloud included); nothing blocks them there — see [Running the TAs on a search head](../install-setup/install-ta.md#running-the-tas-on-a-search-head).
-    - On Splunk Cloud you cannot install apps on the indexer tier, so the Data TA's bundled `indexes.conf` never applies there. Create both indexes through the Splunk Cloud console or the Admin Config Service (ACS) — see [Installing the Data TA](../install-setup/install-ta.md).
-    - For single-instance deployments, both packages are installed on the same instance and Splunk merges their configurations at runtime.
-
-!!! note "Cloud ingest add-on placement (Azure / GCP)"
-    For **Azure Blob Storage** deployments, also install the **LogServ Azure add-on** (`splunk_ta_sap_logserv_azure`) on **each Heavy Forwarder** — or the single instance in a single-instance deployment — **directly, not** via the Deployment Server (its SAS credential lives in the add-on's own `local/`, which a DS push would overwrite). For **Google Cloud Storage** deployments, the **LogServ GCP add-on** (`splunk_ta_sap_logserv_gcp`) is placed the same way (its service-account key lives in the add-on's own `local/`). Both mirror how the Splunk Add-on for AWS is placed for S3 ingest. See the [Azure Setup Guide](../install-setup/azure-setup.md) and the [GCP Setup Guide](../install-setup/gcp-setup.md).
+Where you install each package depends on your topology: single instance, Deployment Server with heavy forwarders, Splunk Cloud with or without your own heavy forwarders, search head and indexer clusters. All of them are in one table on [Where Each Package Goes](package-placement.md#package-matrix).
 
 ## :material-circle-box:{ .taiconcolor } Data Flow
 
-The diagram below shows how SAP LogServ data flows from the SAP ECS environment into Splunk:
+### :material-crop-square:{ .taiconcolor } AWS
+
+SAP writes your LogServ objects to an S3 bucket in the SAP ECS account, and the bucket sends a notification for each new object to an SQS queue there. How the notifications reach Splunk depends on the scenario you deploy in your own **Secondary** AWS account (see [Choose Your Cloud and AWS Scenario](../install-setup/choose-your-cloud.md)):
 
 ```
-  SAP ECS Environment
-        |
-        v
-  SAP LogServ S3 Bucket (SAP-managed)
-        |
-        v  (S3 event notifications via SQS)
-  Customer's AWS Account
-  +-----------------------------------------------+
-  |  Destination S3 Bucket  -->  SQS Queue        |
-  |         (S3 events trigger SQS messages)      |
-  +-----------------------------------------------+
-        |
-        v  (Splunk AWS Add-on reads from SQS)
-  Splunk Heavy Forwarders
-  +-----------------------------------------------+
-  |  1. Ingest NDJSON from S3 via SQS             |
-  |  2. Route to sourcetype (TRANSFORMS)          |
-  |  3. Apply index-time filters (nullQueue)      |
-  |  4. Forward to indexer                        |
-  +-----------------------------------------------+
-        |
-        v
-  Splunk Indexer
-  +-----------------------------------------------+
-  |  Stores events in sap_logserv_logs index      |
-  +-----------------------------------------------+
-        |
-        v
-  Splunk Search Head
-  +-----------------------------------------------+
-  |  LogServ App: dashboards + field extractions  |
-  +-----------------------------------------------+
+  SAP ECS account (managed by SAP)
+  +-------------------------------------------------------------+
+  |  SAP LogServ S3 bucket  --(new object)-->  SAP SQS queue    |
+  +-------------------------------------------------------------+
+          |                       |                       |
+       Connect                 Filter                   Copy
+          |                       |                       |
+          |              Lambda in your account   Lambda in your account
+          |              reads SAP's queue and    reads SAP's queue and
+          |              forwards the             copies each new object
+          |              notifications that       to a bucket in your
+          |              pass its filters to a    account; that bucket
+          |              queue in your account    notifies a queue in
+          |                       |               your account
+          |                       |                       |
+          v                       v                       v
+  Input reads SAP's       Input reads your        Input reads your queue
+  queue and downloads     queue and downloads     and downloads from your
+  from SAP's bucket       from SAP's bucket       bucket
+          |                       |                       |
+          +-----------------------+-----------------------+
+                                  |
+                                  v
+            Heavy Forwarder: Splunk Add-on for AWS, SQS-Based S3 input
+            (signs in through the IAM role splunk-logserv-ta-role in your
+            account; cross-account for Connect and Filter)
 ```
 
-**Azure Blob Storage variant.** When SAP ECS data lands in Azure instead of AWS, only the first two stages differ — everything from the Heavy Forwarders onward (routing, filtering, indexing, search) is identical:
+- **Connect** deploys only an IAM user and a cross-account IAM role in your account.
+- **Filter** also deploys a Lambda, a queue and a dead-letter queue; the objects are still downloaded from SAP's bucket.
+- **Copy** also deploys a Lambda, a bucket, a queue and a dead-letter queue.
+- Filter and Copy need an S3 bucket of your own for the Lambda code.
+
+**Backfill and recovery** use a fourth channel with no queue: a Generic S3 input in the Splunk Add-on for AWS that reads a bucket prefix directly. The Data TA's AWS S3 Direct screen creates these inputs; see [AWS S3 Direct: Backfill and Recovery](../install-setup/aws-s3-direct.md).
+
+### :material-crop-square:{ .taiconcolor } Azure
 
 ```
-  SAP LogServ Blob Storage (SAP-managed)
+  SAP LogServ Blob Storage (managed by SAP)
         |
         v  (BlobCreated notifications via Event Grid --> Storage Queue)
-  LogServ Azure add-on  (sap_logserv_azure_queue input, on each Heavy Forwarder)
-        |   fetches each blob over a SAS; emits sourcetype = sap_logserv_logs
+  LogServ Azure add-on: sap_logserv_azure_queue input on a Heavy Forwarder
+  (add-on installed on each Heavy Forwarder that may run an input)
+        |   fetches each blob with a SAS; emits sourcetype = sap_logserv_logs
         v
-  Splunk Heavy Forwarders --> (same Data TA routing + filtering) --> Indexer --> Search Head
+  Same Data TA filtering + routing --> Indexers --> Search Head
 ```
 
-See the [Azure Setup Guide](../install-setup/azure-setup.md) for the full Azure ingest setup.
+Run one input for each queue. See the [Azure Setup Guide](../install-setup/azure-setup.md).
 
-**Google Cloud Storage variant.** The GCP path has the same shape — a notification per new object drives the ingest:
+### :material-crop-square:{ .taiconcolor } Google Cloud
 
 ```
-  SAP LogServ GCS bucket (SAP-managed)
+  SAP LogServ GCS bucket (managed by SAP)
         |
         v  (OBJECT_FINALIZE notifications via Pub/Sub topic --> PULL subscription)
-  LogServ GCP add-on  (sap_logserv_gcp_pubsub input, on each Heavy Forwarder)
+  LogServ GCP add-on: sap_logserv_gcp_pubsub input on a Heavy Forwarder
+  (add-on installed on each Heavy Forwarder that may run an input)
         |   fetches each object with a service-account key; emits sourcetype = sap_logserv_logs
         v
-  Splunk Heavy Forwarders --> (same Data TA routing + filtering) --> Indexer --> Search Head
+  Same Data TA filtering + routing --> Indexers --> Search Head
 ```
 
-The service account is **customer-homed**: you create it in a GCP account of your own, hand its email to SAP support, and SAP grants it read access to the LogServ subscription + bucket (the GCP analogue of the AWS path's cross-account IAM role).
+The service account is yours: you create it in a GCP account of your own, give its email address to SAP support, and SAP grants it read access to the LogServ subscription and bucket (the GCP counterpart of the AWS cross-account IAM role). Run one input for each subscription. See the [GCP Setup Guide](../install-setup/gcp-setup.md).
 
-See the [GCP Setup Guide](../install-setup/gcp-setup.md) for the full GCP ingest setup.
+### :material-crop-square:{ .taiconcolor } From the Heavy Forwarder to the Dashboards
+
+Whatever the cloud, each event then goes through the same steps:
+
+```
+  Heavy Forwarder (or single instance): the Data TA at index time
+  +--------------------------------------------------------------+
+  |  0. The input reads each object; every NDJSON line becomes   |
+  |     one event (sourcetype sap_logserv_logs)                  |
+  |  1. Filters, only when Enable Filtering is on (nullQueue)    |
+  |  2. Set host, source, clz_dir and clz_subdir                 |
+  |  3. Route to the final sourcetype                            |
+  |  4. Stamp splunk_solution (and cloud_provider when set)      |
+  |  5. Keep only the "_raw" text as the event                   |
+  |  6. Forward to the indexers                                  |
+  +--------------------------------------------------------------+
+        |
+        v
+  Indexers: sap_logserv_logs
+        |
+        v
+  Search Head: LogServ App (search-time fields, rollups, dashboards)
+```
+
+Steps 1 to 5 are `TRANSFORMS-` classes of the `[sap_logserv_logs]` stanza, and Splunk runs them in the order of their names. The filter class, `TRANSFORMS-00-filter`, is written to the Data TA's `local/props.conf` when you save the filters, and sorts before the shipped classes `01` (host, source and folder fields), `02` to `09` (routes), `50` and `51` (stamps) and `99` (unwrap `_raw`). The filters have to run before step 5, because they match the envelope keys that the unwrap removes. An event the filters drop still passes through the later steps, so filtering saves license and storage, not forwarder CPU (see [Capacity Planning and First Start](capacity-planning.md)).
 
 ## :material-circle-box:{ .taiconcolor } Index-Time Filtering
 
-The Data TA provides built-in index-time filtering that lets you control which log types are indexed. Filtering happens on the Heavy Forwarders using TRANSFORMS-based queue routing:
+The Data TA's filters decide at index time which LogServ events are indexed. They run on the parsing tier (the heavy forwarders, or the single instance) and send the events they drop to `nullQueue`, so those events are never indexed and do not count toward ingest-based licensing:
 
-- **Include patterns** -- Only ingest log types that match the pattern (e.g., `linux/*` to include only Linux logs)
-- **Exclude patterns** -- Drop specific log types (e.g., `linux/cron` to exclude cron logs)
-- **Days in past** -- Drop events whose embedded `_time` timestamp in the raw NDJSON is older than midnight UTC N days ago (the cutoff keys on the event's own timestamp, not on the storage object's path date)
+- **Include Filters / Exclude Filters**: folder patterns on `clz_dir/clz_subdir`, for example `linux/*` or `linux/cron`.
+- **Include Sources / Exclude Sources**: patterns on the event's `source` (the log file's path), optionally limited to one folder, for example `linux/linux_secure=/var/log/zypper.log`.
+- **Days in the Past**: drops events whose own `_time` (the epoch in the raw NDJSON) is older than midnight UTC N days ago. It keys on the event's timestamp, not on the storage object's path date. Default 7.
 
-Filtered events are routed to `nullQueue` and never consume Splunk license. Filter settings are configured on the Deployment Server and pushed to Heavy Forwarders automatically.
+**Enable Filtering** is off by default, and none of these settings applies until it is checked. You save the filters on the Data TA's **Configuration** page:
 
-See [Configuring Filters](../install-setup/configure-filters.md) for detailed setup instructions.
+- **With a Deployment Server** managing your heavy forwarders, save them on the Deployment Server. They reach the forwarders when you click **Deploy to Forwarders**; with Days in the Past above 0, the daily refresh pushes its new cutoff by itself.
+- **Without a Deployment Server**, save them on each heavy forwarder (or the single instance); they apply there without a restart.
+
+Filters work at index time: what is indexed before you set them stays indexed. Decide them before the inputs start; see [Decide Filtering](../install-setup/decide-filtering.md) and, for every setting, [Configuring Filters](../install-setup/configure-filters.md).
 
 ## :material-circle-box:{ .taiconcolor } Sourcetype Routing
 
-All SAP LogServ data arrives in a single generic format. The Data TA examines each event's metadata during index-time parsing and routes it to the appropriate Splunk sourcetype. Routing is defined in `transforms.conf` using regex-based sourcetype assignment.
+During index-time parsing the Data TA reads each event's envelope (the NDJSON keys around `_raw`) and assigns its final sourcetype with regex rules in `transforms.conf`. It keys on one of three things, depending on the log type:
 
-Two routing strategies are used:
+- **The `source` path**: Linux (`/var/log/messages`, `/var/log/cron`, ...), ISC BIND (`/var/lib/named/log/named/...`), Squid (`/var/log/squid/access.log`, ...), Windows (`WinEventLog:...`) and the SAP Web Dispatcher access log (`.../log/http_access_log`).
+- **`clz_subdir` alone**: for example HANA audit (`hanaaudit`), the ABAP gateway, dispatcher, enqueue server, event, message server and work process logs, the SAP Host Agent and SAP Router.
+- **`clz_dir` and `clz_subdir` together**, where the same folder name exists under more than one `clz_dir` (for example `audit` under both `abap/` and `scc/`): ABAP audit, ICM and sapstartsrv, HANA trace, the SAP Cloud Connector logs and `sap/sapstartsrv`.
 
-- **Source-path matching** -- For log types with unique `source` field values (e.g., `/var/log/messages` for Linux syslog, `/var/log/squid/access.log` for Squid proxy)
-- **Classification field matching** -- For SAP application logs that share similar source paths, routing matches the `clz_dir` and `clz_subdir` fields in the NDJSON envelope. When the same `clz_subdir` value appears under multiple `clz_dir` paths (e.g., `audit` exists under both `abap/` and `scc/`), compound lookahead regexes match both fields simultaneously to avoid collisions.
+HANA trace files delivered without folder fields are routed by their `source` path instead. The route classes run in order (`02` to `09`) and a later match replaces an earlier one: `/var/log/messages` lines in the `sap/saprouter` folder first match the Linux route, then become `sap:saprouter`.
 
-For the complete list of supported log types and their sourcetype mappings, see [Supported Log Types](supported-log-types.md).
+For every log type and its sourcetype, see [Supported Log Types](supported-log-types.md).
 
-## :material-circle-box:{ .taiconcolor } React App Architecture
+## :material-circle-box:{ .taiconcolor } The LogServ App and the AI Assistant
 
-The LogServ App is built as a React application. The Data TA architecture is independent — only the UI tier uses React.
+The AI Assistant ships disabled. When an admin turns it on, its predefined prompts run the App's saved searches through the Splunk MCP Server with no LLM involved; for free-form prompts the LLM vendor receives the question and, for each search, a summary whose content the privacy tier sets, never the raw event rows. See [Privacy Tiers](../ai-assistant/privacy-tiers.md).
 
-**Stack:**
+How the LogServ App, the AI Assistant and the Environment Topology view are built is described in [LogServ App and AI Assistant Internals](../developer/ai-assistant-internals.md).
 
-  - **Build pipeline:** webpack-based bundle build atop `@splunk/webpack-configs`. Each Splunk app page resolves to a single React bundle.
-  - **UI primitives:** `@splunk/react-ui` (forms, tables, modals), `@splunk/visualizations` (charts), `@xyflow/react` (Topology graph), `styled-components` for theming.
-  - **State management:** React context for cross-cutting concerns (AI Assistant, time range, refresh ticker); `useState` / `useReducer` for component-local state. No Redux.
-  - **Data fetching:** custom `useSearch` hook wraps `@splunk/search-job` for SPL dispatches; results expose `rows / loading / error` plus the search metadata the panel toolbar and Data Doctor consume (dispatched SPL, sid, effective time window, row count). Rollup-backed panels auto-route sub-90-minute windows to a byte-equal raw query — see [Performance & Data Freshness](../logserv-app/dashboards/performance.md).
-  - **Routing:** React Router 7 with `HashRouter` so URLs survive Splunk Web's app-namespace routing; query strings carry time-range hydration (`?earliest=...&latest=...`).
+## :material-circle-box:{ .cboxmove } Next Steps
 
-**Build-time feature flags:**
-
-The build supports compile-time variants. The first such flag is `TEMPLATES_ONLY`: when set, the resulting bundle has the AI Assistant's free-form / LLM-driven flow disabled at compile time, NOT runtime — there is no runtime setting that could re-enable it. See the [Templates-only Build](../ai-assistant/templates-only-build.md) page for the user-facing implications.
-
-**Static-asset cache busting:**
-
-Splunk Web caches the React bundle's asset URL by an integer `[install] build` field in `app.conf`. Every meaningful code change bumps this number; without bumping, browsers serve stale bytes after deploy. The 3-part SemVer in `[id] version` is independent of the build number and changes only on user-facing version bumps.
-
-## :material-circle-box:{ .taiconcolor } AI Assistant Architecture
-
-The AI Assistant is a chat-style panel embedded in the React UI App that lets analysts run pre-canned investigations + free-form prompts against their Splunk data. It has two distinct paths and a strong privacy invariant.
-
-**Privacy invariant — type-system-enforced, not policy-enforced:**
-
-```
-User question  -->  AI vendor  -->  AI picks tools  -->  MCP server  -->  Splunk
-                       |                                       |
-                       |  <----  Hidden<MCPToolResult>  <------+
-                       |
-                       v  (sanitize chokepoint: count + timing only — Tier 1)
-                       |  (or aggregated metadata — Tier 2)
-                       v
-                  AI synthesizes narrative reply
-```
-
-Tool results from the Splunk MCP Server are typed `Hidden<MCPToolResult>` in TypeScript. The compiler refuses to put a `Hidden<T>` value into the outbound vendor payload — the only way to convert it is via `sanitize(hidden, summarizer)`, which forces the caller to provide a summary string. No raw row and no unsummarized result reaches the vendor; what the summary may contain is set by the active **privacy tier**:
-
-  - **Tier 0 (Ollama, future)** — air-gapped local LLM; no vendor traffic at all.
-  - **Tier 1 (default)** — summary is two numbers, a count and a timing. AI sees no values; a model that writes its own queries can still make those numbers depend on event data, so a few bits per call can leak.
-  - **Tier 2 (admin opt-in)** — summary adds aggregated metadata: per-column cardinality, top-N values + counts for categorical columns (field values from the events — filtered, 40 characters each, and with PII redaction on sent in clear only when the App can trace the column to a field that marks no identifier), min/max/avg/sum for numeric columns, and the time range only as UTC timestamps the App formats. A column name is sent only when Splunk generates it or every word in it was written by the model in its own query or by the App's catalog search that ran; any other name, such as a split-by value (`timechart … by user`) the query did not type, appears as `col_N`. No raw rows.
-
-In every tier, a tool call that **fails** reaches the vendor only as its HTTP status and a fixed error class (`Tool error (HTTP 400, class=parse_error): …`), never as Splunk's or the MCP server's error text; the full error stays in the result tile on the user's screen. See [Privacy Tiers](../ai-assistant/privacy-tiers.md#failed-tool-calls-every-tier).
-
-**Two paths:**
-
-  - **Predefined prompts (no LLM call):** the user opens the prompt browser and clicks one of the cataloged prompts. The orchestrator dispatches the saved search via the Splunk MCP Server, renders the result tile in the right pane, and appends a static interpretation + suggested-next-steps card. **No vendor LLM is invoked.** This is the path used in the templates-only build.
-  - **Free-form prompts (LLM-driven):** the user types a natural-language question. The orchestrator sends the system primer + user message + tool definitions to the active vendor (Anthropic / OpenAI / Azure OpenAI / AWS Bedrock). The vendor picks tools, the orchestrator dispatches them in parallel via MCP, the vendor sees only the privacy-tier summary, and the vendor synthesizes a narrative response.
-
-**Audit log:**
-
-Every AI Assistant action — both paths — produces audit events into a dedicated `logserv_ai_assistant_audit` index. Categories include `local_only` (canned-prompt dispatches), `vendor_tier1` (every free-form LLM prompt, at any tier, with token counts + USD cost estimate + the Tier 2 PII-redaction count), `vendor_tier2_elevation` (an admin switched the privacy tier to 2), `security_blocked_spl`, `user_prompt_jailbreak_flag`, `session_tool_cap_hit`, `daily_spend_cap_hit`, `audit_forwarder_failure`, the two legal-acknowledgement categories, and more — the [Audit Log](../ai-assistant/audit-log.md) page enumerates the full category set. The Audit Log tab in Settings provides an in-app browser; an optional HEC forwarder can stream events to a separate Splunk / SIEM destination for tamper-evidence.
-
-**Splunk MCP Server prerequisite:**
-
-The AI Assistant requires [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.1.0 or later, installed on the same search head as the LogServ App. Cookie auth from the same Splunk Web session works by default on HTTP-only Splunk; an optional bearer token can be configured for OAuth-strict environments. See [Splunk MCP Setup](../ai-assistant/mcp-setup.md) for end-to-end configuration and troubleshooting.
-
-## :material-circle-box:{ .taiconcolor } Environment Topology Architecture
-
-The Environment Topology view (also accessible via URL slug `integration-topology` for backward compatibility) is a graph-based visualization of SAP systems, integration partners, and endpoints across the SAP landscape. It is implemented as a React component on top of `@xyflow/react`.
-
-**Data sources:**
-
-The view assembles its node + edge inventory from a union of six SPL searches against the existing sourcetypes (no new ingest required):
-
-  - **`sap:abap:gateway`** — RFC peer/local IPs (`P=<peer>` / `L=<local>` fields)
-  - **`sap:abap:icm`** — ICM local IPs (`icm_local_ip`) and the ICM programs (`icm_program`)
-  - **`sap:hana:tracelogs`** — HANA host + tenant SID extracted from the source path (`/usr/sap/<HANA_SID>/HDB<inst>/<host>/trace/DB_<TENANT_SID>/`)
-  - **`sap:saprouter`** — SAP Router edges: from the router host to each `CONNECT TO` target address (`saprouter_target_ip`), with server-side failures that name the target (`NiBufReceive S… '<IPv4>' failed`) counted as failed connections; a `sapms<SID>` target attributes its address to that SID in the inventory. Loopback targets (127.0.0.0/8) are excluded.
-  - **`linux_messages_syslog`** with osquery cpu_brand events — host inventory (CPU, RAM, OS, region, AZ, instance ID)
-  - **Default Splunk `host` field** — fallback for hosts not surfaced in the above
-
-**Self-derived IP→SID inventory:**
-
-The "which IP belongs to which SID" mapping is derived from a multi-source `union` SPL that counts the events each SAP SID logged for an IP address or host: the endpoint is attributed to its most recent SID (of the SIDs seen in its most recent hour, the one with the most events), so a host that really runs two systems at once is shown under the one that logged more; an exact tie keeps the previous attribution, and an endpoint never attributed is surfaced as "unknown". Resolution depends on what your data exposes: unique hostname/IP appearances across multiple SAP sourcetypes (HANA tracelogs, ABAP gateway L=, ICM local IPs, SAP Router `sapms<SID>` targets) attribute cleanly, while shared NAT IPs and external partners typically remain unknown. A Web Dispatcher's own logs (its access log and its ICM trace) are not an attribution source; see [Environment Topology](../logserv-app/dashboards/topology.md). Additional inventory sources can be added by appending another `union` arm — the inventory framework is extensible per-customer without new ingest.
-
-**Saved layouts:**
-
-User-arranged graph layouts are persisted via Splunk KV Store collection `logserv_topology_layouts`. The schema (currently v5) carries the layout mode (Force / Layered / Tree), node positions, panel state, viewport zoom + pan, enabled integration types and the types the view offered when the layout was saved (so a type added later starts enabled), selected node and edge, active right-sidebar tab, and snap mode. Layouts are saved per user under a name, and each user can mark one per layout mode as the default that loads automatically. A layout saved in an older schema does not load; save it again.
-
-**Data refresh:**
-
-Topology data is populated by three hourly scheduled saved searches (`logserv_topology_aggregate_nodes` / `_edges` / `_inventory`, crons `5`, `6` and `7 * * * *`) that write to the KV Store collections. The view re-reads the KV Store on initial mount, on global TimeRange picker change, and whenever the user clicks the toolbar's **Refresh** button. There is no auto-polling — Splunk's hourly cron is what governs data freshness. An earlier Live | Lookup toggle was removed because the underlying data only changes hourly, so client-side polling at 30s intervals re-rendered the same data 119 times per hour. Per-node detail panels (right sidebar tabs) continue to re-fetch via on-demand SPL whenever a node is selected.
+- [Supported Log Types](supported-log-types.md): what SAP delivers and how each log type is parsed.
+- [Where Each Package Goes](package-placement.md): the placement table for every topology.
+- [Plan and Prerequisites](prerequisites.md): what to request from SAP and prepare on each tier.

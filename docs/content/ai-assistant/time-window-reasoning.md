@@ -1,28 +1,15 @@
 # Time-Window Reasoning
 
 !!! info "Applies once an LLM provider credential is configured"
-    The rules on this page shape what an LLM writes, so they apply only where free-form dispatch is live. The published v0.1.2 App package is the **full-LLM build variant**, but no LLM writes a narrative until an admin configures an [LLM provider credential](settings.md#provider-credentials-tab) — and none does where **Templates-only mode** is on or a compile-time [templates-only build](templates-only-build.md) is installed. Predefined prompts are unaffected either way: their windows are fixed in their SPL and their guidance cards are static.
+    The rules on this page shape what an LLM writes, so they apply only where free-form dispatch is live. The published v0.1.2 App package is the **full-LLM build variant**, but no LLM writes a narrative until an admin configures an [LLM provider credential](settings.md#provider-credentials-tab) — and none does where **Templates-only mode** is on or a compile-time templates-only build is installed ([Restricting the LLM Path](templates-only-build.md)). Predefined prompts are unaffected either way: they run over the window picked in the prompt browser's **Time range** list, and their guidance cards are static.
 
 Time-window reasoning is a set of primer rules baked into the AI Assistant's system primer (present in both the Tier 1 and Tier 2 primer variants, in tier-appropriate forms — see below) that teach the LLM to **identify the dispatch window, normalize cumulative count to per-hour or per-day rate, and run a verify-query before declaring high-severity findings**. The rules ship as a dedicated `=== TIME-WINDOW REASONING — APPLY BEFORE EVERY SEVERITY CLAIM ===` block in the primer, inserted right after the data-boundary block and before the saved-search catalog.
 
 This page exists primarily for **SOC analysts** who use the AI Assistant for top-N investigations: knowing how the AI reasons about windows + rates + verification helps you read its replies critically, validate its severity claims, and recognize its self-correction behavior.
 
-## :material-circle-box:{ .taiconcolor } The Bug This Fixes
+## :material-circle-box:{ .taiconcolor } Why the Rules Exist
 
-Before the time-window rules shipped, the AI sometimes cited cumulative aggregates as if they were active rates. A real example reproduced during the test cycle:
-
-User prompt: *"find the top 10 issues I need to attend to in priority / severity"*.
-
-The AI's first response cited:
-
-> A. [severity:high] Likely brute-force on a Windows service account.
-> One user/stack pair accumulated 4,799 failed authentications.
-> Service-style accounts (sapadm, SYSTEM, svc_monitor, SAPServiceXCP, svc_backup) dominate.
-> **Lock/rotate the affected accounts today**, confirm source host...
-
-The 4,799 number was a **cumulative count over the saved search's wider rolling window** (~30 days for that prompt), NOT an active rate. Drilling into the same data with a `-24h` window returned **only 18 events across 5 service accounts on 1 host** — baseline noise, not an active brute-force. The AI's "Lock/rotate today" recommendation was wrong; the user almost took action on a false alarm.
-
-The bug wasn't a data-access problem (the AI had the right number). The bug was a **reasoning problem**: the AI didn't know whether 4,799 was a 30-day baseline (~160/day = noise) or a 24-hour burst (= active threat). Aggregate value alone CANNOT distinguish.
+Without these rules, an AI can cite a cumulative count as if it were an active rate. In testing, the prompt *"find the top 10 issues I need to attend to in priority / severity"* produced a high-severity brute-force finding from 4,799 failed authentications for one user/stack pair, with advice to lock and rotate the accounts that day. The 4,799 was a count over the saved search's roughly 30-day window; the same data over the last 24 hours held 18 events on one host, which is baseline noise. A count alone cannot tell a 30-day baseline (about 160 a day) from a 24-hour burst, so the four rules below make the AI establish the window before it rates severity.
 
 ## :material-circle-box:{ .taiconcolor } The Four Rules
 
@@ -30,7 +17,7 @@ The primer block teaches the AI to apply these rules **before** declaring a find
 
 ### Rule 1 — Identify the Window
 
-Saved-search counts are CUMULATIVE over each search's own rolling window (typically -24h to -30d, baked into the saved-search SPL). The user's TimeRange picker in the UI does NOT necessarily align with that window.
+Saved-search counts are CUMULATIVE over the window the search ran with: the `earliest_time` / `latest_time` the AI passed with the call (the primer tells it to pass one), or, when it passed none, the saved search's own configured time range. The global time-range picker in the header does not set that window, so it does NOT necessarily match it.
 
 **Tier 1:** the summary the AI receives is `Returned N rows in Mms.` (inside the `<TOOL_RESULT_DATA>` wrapper) — no window data at all. The AI must hedge: *"X rows over the search's rolling window, exact span unknown"* OR infer from the saved-search NAME (e.g., `*_24h`, `*_after_hours`) when the name carries a window hint.
 
@@ -98,7 +85,7 @@ Some prompts have window hints in their names: `logserv_dns_beaconing_24h`, `log
 
 ### When no `splunk_run_query` is available (Templates-only)
 
-In the [Templates-only build](templates-only-build.md), free-form prompts are disabled — there's no LLM-driven verify path. The time-window rules don't apply because the AI doesn't run. Predefined prompts have explicit windows in their SPL and produce static interpretation cards (no AI synthesis), so no rate-reasoning step is needed.
+With **Templates-only mode** on, or in a templates-only build ([Restricting the LLM Path](templates-only-build.md)), free-form prompts are disabled — there's no LLM-driven verify path. The time-window rules don't apply because the AI doesn't run. Predefined prompts run over the window picked in the prompt browser and produce static interpretation cards (no AI synthesis), so no rate-reasoning step is needed.
 
 ### When Tier 1 is active
 

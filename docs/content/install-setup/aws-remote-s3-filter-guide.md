@@ -2,17 +2,19 @@
 
 ### :material-circle-box:{ .taiconcolor } Introduction
 
-The deployment diagram below shows two different AWS accounts.  For brevity and clarity, the AWS account at the top of the diagram will be referred to as the **_SAP ECS account_** and the second AWS account on the bottom left of the diagram will be referred to as the **_Secondary account_** from this point onward. 
+This guide adds a Lambda function in your AWS account that filters SAP LogServ's notifications before Splunk sees them, so the forwarder never downloads the objects you do not want. Use it when the forwarders' load, or the backlog waiting in SAP's queue at the first start, needs cutting; otherwise the [AWS Remote S3 Connect Setup](aws-remote-s3-connect-guide.md) is the default ([Choose Your Cloud and AWS Scenario](choose-your-cloud.md)).
 
-Ensure you have completed all of the steps in the [Prerequisites](prerequisites.md) and the [Installation of the Splunk TA for SAP LogServ](install-ta.md) before you continue with the steps in this setup guide.
+The deployment diagram below shows two different AWS accounts.  For brevity and clarity, the AWS account at the top of the diagram will be referred to as the **_SAP ECS account_** and the second AWS account on the bottom left of the diagram will be referred to as the **_Secondary account_** from this point onward. 
 
 Your SAP ECS LogServ subscription for AWS (e.g. in your **_SAP ECS account_**) should have one **S3 Bucket** in that account where LogServ will store your LogServ logs.  It should also have one **SQS Queue** in your **_SAP ECS account_** that receives notifications when new logs are added to the **S3 Bucket** in that account.
 
-You will need obtain the <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html" target="_blank">AWS ARN</a> for the **SQS Queue** and the **S3 Bucket** that resides in your **_SAP ECS account_** prior to performing the steps in this setup guide.
+You will need to obtain the <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html" target="_blank">AWS ARN</a> for the **SQS Queue** and the **S3 Bucket** that resides in your **_SAP ECS account_** prior to performing the steps in this setup guide.
 
 Take note of the **AWS Region** in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located as you will need to deploy the CloudFormation template provided in that same region in your **_Secondary account_**. 
 
 ![image](../../images/aws-remote-s3-filter-architecture.png "Remote S3 Filter Deployment Architecture")
+
+The Lambda reads SAP's SQS Queue, downloads each new object from SAP's S3 Bucket, and checks the `_time`, `clz_dir` and `clz_subdir` fields of its records. When at least one record passes, it sends the original notification on to an SQS Queue in your **_Secondary account_**; the Splunk input reads that queue and downloads the whole object from SAP's S3 Bucket. The Lambda reads every object once, so S3 GET requests rise rather than fall; the saving is on the forwarder. No AWS scenario loads history on its own: to load older days, use [AWS S3 Direct](aws-s3-direct.md) once this setup works.
 
 <br>
 
@@ -22,16 +24,48 @@ Below are the high level steps for this setup process listed in the order they s
 
 :material-lightning-bolt:{ .taiconcolor } Please ensure the user you log in with in your AWS **_Secondary account_** has the appropriate permissions to perform all the steps outlined below.  
 
+- **Before you begin:** check where each step runs, and install the Splunk Add-on for AWS on each instance that will run the input (see [Before You Begin](#before-you-begin))
+
 1. Obtain the ARNs for the SQS Queue and the S3 Bucket in your **_SAP ECS account_**
-2. Create a new S3 Bucket in the correct AWS Region in your **_Secondary account_** and upload the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-filter-lambda.zip" target="_blank">splunk-logserv-filter-lambda.zip</a> file to the root of the bucket (do not rename the file — the CloudFormation template looks for the object key `splunk-logserv-filter-lambda.zip` at the bucket root) 
+2. Create a new S3 Bucket, with a name of your own, in the correct AWS Region in your **_Secondary account_** and upload the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/lambda_function/splunk-logserv-filter-lambda.zip" target="_blank">splunk-logserv-filter-lambda.zip</a> file to the root of the bucket (do not rename the file — the CloudFormation template looks for the object key `splunk-logserv-filter-lambda.zip` at the bucket root) 
 3. Deploy the AWS <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-filter.yaml" target="_blank">CloudFormation Template</a> provided for this remote S3 filter deployment approach in your **_Secondary account_**
-4. Contact SAP LogServ support and request an update to the access policies for the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-sqs-access-policy.json" target="_blank">SQS Queue</a> and <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-s3-access-policy.json" target="_blank">S3 Bucket</a> residing in your **_SAP ECS account_**
-5. Create an <a href="https://docs.aws.amazon.com/keyspaces/latest/devguide/create.keypair.html" target="_blank">Access Key</a> for the new IAM User that was created with the CloudFormation template in your **_Secondary account_**
+4. Contact SAP LogServ support and request an update to the access policies for the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-sqs-access-policy.json" target="_blank">SQS Queue</a> and <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-s3-access-policy.json" target="_blank">S3 Bucket</a> residing in your **_SAP ECS account_**, and wait for SAP to confirm that both are applied
+5. Create an <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/access-keys-admin-managed.html#admin-create-access-key" target="_blank">Access Key</a> for the new IAM User that was created with the CloudFormation template in your **_Secondary account_**
 6. Configure your AWS **_Secondary account_** in the <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/ManageAwsAccounts/" target="_blank">Splunk Add-on for Amazon Web Services (AWS)</a>
 7. Configure the new cross-account <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/ManageAwsIAMRole/" target="_blank">IAM Role</a> from your AWS **_Secondary account_** in the Splunk Add-on for Amazon Web Services (AWS).
-8. Configure a new <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/SQS-basedS3/" target="_blank">SQS-Based S3 Input</a> in the Splunk Add-on for Amazon Web Services (AWS).
-9. Review the SQS Queue Trigger in the new Lambda function created with the CloudFormation template
+8. Configure a new <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/SQS-basedS3/" target="_blank">SQS-Based S3 Input</a> in the Splunk Add-on for Amazon Web Services (AWS), and give it the `_meta = cloud_provider::aws` line.
+9. Once SAP has confirmed both policies, create the SQS Queue Trigger on the Lambda function the CloudFormation template created (the template does not create the trigger)
 10. Confirm that LogServ logs are being ingested into Splunk
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } Before You Begin
+
+#### :material-crop-square:{ .taiconcolor } Where These Steps Run
+
+| Steps | Where |
+|---|---|
+| 1 to 5, and 9 | The AWS console of your **_Secondary account_**, and a request to SAP LogServ Support |
+| Install the Splunk Add-on for AWS (below), 6 to 8 | Splunk Web on each instance that will run the input: each heavy forwarder (recommended), the single instance, or, with no heavy forwarder, your Splunk Cloud search head. Configure each heavy forwarder directly, not through a Deployment Server |
+| 10 | A search head that can search the LogServ data index |
+
+Several heavy forwarders can read the same local SQS Queue: the queue hands each message to one of them, so they share the work. Give each one the same account, IAM role and input; see *Adding Capacity* in [Capacity Planning and First Start](../getting-started/capacity-planning.md).
+
+#### :material-crop-square:{ .taiconcolor } Check These First
+
+Steps 1 to 4 need nothing in Splunk, so do them on day one (step 1 of the [Deployment Roadmap](../getting-started/roadmap.md#1-request-from-sap-and-prepare-your-cloud)). Check the items below before you go on with step 5.
+
+- **The prerequisites are met and the Data TA is on each of those instances** ([Plan and Prerequisites](../getting-started/prerequisites.md), [Create the Indexes and Install the Data TA](install-ta.md)). On heavy forwarders, check its build with [Version Check](../getting-started/capacity-planning.md#version-check). Routing to the LogServ sourcetypes happens at index time, so events indexed before the Data TA arrives keep the sourcetype `sap_logserv_logs` for good.
+- **You have decided [cloud attribution](cloud-attribution.md) and [filtering](decide-filtering.md).** Both apply at index time, to what is indexed after you save them. The Lambda filter in this guide is separate from the Data TA's filters and behaves differently ([AWS Lambda-Based Filtering](configure-filters.md#aws-lambda-based-filtering)).
+- **You have planned the first start.** Once its trigger is active, the Lambda works through every notification already waiting in SAP's queue. Read [First Start: The Queue Backlog](../getting-started/capacity-planning.md#first-start-the-queue-backlog) before step 9, including whether to ask SAP to purge the older messages.
+
+#### :material-crop-square:{ .taiconcolor } Install the Splunk Add-on for AWS
+
+Install the <a href="https://splunkbase.splunk.com/app/1876" target="_blank">Splunk Add-on for Amazon Web Services (AWS)</a> (Splunkbase app 1876) on each instance from the table above. It runs the SQS-Based S3 input and holds the AWS account and IAM role you configure in steps 6 to 8; the LogServ dashboards do not need it on the search head. See the <a href="https://splunk.github.io/splunk-add-on-for-amazon-web-services/Installationandconfiguration/" target="_blank">add-on's installation documentation</a>.
+
+- **Version:** 8.2.2 or later is recommended. Splunk advisory <a href="https://advisory.splunk.com/advisories/SVD-2026-1005" target="_blank">SVD-2026-1005</a> (fixes in third-party packages) says to upgrade to 8.2.2 or higher. The solution enforces no minimum version; these guides were checked on 8.3.1, and the AWS S3 Direct screen shows a warning below 8.1.0.
+- **Install it directly on each heavy forwarder.** Do not add it to the `SAP_LogServ_HeavyForwarders` server class, and do not distribute it with a Deployment Server: a push replaces an app's `local/` folder on the forwarder, which is where Splunk Web saves the account, the IAM role and the input you create in steps 6 to 8.
+- Just install it now; steps 6 to 8 configure it.
 
 <br>
 
@@ -65,11 +99,13 @@ You will also need to note the **AWS Region** where these resources are located,
 
 ### :material-circle-box:{ .taiconcolor } 2. Create S3 Bucket with Lambda Function ZIP File
 
+This bucket holds the Lambda function's code. The CloudFormation template does not create it.
+
 2.<b class="taiconcolor">a</b> Take note of the **AWS Region** in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located.
 
-2.<b class="taiconcolor">b</b> Log into your AWS **_Secondary account_** and change to the region that matches the region in your **_SAP ECS account_**
+2.<b class="taiconcolor">b</b> Log into your AWS **_Secondary account_** and change to the region that matches the region in your **_SAP ECS account_**. Create the bucket in that Region, the one you will deploy the stack in: Lambda requires its code bucket in the function's Region.
 
-2.<b class="taiconcolor">c</b> Choose a name for the new S3 bucket (**_splunk-logserv-lambda-binary_** is the default bucket name in the CloudFormation template used in the next section)
+2.<b class="taiconcolor">c</b> Choose a name of your own for the new S3 bucket. S3 bucket names are global: each name can be used by only one AWS account, so pick one no other account is likely to hold, for example `splunk-logserv-lambda-code-<your-account-id>-<region>`. Write it down; you enter it in step 3.j.
 
 2.<b class="taiconcolor">d</b> Navigate to the S3 console and create a <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html" target="_blank">general purpose S3 bucket</a> using all the default settings
 
@@ -92,9 +128,11 @@ You will also need to note the **AWS Region** where these resources are located,
     - An IAM Role named **_splunk-logserv-ta-role_**
     - An Inline IAM Policy on the IAM User to assume the IAM Role created above
     - An SQS Queue - Default name is **_splunk-logserv-local-target-queue_**
-    - A Dead Letter SQS Queue - Default name is **_splunk-logserv-local-target-queue-dlq_**
-    - A Lambda Function - Default name is **_splunk-logserv-lambda-filter_**
+    - A Dead Letter SQS Queue - Default name is **_splunk-logserv-local-target-queue-dlq_**. It takes the messages of the local SQS Queue that are received three times without being deleted; it does not protect the SQS Queue in your **_SAP ECS account_**
+    - A Lambda Function (Python 3.12 runtime) - Default name is **_splunk-logserv-lambda-filter_**
     - A LogGroup used by the Lambda Function
+
+    It does not create the bucket for the Lambda code (step 2), the access key (step 5) or the Lambda's SQS trigger (step 9).
 
 3.<b class="taiconcolor">a</b> Navigate to the CloudFormation console (ensure the region you are in matches the region in your **_SAP ECS account_**)
 
@@ -119,19 +157,19 @@ You will also need to note the **AWS Region** where these resources are located,
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-filter-06.png "CrossAccountSQSQueueArn Parameter")
 
-3.<b class="taiconcolor">g</b> Enter the number of days in the past to filter messages on. Messages older than this will be discarded.
+3.<b class="taiconcolor">g</b> Enter the number of days in the past to filter messages on, in the **_DaysInThePast_** parameter: from 1 to 365, default 7. The Lambda passes an object on only when at least one of its records has a `_time` newer than this many days before the moment it processes the notification. This is not the Data TA's Days in the Past, which counts from midnight UTC.
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-filter-07.png "DaysInThePast Parameter")
 
-3.<b class="taiconcolor">h</b> Enter comma-separated patterns for paths to exclude (e.g., 'linux/cron,*/messages'). Format: <clz_dir\>/<clz_subdir\>. Leave empty to exclude nothing.
+3.<b class="taiconcolor">h</b> Enter comma-separated patterns for paths to exclude (e.g., 'linux/cron,*/messages'). Format: <clz_dir\>/<clz_subdir\>. Leave empty to exclude nothing. The Lambda matches with Python's `fnmatch`, so `*` also matches across the `/` (`linux*` matches `linux/cron`), and a bare `*` here excludes everything.
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-filter-08.png "ExcludeFilters Parameter")
 
-3.<b class="taiconcolor">i</b> Enter comma-separated patterns for paths to include (e.g., 'hana/hanaaudit,linux/*,webdispatcher/accesslog'). Format: <clz_dir\>/<clz_subdir\>. Use '\*/\*' to include all paths.
+3.<b class="taiconcolor">i</b> Enter comma-separated patterns for paths to include (e.g., 'hana/hanaaudit,linux/*,webdispatcher/accesslog'). Format: <clz_dir\>/<clz_subdir\>. Use '\*/\*' to include all paths. **Do not leave it empty:** an empty value discards every notification.
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-filter-09.png "IncludeFilters Parameter")
 
-3.<b class="taiconcolor">j</b> Choose and enter a name for the S3 Bucket in your **_Secondary account_** that you used to upload the Lambda Function ZIP File in the **LambdaCodeBucket** parameter
+3.<b class="taiconcolor">j</b> Enter the exact name of the S3 Bucket you created in step 2 in the **LambdaCodeBucket** parameter. The parameter has no default; the example image shows an older default name, which you must not use.
 ??? indented-note "Example"
     ![image](../../images/cloud-formation-s3-filter-10.png "LambdaCodeBucket Parameter")
 
@@ -174,9 +212,15 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-sqs-access-policy.json" target="_blank">Example SQS Queue Access Policy</a>
 - <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-s3-access-policy.json" target="_blank">Example S3 Bucket Access Policy</a>
 
+Ask SAP to keep `s3:ListBucket` on the bucket itself (`arn:aws:s3:::<bucket-name>`) in the S3 Bucket policy, as the example does. The Lambda and the SQS-Based S3 input do not need it, but [AWS S3 Direct](aws-s3-direct.md), which loads history and recovers outages, does: for a bucket in SAP's account, AWS requires both your IAM Role's policy and SAP's bucket policy to allow it. The template already grants it on your side.
+
+:material-lightning-bolt:{ .taiconcolor } **Wait until SAP LogServ Support confirms that both policies are applied** before you create the SQS Queue Trigger in step 9. With only the queue policy in place, the Lambda takes SAP's notifications but cannot read the objects, and those notifications are lost to this path. Steps 5 to 8 can be done in the meantime.
+
 <br>
 
 ### :material-circle-box:{ .taiconcolor } 5. Create Access Key for IAM User
+
+The CloudFormation template creates the IAM User but no access key for it, so you create one here (AWS: <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/access-keys-admin-managed.html#admin-create-access-key" target="_blank">To create an access key for an IAM user</a>).
 
 5.<b class="taiconcolor">a</b> Navigate to the IAM console in your **_Secondary account_** and search for the IAM User name you used when deploying the CloudFormation template. Click on the name of the IAM User to see the user details.
 ??? indented-note "Example"
@@ -202,7 +246,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 ### :material-circle-box:{ .taiconcolor } 6. Configure Secondary Account (AWS Add-on)
 
-:material-lightning-bolt:{ .taiconcolor } Please ensure the user you log in with in your Splunk instance has the appropriate permissions to perform all the steps outlined below.
+:material-lightning-bolt:{ .taiconcolor } Please ensure the user you log in with in your Splunk instance has the appropriate permissions to perform all the steps outlined below. Do steps 6 to 8 on each instance that will run the input ([Where These Steps Run](#where-these-steps-run)).
 
 6.<b class="taiconcolor">a</b> Login to your Splunk console then find and open the **_Splunk Add-on for AWS_** App
 ??? indented-note "Example"
@@ -212,7 +256,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-acct-02.png "Account Navigation")
 
-6.<b class="taiconcolor">c</b> Choose and enter a descriptive name for the account in the **_Name_** field. Enter the Access Key and the Secret Key you created for the IAM User in the respective fields. Leave the Region Category set to **_Global_**. Click on the **_Add_** button.
+6.<b class="taiconcolor">c</b> Choose and enter a descriptive name for the account in the **_Name_** field. Enter the access key ID you created for the IAM User in the **_Key ID_** field and its secret in the **_Secret Key_** field. Leave the Region Category set to **_Global_**. Click on the **_Add_** button.
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-acct-03.png "Add Account")
 
@@ -234,6 +278,8 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 <br>
 
 ### :material-circle-box:{ .taiconcolor } 8. Configure SQS-Based S3 Input (AWS Add-on)
+
+:material-lightning-bolt:{ .taiconcolor } Create the input only after the Data TA is on this instance ([Check These First](#check-these-first)). It reads the local SQS Queue, which stays empty until the trigger in step 9 is active.
 
 8.<b class="taiconcolor">a</b> Click on the **_Inputs_** tab. Click on the **_Create New Input_** button. Select the **_Custom Data Type_** option at the bottom of the drop-down, then select the **_SQS-Based S3 (Recommended)_** option.
 ??? indented-note "Example"
@@ -268,17 +314,36 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 8.<b class="taiconcolor">e</b> Fill out the next three fields in the SQS-Based S3 Input (**_Signature Validate All Events_**, **_Source Type_**, **_Index_**)
 
-- **__Uncheck__** the **_Signature Validate All Events_** checkbox
+- **__Uncheck__** the **_Signature Validate All Events_** checkbox (`sqs_sns_validation = 0` in `inputs.conf`). The notifications reach the queue directly, not through SNS, so they carry no SNS signature; with the box checked, the add-on logs that a message has no valid SNS signature and does not process it.
 - Enter the value of **_sap_logserv_logs_** in the **_Source Type_** field
-- Enter the name of the Splunk index you want to use in the **_Index_** field
+- Enter **_sap_logserv_logs_** in the **_Index_** field: the LogServ data index, or the name you gave it if you renamed it ([Renaming an Index](install-ta.md#renaming-an-index))
 - Click on the **_Add_** button
 
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-input-05.png "Input Fields")
 
+8.<b class="taiconcolor">f</b> Add the cloud attribution to the input. Leave the Data TA's **Cloud Provider** dropdown at **Not set**, and give this input its own stamp instead ([Choose Cloud Attribution](cloud-attribution.md)). The form has no field for it. The local SQS Queue stays empty until the trigger in step 9 is active, so add the line now, before the input has anything to read:
+
+- Add this line to the input's stanza, `[aws_sqs_based_s3://<input name>]`, in `$SPLUNK_HOME/etc/apps/Splunk_TA_aws/local/inputs.conf`:
+
+```ini
+_meta = cloud_provider::aws
+```
+
+- Restart Splunk.
+- After any later edit of this input in the form, check that the line is still there.
+
+This follows [Add the `_meta` Line to an AWS Input](cloud-attribution.md#add-the-meta-line-to-an-aws-input); the disable and enable steps there are not needed while the local SQS Queue is empty. The sequence has not yet been run end to end on Splunk Add-on for AWS 8.3.1, and whether a later edit of the input in the form keeps the line is not known. Once events arrive (step 10), check the result with the search in [Check the Result](cloud-attribution.md#check-the-result).
+
+Events the input reads without the line carry no `cloud_provider` field: the LogServ App's dashboards count them as AWS, but searches of the raw events do not see it. On Splunk Cloud, where you cannot edit the file, see [Splunk Cloud Without a Heavy Forwarder](cloud-attribution.md#splunk-cloud-without-a-heavy-forwarder).
+
 <br>
 
-### :material-circle-box:{ .taiconcolor } 9. Review SQS Queue Trigger
+### :material-circle-box:{ .taiconcolor } 9. Create the SQS Queue Trigger
+
+:material-lightning-bolt:{ .taiconcolor } **Create the trigger only after SAP LogServ Support has confirmed that both policies from step 4 are applied, and at least 5 minutes after the stack was created.** The Lambda does not retry: when it cannot read an object from the SAP ECS S3 Bucket, or cannot send the notification to your local SQS Queue, it logs the error and reports the message as processed, so SAP's notification is deleted and that object is not ingested through this path (see the warning in step 10.e).
+
+:material-lightning-bolt:{ .taiconcolor } Once the trigger is active, the Lambda works through every notification already waiting in the SQS Queue in your **_SAP ECS account_** (up to 14 days of them) and passes on those its `DaysInThePast`, `IncludeFilters` and `ExcludeFilters` settings keep, for the forwarder to parse on top of the live feed. Before you activate it, see [First Start: The Queue Backlog](../getting-started/capacity-planning.md#first-start-the-queue-backlog), which includes asking SAP to purge the older messages.
 
 9.<b class="taiconcolor">a</b> Navigate to the Lambda console in your **_Secondary account_** and ensure the region you are in matches the region in your **_SAP ECS account_**. Find the Lambda function that was created by the CloudFormation template and click on its name to view details. 
 
@@ -286,7 +351,7 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
     ![image](../../images/lambda-sqs-queue-trigger-review-01.png "Navigate Lambda")
 
 
-9.<b class="taiconcolor">b</b> If you **__do not__** see an existing SQS Trigger in the Function overview diagram as seen in the example image below, then follow the steps in the **_Create SQS Queue Trigger_** section below, otherwise follow the steps in the **_Configure SQS Queue Trigger_** section below.
+9.<b class="taiconcolor">b</b> The CloudFormation template does not create this trigger: the Lambda can read SAP's SQS Queue only after SAP has applied the policies, so the trigger is a manual step. On a new stack, follow the **_Create SQS Queue Trigger_** steps below. Use **_Configure SQS Queue Trigger_** only if the Function overview diagram already shows an SQS trigger, as in the example image below: for example one you created earlier, or one left from a stack you deleted and created again with the same Lambda function name (AWS does not delete a function's triggers when it deletes the function).
 
 ??? indented-note "Example"
     ![image](../../images/lambda-sqs-queue-trigger-review-02.png "Review SQS Trigger")
@@ -318,14 +383,14 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
     - Set the **_Batch Size_** to 10
     - Set the **_Batch window_** to 5
-    - Set the **_Maximum concurrency_** to 10 (matching the value the automated connect-to-filter migration provisions)
+    - Set the **_Maximum concurrency_** to 10, the value in the template's commented-out trigger and in the configuration of the automated connect-to-filter migration. The example image shows 8, an older value: enter 10.
 
 ??? indented-note "Example"
     ![image](../../images/lambda-sqs-queue-trigger-create-04.png "Trigger Fields")
 
 5. Fill out the last field in the SQS Trigger (**_Report batch item failures_**) and save the trigger
 
-    - **_Check_** the **_Report batch item failures_** checkbox
+    - **_Check_** the **_Report batch item failures_** checkbox. With this Lambda it takes effect only when the Lambda's own configuration is invalid (a missing or invalid environment variable): the Lambda then returns the whole batch to SAP's SQS Queue. Every other failure is reported as processed (see step 10.e).
     - Click on the **_Add_** button on the bottom right of the screen to save the trigger
 
 ??? indented-note "Example"
@@ -335,6 +400,8 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 <br>
 
 #### :material-crop-square:{ .taiconcolor } Configure SQS Queue Trigger
+
+Use these steps only when a trigger already exists (see 9.b), to check that it has the settings below.
 
 1. Click on the **_SQS_** rectangle on the left side of the Function overview diagram to navigate to the SQS Queue Trigger configuration
 
@@ -360,14 +427,14 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
     - Ensure the **_Batch Size_** is set to 10
     - Ensure the **_Batch window_** is set to 5
-    - Ensure the **_Maximum concurrency_** is set to 10
+    - Ensure the **_Maximum concurrency_** is set to 10 (the example image shows 8, an older value)
 
 ??? indented-note "Example"
     ![image](../../images/lambda-sqs-queue-trigger-config-04.png "Trigger Fields")
 
 5. Validate the last field in the SQS Trigger (**_Report batch item failures_**) and save the trigger
 
-    - Ensure the **_Report batch item failures_** checkbox is **_checked_**
+    - Ensure the **_Report batch item failures_** checkbox is **_checked_** (it takes effect only on a configuration error; see the Create steps above)
     - Click on the **_Save_** button on the bottom right of the screen to save the trigger
 
 ??? indented-note "Example"
@@ -379,43 +446,51 @@ Example access policies for the SQS Queue and S3 Bucket residing in your **_SAP 
 
 After completing all the previous steps, verify that LogServ logs are successfully being ingested into Splunk.
 
-:material-lightning-bolt:{ .taiconcolor } The first events typically appear within 5-10 minutes of completing the SQS-Based S3 Input configuration. The filter Lambda function receives SQS notifications from the SAP ECS account, drops any that fail your include/exclude/days filters, and re-emits the rest to the local SQS Queue in your **_Secondary account_**. The Splunk SQS-Based S3 Input then polls the local SQS Queue at the configured interval (default 300 seconds), so allow a short lag before the first events arrive.
+:material-lightning-bolt:{ .taiconcolor } The first events typically appear within 5-10 minutes of activating the SQS Queue Trigger in step 9. The filter Lambda function receives SQS notifications from the SAP ECS account, drops any that fail your include/exclude/days filters, and re-emits the rest to the local SQS Queue in your **_Secondary account_**. The Splunk SQS-Based S3 Input then polls the local SQS Queue at the configured interval (default 300 seconds, under the input's Advanced Settings), so allow a short lag before the first events arrive.
 
-10.<b class="taiconcolor">a</b> Log in to your Splunk console and open the **_Search & Reporting_** app (or the SAP LogServ App if you have installed it)
+10.<b class="taiconcolor">a</b> Log in to Splunk Web on a search head that can search the LogServ data index and open the **_Search & Reporting_** app.
 
-10.<b class="taiconcolor">b</b> Run a basic search against the index you configured in the SQS-Based S3 Input to confirm events are flowing:
+10.<b class="taiconcolor">b</b> Search with the index name itself (`sap_logserv_logs`, or the name you gave it). The `sap_logserv_idx_macro` macro is defined only where the LogServ App or the Data TA is installed, which a search head may not have yet.
 
-    index=<your_index_name> | stats count by sourcetype
+    index=sap_logserv_logs earliest=-1h | stats count by sourcetype, host
 
-If you are using the SAP LogServ App, you can use the provided index macro:
+10.<b class="taiconcolor">c</b> You should see the LogServ sourcetypes of the log types that match your include patterns and are not blocked by your exclude or days filters, from several hosts; [Supported Log Types](../getting-started/supported-log-types.md) lists them. Log types without a route of their own keep the sourcetype `sap_logserv_logs`. [Verify Your Data](../getting-started/verify-data.md) has the full set of checks, including the routing and attribution searches.
 
-    `sap_logserv_idx_macro` | stats count by sourcetype
-
-10.<b class="taiconcolor">c</b> You should see events from the LogServ sourcetypes that match your include pattern and are not blocked by your exclude / days-in-past filters. Depending on the log types enabled, expected sourcetypes may include (but are not limited to):
-
-- `linux_messages_syslog`, `linux_secure`, `syslog` -- Linux OS events
-- `isc:bind:query` -- DNS query events
-- `squid:access` -- Proxy events
-- `XmlWinEventLog` -- Windows events
-- `sap:hana:audit`, `sap:hana:tracelogs` -- HANA database events
-- `sap:abap:*` -- ABAP application events
-- `sap:webdispatcher:access` -- Web Dispatcher events
-- `sap:scc:audit`, `sap:scc:http_access` -- Cloud Connector events
-
-10.<b class="taiconcolor">d</b> Confirm events are arriving with recent timestamps:
-
-    index=<your_index_name> earliest=-1h | stats count by sourcetype, host
-
-You should see recent events from multiple hosts.
+10.<b class="taiconcolor">d</b> Check that the trigger is active: in the Lambda console, open the function's **_Monitor_** tab and choose **_View CloudWatch logs_** (AWS: <a href="https://docs.aws.amazon.com/lambda/latest/dg/monitoring-cloudwatchlogs-view.html" target="_blank">Viewing CloudWatch logs for Lambda functions</a>). The Lambda logs one `Processing message` line for each notification it takes from SAP's SQS Queue.
 
 10.<b class="taiconcolor">e</b> If no events appear after 15-20 minutes, troubleshoot as follows:
 
-- **Filter dropped everything** -- Review the **DaysInPast**, **IncludeFilters**, and **ExcludeFilters** parameters you entered in Section 3. A narrow include pattern, a short `days_in_past` window, or an over-broad exclude pattern can legitimately drop every message before it reaches your local SQS Queue. Check the Lambda function's CloudWatch Logs for filter-decision messages and adjust the CloudFormation stack parameters if needed.
+- **Filter dropped everything** -- Review the **DaysInThePast**, **IncludeFilters**, and **ExcludeFilters** parameters you entered in Section 3. An empty IncludeFilters, a bare `*` in ExcludeFilters, a narrow include pattern, a short DaysInThePast window, or an over-broad exclude pattern can drop every message before it reaches your local SQS Queue. Check the Lambda function's CloudWatch Logs for filter-decision messages and adjust the CloudFormation stack parameters if needed.
 - **Lambda function errors** -- In the AWS Console, open CloudWatch Logs for the filter Lambda created by the CloudFormation template (Section 3). Look for cross-account access errors reading from the SAP ECS S3 Bucket or pushing to the local SQS Queue. Common causes are missing access policies on the SAP ECS resources (Section 4) or an IAM Role propagation delay (wait 5 minutes after initial setup).
 - **Local SQS Queue has no messages** -- Verify the SAP LogServ Support team has applied the updated access policies (from Section 4) to the SQS Queue and S3 Bucket in your **_SAP ECS account_**. Without those policies, the filter Lambda cannot receive SQS notifications from the SAP ECS account or read from the SAP ECS S3 Bucket. Also verify the SQS Queue Trigger on the Lambda function is active (Section 9).
 - **Authentication or permission errors** -- In the Splunk Add-on for AWS, check the logs for errors: run `index=_internal source=*aws* level IN (ERROR,WARNING) earliest=-1h | head 50`. Common causes are a mis-copied Access Key/Secret Key (Section 5), an incorrect IAM Role ARN (Section 7), or the IAM Role not yet propagated through AWS (wait 5 minutes after initial setup).
 - **SQS URL format** -- Double-check the **_SQS Queue Name_** field in the SQS-Based S3 Input (Section 8) points to the **_local_** SQS Queue that was created by the CloudFormation template in your **_Secondary account_** (not the SAP ECS SQS Queue).
 - **Wrong AWS Region** -- The CloudFormation template (Section 3) and the SQS-Based S3 Input (Section 8) must both be in the same AWS Region as the SQS Queue and S3 Bucket in your **_SAP ECS account_**.
 
-??? tip "Where to go next"
-    Once you've confirmed ingestion is working, explore the dashboards in the [LogServ UI App](../logserv-app/dashboards/index.md) to see your LogServ data in action. The default landing page is the [Environment Health](../logserv-app/dashboards/environment-health.md) dashboard, which provides a cross-cutting view of your entire SAP landscape.
+!!! warning "Notifications the Lambda cannot process are lost from this path"
+    The filter Lambda does not retry. When it cannot read an object from the SAP ECS S3 Bucket, or cannot send the notification to your local SQS Queue, it logs the error and reports the message as processed, so SAP's notification is deleted and that object is not ingested through this path. An unexpected error while processing a message is handled the same way. Only an invalid configuration of the Lambda itself returns messages to SAP's queue.
+
+    The objects stay in SAP's S3 Bucket. After you fix the cause, load the days the errors cover with [AWS S3 Direct](aws-s3-direct.md). In the Lambda's CloudWatch Logs, search for these lines:
+
+    - `Could not retrieve S3 object, discarding message`
+    - `Failed to forward message to target SQS, discarding`
+    - `Unexpected error processing message`
+
+<br>
+
+### :material-circle-box:{ .taiconcolor } Rotate the Access Key
+
+The access key from step 5 does not expire on its own; replace it as your security policy requires. An IAM User can hold two access keys at a time, so you can switch without a gap (AWS: <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html" target="_blank">Managing access keys for IAM users</a>). The Lambda does not use the key: it runs as the IAM Role.
+
+1. In the IAM console of your **_Secondary account_**, open the IAM User and create a second access key, as in step 5. Save the new key ID and secret.
+2. On each instance that runs the input, open the **_Splunk Add-on for AWS_**, then **_Configuration_** → **_Account_**, edit the account from step 6, enter the new access key ID in **_Key ID_** and the new secret in **_Secret Key_**, and save.
+3. Check that events still arrive (step 10) and that the `_internal` search in step 10.e shows no new authentication errors.
+4. In IAM, make the old key **Inactive**. Once nothing has failed for a day, delete it.
+
+<br>
+
+## :material-circle-box:{ .cboxmove } Next Steps
+
+1. [Verify Your Data](../getting-started/verify-data.md).
+2. Load the history you need with [AWS S3 Direct](aws-s3-direct.md).
+3. [Install the LogServ App](../logserv-app/installation.md) and seed its dashboards.

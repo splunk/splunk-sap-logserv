@@ -1,17 +1,27 @@
 # Data Pipeline Overview
 
+![Data Pipeline Overview -- Overview Tab](../../../../images/dashboard-overview.png)
+
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
-The Data Pipeline Overview is your single pane of glass for the entire SAP LogServ ingestion pipeline. It answers the most fundamental question: is data flowing from all expected hosts and sourcetypes? In a distributed SAP landscape with multiple SIDs, instances, and log types, a gap in data collection can go unnoticed for days without centralized visibility. This dashboard has two tabs: **Overview** for the operational KPI/table view, and **Sourcetype Mapping** for the full-width source-to-sourcetype link graph.
+The Data Pipeline Overview shows whether data is arriving from every expected host and sourcetype. In a distributed SAP landscape with multiple SIDs, instances, and log types, a gap in data collection can go unnoticed for days without centralized visibility. This dashboard has two tabs: **Overview** for the operational KPI/table view, and **Sourcetype Mapping** for the full-width source-to-sourcetype link graph.
+
+## :material-circle-box:{ .taiconcolor } Requires
+
+- **Sourcetypes:** any. The dashboard reads every event in the LogServ data index (the `sap_logserv_idx_macro` macro), whatever its sourcetype.
+- **Search-head add-ons:** none beyond the LogServ App.
+- **Dashboard Data rows** on **Settings → Dashboard Data**: *Data Pipeline Overview* (Events / Day and the Events Over Time chart) and *Sourcetype Mapping (Host Details / Data Pipeline)* (the Sourcetype Mapping tab). The other three KPIs (Total Events, Active Hosts, Active Sourcetypes) and the two tables count straight from the index and need no row. On a new install, **Run backfill** there seeds the last 30 days by default (60, 90, 180 or 365 days, or a custom range, are also offered); without a backfill the summary-backed panels fill one hour at a time. See [Backfilling on first install](../../dashboard-data.md#backfilling-on-first-install).
+
+## :material-circle-box:{ .taiconcolor } Panels
 
 The title row carries a **dashboard-wide host filter**: a Multiselect (with filter input + Select All Matches) plus a Top-N picker. Selecting one or more hosts scopes **every panel on both tabs** — the KPIs and their sparklines, the Events Over Time by Host chart, both tables, and the Sourcetype Mapping link graph; Top N kicks in only when zero specific hosts are selected. The adjacent **Cloud Provider** dropdown (All / aws / azure / gcp) also scopes every panel, and the two filters compose.
 
 !!! tip "Multi-cloud ingest split"
     The Data Pipeline Overview aggregates across ALL ingest channels — AWS S3, Azure Blob Storage, and Google Cloud Storage — without distinguishing them: events from any channel land under `sap_logserv_logs` and route to the same downstream sourcetypes. For a per-cloud-provider breakdown (AWS / Azure / GCP event counts, sourcetype distribution per provider, recent activity), see the [Multi-Cloud Overview](multi-cloud-overview.md) dashboard in the same Platform group. See the [Azure Setup Guide](../../../install-setup/azure-setup.md) and [GCP Setup Guide](../../../install-setup/gcp-setup.md) for cloud-side configuration.
 
-## :material-circle-box:{ .taiconcolor } Overview Tab
+### :material-circle-box:{ .taiconcolor } Overview Tab
 
-![Data Pipeline Overview -- Overview Tab](../../../../images/dashboard-overview.png)
+The screenshot at the top of this page shows this tab.
 
 - **Total Events** -- Aggregate event count across all LogServ sourcetypes
 - **Active Hosts** -- Count of distinct hosts reporting data
@@ -21,32 +31,11 @@ The title row carries a **dashboard-wide host filter**: a Multiselect (with filt
 - **Sourcetype Summary** -- Table of every sourcetype in range with event count, distinct host count, and last-seen time. Click a row to open the Search app pre-filtered to that sourcetype.
 - **Host Latest Activity** -- Table showing each host's last event time, event count, and sourcetypes (click a row to drill down to Host Details)
 
-## :material-circle-box:{ .taiconcolor } Sourcetype Mapping Tab
+### :material-circle-box:{ .taiconcolor } Sourcetype Mapping Tab
 
 ![Data Pipeline Overview -- Sourcetype Mapping Tab](../../../../images/dashboard-overview-2.png)
 
 - **Source to Sourcetype Mapping** -- Full-width link graph visualizing the flow of data from source paths to sourcetypes, with column widening tuned so 3 columns fit inside the frame without horizontal scroll. Source paths are **normalized** before display — per-day dates, UUIDs, and other long numeric runs are replaced with placeholders so one logical source collapses to a single node instead of one node per file; raw searches against `source` will therefore show fuller strings than the graph
-
-## :material-circle-box:{ .taiconcolor } Where the Data Comes From
-
-This dashboard watches the whole index, so most of it runs on indexed metadata rather than
-summaries:
-
-- **`tstats` panels** — the KPIs, the events-over-time chart, the sourcetype summary and the
-  host-activity table run `tstats` directly against indexed fields (host, sourcetype, source,
-  `_time`) — exact at any volume with no summary dependency, and they respect the host filter in
-  the title row.
-- **Summary-backed panels** — the events-per-day series reads the `logserv_pipeline_rollup` KV
-  Store collection (metrics `vol`, `byhost`; populated at minute :26 of every hour by
-  `logserv_pipeline_aggregate` over the entire index).
-- **The Sourcetype Mapping (Linked Graph) tab** reads the `logserv_stmap_rollup` collection
-  (minute :03): one row per (sourcetype, source, host) per hour, with the `source` value
-  **normalised at aggregation time** — embedded UUIDs, ISO dates and long digit runs are
-  collapsed to placeholders so per-day and per-tenant file-name variants map to one logical source
-  and the graph stays readable.
-
-Summary-backed panels switch automatically to their exact raw-equivalent search when the selected window is shorter than 90 minutes, so sub-hour investigation stays real-time. The collection keeps 365 days of hourly history (trimmed by a daily retention search); a fresh install seeds the last 30 days from **Settings → Dashboard Data → Run backfill**. The global **Cloud** dropdown filters the summaries through the `cloud_provider` dimension stored in every rollup row. Full schedule and freshness reference: [Performance & Data Freshness](../performance.md).
-
 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 
@@ -55,3 +44,30 @@ Summary-backed panels switch automatically to their exact raw-equivalent search 
 - **Unexpected volume spikes** -- A sharp increase in event volume from a single host could indicate a log storm (runaway process, debug logging left enabled) or a security event generating excessive audit entries.
 - **Missing sourcetype mappings** -- If a host shows data but is missing an expected sourcetype in the link graph (second tab), the routing transforms may need attention.
 
+## :material-circle-box:{ .taiconcolor } Related Dashboards
+
+- [Host Details](host-details.md) -- where the Host Latest Activity rows lead.
+- [Multi-Cloud Overview](multi-cloud-overview.md) -- the same ingest, split by cloud provider.
+- [Data Doctor (Diagnostics)](diagnostics.md) -- rollup freshness, sourcetype presence and per-panel root cause.
+- [Environment Health](../environment-health.md) -- errors and failures across the landscape.
+
+??? info "Where the data comes from"
+    This dashboard watches the whole index, so most of it runs on indexed metadata rather than
+    summaries:
+
+    - **`tstats` panels** — the Total Events, Active Hosts and Active Sourcetypes KPIs, the Sourcetype
+      Summary and the Host Latest Activity table run `tstats` directly against indexed fields (host,
+      sourcetype, source, `_time`) — exact at any volume with no summary dependency, and they respect
+      the host filter in the title row.
+    - **Summary-backed panels** — **Events / Day (Avg)** and **Events Over Time by Host** read the
+      `logserv_pipeline_rollup` KV Store collection (metrics `vol` and `byhost`; populated at minute
+      :26 of every hour by `logserv_pipeline_aggregate` over the entire index) when no host filter is
+      set. When hosts or a Top-N are selected, or at short time ranges, they search the raw events
+      instead.
+    - **The Sourcetype Mapping (Linked Graph) tab** reads the `logserv_stmap_rollup` collection
+      (minute :03): one row per (sourcetype, source, host) per hour, with the `source` value
+      **normalised at aggregation time** — embedded UUIDs, ISO dates and long digit runs are
+      collapsed to placeholders so per-day and per-tenant file-name variants map to one logical source
+      and the graph stays readable.
+
+    Summary-backed panels switch automatically to their exact raw-equivalent search when the selected window is shorter than 90 minutes, so sub-hour investigation stays real-time. Each collection keeps 365 days of hourly history (trimmed by a daily retention search). The global **Cloud** dropdown filters the summaries through the `cloud_provider` dimension stored in every rollup row. Full schedule and freshness reference: [Dashboard Data: Backfill and Freshness](../../dashboard-data.md).

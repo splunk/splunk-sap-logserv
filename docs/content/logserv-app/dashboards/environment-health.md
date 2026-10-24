@@ -6,7 +6,7 @@
 
 The Environment Health dashboard is a single-pane-of-glass operations view that aggregates the most critical signals from across the entire SAP landscape. Instead of switching between individual dashboards to piece together overall health, administrators can use this dashboard to immediately identify active errors, security failures, and performance degradation. Every panel links to the relevant detailed dashboard for investigation, making this the recommended starting point for daily operations monitoring and incident triage.
 
-**Environment Health is the default landing page** when you open the LogServ App — it sits to the left of the four category dropdowns in the top menu.
+**Environment Health is the default landing page** when you open the LogServ App. It is the first entry in the navigation rail, above Topology and the four dashboard groups. Its panels are listed below in screen order: the KPI row, then the charts, then the two tables.
 
 ### Panels
 
@@ -16,18 +16,18 @@ The Environment Health dashboard is a single-pane-of-glass operations view that 
 - **Firewall Drops at Host** -- Count of Linux kernel firewall drops of packets addressed to the host itself (`IN_DROP`, the INPUT chain) across all monitored hosts. Drops of traffic a host was routing on to another system (`FWD_DROP`, in transit) are not counted as errors here; the [Linux](platform/linux.md) and [Network Perimeter](security/network-perimeter.md) dashboards show both. Click to drill down to Linux dashboard.
 - **Web Error Rate** -- Percentage of Web Dispatcher requests returning 4xx/5xx status codes. Click to drill down to Web Dispatcher dashboard.
 - **Beaconing Domains** -- Count of DNS domains exhibiting periodic query patterns that may indicate malware or C2 communication. Its sparkline has one point per UTC day (beaconing is detected per UTC day), and hovering a point shows that UTC date. Click to drill down to DNS Analytics dashboard.
-- **ABAP Error Trend** -- Stacked column chart of ABAP errors over time by sub-source (Dispatcher, ICM, Gateway; the ICM series counts `dev_icm` messages logged as ERROR). Click to drill down to ABAP Security dashboard.
+- **Data Pipeline -- Events/Day (Avg)** -- Average daily event volume over the selected range (days follow your Splunk time-zone preference, and the current partial day counts as a day), with a daily sparkline, for monitoring pipeline health and detecting ingestion gaps. Click to drill down to the Data Pipeline Overview dashboard.
+- **Event Volume Trend** -- Full-width chart of total events over time across all sourcetypes. Click to drill down to the Data Pipeline Overview dashboard.
+- **ABAP Error Trend** -- Stacked column chart of ABAP errors over time by sub-source (Dispatcher, ICM, Gateway; the ICM series counts `dev_icm` messages logged as ERROR). Click to drill down to the ABAP Network & Security dashboard.
 - **HANA Error Trend** -- Stacked column chart of HANA errors over time (Audit Failures, Trace Errors). Click to drill down to HANA Audit dashboard.
 - **Security Error Trend** -- Stacked column chart of security errors over time (Auth Failures, Firewall Drops at Host). Click to drill down to SAP Services dashboard.
 - **Web/Network Error Trend** -- Stacked column chart of web/network errors over time (WebDisp 4xx/5xx, Router Errors, Proxy Denied). Click to drill down to Web Dispatcher dashboard.
-- **Cloud Connector Error Trend** -- Stacked column chart of Cloud Connector HTTP errors over time (4xx Client, 5xx Server). Click to drill down to Cloud Connector dashboard.
 - **OS/Infra Error Trend** -- Stacked column chart of Windows events over time by severity (High, Medium). Click to drill down to Windows dashboard.
+- **Cloud Connector Error Trend** -- Stacked column chart of Cloud Connector HTTP errors over time (4xx Client, 5xx Server). Click to drill down to Cloud Connector dashboard.
+- **Web Dispatcher Response Time** -- Column chart of average response time (ms) over time for web dispatcher requests. Click to drill down to Web Dispatcher dashboard.
+- **ICM Warnings & Errors** -- Stacked column chart of ABAP ICM trace messages over time by class (ERROR, WARNING). Click to drill down to the ABAP Network & Security dashboard.
 - **Recent Critical Events** -- Table of the most recent critical signals (up to 200): HANA audit non-successful operations, ABAP dispatcher ERROR/FATAL, HANA trace fatal, sapstartsrv auth failures, and Windows critical-severity events, most-recent first. Click any row to drill down to Host Details for that host.
 - **Affected Hosts** -- Table of hosts ranked by total error count with breakdowns by category (ABAP, HANA, Services, Firewall (at host), Other). Click any host to drill down to Host Details.
-- **Web Dispatcher Response Time** -- Column chart of average response time (ms) over time for web dispatcher requests. Click to drill down to Web Dispatcher dashboard.
-- **ICM Warnings & Errors** -- Stacked column chart of ABAP ICM trace messages over time by class (ERROR, WARNING). Click to drill down to ABAP Security dashboard.
-- **Data Pipeline -- Events/Day (Avg)** -- Average daily event volume over the selected range (days follow your Splunk time-zone preference, and the current partial day counts as a day), with a daily sparkline, for monitoring pipeline health and detecting ingestion gaps. Click to drill down to the Data Pipeline Overview dashboard.
-- **Event Volume Trend** -- Full-width chart of total events over time across all sourcetypes. Click to drill down to the Data Pipeline Overview dashboard.
 
 ### :material-lightning-bolt:{ .taiconcolor } Drill-Down Behavior
 
@@ -58,7 +58,7 @@ The dashboard reads three kinds of source, chosen per panel for the cheapest pat
 - **Recent Critical Events** is a live event listing: it dispatches its SPL against the raw events
   at view time, capped at the 200 most recent matches.
 
-Summary-backed panels switch automatically to their exact raw-equivalent search when the selected window is shorter than 90 minutes, so sub-hour investigation stays real-time. The collection keeps 365 days of hourly history (trimmed by a daily retention search); a fresh install seeds the last 30 days from **Settings → Dashboard Data → Run backfill**. The global **Cloud** dropdown filters the summaries through the `cloud_provider` dimension stored in every rollup row. Full schedule and freshness reference: [Performance & Data Freshness](performance.md).
+Summary-backed panels switch automatically to their exact raw-equivalent search when the selected window is shorter than 90 minutes, so sub-hour investigation stays real-time. The collection keeps 365 days of hourly history (trimmed by a daily retention search). After install, **Settings → Dashboard Data → Run backfill** fills it with the history your index holds: the last 30 days by default, or up to 365 days, or a custom range (see [Backfilling on first install](../dashboard-data.md#backfilling-on-first-install)). The **Cloud** filter in the title row filters the summaries through the `cloud_provider` dimension stored in every rollup row. Full schedule and freshness reference: [Dashboard Data: Backfill and Freshness](../dashboard-data.md).
 
 
 ### :material-lightning-bolt:{ .taiconcolor } What to Look For

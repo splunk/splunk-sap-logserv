@@ -1,16 +1,16 @@
 # CIM Compliance
 
-The Splunk for SAP LogServ App tags every supported SAP-side sourcetype into the relevant Splunk Common Information Model (CIM) data models, so ES correlation searches and RBA risk framework can consume the data through the standard `| datamodel <Model> search ...` interface.
+The Splunk for SAP LogServ App tags the SAP-side sourcetypes that fit a Splunk Common Information Model (CIM) data model (listed below) into those models, so ES correlation searches and RBA risk framework can consume the data through the standard `| datamodel <Model> search ...` interface.
 
 ## :material-circle-box:{ .taiconcolor } CIM models in scope
 
-The App declares participation in four CIM data models in `app.manifest` under `info.commonInformationModels` (**Authentication**, **Change**, **Network Sessions**, **Web**). It additionally tags events into the Network Resolution (DNS) and Proxy models via the absorbed ISC BIND / Squid parsers (`tags.conf`) without declaring those in the manifest:
+The App declares participation in four CIM data models in `app.manifest` under `info.commonInformationModels` (**Authentication**, **Change**, **Network Sessions**, **Web**). It additionally tags events for the Network Resolution (DNS) data model and the Web data model's Proxy dataset via the absorbed ISC BIND / Squid parsers (`tags.conf`) without declaring those in the manifest. The data models must search the LogServ index for any of this to show; see the [prerequisites](overview.md#prerequisites).
 
 | Model | Use case | SAP-side sourcetypes |
 |---|---|---|
-| **Authentication** | login attempts (success / failure) | `sap:hana:audit` (CONNECT events), `sap:sapstartsrv`, `sap:scc:audit` (ACCESS_DENIED), `linux:sudolog` |
-| **Change** | account / role / config modifications | `sap:hana:audit` (DDL events), `sap:scc:audit` (CONFIGURATION_CHANGED, SERVICE_*) |
-| **Network_Sessions** | TCP-level connection tracking | `sap:abap:gateway`, `sap:saprouter` |
+| **Authentication** | login attempts (success / failure) | `sap:hana:audit` (CONNECT events and the SYSTEM Logins category), `sap:sapstartsrv` (authentication events), `sap:scc:audit` (ACCESS_DENIED), `linux:sudolog` |
+| **Change** | account / role / config modifications | `sap:hana:audit` (user, role and privilege DDL events), `sap:scc:audit` (CONFIGURATION_CHANGED, SERVICE_STARTED, SERVICE_STOPPED) |
+| **Network_Sessions** | TCP-level connection tracking | `sap:abap:gateway` (events with a peer IP), `sap:saprouter` (connection events) |
 | **Network / Resolution (DNS)** | DNS query / resolution activity (absorbed ISC BIND parser) | `isc:bind:query`, `isc:bind:queryerror` |
 | **Web** | HTTP request/response | `sap:webdispatcher:access`, `sap:scc:http_access`, `squid:access` (absorbed Squid proxy parser) |
 
@@ -115,7 +115,7 @@ If `| datamodel ...` returns rows for our sourcetypes, ES can consume them — e
 | `sap:abap:gateway` | Network_Sessions | medium |
 | `sap:saprouter` | Network_Sessions | medium |
 | `sap:sapstartsrv` | Authentication | medium |
-| `sap:scc:audit` | Authentication (ACCESS_DENIED) + Change (CONFIGURATION_CHANGED, SERVICE_*) | medium |
+| `sap:scc:audit` | Authentication (ACCESS_DENIED) + Change (CONFIGURATION_CHANGED, SERVICE_STARTED, SERVICE_STOPPED) | medium |
 | `linux:sudolog` | Authentication + privileged | medium |
 | `isc:bind:query` | Network + Resolution (DNS) — absorbed ISC BIND parser | medium |
 | `isc:bind:queryerror` | Network + Resolution (DNS) — absorbed ISC BIND parser | medium |
@@ -133,7 +133,9 @@ This is correct CIM-aligned behavior — each tier records its own view, and ES 
 
 ABAP application-tier internal logs (`sap:abap:dispatcher`, `sap:abap:enqueueserver`, `sap:abap:event`, `sap:abap:messageserver`, `sap:abap:sapstartsrv`, `sap:abap:workprocess`) and HANA tracelogs (`sap:hana:tracelogs`) don't map cleanly to any stock Splunk CIM model. The App provides rich search-time fields for them but doesn't force a poor-fit mapping. Our own dashboards consume these directly; ES correlation searches built on these would need to use sourcetype-explicit SPL rather than CIM-data-model search.
 
-The ICM trace (`sap:abap:icm`) is not tagged either. `dev_icm` records sessions, connections and the ICM's own warning and error messages, not HTTP requests with a status, method and URL, so it has no honest Web data model mapping. Builds before 378 tagged its HTTP session-list entries as Web events with the SAP client in `status` (and `action` derived from it); after the upgrade those events leave the Web data model. If the Web data model is accelerated, ICM events summarized before the upgrade stay in its summaries until they age out of the summary range or the acceleration is rebuilt. On ICM connection lines, `src` and `dest` follow the connection's direction (`icm_conn_role`): the side that opened the connection is `src`.
+The ICM trace (`sap:abap:icm`) is not tagged either. `dev_icm` records sessions, connections and the ICM's own warning and error messages, not HTTP requests with a status, method and URL, so it has no honest Web data model mapping. On ICM connection lines, `src` and `dest` follow the connection's direction (`icm_conn_role`): the side that opened the connection is `src`.
+
+Upgrading from an earlier build? See [Upgrading](../getting-started/upgrading.md).
 
 ### :material-circle-box:{ .taiconcolor } sap:abap:audit currently has minimal extraction
 

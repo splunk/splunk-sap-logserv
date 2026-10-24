@@ -1,61 +1,87 @@
 # Splunk MCP Setup
 
-The AI Assistant's tool-dispatch path runs on top of the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) — **in every build variant and every configuration**: predefined prompts dispatch their saved searches through it, so this page applies to every deployment. MCP — Model Context Protocol — is Anthropic's open standard for connecting LLMs to external tools and data; the Splunk MCP Server exposes Splunk's search-job + saved-search endpoints as MCP tools that any MCP-aware client can call. The LogServ App is the MCP client and the Splunk MCP Server is the MCP server. (An LLM vendor additionally sits in the loop choosing tools only where free-form dispatch is live — that is, once an LLM provider credential is configured; for predefined prompts the App dispatches the tools itself.)
+The AI Assistant runs every search through the [Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931), in every build and every configuration: predefined prompts dispatch their saved searches through it, so this page applies to every deployment that uses the AI Assistant. MCP (Model Context Protocol) is an open standard for connecting LLM applications to external tools and data. The Splunk MCP Server exposes Splunk's searches and saved searches as MCP tools; the LogServ App is the MCP client. (An LLM vendor also takes part, choosing the tools, only for free-form questions answered by a configured LLM provider; for predefined prompts the App calls the tools itself.)
+
+For the whole turn-on procedure, see [Set Up the AI Assistant](enable.md).
 
 ## :material-circle-box:{ .taiconcolor } Prerequisites
 
 - **Splunk 9.4.3 or later.**
-- **[Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) v1.0.3 or later** — the version floor the App's health probe enforces, with no upper bound since App build 393 (2.0.0 is the newest version verified); **v1.1.0 or later is recommended** (cookie auth was validated against 1.1.0) — installed on the **same search head** as the LogServ App. (The LogServ App's React UI calls MCP via the same Splunk Web session, so they need to share an HTTP host.)
-- **Admin user role** to install the MCP Server app and configure its REST handlers.
+- **[Splunk MCP Server (Splunkbase App 7931)](https://splunkbase.splunk.com/app/7931) 1.1.0 or later is required; 1.2.1 or later is recommended.** The predefined prompts run through the MCP Server's Run Saved Search tool, which first shipped in 1.1.0. Version 1.2.1 fixes SVD-2026-1004 (server-side request forgery through custom API tools; vendor advisory checked 2026-10-22). The App's own health check refuses only versions below 1.0.3 (the CVE-2026-20205 fix), so 1.0.3 to 1.0.5 pass it but every predefined prompt fails. There is no upper version limit; the newest version verified with the App is 2.0.0.
+- **The same search head as the LogServ App.** The App calls the MCP Server from the browser through the same Splunk Web session, so both must be on the same Splunk Web host.
+- **The `mcp_tool_execute` capability** on every role that will use the AI Assistant ([Roles and Capabilities](#roles-and-capabilities)).
+- **An admin** to install the MCP Server app and grant the capability.
 
-!!! note "Splunk MCP TA gate currently bypassed"
-    The app's hard-dependency check for a separate Splunk MCP TA is bypassed in the current build (the `SKIP_MCP_TA_CHECK` flag); when a Splunk MCP TA is published this gate is restored and the TA becomes a hard prerequisite. Until then the only hard prerequisite the app enforces at runtime is the Splunk MCP Server (App 7931) itself.
+The Splunk MCP Server is the only MCP component the App checks for.
 
 ### :material-lightning-bolt:{ .taiconcolor } Recommended companion: Splunk AI Assistant
 
-[Splunk AI Assistant (Splunkbase App 200)](https://splunkbase.splunk.com/app/200) is the typical co-install for the Splunk MCP Server. It's **not a strict prerequisite** for the LogServ App's AI Assistant — the LogServ App uses only the core `splunk_run_saved_search` and `splunk_run_query` MCP tools, which work standalone. However:
+[Splunk AI Assistant (Splunkbase App 7245)](https://splunkbase.splunk.com/app/7245) is recommended alongside the Splunk MCP Server. It is **not a prerequisite** of the LogServ App's AI Assistant, which uses only the MCP Server's core `splunk_run_saved_search` and `splunk_run_query` tools. However:
 
-- App 200 unlocks additional `saia_*`-prefixed MCP tools (e.g., SPL optimization helpers) that future LogServ releases may use.
+- App 7245 adds `saia_*`-prefixed MCP tools (for example SPL optimization helpers) that future LogServ releases may use.
 - Installing it alongside the MCP Server follows Splunk's documented setup pattern.
-- If you're already deploying the Splunk MCP Server, the marginal effort to add App 200 is small and avoids friction later.
+- If you are deploying the Splunk MCP Server anyway, adding App 7245 is little extra effort.
 
 ## :material-circle-box:{ .taiconcolor } Install the Splunk MCP Server
 
-Per [Splunkbase App 7931](https://splunkbase.splunk.com/app/7931)'s installation guide:
+Follow the installation guide on [Splunkbase App 7931](https://splunkbase.splunk.com/app/7931). In short:
 
-1. Download the MCP Server tarball from Splunkbase.
-2. On the search head where the LogServ App lives, install via Splunk Web (**Apps → Install app from file**) or via CLI:
-   ```bash
-   /opt/splunk/bin/splunk install app /path/to/splunk-mcp-server.tar.gz
-   ```
-3. Restart Splunkd:
-   ```bash
-   sudo systemctl restart Splunkd
-   ```
-4. Verify the app is installed and the REST handler endpoint responds:
-   ```bash
-   curl -sk -u admin:<password> https://localhost:8089/services/mcp/health
-   ```
+1. **Install the app** on the search head where the LogServ App runs:
+    - **Splunk Enterprise:** **Apps → Find More Apps**, or download the package from Splunkbase and use **Apps → Install app from file**. From the command line: `$SPLUNK_HOME/bin/splunk install app /path/to/<package>.tgz`.
+    - **Splunk Cloud Platform:** the way your stack installs other Splunkbase apps (**Apps → Find More Apps** where your stack offers it), or ask Splunk Cloud Support.
+2. **Restart Splunk** if it asks you to (on Splunk Enterprise: **Settings → Server controls → Restart Splunk**, or your usual restart method).
+3. **Check it is installed:** **Apps → Manage Apps** lists **Splunk MCP Server** (folder `Splunk_MCP_Server`), enabled, with its version.
+4. **Grant `mcp_tool_execute`** to the roles that will use the AI Assistant ([below](#roles-and-capabilities)).
 
-If the health endpoint responds OK, the LogServ App's AI Assistant should detect MCP automatically on next page load.
+To check that the server answers, run this on a Splunk Enterprise search head (checked against MCP Server 1.1.0, whose `ping` method needs no capability):
+
+```bash
+curl -sk -u admin:<password> -X POST https://localhost:8089/services/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+```
+
+A working server replies with a JSON-RPC result whose `message` is `pong`. The endpoint takes only POST requests, so opening it in a browser or with a plain `GET` returns HTTP 405 (`Method not allowed`).
+
+The LogServ App's AI Assistant runs its own check each time its panel opens ([Health Check and Setup Wizard](#health-check-and-setup-wizard)).
+
+## :material-circle-box:{ .taiconcolor } Roles and Capabilities
+
+The Splunk MCP Server checks a capability of its own on every request the AI Assistant sends. Its `default/authorize.conf` (version 1.1.0) defines two:
+
+| Capability | What it allows | Granted by default to |
+|---|---|---|
+| `mcp_tool_execute` | Connect to the MCP Server and run its tools. Every AI Assistant user needs it. | `admin`, `sc_admin` |
+| `mcp_tool_admin` | Manage the MCP Server's tools, tokens and rate limits. Not needed to use the AI Assistant. | `admin`, `sc_admin` |
+
+Add `mcp_tool_execute` to each role whose members will use the AI Assistant: **Settings → Roles → *role* → Capabilities** (the same on Splunk Cloud Platform), or `mcp_tool_execute = enabled` under `[role_<name>]` in `authorize.conf`. Only `admin` and `sc_admin` hold it by default (and roles that import them), so `power`, `user` and, unless it imports one of those two, a delegated-admin role such as `sc_subadmin` need the grant. A user without it is refused at the first request with HTTP 403 and `User lacks required mcp_tool_execute capability`, and the AI Assistant panel shows its **Setup required** card.
+
+Two more capabilities decide what else a user's AI Assistant can do, because the App works in the browser as the signed-in user:
+
+- **Being audited** needs `edit_log_alert_event` or `edit_tcp` ([Who Can Write Audit Events](audit-log.md#who-can-write-audit-events)).
+- **Free-form questions** need the user's role to read the provider credential from Splunk's password store (`list_storage_passwords`, which `admin` holds); see [Provider Credentials Tab](settings.md#provider-credentials-tab).
+
+Changing the AI Assistant's settings needs a role named exactly `admin`, `sc_admin` or `sc_subadmin` ([Application Settings](settings.md#who-can-open-the-page)).
 
 ## :material-circle-box:{ .taiconcolor } Authentication
 
 ### Cookie auth (default, recommended)
 
-App 7931 v1.1.0 accepts cookie auth from the same Splunk Web session that's serving the React app. When the LogServ App calls the MCP server endpoint at `/en-US/splunkd/__raw/services/mcp` (the default), the browser includes the Splunk session cookie automatically; no bearer token needed.
+The MCP Server (verified with 1.1.0) accepts the Splunk Web session of the signed-in user. When the LogServ App calls the default endpoint `/en-US/splunkd/__raw/services/mcp`, the browser sends the user's Splunk session cookie, so no bearer token is needed.
 
-This is the default and preferred configuration. No setup required beyond installing the MCP Server app — works on both HTTPS and HTTP Splunk; the browser handles the session cookie either way. (HTTPS is in fact preferred — Splunk's session cookies set the `Secure` and `SameSite=Lax` flags, which behave fully correctly only over HTTPS.)
+This is the default and preferred configuration; nothing needs setting up beyond installing the MCP Server and granting `mcp_tool_execute`. It works over HTTPS and HTTP. HTTPS is preferred: Splunk's session cookies set the `Secure` and `SameSite=Lax` flags, which behave fully correctly only over HTTPS.
 
 ### Bearer token (optional, OAuth-strict environments)
 
-For customers with OAuth-strict MCP server configurations (where cookie auth is disabled at the server side), the LogServ App supports an optional bearer token. Admin pastes the token in [Settings → Splunk MCP](settings.md#splunk-mcp-tab) under realm `logserv_ai_assistant_mcp` name `bearer_token`. The LogServ App layers it on top of the cookie auth via `Authorization: Bearer <token>` header. On 401 the client invalidates the cached token and retries once.
+For an MCP Server configured to refuse cookie auth, the LogServ App can send a bearer token. An admin pastes it in [Settings → AI Assistant → Splunk MCP](settings.md#splunk-mcp-tab) (**Bearer Token**, realm `logserv_ai_assistant_mcp`, name `bearer_token`). The App adds it as an `Authorization: Bearer <token>` header on top of the cookie. On HTTP 401 the App drops its cached token and retries once.
 
 #### :material-lightning-bolt:{ .taiconcolor } Splunk Cloud — JWT `aud` (audience) claim must be `mcp`
 
-On Splunk Cloud (Victoria 10.x and later), the platform's edge proxy mints a JWT from the user's session and forwards it to splunkd as a Bearer token automatically — independent of whether you paste a bearer token in our Settings page. **The Splunk MCP Server validates the JWT's `aud` (audience) claim, and the only value it accepts is `mcp`.**
+This is a customer-side configuration item: nothing in the LogServ packages controls it, and the LogServ App is audience-agnostic (it forwards whatever bearer token, if any, is sent).
 
-If the JWT your Splunk Cloud stack stamps has any other audience (a common default is `Demo` on freshly-provisioned non-production stacks), every MCP request returns:
+On Splunk Cloud Platform (observed on Victoria Experience stacks), the platform's edge proxy turns the user's session into a JWT and passes it to splunkd as a bearer token on every `/__raw/` request, whether or not you paste a bearer token in the App's Settings page. **The Splunk MCP Server checks the JWT's `aud` (audience) claim and accepts the token only when that claim is `mcp`, or a list that includes `mcp`** (checked in version 1.1.0). Splunk Enterprise has no such edge proxy, so this does not apply there: the session cookie reaches splunkd directly.
+
+If the JWT your Splunk Cloud stack stamps has any other audience (a common default on freshly provisioned non-production stacks is `Demo`), every MCP request returns HTTP 403 with:
 
 ```json
 {
@@ -68,60 +94,51 @@ If the JWT your Splunk Cloud stack stamps has any other audience (a common defau
 }
 ```
 
-…and the AI Assistant renders the **SETUP REQUIRED** banner because the health probe's `initialize` call gets that 403.
+The AI Assistant then shows its **Setup required** card, because the health check's first request (`initialize`) fails.
 
-**Fix:** generate (or have your Splunk Cloud admin / Splunk Support generate) an MCP token with `aud = mcp`. The exact path depends on how your Splunk Cloud stack mints tokens:
+**Fix:** get an MCP token with `aud = mcp`, from your Splunk Cloud admin or Splunk Cloud Support. The path depends on how your stack mints tokens:
 
 - If your stack uses Splunk's `/services/authorization/tokens` endpoint, set `audience=mcp` when minting.
-- If JWTs are stamped by the Cloud edge proxy (Victoria default), open a Splunk Cloud Support ticket asking them to set the stack's MCP audience to `mcp`.
-- If your stack is fronted by an external SSO (Okta, Azure AD, etc.), configure the SSO's token-issuer to set `aud: "mcp"` on tokens destined for the MCP route.
+- If JWTs are stamped by the Cloud edge proxy (the Victoria default), open a Splunk Cloud Support ticket asking them to set the stack's MCP audience to `mcp`.
+- If your stack is fronted by an external SSO (Okta, Azure AD, etc.), configure the SSO's token issuer to set `aud: "mcp"` on tokens destined for the MCP route.
 
-Confirm by decoding the actual JWT being sent in your browser's Network tab (paste the Bearer token value into [jwt.io](https://jwt.io)) and checking the `aud` claim. If it's `mcp`, the audience is correct and your error is something else. If it's anything else, that's the misalignment.
-
-This `aud=mcp` requirement is an App 7931 server-side configuration; the LogServ App itself is audience-agnostic — it just forwards whatever bearer token (if any) Splunk Cloud injects.
+To confirm, decode the JWT your browser sends (the Bearer value of the `POST /en-US/splunkd/__raw/services/mcp` request in the browser's Network tab) with a JWT decoder you trust, and read its `aud` claim. If it is `mcp`, the audience is right and the error is something else.
 
 ## :material-circle-box:{ .taiconcolor } Configuration in the LogServ App
 
-Open Settings → AI Assistant → **General** and confirm:
+Open **Settings → AI Assistant → General** and confirm:
 
-- **`mcp_required`** = `true` (default). When false, MCP is bypassed and the chat operates in MCP-less chat mode (requires a configured LLM provider credential — LLM streaming with no tool dispatch). Where no credential is configured, or **Templates-only mode** is on, MCP is the only dispatch path, so turning this off just disables the assistant's ability to run anything. **Most customers leave this true.**
-- **`mcp_server_url`** = blank (default — uses the scheme-relative `/en-US/splunkd/__raw/services/mcp`). Override only if your MCP server is at a non-default path or you're proxying through a different ingress.
+- **MCP Required** (`mcp_required`) is on (the default). When off, MCP is bypassed and the chat runs in [MCP-less chat mode](#mcp-less-chat-mode), which needs a configured LLM provider credential (LLM streaming with no searches). Where no credential is configured, or **Templates-only mode** is on, MCP is the only path that runs anything, so turning this off leaves the assistant unable to run anything. **Most customers leave it on.**
+- **MCP Server URL** (`mcp_server_url`) is blank (the default: `/en-US/splunkd/__raw/services/mcp` on this Splunk instance). Set it only if your MCP Server is at another path or you reach it through another ingress.
+- **MCP request timeout (seconds)** (`mcp_timeout_seconds`, default 60) covers your slowest prompt; see [Application Settings](settings.md#feature).
 
-Then in [Settings → Splunk MCP](settings.md#splunk-mcp-tab):
+Then on [Settings → AI Assistant → Splunk MCP](settings.md#splunk-mcp-tab), leave **Bearer Token** empty for cookie auth (the default), or store the token if your MCP Server requires bearer auth.
 
-- **`bearer_token`** = blank if using cookie auth (default), or paste the token if your MCP server requires bearer auth.
+Click **Save Defaults** on the General sub-tab; the next page load picks up the new URL and token. Changing the MCP settings records no audit event; [General Tab](settings.md#general-tab) lists the saves that do.
 
-Save the General tab; the next page load picks up the new MCP URL / token. (A plain Settings save records no audit event — audit events fire only when the save crosses a governed transition: elevating the tier to 2, enabling the assistant, or leaving the audit forwarder off.)
+## :material-circle-box:{ .taiconcolor } Health Check and Setup Wizard
 
-## :material-circle-box:{ .taiconcolor } Health-Check + Setup Wizard
+Each time the AI Assistant panel opens with **MCP Required** on, the App checks the configured MCP endpoint: it sends the MCP `initialize` request, then compares the version the server reports with the minimum. Until the check passes, the panel shows a card instead of the chat:
 
-When the AI Assistant panel opens, it runs a health check against the configured MCP endpoint. Three possible outcomes:
+| What the panel shows | Cause | What to do |
+|---|---|---|
+| The chat, with **Browse prompts** | The check passed. | Nothing. |
+| **Checking AI Assistant prerequisites…** | The check is running. | Wait; it ends when the request answers or the **MCP request timeout** passes. |
+| **Setup required**: *AI Assistant requires the Splunk MCP Server* | The `initialize` request failed, for any reason: the MCP Server is not installed or not enabled, the URL is wrong, the user lacks `mcp_tool_execute` (HTTP 403), the JWT audience is wrong (HTTP 403, Splunk Cloud), the session expired (HTTP 401), or the request timed out. The card does not say which. | Check, in this order, [Roles and Capabilities](#roles-and-capabilities), [Install the Splunk MCP Server](#install-the-splunk-mcp-server), **MCP Server URL**, and the [JWT audience](#splunk-cloud-jwt-aud-audience-claim-must-be-mcp). The browser's Network tab shows the status and message of the `POST …/services/mcp` request. Then click **Re-check**. |
+| **Security upgrade required**: *Splunk MCP Server v… is vulnerable* | The server reports a version below 1.0.3 (CVE-2026-20205). | Upgrade the Splunk MCP Server to 1.1.0 or later (1.2.1 or later recommended), then click **Re-check**. |
+| **Health check error**: *Could not verify AI Assistant prerequisites* | An unexpected error; the card shows its message. | Check that `/services/mcp` is reachable and the user's session is valid, then click **Retry**. |
 
-| Health status | What renders |
-|---|---|
-| `ok` | Empty chat panel; ready for prompts. |
-| `error` | MCPSetupWizard renders with diagnostic guidance (last error message, Splunkbase link, Re-check button). |
-| `loading` | Spinner; transient. |
-
-The setup wizard surfaces:
-
-- The last health-check error message (typically HTTP 404 if the endpoint path is wrong, 401 if auth is failing, or a network timeout if MCP isn't reachable).
-- An install / open link to [Splunkbase App 7931](https://splunkbase.splunk.com/app/7931) (plus the companion TA's Splunkbase page).
-- A **Re-check** button that re-runs the health check (labelled **Retry** on the generic error card).
-
-To fix credentials, open [Settings → Splunk MCP](settings.md#splunk-mcp-tab) directly — the wizard itself does not link there.
+The **Setup required** and **Security upgrade required** cards also carry a link to [Splunkbase App 7931](https://splunkbase.splunk.com/app/7931). To change the URL or the bearer token, open [Settings → AI Assistant](settings.md) directly; the cards do not link there.
 
 ## :material-circle-box:{ .taiconcolor } Common Issues
 
-### "Stuck at health-check loading"
+### "Stuck at Checking AI Assistant prerequisites"
 
-The health-check endpoint is hanging. Most common cause: the configured `mcp_server_url` points at a path the MCP Server app doesn't expose. Check via curl from the search head:
+The check is waiting on a request that does not answer. The most common cause is an **MCP Server URL** that points at a host or path that does not respond. Leave the field blank to use the default, and check that the server answers with the `ping` request in [Install the Splunk MCP Server](#install-the-splunk-mcp-server). If that fails too, the MCP Server app is not installed or not enabled.
 
-```bash
-curl -sk -u admin:<pw> https://localhost:8089/services/mcp/health
-```
+### "User lacks required mcp_tool_execute capability"
 
-If that 404s, the MCP Server app isn't installed correctly or the REST handler is misconfigured.
+The browser's Network tab shows the `POST /en-US/splunkd/__raw/services/mcp` request returning HTTP 403 with that message, and the panel shows **Setup required**. Grant `mcp_tool_execute` to one of the user's roles ([Roles and Capabilities](#roles-and-capabilities)), then have the user reload the page.
 
 ### "Invalid token audience" (Splunk Cloud)
 
@@ -131,30 +148,30 @@ The browser's Network tab shows the `POST /en-US/splunkd/__raw/services/mcp` req
 { "jsonrpc": "2.0", "id": 1, "error": { "code": -32600, "message": "Invalid token audience: <value>" } }
 ```
 
-The JWT that Splunk Cloud's edge proxy stamps onto the request has an `aud` claim that App 7931 isn't configured to accept. **App 7931 requires `aud = mcp`.** See [Splunk Cloud — JWT `aud` (audience) claim must be `mcp`](#splunk-cloud-jwt-aud-audience-claim-must-be-mcp) above for the full fix. The short version: re-mint the MCP token (or have Splunk Cloud Support do it) with `audience=mcp`.
+The JWT that Splunk Cloud's edge proxy puts on the request has an `aud` claim the MCP Server does not accept: **it requires `aud = mcp`.** See [Splunk Cloud — JWT `aud` (audience) claim must be `mcp`](#splunk-cloud-jwt-aud-audience-claim-must-be-mcp) above. In short: have the MCP token re-minted with `audience=mcp`, or ask Splunk Cloud Support to set the stack's MCP audience to `mcp`.
 
-### "401 Unauthorized on every dispatch"
+### "401 Unauthorized on every request"
 
-Cookie auth isn't working — possible causes:
+Cookie auth is not working. Possible causes:
 
-- The Splunk Web session expired in the browser. Re-login; re-open the AI Assistant panel.
-- The MCP Server is configured with bearer-only auth. Configure a bearer token in Settings → Splunk MCP.
-- A reverse proxy in front of Splunk is stripping the session cookie. Check the proxy's cookie-forwarding config.
+- The Splunk Web session expired in the browser. Sign in again and reopen the AI Assistant panel.
+- The MCP Server is configured for bearer auth only. Store a bearer token on **Settings → AI Assistant → Splunk MCP**.
+- A reverse proxy in front of Splunk strips the session cookie. Check the proxy's cookie forwarding.
 
-### "MCP Server returns valid responses but tool tiles are empty"
+### "The panel opens, but predefined prompts fail or their tiles stay empty"
 
-The MCP Server's response format doesn't match what the LogServ App expects. Most common cause: an MCP Server version below the enforced minimum **1.0.3** (the health probe gates on it). Check via the Splunk Apps page; upgrade if needed — v1.1.0 or later is recommended.
+The MCP Server is older than 1.1.0 (1.0.3 to 1.0.5 pass the App's health check but have no Run Saved Search tool), or that tool is turned off in the MCP Server's own tool settings. Upgrade to 1.1.0 or later (1.2.1 or later recommended), or turn the tool on, as the MCP Server's documentation describes.
 
 ## :material-circle-box:{ .taiconcolor } MCP-less Chat Mode
 
-!!! warning "Requires a configured LLM provider credential"
-    Chat-only mode relies on LLM streaming, which runs only once an admin has configured an [LLM provider credential](settings.md#provider-credentials-tab). Where none is configured — or **Templates-only mode** is on, or a compile-time [templates-only build](templates-only-build.md) is installed — setting `mcp_required = false` leaves the panel with no working dispatch path at all: there is nothing to fall back to.
+!!! warning "Needs a configured LLM provider credential"
+    Chat-only mode relies on LLM streaming, which works only once an admin has configured an [LLM provider credential](settings.md#provider-credentials-tab). Where none is configured, or **Templates-only mode** is on, or a compile-time [templates-only build](templates-only-build.md) is installed, turning **MCP Required** off leaves the panel with nothing that works.
 
-For debugging or for specific use cases where you want LLM streaming without MCP, set `mcp_required = false` in Settings → General. The AI Assistant then operates in **chat-only mode**:
+For debugging, or where you want LLM streaming without MCP, turn **MCP Required** off on **Settings → AI Assistant → General**. The AI Assistant then runs in **chat-only mode**:
 
-- The LLM vendor receives system primer + user message + history (no tool definitions).
-- The AI cannot dispatch any Splunk searches — no `splunk_run_saved_search`, no `splunk_run_query`.
-- Replies are conversational only — useful for "explain how X works" type questions, but not for any data-grounded investigation.
-- A persistent orange-warning banner at the top of the chat reads: *"Chat-only mode — tool execution disabled (MCP not configured). The AI can answer questions but cannot run searches against your Splunk data."*
+- The LLM vendor receives the system primer, the user message and the history (no tool definitions).
+- The AI cannot run any Splunk search: no `splunk_run_saved_search`, no `splunk_run_query`, and no prompt browser.
+- Replies are conversational only: useful for "explain how X works" questions, not for any investigation of your data.
+- A persistent orange warning banner at the top of the chat reads: *"Chat-only mode — tool execution disabled (MCP not configured). The AI can answer questions but cannot run searches against your Splunk data."*
 
-This mode is **distinct from the [Templates-only build variant](templates-only-build.md)**: chat-only mode has the LLM-driven path on, MCP off; templates-only has the LLM-driven path off, MCP on.
+This mode is **distinct from Templates-only mode** ([Restricting the LLM Path](templates-only-build.md)): chat-only mode has the LLM path on and MCP off; Templates-only mode has the LLM path off and MCP on.

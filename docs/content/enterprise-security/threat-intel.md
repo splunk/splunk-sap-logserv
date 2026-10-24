@@ -26,7 +26,9 @@ The lookups ship **empty** (header row only). Customers populate them from their
 |---|---|---|---|
 | `splunk_sap_logserv_es_ti_dns_to_malicious_domain` | `isc:bind:query` ↔ `logserv_ti_malicious_domains` | high | hourly |
 | `splunk_sap_logserv_es_ti_proxy_to_malicious_ip` | `squid:access` ↔ `logserv_ti_malicious_ips` | high | hourly |
-| `splunk_sap_logserv_es_ti_compromised_credential_use` | HANA / ABAP / sapstartsrv auth events ↔ `logserv_ti_compromised_credentials` | critical | hourly |
+| `splunk_sap_logserv_es_ti_compromised_credential_use` | `sap:hana:audit`, `sap:abap:audit` and `sap:sapstartsrv` events that carry a user name ↔ `logserv_ti_compromised_credentials` | critical | hourly |
+
+The compromised-credential search does not limit itself to logins: it takes any event of those three sourcetypes, reads the user from `executing_user`, `user` or `src_user` (the first that is set), lowercases it and looks it up.
 
 All three emit `action.notable=1` for ES Notable Review and `action.risk=1` for the RBA framework. Risk scores: 80 (DNS hit), 70 (proxy hit), 90 (compromised credential — highest because the action — locking the credential — is unambiguous).
 
@@ -52,30 +54,28 @@ For TI feeds that update regularly:
 2. End the SPL with `| outputlookup override_if_empty=false logserv_ti_malicious_domains` to overwrite the file. Without `override_if_empty=false`, Splunk deletes the file when the search returns no rows — so a run during an outage of your TI connector would empty the list; with it, an empty run leaves the previous list in place.
 3. Schedule the saved search at whatever cadence matches your feed (hourly, daily, etc.).
 
-This is the canonical pattern Splunk recommends for managed TI feeds. The customer owns the upstream connector; the LogServ App is just the consumer.
+The customer owns the upstream connector; the LogServ App only reads the lookup.
 
 ### :material-crop-square:{ .taiconcolor } 3. Threat-intel framework (Splunk ES Threat Framework)
 
-If you have ES installed, the ES Threat Framework already maintains its own consolidated threat-intel KV Store collections. Bridge those to the LogServ-side lookups via a saved search:
+If you have ES installed, the ES Threat Framework already maintains its own consolidated threat-intel KV Store collections. Bridge those to the LogServ-side lookups via a saved search of your own. The names of ES's threat-intel lookups and their fields depend on your ES version and configuration, so look them up first (the ES documentation, or **Settings → Lookups → Lookup definitions** on the ES search head). In this template, replace each `<...>` placeholder with the name from your ES:
 
 ```spl
-| inputlookup threat_intel_by_domain
-| where category="malicious"
-| eval added_date=strftime(_time, "%Y-%m-%d")
-| rename description AS notes
-| eval source="splunk-es-threat-framework"
+| inputlookup <ES lookup that holds domain indicators>
+| rename <ES domain field> AS domain, <ES description field> AS notes
+| eval category="<category>", source="splunk-es-threat-framework", added_date=strftime(now(), "%Y-%m-%d")
 | table domain category source added_date notes
 | outputlookup override_if_empty=false logserv_ti_malicious_domains
 ```
 
-(Adjust field names + filter logic to match your ES Threat Framework configuration.)
+This sets `added_date` to the day of the copy. If your ES lookup has a time field for each indicator, use it there instead, and add a filter (`| where ...`) if you want only some of the indicators.
 
 ## :material-circle-box:{ .taiconcolor } Tuning + maintenance
 
-- **Stale indicators.** Indicators older than ~30 days have a higher false-positive rate (the upstream threat may already be remediated). Periodically prune via `inputlookup → where added_date >= relative_time(now(), "-30d") → outputlookup override_if_empty=false` to overwrite with a freshness-filtered view. (With the flag, a prune that would remove every indicator leaves the list as it is; to empty it on purpose, upload a header-only CSV as in workflow 1.)
+- **Stale indicators.** Indicators older than ~30 days have a higher false-positive rate (the upstream threat may already be remediated). Periodically prune them with `| inputlookup logserv_ti_malicious_domains | where strptime(added_date, "%Y-%m-%d") >= relative_time(now(), "-30d") | outputlookup override_if_empty=false logserv_ti_malicious_domains` (and the same for the other two lists) to overwrite each list with a freshness-filtered view. `added_date` is a date string, so convert it with `strptime` before comparing it with a time; this form expects `YYYY-MM-DD`. (With the flag, a prune that would remove every indicator leaves the list as it is; to empty it on purpose, upload a header-only CSV as in workflow 1.)
 - **Upgrades.** The three lists ship in the App's `lookups/` directory as header-only files, so an upgrade that installs the package may replace rows you added. As a precaution, export a list you maintain by hand (workflow 1, or a one-off `outputlookup`) before upgrading and re-upload it afterwards; a list written by a recurring saved search (workflow 2 or 3) is refilled on its next run. See [Upgrading](../getting-started/upgrading.md).
 - **Source weighting.** If a particular `source` produces too many FPs, pre-filter at lookup-write time so it never reaches the correlation search. A source that produces TPs reliably can be tagged as such in the `notes` field for SOC analyst context.
-- **Custom domains.** The `domain` column accepts FQDNs. Wildcard domain patterns (e.g., `*.evil.com`) are NOT directly supported by Splunk's stock `lookup` command — for wildcard support, use a `match=WILDCARD` lookup (configure on the transforms.conf stanza) or a custom-authored detection that uses regex matching against the lookup contents.
+- **Custom domains.** The `domain` column accepts FQDNs. Wildcard domain patterns (e.g., `*.evil.com`) do not match as shipped, because the lookup definition matches exactly (case-insensitive). For wildcard support, give the lookup definition a wildcard match type (`match_type = WILDCARD(domain)` on its `transforms.conf` stanza; in Splunk Web, edit the lookup definition `logserv_ti_malicious_domains` under **Settings → Lookups → Lookup definitions** and set the same match type in its advanced options), or write your own detection that uses regex matching against the lookup contents.
 
 ## :material-circle-box:{ .taiconcolor } AI Assistant integration
 
@@ -85,7 +85,7 @@ Each of the 3 TI correlation searches has a corresponding entry in the AI Assist
 - `security.ti_proxy_to_malicious_ip`
 - `security.ti_compromised_credential_use`
 
-SOC analysts can dispatch them on demand from the AI Assistant's predefined-prompt browser → Security pack → **TI: DNS to malicious domain** (and siblings). Natural-language routing ("Show me TI hits across DNS in the last hour") requires the free-form path, which activates once an LLM provider credential is configured; without one, dispatch is via the prompt browser only.
+Once an admin has turned the AI Assistant on (it ships turned off; see [Set Up the AI Assistant](../ai-assistant/enable.md)), SOC analysts can dispatch them on demand from the AI Assistant's predefined-prompt browser → Security pack → **TI: DNS query to malicious domain** (and siblings). A prompt fails while its saved search is disabled. Natural-language routing ("Show me TI hits across DNS in the last hour") requires the free-form path, which activates once an LLM provider credential is configured; without one, dispatch is via the prompt browser only.
 
 ## :material-circle-box:{ .taiconcolor } Verifying the lookups loaded correctly
 

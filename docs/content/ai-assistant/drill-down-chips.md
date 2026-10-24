@@ -1,8 +1,8 @@
 # Drill-down Chips
 
-Drill-down chips are clickable affordances that appear next to AI Assistant tool-result tiles (right pane) and inline citations in the chat narrative (left pane). They connect the AI Assistant's investigation flow back into the dashboards or Splunk's universal Search app, with the dispatch's exact time range pre-applied.
+Drill-down chips are clickable affordances that appear next to AI Assistant tool-result tiles (right pane) and inline citations in the chat narrative (left pane). They connect the AI Assistant's investigation flow back into the dashboards or Splunk's universal Search app. A `↗ Run SPL` chip opens the search at the dispatch's exact time range; a dashboard chip opens the dashboard in a new tab at the App's default time range (Last 30 days), not at the dispatch's window.
 
-The tile chips and guidance-card chips are active **on install** — every predefined-prompt tile carries them, with no LLM provider involved. The chat-narrative *citation* chips accompany LLM-written narratives, so they appear only once an [LLM provider credential](settings.md#provider-credentials-tab) is configured.
+The tile chips and guidance-card chips need no LLM provider: every predefined-prompt tile carries them once the AI Assistant is turned on ([Set Up the AI Assistant](enable.md)). The chat-narrative *citation* chips accompany LLM-written narratives, so they appear only once an [LLM provider credential](settings.md#provider-credentials-tab) is configured.
 
 ![AI Assistant — drill-down chips on a tool tile](../../images/ai-assistant-drilldown-chips.png)
 
@@ -12,7 +12,7 @@ The tile chips and guidance-card chips are active **on install** — every prede
 
 Opens the related OOTB dashboard in a new browser tab. Sourced from the per-prompt dashboard mapping in the intent map — single string or array. Roughly half the catalog maps to more than one dashboard (e.g., `logserv_hana_failed_auth` → HANA Audit + Cross-Stack Authentication) and renders one chip per target.
 
-The URL embeds the dispatch's exact earliest/latest as query params, and the destination dashboard hydrates its time picker from those params on mount.
+The link carries no time range: the dashboard opens in a new tab at the App's default time range (Last 30 days), not at the dispatch's window and not at the range picked in your current tab. To see the exact window the search ran over, use `↗ Run SPL`.
 
 ### `↗ Run SPL`
 
@@ -40,12 +40,12 @@ A typical citation in chat reads:
 
 Where:
 - `→ logserv_cross_stack_auth_failures` is the clickable scroll-to-tile span (cyan-light + dotted underline) — the parser drops the brackets when the citation resolves; a citation it cannot resolve renders as muted, non-clickable `[→ name]` text with no chips
-- `↗ Cross-Stack Authentication` is the dashboard chip (opens that dashboard in a new tab at the dispatch's time range)
+- `↗ Cross-Stack Authentication` is the dashboard chip (opens that dashboard in a new tab at the App's default time range, Last 30 days)
 - `↗ Run SPL` is the SPL chip (opens Splunk Search with the dispatched SPL + same time range)
 
 ## :material-circle-box:{ .taiconcolor } Time-Range Preservation
 
-The `↗ Run SPL` chip preserves the dispatch's **exact** time range — not the user's current global TimeRange picker. So a `-24h` verify-query opens the Search app at `-24h`; a `-30d` cumulative search opens at `-30d`. The `↗ Dashboard` chip opens the destination dashboard at its own current/persisted time range.
+The `↗ Run SPL` chip preserves the dispatch's **exact** time range — not the user's current global TimeRange picker. So a `-24h` verify-query opens the Search app at `-24h`; a `-30d` cumulative search opens at `-30d`. The `↗ Dashboard` chip opens the destination dashboard in a new tab at the App's default time range (Last 30 days), not at the dispatch's window.
 
 This matters because the user's TimeRange picker may have changed between when the AI dispatched the search and when the user clicks the drill-down. By embedding the dispatch's window in the URL, the destination reflects exactly what the AI saw.
 
@@ -54,6 +54,6 @@ This matters because the user's TimeRange picker may have changed between when t
 - **`target="_blank"` + `rel="noopener noreferrer"`** on every chip. The `noopener` flag breaks the `window.opener` reference that reverse-tabnabbing relies on.
 - **Dashboard row drill-downs quote-escape spliced row values** (`splQuote()`) before URL encoding, so a row value containing a quote or backslash can't break out of the SPL string context. The AI Assistant's `↗ Run SPL` chip passes the already-composed SPL through unchanged — there is no per-row splicing in that path.
 - **No SPL chip on synthetic blocked-SPL results.** When the SPL static-analysis guard blocks an AI-authored query, the synthetic error tile is rendered without the `↗ Run SPL` chip — the chip would defeat the guard by helping the user manually dispatch the same SPL.
-- **No drill-downs from compliance audit-trail tables.** The **Recent Privileged Changes (Compliance Focus)** and **Recent After-Hours Changes (Outside Business Hours)** tables on the Change & Configuration Activity dashboard intentionally have NO row drill-downs (clicking through to raw events would pollute the audit trail with the reviewer's own search activity in subsequent compliance reports).
+- **No drill-downs from compliance audit-trail tables.** Two compliance tables on the Change & Configuration Activity dashboard intentionally have no row drill-downs; see [Change & Configuration Activity](../logserv-app/dashboards/security/change-config.md).
 
-For the orchestrator-layer URL pre-resolution pattern that powers these chips, see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).
+For the orchestrator-layer URL pre-resolution pattern that powers these chips, see [LogServ App and AI Assistant Internals](../developer/ai-assistant-internals.md).

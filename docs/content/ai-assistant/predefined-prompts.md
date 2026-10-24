@@ -2,7 +2,7 @@
 
 Predefined prompts are cataloged saved searches across three packs that the AI Assistant can dispatch via the [Splunk MCP Server](mcp-setup.md) **without invoking any LLM**. They are the deterministic, vendor-traffic-free path through the AI Assistant: the user clicks a prompt card, the orchestrator dispatches the saved search, the result tile renders in the right pane, and a static interpretation + suggested-next-steps card appears in the chat.
 
-This is the path that works **out of the box**: predefined prompts need no LLM provider, no credential, and make no vendor call, so they are the whole AI Assistant on a fresh install and in any deployment that never configures a provider. Once an [LLM provider credential](settings.md#provider-credentials-tab) is configured, the same catalog coexists with the [free-form path](free-form-prompts.md).
+This is the path that works **without an LLM credential**: predefined prompts need no LLM provider, no credential, and make no vendor call. The AI Assistant ships turned off; once an admin has turned it on and the Splunk MCP Server is installed ([Set Up the AI Assistant](enable.md)), the predefined prompts are the whole AI Assistant in any deployment that never configures a provider. Once an [LLM provider credential](settings.md#provider-credentials-tab) is configured, the same catalog coexists with the [free-form path](free-form-prompts.md).
 
 ![AI Assistant — predefined-prompts modal open](../../images/ai-assistant-prompt-browser.png)
 
@@ -15,6 +15,8 @@ This is the path that works **out of the box**: predefined prompts need no LLM p
 | **Operations** | 18 | Ingest health, error rate trends, error-category breakdowns, top error categories, host volume drop, freshness checks, Cloud Connector backend latency |
 
 The full catalog ships inside the LogServ App as a data-driven intent map. Each prompt entry carries the saved-search name, label, description, render hint, dashboard mapping, interpretation, and suggested next steps, plus an optional chart hint and chart palette.
+
+Thirteen of the Security prompts run the App's Enterprise Security saved searches (`splunk_sap_logserv_es_*`). Such a prompt returns an error while its saved search is disabled; to keep those prompts working on a search head without Enterprise Security, turn off only the schedule of those 13 searches. Before you disable the ES content, read [Disabling or tuning the ES content](../enterprise-security/overview.md#disabling-or-tuning-the-es-content).
 
 ## :material-circle-box:{ .taiconcolor } The Dashboard Focused Tab
 
@@ -34,7 +36,7 @@ Each card on the Dashboard Focused tab carries a small pack-origin chip (cyan-li
 **No LLM call.** No vendor traffic. No tokens. The dispatch is recorded as a `local_only` audit event with the prompt id + SPL + row count + execution time + ok flag. See [Audit Log](audit-log.md).
 
 !!! note "High-volume prompts read precomputed rollups"
-    About half the catalog — every high-volume investigation plus the whole-estate host-volume prompts — reads the same hourly KV-Store rollups that power the dashboards instead of scanning every event live. These prompts stay sub-second even over a 30-day window on a large dataset — a raw scan of the same window used to exceed the AI Assistant's 30-second dispatch timeout at high ingest volumes. The trade-off is identical to the dashboards: results reflect data through the most-recently-completed hour (the beaconing prompt's rollup is daily), and on a fresh install these prompts populate older windows only after the [Dashboard Data backfill](../logserv-app/dashboards/performance.md) has run. The remaining prompts dispatch a live search bounded by the Time range you select.
+    About half the catalog — every high-volume investigation plus the whole-estate host-volume prompts — reads the same hourly KV-Store rollups that power the dashboards instead of scanning every event live. These prompts stay sub-second even over a 30-day window on a large dataset, where a raw scan of the same window can run past the MCP request timeout (60 seconds by default, **MCP request timeout (seconds)** in [Application Settings](settings.md#feature)) at high ingest volumes. The trade-off is identical to the dashboards: results reflect data through the most-recently-completed hour (the beaconing prompt's rollup is daily), and on a fresh install these prompts populate older windows only after the [Dashboard Data backfill](../logserv-app/dashboard-data.md) has run. The remaining prompts dispatch a live search bounded by the Time range you select.
 
 ## :material-circle-box:{ .taiconcolor } The Tab Persistence Convention
 
@@ -42,13 +44,13 @@ The prompt browser remembers your last-selected tab across modal-open events, pe
 
 ## :material-circle-box:{ .taiconcolor } Customizing the Catalog
 
-The prompt catalog is data-driven and customizable. New prompts can be added, existing prompts can be edited, and the catalog can be tailored per deployment. The full JSON schema, build-time consistency check, and pre-deploy SPL dry-run recipe are documented in [AI Assistant Implementation Reference — Adding a New Predefined Prompt](../developer/ai-assistant-internals.md).
+The prompt catalog is data-driven: each prompt is an entry in the App's intent map (`default/data/mcp/logserv_intent_map.json`) with a matching saved search in `default/savedsearches.conf`. The intent map is compiled into the App's JavaScript bundle at build time, so adding or editing a prompt means changing the App's source, rebuilding the App and redeploying it; editing the installed copy of `logserv_intent_map.json` does not change the catalog. On Splunk Cloud Platform, the rebuilt App goes through private-app vetting again. The steps, the full JSON schema, the build-time consistency check and a pre-deploy SPL dry run are in [Adding a New Predefined Prompt](../developer/ai-assistant-internals.md#adding-a-new-predefined-prompt); the build itself is in [Build the LogServ App](../developer/build-from-source.md#build-the-logserv-app).
 
 ## :material-circle-box:{ .taiconcolor } The Splunk Risky-Command Safeguard
 
-Splunk Web's Search app has a safety modal that triggers on "risky" commands: `map`, `runshell`, `script`, `delete`, `crawl`, `tscollect`, `loadjob`, `outputlookup`, `outputcsv`, `sendalert`, `sendemail`. Any URL passed to `/app/search/search?q=...` containing one of these triggers the modal — even though our own MCP-dispatched saved searches don't.
+Splunk Web's Search app asks for confirmation before it runs a search that arrives in a link (a URL to `/app/search/search?q=...`) and contains a command Splunk marks as risky, for example `map`, `delete`, `script`, `tscollect`, `outputlookup`, `outputcsv`, `sendalert` or `sendemail`. Splunk's SPL safeguards documentation has the full list for each Splunk version; [Splunk risky-command safeguard](../developer/ai-assistant-internals.md#splunk-risky-command-safeguard) gives it for 9.4. The saved searches the AI Assistant dispatches through the MCP Server are not affected: the safeguard applies to searches opened in Splunk Web from a link.
 
-The drill-down chips that open Splunk Search from the prompt browser's `nextSteps` deep-links are subject to this safeguard. The shipped prompt catalog has been scanned and rewritten where needed to avoid these commands; if you customize the catalog, scan any new SPL for risky commands before shipping. See [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md) for the rewrite pattern (`map` → first-class subsearch).
+The **↗ Run SPL** chips and the next-step links of the guidance cards open Splunk Search that way, so they are subject to it. No search in the shipped catalog (the prompts' searches and their next-step searches) uses a risky command. If you customize the catalog, scan any new SPL for risky commands before shipping; [Splunk risky-command safeguard](../developer/ai-assistant-internals.md#splunk-risky-command-safeguard) shows the rewrite pattern (`map` → first-class subsearch).
 
 ## :material-circle-box:{ .taiconcolor } Clear All / Per-Result Clear
 

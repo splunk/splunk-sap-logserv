@@ -1,11 +1,11 @@
 # Free-form Prompts
 
 !!! info "Requires a configured LLM provider credential"
-    The published v0.1.2 App package is the **full-LLM build variant**, so the path this page describes is present in it — but it stays **inert until an admin configures an [LLM provider credential](settings.md#provider-credentials-tab)**. An upgrade creates no credential, so nothing reaches a vendor until someone sets one. An admin can also restrict a deployment to predefined prompts at run time with the **Templates-only mode** toggle (Settings → AI Assistant → General), and a compile-time [templates-only build variant](templates-only-build.md) exists for deployments where that restriction must not be reversible in the field.
+    The released v0.1.2 App package is the **full-LLM build**, so the path this page describes is present in it, once the AI Assistant is turned on ([Set Up the AI Assistant](enable.md)). It **reaches no vendor until an admin selects a provider and configures its [LLM provider credential](settings.md#provider-credentials-tab)**: the shipped default provider is **Mock (development only)**, which answers a typed question with a canned reply. An upgrade creates no credential, so nothing reaches a vendor until someone sets one. An admin can also restrict a deployment to predefined prompts at run time with the **Templates-only mode** toggle (Settings → AI Assistant → General), and a compile-time templates-only build exists for deployments where that restriction must not be reversible in the field ([Restricting the LLM Path](templates-only-build.md)).
 
 Free-form prompts are the LLM-driven path through the AI Assistant. The user types a natural-language question; the orchestrator sends a system primer + the question + tool definitions to one of four supported LLM providers; the vendor picks tools, the orchestrator dispatches them via the [Splunk MCP Server](mcp-setup.md), and the vendor synthesizes a narrative response from the privacy-tier-bounded summaries. The narrative ends up in the chat panel on the left; the actual data lands in tool-result tiles on the right.
 
-This path requires a configured [LLM provider credential](settings.md#provider-credentials-tab), is governed by the active [privacy tier](privacy-tiers.md), and can be switched off — at run time with the **Templates-only mode** toggle, or irreversibly in the [Templates-only build variant](templates-only-build.md).
+This path requires a configured [LLM provider credential](settings.md#provider-credentials-tab), is governed by the active [privacy tier](privacy-tiers.md), and can be switched off — at run time with the **Templates-only mode** toggle, or irreversibly in a templates-only build ([Restricting the LLM Path](templates-only-build.md)). Each user's browser reads the provider credential from Splunk's password store when that user sends a question, so the user's role must be able to read stored passwords (`list_storage_passwords`, which `admin` holds).
 
 ## :material-circle-box:{ .taiconcolor } The Four Supported Providers
 
@@ -75,10 +75,12 @@ Dispatch ad-hoc SPL written by the AI. Used when no saved search fits the user's
 | Arg | Type | Description |
 |---|---|---|
 | `query` | string (required) | SPL string. Must start with the LogServ macro `\`sap_logserv_idx_macro\`` as its first term — or with `\| inputlookup` of one of the App's lookups, `\| tstats` with the macro right after `WHERE` or `\| makeresults` — and use only the allowed commands. The App enforces both (below). |
-| `earliest_time` | string (optional) | Defaults to the user's currently selected time range when omitted. |
+| `earliest_time` | string (optional) | Passed to the MCP Server as given. When the AI omits it, the App adds no default: the window is whatever the Splunk MCP Server applies. (The tool description the AI sees says the user's selected time range is the default; it is not.) |
 | `latest_time` | string (optional) | Same as above. |
-| `render_hint` | string (optional) | Same as above. |
-| `top_n` | integer (optional) | Same as above. |
+| `render_hint` | string (optional) | One of `table` / `timechart` / `kpi` / `pie`. |
+| `top_n` | integer (optional, default 10, max 50) | Width of categorical aggregates the AI receives in a Tier 2 summary. |
+
+### The SPL Guard { #spl-guard }
 
 **SPL guard** ([LLM06 — Excessive Agency](owasp-llm-compliance.md)): the orchestrator checks every `splunk_run_query` query three times before dispatch, and a query any check refuses is never sent to Splunk:
 
@@ -112,6 +114,9 @@ It also refuses `savedsearch` and `savedsplunk` as words anywhere in the query, 
 
 The AI's primer lists the allowed commands exactly, and a refusal names the command, lookup or macro it is about, so the model can rewrite the query. Splunk role permissions remain the authoritative gate. Blocked SPL produces a synthetic error tool_result + a `security_blocked_spl` audit event (with the `operator` and, when the refusal is about one, the `command`). The AI is told `Tool call refused by the App before it ran:` followed by the guard's reason, which is text the App wrote, so it can recover by writing a different query.
 
+!!! warning "Limitation: a renamed SAP data index"
+    The parser check compares the expansion of `sap_logserv_idx_macro` with the definition the App ships, `index="sap_logserv_logs"`, and refuses any other index value. After the macro is changed for a renamed data index ([Renaming an index](../install-setup/install-ta.md#renaming-an-index)), every free-form query that reads events, starting with the macro or using it in `tstats`, is refused (`parser_mismatch`). Predefined prompts are not affected; they are not checked this way. This release has no setting to change it.
+
 ## :material-circle-box:{ .taiconcolor } The System Primer
 
 A system-message prelude is sent on every free-form request. The primer teaches the AI:
@@ -123,7 +128,7 @@ A system-message prelude is sent on every free-form request. The primer teaches 
 - The [time-window reasoning rules](time-window-reasoning.md) that kick in for severity claims
 - Synthesis rules — lettered findings, severity dots, citation format
 
-Two primer variants ship — one for each cloud tier — and the active tier picks which one is sent. For the primer's full architecture (boundary block, primer constants, per-variant content), see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md).
+Two primer variants ship — one for each cloud tier — and the active tier picks which one is sent. For the primer's full architecture (boundary block, primer constants, per-variant content), see [LogServ App and AI Assistant Internals](../developer/ai-assistant-internals.md).
 
 ## :material-circle-box:{ .taiconcolor } Citation + Drill-Down Chips in the Narrative
 
@@ -153,25 +158,25 @@ The cap is per-user, not per-session — opening a new browser tab doesn't reset
 
 ## :material-circle-box:{ .taiconcolor } Token-Usage Audit + USD Cost Estimate
 
-Every vendor call — whichever tier is active — records a **`vendor_tier1`** audit event with:
+Every free-form prompt that completes — whichever tier is active — records one **`vendor_tier1`** audit event, after its last turn, with:
 
-- Provider (anthropic / openai / azure_openai / bedrock)
+- Provider (`anthropic` / `openai` / `azure_openai` / `bedrock`, or `mock`)
 - Model
-- Input tokens, output tokens, total tokens
-- USD cost estimate (per-vendor pricing table — see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md))
-- Outbound bytes
-- Prompt length (chars)
-- Number of tool turns in this dispatch
-- `tier2RedactionsApplied` — number of PII redactions applied on this turn (0 at Tier 1)
-- `powerMode` — whether the forced-RAG [Power Mode](power-mode.md) was active
+- Input tokens and output tokens, summed over the prompt's turns (for Anthropic also the cached and cache-written input tokens)
+- USD cost estimate (per-vendor pricing table — see [LogServ App and AI Assistant Internals](../developer/ai-assistant-internals.md))
+- Outbound bytes and the SHA-256 of the outbound payload
+- Prompt length (chars) and the number of tool definitions sent
+- Number of AI turns the prompt took
+- `tier2RedactionsApplied` — number of PII redactions applied across the prompt's tool results (0 at Tier 1)
+- `powerMode` — whether the forced-RAG [Power Mode](power-mode.md) was on
 
-The Audit Log tab in Settings provides aggregate views; the USD cost estimate is a sticker price (not the customer's negotiated rate, which we don't know) and should be treated as an order-of-magnitude indicator. See [Audit Log](audit-log.md).
+The Audit Log tab in Settings lists these events one by one; it has no aggregate views. For totals per user, run the cost search in [Audit Log → Querying the Audit Index Directly](audit-log.md#querying-the-audit-index-directly). The USD cost estimate is a list price (not the customer's negotiated rate, which the App does not know) and should be treated as an order-of-magnitude indicator.
 
 ## :material-circle-box:{ .taiconcolor } Daily Spend Cap
 
-To prevent runaway vendor spend, the orchestrator enforces a per-user (per browser) daily USD spend cap (configurable in Settings, default $X / day; admin sets per organization risk tolerance). When a vendor call would push cumulative cost over the cap, the orchestrator:
+To prevent runaway vendor spend, the orchestrator enforces a per-user (per browser) daily USD spend cap (**Daily spend cap (USD)** in Settings, default **50.00**; `0` turns it off). Each prompt's estimated cost is added after it completes, and the check runs before the next prompt, so the prompt that crosses the cap still completes. Once the day's total has reached the cap, the orchestrator:
 
-1. Refuses the dispatch.
+1. Refuses the next prompt before any vendor call.
 2. Records a `daily_spend_cap_hit` audit event.
 3. Surfaces a system_notice stating the cap was reached, how much of the budget is spent, and that the tally resets at local midnight (the browser's calendar day).
 
@@ -191,7 +196,7 @@ A red **Stop** button appears in the chat input toolbar during streaming / tool_
 
 Every user prompt is run through a jailbreak-pattern analyzer before dispatch. The analyzer is **flag-and-proceed**: a match fires a `user_prompt_jailbreak_flag` audit event but does NOT block the prompt. The defense-in-depth chain (type-system enforcement + Tier 2 sanitizer + tool-result sentinel + primer + vendor-side defenses) already covers the threat; the analyzer adds SOC observability for the user-prompt vector. Each flag captures a hash of the prompt (so SOC can correlate without archiving plain text), which patterns matched, and a character-class fingerprint to surface unusual encodings.
 
-For the analyzer's pattern groups + audit event schema, see [AI Assistant Implementation Reference](../developer/ai-assistant-internals.md). Maps to [LLM01 — Prompt Injection](owasp-llm-compliance.md).
+For the analyzer's pattern groups + audit event schema, see [LogServ App and AI Assistant Internals](../developer/ai-assistant-internals.md). Maps to [LLM01 — Prompt Injection](owasp-llm-compliance.md).
 
 ## :material-circle-box:{ .taiconcolor } Session Tool-Call Cap
 

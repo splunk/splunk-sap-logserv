@@ -40,8 +40,7 @@ Parameters:
 
   LambdaCodeBucket:
     Type: String
-    Description: "S3 bucket name containing the Lambda function code"
-    Default: "splunk-logserv-lambda-binary"
+    Description: "Name of the S3 bucket you created for the Lambda function ZIP file, in the same Region as this stack (bucket names are global, so choose your own)"
     AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
     ConstraintDescription: 'Must be a valid S3 bucket name (3-63 characters, lowercase letters, numbers, hyphens, and periods only)'
     MinLength: 3

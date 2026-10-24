@@ -1,5 +1,7 @@
 # Configuring Filters
 
+This page is the reference for the Data TA's filters: what each field does, how the rules combine, how to check and change them, and the AWS Lambda filter. When you set up the Data TA for the first time, decide first with [Decide Filtering](decide-filtering.md), and distribute the Data TA with [Distribute the Data TA to Heavy Forwarders](distribute-data-ta.md).
+
 ### :material-circle-box:{ .taiconcolor } Overview
 
 The Splunk TA for SAP LogServ provides two complementary approaches to filtering LogServ data — you can use either one independently or combine them for defense-in-depth filtering. (A third, lighter layer exists on the Azure and GCP ingest add-ons: their inputs accept optional `include_filters` / `exclude_filters` substring patterns applied to the object path *before download*, a cheap pre-filter — the canonical allow/deny policy still lives on this page's Filters tab.)
@@ -9,12 +11,12 @@ The Splunk TA for SAP LogServ provides two complementary approaches to filtering
 | **Where it runs** | Inside Splunk at index time | In AWS Lambda, before data reaches Splunk |
 | **Configured via** | Splunk Web UI (Configuration → Filters) | Lambda environment variables or migration config |
 | **Works with** | All deployment scenarios (Connect, Filter, Copy) | S3 Filter and Connect-to-Filter migration only |
-| **What it filters** | Raw NDJSON events via TRANSFORMS queue routing | S3 event notifications via Lambda function |
+| **What it filters** | Raw NDJSON events via TRANSFORMS queue routing | S3 event notifications: the Lambda downloads each object and forwards its notification only if at least one record passes |
 | **License impact** | Filtered events consume zero Splunk license | Filtered notifications never reach Splunk |
-| **Pattern syntax** | `clz_dir/clz_subdir` wildcard patterns, plus patterns on the event's `source` value (Include Sources / Exclude Sources) | `clz_dir/clz_subdir` fnmatch patterns on the S3 object key; no `source` patterns |
-| **Time filtering** | Days in the Past (epoch regex, refreshed daily) | Days in the Past (Lambda evaluation) |
+| **Pattern syntax** | `clz_dir/clz_subdir` wildcard patterns, plus patterns on the event's `source` value (Include Sources / Exclude Sources) | fnmatch patterns on `clz_dir/clz_subdir`, read from each record of the object; no `source` patterns |
+| **Time filtering** | Days in the Past: midnight UTC minus N days (epoch regex, refreshed daily) | `DAYS_IN_THE_PAST`: now minus N days, on each record's `_time` |
 | **AWS resources needed** | None | Lambda function, local SQS queue, DLQ |
-| **Deployment Server support** | ✅ Auto-distributes to Heavy Forwarders | N/A (AWS-side only) |
+| **Deployment Server support** | ✅ Distributed to heavy forwarders with **Deploy to Forwarders**, after a one-time server-class setup | N/A (AWS-side only) |
 | **Upgrade notifications** | ✅ Alerts when new log types aren't covered | ❌ Not available |
 
 <br>
@@ -24,9 +26,9 @@ The Splunk TA for SAP LogServ provides two complementary approaches to filtering
 ??? tip "Choosing a filtering approach"
     **Use Native TA filtering (recommended for most users)** if you want the simplest setup — it works with every deployment scenario, requires no AWS resources beyond what you already have, and is managed entirely from Splunk Web. It also provides upgrade notifications when new log types are added to the TA.
 
-    **Use Lambda-based filtering** if you want to reduce the volume of SQS messages that Splunk processes. Because the Lambda filters S3 event notifications *before* they reach Splunk, unwanted objects are never downloaded from S3 at all. This can reduce S3 GET request costs and Splunk ingestion overhead in very high-volume environments.
+    **Use Lambda-based filtering** if you want to reduce what the heavy forwarder downloads and parses, and the SQS messages it handles. Because the Lambda filters S3 event notifications *before* they reach Splunk, the heavy forwarder never downloads the unwanted objects, which lowers its download bandwidth, CPU and ingestion overhead in very high-volume environments. The Lambda itself still downloads every object to check its records, so the total number of S3 GET requests does not fall: it rises by one for each object the Lambda keeps. You also pay for the Lambda's run time and the local SQS queue.
 
-    **Use both together** for defense-in-depth. The Lambda filters at the AWS pipeline level, and the native TA filters catch anything that slips through at the Splunk level. Since both use the same `clz_dir/clz_subdir` pattern syntax, you can keep the configurations aligned. **Include Sources** and **Exclude Sources** have no Lambda equivalent: the Lambda sees the S3 object key, not the `source` value inside each event, so file-level rules exist only on the Filters tab.
+    **Use both together** for defense-in-depth. The Lambda filters at the AWS pipeline level, and the native TA filters catch anything that slips through at the Splunk level. Both match `clz_dir/clz_subdir` folder patterns, but not in quite the same way (see [Lambda Filter Settings](#lambda-filter-settings)): to keep the two aligned, use only patterns the Filters tab accepts. **Include Sources** and **Exclude Sources** have no Lambda equivalent: the Lambda reads only `_time`, `clz_dir` and `clz_subdir` from each record, not its `source`, so file-level rules exist only on the Filters tab.
 
 The remainder of this page covers **Native TA Index-Time Filtering** in detail. For Lambda-based filtering setup, see the [AWS Lambda-Based Filtering](#aws-lambda-based-filtering) section at the bottom of this page or the [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md).
 
@@ -49,32 +51,44 @@ The TA includes built-in **index-time filtering** configured entirely through th
 
     All filtering happens at index time via TRANSFORMS-based queue routing, so filtered events never consume Splunk license. [How the Rules Combine](#how-the-rules-combine) gives the order in which they are applied.
 
-!!! note "The Filters tab does not reduce Heavy Forwarder CPU"
-    The filter rules run on the Heavy Forwarder in the same chain of index-time transforms as the Data TA's sourcetype routing, so an event they drop has already been downloaded, split into lines, timestamped and run through that chain. They save license and indexing, not forwarder CPU, and they add rules of their own to the chain. To lower the forwarder's load, drop data before the forwarder downloads it: with the [AWS Lambda pre-filter](#aws-lambda-based-filtering) on AWS, or with the Azure and GCP inputs' path filters. See [Heavy Forwarder Sizing](hf-sizing.md).
+!!! note "The Filters tab does not reduce heavy forwarder CPU"
+    The filter rules run on the heavy forwarder in the same chain of index-time transforms as the Data TA's sourcetype routing, so an event they drop has already been downloaded, split into lines, timestamped and run through that chain. They save license and indexing, not forwarder CPU, and they add rules of their own to the chain. To lower the forwarder's load, drop data before the forwarder downloads it: with the [AWS Lambda pre-filter](#aws-lambda-based-filtering) on AWS, or with the Azure and GCP inputs' path filters. See [Capacity Planning and First Start](../getting-started/capacity-planning.md).
 
 <br>
 
 ### :material-circle-box:{ .taiconcolor } Deployment Architectures
 
-The TA supports two deployment models. The steps differ slightly depending on which one you use.
+The filters run on the instance that parses the data. The TA supports three deployment models, and where you save the filters depends on which one you use.
 
-#### :material-crop-square:{ .taiconcolor } Single Instance / Search Head
+#### :material-crop-square:{ .taiconcolor } Single Instance or Search Head That Runs the Inputs { #single-instance-search-head }
 
-The TA is installed directly on the Splunk instance that indexes data. Filter changes take effect immediately after clicking Save (no restart required).
+The TA is installed directly on the instance that parses the data: a single instance, or a search head that runs the LogServ inputs itself ([Running the TAs on a search head](install-ta.md#running-the-tas-on-a-search-head)). Filter changes take effect immediately after clicking Save (no restart required).
 
 #### :material-crop-square:{ .taiconcolor } Deployment Server with Heavy Forwarders
 
-The TA is installed on the Deployment Server (DS). The DS distributes the TA and its filter configurations to Heavy Forwarders (HFs) that perform the actual data ingestion. This is the recommended architecture for production environments.
+The TA is installed on the Deployment Server (DS) only. The DS distributes the TA and its filter configurations to the heavy forwarders (HFs) that perform the actual data ingestion. This is the recommended architecture when you run several heavy forwarders.
 
 In this model:
 
-- You install and configure the TA on the DS only
-- The DS automatically stages configurations for distribution
-- You use the built-in **Deploy to Forwarders** button to push changes to HFs
-- HFs receive the TA and filter configs on their next phone-home interval
+- You install and configure the TA on the DS only. A push from the DS replaces each HF's copy of the TA, its `local/` folder included, so do not also install it on the HFs.
+- Each Save on the DS stages the generated configurations in `deployment-apps/` for distribution.
+- You use the built-in **Deploy to Forwarders** button to push changes to the HFs.
+- HFs receive the TA and filter configs at their next phone-home, and then restart.
 
-!!! note
-    Splunk Cloud cannot act as a Deployment Server. If you are using Splunk Cloud, you will need a separate on-premises Deployment Server to manage your Heavy Forwarders.
+The first distribution takes one-time steps (the HFs as deployment clients, the server class, its agent assignment): see [Distribute the Data TA to Heavy Forwarders](distribute-data-ta.md).
+
+On the DS, the **Deploy to Forwarders** button, and the check that decides whether to show it, need the `edit_deployment_server` capability, not `admin_all_objects`. Splunk Enterprise's `admin` role has it; a custom DS operator role needs it added, or the button does not appear.
+
+#### :material-crop-square:{ .taiconcolor } Heavy Forwarder without a Deployment Server
+
+The TA is installed directly on each heavy forwarder that runs a LogServ input, and no Deployment Server manages it. It works like a single instance:
+
+- Save the Filters (and Cloud Provider) tab on each HF. A Save takes effect on that HF immediately, with no restart, and no **Deploy to Forwarders** button appears.
+- With several HFs, save the same values on every one: nothing copies them between HFs.
+- The daily Days in the Past refresh rebuilds the rules on the HF itself. If the HF is a deployment client of a DS for other apps, the refresh runs only when the HF's record of what its DS sent (`$SPLUNK_HOME/var/run/serverclass.xml`) lists other apps but not this TA; when that record is missing, unreadable or lists no app, the refresh is skipped, the cutoff stops moving, and the filter keeps more older events each day.
+
+!!! note "Splunk Cloud"
+    Splunk Cloud is never a Deployment Server, so the **Deploy to Forwarders** button never appears there. With Splunk Cloud, a DS is optional: run your own on-premises DS to manage your heavy forwarders centrally (your Splunk Cloud subscription includes a deployment server license, which you request from Splunk Support), or install the TA directly on each heavy forwarder.
 
 <br>
 
@@ -184,16 +198,20 @@ Both source fields take a comma-separated list. Each entry is either a source pa
 
 #### :material-crop-square:{ .taiconcolor } Days in the Past
 
-Whole number (0–3650) specifying the maximum age of events to index. Events with a `_time` older than this many days from today are dropped before indexing.
+Whole number (0–3650) specifying the maximum age of events to index. Events whose own `_time` is older than midnight UTC this many days ago are dropped before indexing.
 
 - Set to `7` to only index events from the last 7 days
 - Set to `0`, or leave the field empty, to disable time-based filtering
 - Default: `7`
+- It also limits history loads: with filtering on, the [AWS S3 Direct](aws-s3-direct.md) screen leaves out every day older than the cutoff, because their events would be dropped on arrival. Raise Days in the Past (or set it to `0`) before you load older days.
+
+!!! warning "With a Deployment Server, each heavy forwarder restarts about once a day"
+    While Enable Filtering is checked and Days in the Past is above 0, the daily refresh (below) pushes a new cutoff to the heavy forwarders, and each heavy forwarder in the `SAP_LogServ_HeavyForwarders` server class restarts about once a day to apply it, at a time of day set by when the Deployment Server last started. With filtering disabled, or Days in the Past at 0, the refresh changes nothing and no restart follows. On a single instance, or a heavy forwarder without a Deployment Server, the refresh reloads the rules in place, without a restart.
 
 ??? tip "How the time filter works"
     The time filter uses a pre-computed epoch-based regex that is refreshed automatically once per day by a built-in scripted input. If the refresh does not run, the cutoff does not move forward and the filter becomes slightly less restrictive: it keeps up to one extra day of older events for each missed day, until the next refresh or Save. The daily refresh rewrites all the generated filter rules, the source rules included, from the saved settings.
 
-    On a Deployment Server the refresh also copies the new rules to `deployment-apps/` and reloads the `SAP_LogServ_HeavyForwarders` server class, so the Heavy Forwarders get the new cutoff at their next phone-home. The cutoff changes every day, and the server class the TA creates maps the TA with `restartSplunkd = true`, so while filtering is enabled and Days in the Past is above 0, each Heavy Forwarder in that server class restarts about once a day to apply it, at a time of day set by when the Deployment Server last started. With filtering disabled, or Days in the Past at 0, the refresh changes nothing and no restart follows.
+    On a Deployment Server the refresh also copies the new rules to `deployment-apps/` and reloads the `SAP_LogServ_HeavyForwarders` server class (only that class), so the heavy forwarders get the new cutoff at their next phone-home. The cutoff changes every day, and the server class the TA creates maps the TA with `restartSplunkd = true`, which is why each heavy forwarder restarts to apply it. The refresh runs when splunkd starts and then once a day. After a Data TA version change on the Deployment Server, it first copies the whole new version into `deployment-apps/`, as a Save would, so the forwarders receive the new version and restart without a Save or **Deploy to Forwarders** ([Later Builds With the Same Version](distribute-data-ta.md#later-builds-with-the-same-version)).
 
 <br>
 
@@ -240,8 +258,7 @@ The time filter and both excludes come after the include steps, so they always w
 
 If any Include Filters entry is `*/*` or a standalone `*`, there is no include gate: steps 1–3 are left out, every event passes them — events without folder fields included — and the other Include Filters entries have no effect. With Enable Filtering checked, a save that also sets Include Sources is refused; a value that reaches the rules anyway (a hand-edited settings file) is ignored, and the Data TA logs a warning. Days in the Past, Exclude Filters and Exclude Sources still apply.
 
-!!! note "Behaviour change"
-    Earlier Data TA builds — those without the Include Sources and Exclude Sources fields — skipped the include gate only when `*/*` or `*` stood on its own in Include Filters. A list that mixed `*/*` with other entries (`*/*, linux/cron`) dropped every event without folder fields, and a standalone `*` beside other entries was ignored, so `*, linux/cron` kept only `linux/cron`. Both lists now keep everything. To keep an allow-list, remove `*/*` and `*` from it.
+Upgrading from an earlier build? Some filter behaviour on this page changed between builds; see [Upgrading](../getting-started/upgrading.md).
 
 #### :material-crop-square:{ .taiconcolor } Events Without Folder Fields
 
@@ -268,11 +285,11 @@ Before you narrow Include Filters, check what your deliveries carry without fold
 
 #### :material-crop-square:{ .taiconcolor } Long Lines
 
-Every rule reads the whole line, up to 100,000 characters — the longest line the Data TA indexes. An index-time transform reads only the first 4,096 characters unless told otherwise, so every filter stanza the Data TA generates sets `LOOKAHEAD = 100000`. This matters for the AWS envelope, which carries the log text (`_raw`) before `source`, `clz_dir` and `clz_subdir`: on a line whose log text ran past about 4,000 characters, earlier Data TA builds could not see the folder fields, so an Include Filters allow-list dropped the line and an exclude missed it.
+Every rule reads the whole line, up to 100,000 characters — the longest line the Data TA indexes. An index-time transform reads only the first 4,096 characters unless told otherwise, so every filter stanza the Data TA generates sets `LOOKAHEAD = 100000`. This matters for the AWS envelope, which carries the log text (`_raw`) before `source`, `clz_dir` and `clz_subdir`: a rule that read only the first 4,096 characters would miss the folder fields of a long line.
 
 The rules expect the envelope's metadata keys to sit together, all before or all after the `_raw` value, as in every LogServ delivery seen so far (Azure and GCP put them first, AWS after `_raw`). An envelope that put `_raw` between the keys an entry needs would not match that entry: a folder pattern needs `clz_dir` and `clz_subdir`, and a `dir/subdir=` entry also `source`, on the same side of `_raw`. A plain source pattern needs only `source`, so it would still match.
 
-The sourcetype routing and the indexed `host`, `source`, `clz_dir` and `clz_subdir` fields read the same 100,000 characters as the filters. Data TA builds of 2026-10-13 and earlier read only the first 4,096 characters there, so an AWS line whose log text was longer than that was judged by the filters on its envelope but indexed under the base `sap_logserv_logs` sourcetype, without folder fields and with the input's own `host` and `source`. A line longer than 100,000 characters is cut there (`TRUNCATE`), so an AWS line that long loses its envelope keys whatever the rules read.
+The sourcetype routing and the indexed `host`, `source`, `clz_dir` and `clz_subdir` fields read the same 100,000 characters as the filters. A line longer than 100,000 characters is cut there (`TRUNCATE`), so an AWS line that long loses its envelope keys whatever the rules read.
 
 <br>
 
@@ -290,69 +307,19 @@ The rules are generated from the settings as saved. A save through the REST API 
 
 ### :material-circle-box:{ .taiconcolor } Deployment Server: Additional Steps
 
-:material-lightning-bolt:{ .taiconcolor } If you are running on a **single instance**, you can skip this section — filter changes take effect immediately after Save.
+:material-lightning-bolt:{ .taiconcolor } If you are running on a **single instance**, or on a heavy forwarder without a Deployment Server, you can skip this section: filter changes take effect immediately after Save. The first-time steps for a Deployment Server are on [Distribute the Data TA to Heavy Forwarders](distribute-data-ta.md).
 
-<br>
+#### :material-crop-square:{ .taiconcolor } What a Save Does on a Deployment Server { #what-happens-automatically-on-save }
 
-### :material-circle-box:{ .taiconcolor } What Happens Automatically on Save
+A Save does not send anything to the heavy forwarders by itself. A Save on a Deployment Server copies the TA into `deployment-apps/` the first time (and again after a version change), stages its generated filter and Cloud Provider rules there on every Save, and creates the `SAP_LogServ_HeavyForwarders` server class, disabled, the first time; see [Distribute the Data TA → Save the Configuration Page](distribute-data-ta.md#2-save-the-configuration-page-on-the-deployment-server). The daily filter refresh does reload the server class by itself ([Days in the Past](#days-in-the-past)).
 
-When you save filter settings on a Deployment Server, the TA automatically:
+#### :material-crop-square:{ .taiconcolor } Configure the Server Class (First Time Only)
 
-1. Copies the full TA package to `/opt/splunk/etc/deployment-apps/splunk_ta_sap_logserv/`
-2. Mirrors the generated filter configurations (`transforms.conf`, `props.conf`) to the deployment-apps copy
-3. Creates a server class named `SAP_LogServ_HeavyForwarders` in a disabled state (if it doesn't already exist). The server class remains disabled until you configure client targeting in the next step.
+The server class needs an agent assignment that names your heavy forwarders (never `*`); see [Distribute the Data TA → Assign the Heavy Forwarders](distribute-data-ta.md#3-assign-the-heavy-forwarders-to-the-server-class).
 
-After saving, the Filters tab displays:
+#### :material-crop-square:{ .taiconcolor } Deploy to Forwarders
 
-- A **"⚠ Deployment Server Detected"** banner
-- A **"⚙ Server Class Setup Required"** or **"Client Targeting Needed"** notice (first time only)
-- A **"Deploy to Forwarders"** button
-
-??? note "Example"
-    ![image](../../images/filter-ds-detected-banner.png "Deployment Server Detected Banner")
-
-
-
-<br>
-
-### :material-circle-box:{ .taiconcolor } Configure the Server Class (First Time Only)
-
-The auto-created server class needs client targeting to know which Heavy Forwarders should receive the TA:
-
-1. Go to **Settings → Forwarder Management**
-2. Find the `SAP_LogServ_HeavyForwarders` server class
-3. Click the three-dot menu → **Edit agent assignment**
-4. Add your Heavy Forwarder IP addresses, hostnames, or use `*` for all connected forwarders
-5. Save the agent assignment — this also enables the server class
-
-??? note "Example"
-    ![image](../../images/filter-forwarder-mgmt.png "Forwarder Management Server Class")
-
-
-??? tip "Client Targeting"
-    Use IP addresses for client targeting, as Splunk matches against the client's IP, hostname, DNS name, or GUID — not the instance name.
-
-Return to the Filters tab — the setup notice should be gone (refresh the page in the browser if needed to see the change in the setup notice).
-
-??? note "Example"
-    ![image](../../images/filter-setup-notice-gone.png "Filters After Agent Assignment")
-
-
-<br>
-
-### :material-circle-box:{ .taiconcolor } Deploy to Forwarders
-
-1. On the Filters tab, click **"Deploy to Forwarders"** and confirm
-2. You should see the new updated banner on the filters screen confirming the deployment reload has been initiated
-??? note "Example"
-    ![image](../../images/filter-deploy-initiated.png "Deploy Reload Initiated")
-3. Wait for your Heavy Forwarders to phone home (typically 30–60 seconds depending on configuration)
-4. Verify deployment status in **Settings → Forwarder Management** — HFs should show as "Ok" under the server class, however it may take 5+ minutes to see the status on the forwarders change from `Pending` to `Ok`
-
-??? note "Example"
-    ![image](../../images/filter-deploy-success.png "Deploy Success")
-
-
+The **Deploy to Forwarders** button pushes the staged configuration; see [Distribute the Data TA → Deploy to Forwarders](distribute-data-ta.md#4-deploy-to-forwarders).
 
 <br>
 
@@ -360,12 +327,14 @@ Return to the Filters tab — the setup notice should be gone (refresh the page 
 
 Whenever you change filter settings:
 
-1. Make your changes on the Filters tab and click **Save**
-2. Click **"Deploy to Forwarders"** to distribute the updated configurations
-3. HFs will pick up the changes on their next phone-home interval
+1. Make your changes on the Filters tab and click **Save**.
+2. Click **Deploy to Forwarders** to distribute the updated configurations. The button reloads every server class on the Deployment Server, not only `SAP_LogServ_HeavyForwarders`.
+3. Each heavy forwarder picks up the change at its next phone-home (`phoneHomeIntervalInSecs`, 60 seconds by default) and then restarts. Allow 5 minutes or more before you check **Settings → Forwarder Management**.
+
+A change applies to events parsed after the forwarders receive it. For the first-time setup, see [Distribute the Data TA to Heavy Forwarders](distribute-data-ta.md).
 
 !!! note
-    Do not install the TA directly on Heavy Forwarders when using a Deployment Server. The DS manages the TA distribution. Installing locally on an HF can cause configuration conflicts.
+    With a Deployment Server, install the TA on the Deployment Server only. A push replaces each heavy forwarder's copy of the TA, its `local/` folder included, so anything installed or saved directly on a heavy forwarder in the server class is overwritten.
 
 <br>
 
@@ -382,7 +351,7 @@ Whenever you change filter settings:
 You should see data only for log types matching your include patterns.
 
 ??? tip "Index macro"
-    The `sap_logserv_idx_macro` macro expands to `index="sap_logserv_logs"` by default. If you changed the index name in your environment, update the macro definition under **Settings → Advanced Search → Search Macros** or substitute your index name directly in the search.
+    The `sap_logserv_idx_macro` macro expands to `index="sap_logserv_logs"` by default. It is defined where the Data TA or the LogServ App is installed; on a search head that has neither yet, use `index=sap_logserv_logs` instead. If you changed the index name, follow [Renaming an index](install-ta.md#renaming-an-index): the macro must be changed in every app on the search head that ships it. Or substitute your index name directly in the search.
 
 <br>
 
@@ -408,7 +377,7 @@ Search for events older than your configured cutoff:
 `sap_logserv_idx_macro` earliest=-30d latest=-10d
 ```
 
-If your Days in Past is less than 10, this search should return no results.
+If your Days in the Past is less than 10, this search should return no events indexed after the filter took effect.
 
 <br>
 
@@ -417,32 +386,32 @@ If your Days in Past is less than 10, this search should return no results.
 ## Reading the Active Filter Configuration
 
 Support workflows (and the LogServ App's [Data Doctor](../logserv-app/dashboards/platform/diagnostics.md))
-sometimes need the ACTIVE filter configuration as text. Two ways to read it:
+sometimes need the active filter configuration as text. Where to read it:
 
-**REST — authoritative on the deployment server (distributed) or the single instance:**
+- **Deployment Server (distributed install), or a single instance:** the Data TA's
+  `filter_settings` REST endpoint on that instance. It returns `filter_enabled`,
+  `include_filters`, `exclude_filters`, `include_sources`, `exclude_sources` and
+  `days_in_past` as saved.
+- **Heavy forwarder that no Deployment Server manages:** the same endpoint on that forwarder,
+  whose Filters saves are made on it, or its generated `local/transforms.conf`.
+- **Heavy forwarder that a Deployment Server manages:** only its generated
+  `$SPLUNK_HOME/etc/apps/splunk_ta_sap_logserv/local/transforms.conf`.
 
-```bash
-curl -k -u <splunk-admin> "https://<deployment-server>:8089/servicesNS/nobody/splunk_ta_sap_logserv/splunk_ta_sap_logserv_settings/filter_settings?output_mode=json"
-```
-
-Omit `?output_mode=json` for the XML form. The response carries `filter_enabled`,
-`include_filters`, `exclude_filters`, `include_sources`, `exclude_sources` and `days_in_past`
-exactly as configured.
-
-**File — the only reliable artifact on a DS-managed Heavy Forwarder:**
-
-```bash
-sudo cat /opt/splunk/etc/apps/splunk_ta_sap_logserv/local/transforms.conf
-```
+The exact commands are in
+[Supplying the ingest-filter configuration](../logserv-app/dashboards/platform/diagnostics.md#supplying-the-ingest-filter-configuration).
+The LogServ App's **Platform → Diagnostics** page accepts their pasted output and turns the
+ingest filters into evidence its missing-data diagnosis can reason about.
 
 !!! warning "The HF's REST endpoint is misleading"
-    On a deployment-server-managed Heavy Forwarder the `filter_settings` REST endpoint
-    returns the shipped defaults — the pushed configuration lives only in the generated
-    `local/transforms.conf`. Always use the file on an HF.
-
-The LogServ App's **Platform → Diagnostics** page prints these same commands and accepts the
-pasted output, turning the ingest filters into evidence its missing-data diagnosis can reason
-about — see [Supplying the ingest-filter configuration](../logserv-app/dashboards/platform/diagnostics.md#supplying-the-ingest-filter-configuration).
+    On a deployment-server-managed heavy forwarder the `filter_settings` REST endpoint
+    returns the HF's copy of `local/splunk_ta_sap_logserv_settings.conf` on top of the
+    shipped defaults. The Deployment Server copies that file to `deployment-apps/` only
+    when it copies the whole TA there: on the first Filters or Cloud Provider save on the
+    Deployment Server, and on the first save or daily filter refresh after a TA version
+    change. Later saves send only `local/transforms.conf` and `local/props.conf`. So the
+    endpoint can show an earlier save's settings, or the shipped defaults, and neither
+    tells you what the HF filters now. The active filter is in the generated
+    `local/transforms.conf`. Always use the file on an HF that a Deployment Server manages.
 
 !!! note "Source rules make the Data Doctor's folder verdicts approximate"
     A source rule acts on single files, not on whole folders. When a pasted configuration
@@ -459,65 +428,20 @@ about — see [Supplying the ingest-filter configuration](../logserv-app/dashboa
     evidence that explains these files (see
     [Events Without Folder Fields](#events-without-folder-fields)).
 
-    This needs LogServ App build 377 or later, which follows the Data TA build that added
-    Include Sources and Exclude Sources. App build 376 and earlier do not know the source
-    rules: they ignore them, read a paste that holds only source rules as filtering with
-    everything included, read only the first stanza of a list split over several, and
-    report folder patterns with `*` or `?` as not reconstructable (a partial read).
-
 !!! tip "The transforms paste also carries the Cloud Provider stamp"
     A pasted `local/transforms.conf` includes the generated `[logserv_set_cloud_provider]`
-    stanza when the [Cloud Provider Attribution](#cloud-provider-attribution) dropdown is set,
+    stanza when the [Cloud Provider](cloud-attribution.md) dropdown is set,
     so the Data Doctor also records the configured stamp and can explain how it interacts
     with a dashboard's Cloud filter. A missing stanza is *not* read as "Not set" — the paste
     may be truncated; only a settings-conf paste can supply the explicit `not_set` value.
 
 ## Supported Log Types
 
-### :material-circle-box:{ .taiconcolor } Log Type Reference
+The values to use in filter patterns are the `clz_dir` and `clz_subdir` values each log type arrives with, and for Include Sources and Exclude Sources its `source` values. [Supported Log Types](../getting-started/supported-log-types.md) lists both for every **Primary** log type (those with dedicated sourcetype routing), and the **Secondary** log types, which have no dedicated routing but can still be filtered by their own `clz_dir/clz_subdir` paths, or, where they share a primary type's folder, by their `source` values (see [Filter Recipes](#filter-recipes)).
 
-The table below lists the **Primary** log types — those with dedicated sourcetype routing. The `clz_dir` and `clz_subdir` columns show the values used in filter patterns; use these values when configuring your include and exclude filters. The canonical, complete reference (including the **Secondary** log types, which have no dedicated routing but can still be filtered by their own `clz_dir/clz_subdir` paths — or, where they share a primary type's folder, by their `source` values; see [Filter Recipes](#filter-recipes)) is [Supported Log Types](../getting-started/supported-log-types.md).
+Real LogServ deliveries do not all use one folder layout: Azure delivers Squid under `linux/proxy` (the AWS bucket uses `proxy/squid`), and GCP delivers `pacemaker.log` under `linux/pacemaker` and a proxy VM's `/var/log/messages` under `linux/proxy`. A rule meant to cover a log type on every cloud names all of its paths. SAP discontinued `abap/dispatcher`, `abap/event` and `abap/workprocess` from LogServ delivery in April 2026, so filters on them affect older data only.
 
-| clz_dir | clz_subdir | Splunk Sourcetype |
-|---------|------------|-------------------|
-| abap | audit | `sap:abap:audit` |
-| abap | dispatcher † | `sap:abap:dispatcher` |
-| abap | enqueueserver | `sap:abap:enqueueserver` |
-| abap | event † | `sap:abap:event` |
-| abap | gateway | `sap:abap:gateway` |
-| abap | icm | `sap:abap:icm` |
-| abap | messageserver | `sap:abap:messageserver` |
-| abap | sapstartsrv | `sap:abap:sapstartsrv` |
-| abap | workprocess † | `sap:abap:workprocess` |
-| dns | binddns | `isc:bind:query`, `isc:bind:lameserver`, `isc:bind:network`, `isc:bind:transfer` |
-| hana | hanaaudit | `sap:hana:audit` |
-| hana | tracelogs | `sap:hana:tracelogs` |
-| linux | cron | `linux:cron` |
-| linux | localmessages | `linux_messages_syslog` |
-| linux | messages | `linux_messages_syslog` |
-| linux | pacemaker ‡ | `linux:slapd` |
-| linux | proxy ‡ | `squid:access`, `squid:cache`, `squid:store`, `linux_messages_syslog` |
-| linux | linux_secure | `linux_secure`, `lastlog`, `who` |
-| linux | slapd | `linux:slapd` |
-| linux | sudolog | `linux:sudolog` |
-| linux | warn | `linux:warn` |
-| proxy | squid | `squid:access`, `squid:cache`, `squid:store` |
-| sap | saphostexec | `sap:saphostexec` |
-| sap | saprouter | `sap:saprouter` |
-| sap | sapstartsrv | `sap:sapstartsrv` |
-| scc | audit | `sap:scc:audit` |
-| scc | tracelogs | `sap:scc:http_access` |
-| webdispatcher | accesslog | `sap:webdispatcher:access` |
-| windows | WinEventLog:Application | `XmlWinEventLog` |
-| windows | WinEventLog:Powershell | `XmlWinEventLog` |
-| windows | WinEventLog:Security | `XmlWinEventLog` |
-| windows | WinEventLog:System | `XmlWinEventLog` |
-
-† `abap/dispatcher`, `abap/event`, and `abap/workprocess` were discontinued by SAP from LogServ delivery effective April 2026 — filters on them affect historical data only. Contact SAP about continued collection.
-
-‡ Paths seen in real LogServ data beside the older layout: Azure delivers Squid under `linux/proxy` (the AWS bucket uses `proxy/squid`), and GCP delivers `pacemaker.log` under `linux/pacemaker` and a proxy VM's `/var/log/messages` under `linux/proxy`. A rule meant to cover a log type on every cloud names all of its paths.
-
-??? tip "Filter pattern examples using this table"
+??? tip "Filter pattern examples"
     - To include all DNS logs: `dns/*` or `dns/binddns`
     - To include all Linux logs except cron: Include `linux/*`, Exclude `linux/cron`
     - To exclude Squid on every cloud: Exclude Filters `proxy/squid`, Exclude Sources `linux/proxy=/var/log/squid/*`. Excluding the whole `linux/proxy` folder would also drop the `/var/log/messages` lines a proxy VM delivers there. Likewise, an Include of `linux/*` also keeps Azure's Squid logs
@@ -670,8 +594,9 @@ Open **Configuration → Filters**, correct the field and click **Save**.
 cat /opt/splunk/etc/deployment-apps/splunk_ta_sap_logserv/local/transforms.conf
 ```
 
-- Click **Deploy to Forwarders** and wait for phone-home
-- If only the time cutoff lags behind, check the daily refresh on the Deployment Server: it reloads the server class itself and logs a WARNING when it cannot (the Heavy Forwarders then keep the previous cutoff until the next **Deploy to Forwarders**):
+- Click **Deploy to Forwarders** and wait for the next phone-home (60 seconds by default) and the restart that follows; allow 5 minutes or more
+- If the forwarders still run an older build of the TA, a newer build with the same version number was not copied into `deployment-apps/`: a Save, or the daily filter refresh, copies the whole TA there only the first time and when the version changes. See [Later Builds With the Same Version](distribute-data-ta.md#later-builds-with-the-same-version)
+- If only the time cutoff lags behind, check the daily refresh on the Deployment Server: it reloads the server class itself and logs a WARNING when it cannot (the heavy forwarders then keep the previous cutoff until the next **Deploy to Forwarders**):
 
 ```spl
 index=_internal sourcetype=splunkd component=ExecProcessor logserv_filter_time_refresh "level=WARNING"
@@ -687,14 +612,7 @@ cat /opt/splunk/etc/apps/splunk_ta_sap_logserv/local/transforms.conf
 
 ### :material-circle-box:{ .taiconcolor } Deployment Server Not Detected
 
-- The TA detects deployment servers by checking server roles and for connected deployment clients
-- Verify your Heavy Forwarders are configured as deployment clients pointing to the DS
-- Check with:
-
-```bash
-curl -sk -u admin:<password> \
-  "https://localhost:8089/services/deployment/server/clients?output_mode=json&count=1"
-```
+The TA recognises a Deployment Server by its server roles (a server class exists) or by deployment clients that phone home to it; until then a Save does no Deployment Server work and no **Deploy to Forwarders** button appears. Make the heavy forwarders deployment clients first and check that they phone home: see [Distribute the Data TA → Make the Heavy Forwarders Deployment Clients](distribute-data-ta.md#1-make-the-heavy-forwarders-deployment-clients). If they do and the button is still missing, check that your role holds `edit_deployment_server`.
 
 <br>
 
@@ -717,7 +635,7 @@ curl -sk -u admin:<password> \
 
 ### :material-circle-box:{ .taiconcolor } Time Filter Seems Off by a Day
 
-The time filter epoch cutoff is refreshed once per day by a scripted input. After changing the Days in Past value, the cutoff regex is regenerated immediately on Save. If the daily refresh does not run, or skips because it cannot read the saved settings (see [Daily Refresh Reports an Invalid Setting](#daily-refresh-reports-an-invalid-setting)), the cutoff stays where it was and the filter becomes slightly less restrictive: it keeps up to one extra day of older events for each missed day, until the next refresh or Save.
+The time filter epoch cutoff is refreshed once per day by a scripted input. After changing the Days in the Past value, the cutoff regex is regenerated immediately on Save (on a Deployment Server, the forwarders get it after **Deploy to Forwarders**). The cutoff is midnight UTC N days ago, so it moves once a day, not continuously. If the daily refresh does not run, or skips because it cannot read the saved settings (see [Daily Refresh Reports an Invalid Setting](#daily-refresh-reports-an-invalid-setting)), the cutoff stays where it was and the filter becomes slightly less restrictive: it keeps up to one extra day of older events for each missed day, until the next refresh or Save.
 
 <br>
 
@@ -725,65 +643,7 @@ The time filter epoch cutoff is refreshed once per day by a scripted input. Afte
 
 ## Cloud Provider Attribution
 
-### :material-circle-box:{ .taiconcolor } What It Does
-
-The **Configuration** page has two tabs: **Filters** (covered above) and **Cloud Provider**. The Cloud Provider tab controls how the Data TA attributes each event to the cloud it was ingested from.
-
-The Data TA stamps two indexed fields at index time on the bootstrap `sap_logserv_logs` sourcetype — the same `WRITE_META` mechanism it uses to preserve `clz_dir` and `clz_subdir`:
-
-| Indexed field | Value | How it's set | Configurable |
-|---|---|---|---|
-| `splunk_solution` | `splunk_for_sap_logserv` | Always stamped on every event | No — ships active, no UI control |
-| `cloud_provider` | `aws` / `azure` / `gcp` / *(none)* | Stamped per the Cloud Provider dropdown | Yes — **Configuration → Cloud Provider** |
-
-Both fields are written at index time on the Heavy Forwarder (or the indexer in single-instance mode), so they are available as indexed fields for `tstats`, accelerated searches, and raw-event filtering.
-
-<br>
-
-### :material-circle-box:{ .taiconcolor } The splunk_solution Field (always-on)
-
-Every event indexed through the Data TA carries `splunk_solution = splunk_for_sap_logserv`. This is a static attribution stamp — there is no UI control and nothing to configure. It identifies events that flowed through the Splunk for SAP LogServ pipeline, which is useful when the same index or Splunk instance also receives data from other solutions.
-
-!!! note "`splunk_solution` is distinct from `vendor_product`"
-    The LogServ App also defines a per-sourcetype `vendor_product` search-time field (e.g., `SAP HANA`, `SAP NetWeaver ABAP`, `SAP Web Dispatcher`, `ISC:Bind`) that dashboards and CIM mapping rely on. That field describes *which product* produced a given event. `splunk_solution` is a separate, coarser stamp identifying the *solution* — this TA — that ingested it. The two coexist and do not collide.
-
-<br>
-
-### :material-circle-box:{ .taiconcolor } The cloud_provider Field (dropdown-driven)
-
-On the **Cloud Provider** tab, the **Cloud Provider** dropdown has four choices:
-
-| Selection | Effect |
-|---|---|
-| **Not set** (default) | No `cloud_provider` value is stamped at index time. |
-| **AWS** | Every event this TA processes is stamped `cloud_provider = aws`. |
-| **Microsoft Azure** | Every event this TA processes is stamped `cloud_provider = azure`. |
-| **Google Cloud Platform** | Every event this TA processes is stamped `cloud_provider = gcp`. |
-
-Click **Save** to apply. On a single instance the change takes effect immediately. On a Deployment Server, click **Deploy to Forwarders** (see below) to push it to the Heavy Forwarders.
-
-#### :material-crop-square:{ .taiconcolor } Relationship to the search-time default macro
-
-The LogServ App ships a search-time macro, `sap_logserv_cloud_provider_default_macro`, defined as:
-
-```spl
-eval cloud_provider=coalesce(cloud_provider, "aws")
-```
-
-This macro defaults any event WITHOUT an indexed `cloud_provider` value to `aws` at search time, so legacy events that pre-date this feature (or events from a TA left at **Not set**) still report a provider in dashboards such as [Multi-Cloud Overview](../logserv-app/dashboards/platform/multi-cloud-overview.md). Setting the dropdown to **AWS** makes that attribution explicit at index time — preferable for any new Heavy Forwarder rollout, because the indexed field can then be used directly in raw-event searches, not only in macro-wrapped dashboard panels.
-
-#### :material-crop-square:{ .taiconcolor } Relationship to the per-input `_meta`
-
-The LogServ Azure add-on's **`sap_logserv_azure_queue`** input carries `_meta = cloud_provider::azure` on its stanza automatically (the add-on injects it), and the LogServ GCP add-on's **`sap_logserv_gcp_pubsub`** input likewise carries `_meta = cloud_provider::gcp` — so Azure and GCP events self-attribute regardless of the dropdown; see the [Azure Setup Guide](azure-setup.md) and the [GCP Setup Guide](gcp-setup.md). The Cloud Provider dropdown is the simpler, Data-TA-managed way to stamp the same value on every event a Heavy Forwarder's Data TA processes (useful for the AWS side, or as a single-cloud override). For a Heavy Forwarder that ingests from a single cloud, the dropdown is the recommended mechanism.
-
-!!! warning "Mixed-cloud single Heavy Forwarder"
-    The Cloud Provider dropdown is a TA-wide (per-HF) setting — it stamps the same value on every event that HF's Data TA processes. If a **single** Heavy Forwarder ingests from MORE THAN ONE cloud channel (any mix of AWS S3, Azure Blob Storage, and Google Cloud Storage), the dropdown cannot tell the channels apart — and because the `sap_logserv_azure_queue` and `sap_logserv_gcp_pubsub` input stanzas already carry their own `_meta` values, setting the dropdown to a provider would tag those inputs' events with BOTH values. In that case, leave the dropdown at **Not set** and attribute per input instead: set `_meta = cloud_provider::aws` on the `Splunk_TA_aws` SQS-based S3 input(s); the Azure and GCP inputs already self-attribute. With the dropdown at **Not set** the TA adds no `cloud_provider` stamp of its own, so each input's `_meta` value is the only one written.
-
-<br>
-
-### :material-circle-box:{ .taiconcolor } Deploy to Forwarders (Deployment Server)
-
-The Cloud Provider tab uses the same deployment flow as the Filters tab. When you Save on a Deployment Server, the TA writes the selection into its `local/transforms.conf` and mirrors it to the `deployment-apps/` copy. Click **Deploy to Forwarders** to trigger a deployment-server configuration reload; the Heavy Forwarders in the `SAP_LogServ_HeavyForwarders` server class pick up the change on their next phone-home (typically within one phone-home interval — 30–60 seconds by default). This is identical to the Filters-tab deploy procedure described earlier on this page — same server class, same button.
+The **Cloud Provider** tab of the Configuration page, the always-on `splunk_solution` stamp and the per-input `cloud_provider` stamps are described on [Choose Cloud Attribution](cloud-attribution.md). In short: leave the dropdown at **Not set** and add `_meta = cloud_provider::aws` to each AWS SQS-Based S3 input; the Azure and GCP inputs and the AWS S3 Direct backfills stamp their own events.
 
 <br>
 
@@ -793,11 +653,11 @@ The Cloud Provider tab uses the same deployment flow as the Filters tab. When yo
 
 ### :material-circle-box:{ .taiconcolor } Overview
 
-The Lambda-based filtering approach filters S3 event notifications in AWS *before* they reach Splunk. A Lambda function sits between the cross-account SQS queue (in the SAP ECS account) and a local SQS queue (in your Secondary account). It evaluates each S3 event notification against include/exclude path patterns and a time-based cutoff, forwarding only matching notifications to the local queue that Splunk polls.
+The Lambda-based filtering approach filters S3 event notifications in AWS *before* they reach Splunk. A Lambda function sits between the cross-account SQS queue (in the SAP ECS account) and a local SQS queue (in your Secondary account). For each notification it downloads the object from SAP's bucket, checks the object's records against include/exclude folder patterns and a time cutoff, and forwards only the notifications of objects with at least one wanted record to the local queue that Splunk polls. It is a separate filter from the Filters tab, with settings of its own, and it behaves differently in several ways described below.
 
 ??? tip "When to use Lambda-based filtering"
-    - You want to reduce the number of S3 GET requests Splunk makes (cost savings in high-volume environments)
-    - You want to reduce SQS message volume before it reaches Splunk
+    - You want to reduce what the heavy forwarder downloads and parses (the Lambda reads every object first, so the total number of S3 GET requests does not fall)
+    - You want to reduce the SQS messages the heavy forwarder processes
     - You want filtering to happen at the AWS pipeline level as an additional layer
 
 <br>
@@ -805,17 +665,32 @@ The Lambda-based filtering approach filters S3 event notifications in AWS *befor
 ### :material-circle-box:{ .taiconcolor } How It Works
 
 ```
-SAP ECS Account                    Your Secondary Account
+SAP ECS Account                      Your Secondary Account
 +--------------+    +-----------+    +------------+    +-----------+
-| S3 Bucket    |--->| SQS Queue |--->|   Lambda   |--->| Local SQS |--->  Splunk HF
-| (LogServ)    |    | (cross)   |    |  (filter)  |    |  Queue    |
-+--------------+    +-----------+    +------------+    +-----------+
-                                       | Drops non-
-                                       | matching
-                                       v notifications
+| S3 Bucket    |--->| SQS Queue |--->|   Lambda   |--->| Local SQS |---> Splunk HF
+| (LogServ)    |    | (SAP's)   |    |  (filter)  |    |  Queue    |        |
++--------------+    +-----------+    +------------+    +-----------+        |
+    ^    ^                             |    |                               |
+    |    |   GetObject: every object   |    | drops a notification when no  |
+    |    +-----------------------------+    v record passes, or on an error |
+    |                                                                       |
+    +------------- GetObject: only the objects the Lambda passed ----------+
 ```
 
-The Lambda function evaluates the S3 object key in each notification to extract `clz_dir` and `clz_subdir` values, then applies the same fnmatch pattern syntax used by the native TA filtering.
+For each notification, the Lambda takes its first S3 record, downloads the object from the SAP ECS bucket (decompressing it if it is gzipped) and reads `_time`, `clz_dir` and `clz_subdir` from each NDJSON record. It forwards the notification, unchanged, as soon as one record passes all three checks:
+
+- the record's `_time` is not older than now minus `DAYS_IN_THE_PAST` days;
+- its `clz_dir/clz_subdir` matches an `INCLUDE_FILTERS` pattern;
+- it matches no `EXCLUDE_FILTERS` pattern.
+
+If no record passes, it drops the notification. An object that passes is ingested whole: Splunk downloads it and indexes all of its records, older or excluded ones included, unless the Filters tab also drops them. That is why using both together is the safe combination.
+
+!!! warning "The Lambda does not retry: a notification it cannot process is lost"
+    When the Lambda cannot read an object from the SAP ECS bucket (for example because SAP's bucket policy is not in place yet), or cannot send the notification to your local queue, it logs the error and reports the message as processed, so SAP's notification is deleted and that object is not ingested. Only an invalid Lambda configuration (a missing or invalid environment variable) returns messages to SAP's queue, even with **Report batch item failures** turned on, and the dead-letter queue the template creates guards your local queue, not SAP's.
+
+    - Before you activate the Lambda's trigger on SAP's queue, wait until SAP confirms that both access policies (S3 and SQS) are in place, and allow about 5 minutes after the stack is created for IAM changes to apply.
+    - To find losses, search the Lambda's CloudWatch logs for `Could not retrieve S3 object, discarding message` and `Failed to forward message to target SQS, discarding`.
+    - To recover, fix the cause, then load the days the errors cover from the SAP ECS bucket with [AWS S3 Direct](aws-s3-direct.md); the objects stay in SAP's bucket.
 
 <br>
 
@@ -825,25 +700,25 @@ There are two ways to deploy Lambda-based filtering:
 
 #### :material-crop-square:{ .taiconcolor } New Deployment (S3 Filter Setup)
 
-If you are setting up from scratch, follow the [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md). The CloudFormation template creates all required AWS resources (Lambda, local SQS queue, DLQ, IAM permissions) in a single deployment.
+If you are setting up from scratch, follow the [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md). The CloudFormation template creates the Lambda, the local SQS queue, its dead-letter queue and the IAM resources. You create the bucket for the Lambda code first (its name is yours and must be unique, in the stack's Region) and the access key yourself. You create the Lambda's SQS trigger only after SAP confirms both access policies. See the guide's steps [2](aws-remote-s3-filter-guide.md#2-create-s3-bucket-with-lambda-function-zip-file), [5](aws-remote-s3-filter-guide.md#5-create-access-key-for-iam-user) and [9](aws-remote-s3-filter-guide.md#9-create-the-sqs-queue-trigger).
 
 #### :material-crop-square:{ .taiconcolor } Migration from Existing S3 Connect Deployment
 
-If you already have a working **S3 Connect** deployment and want to add Lambda-based filtering, follow the [AWS Remote S3 Connect to Filter Migration](aws-remote-s3-connect-to-filter-migration-guide.md) (a legacy reference kept outside the site navigation). The Python migration script adds the Lambda resources to your existing IAM infrastructure without recreating it. For most deployments the native index-time filtering above is the simpler path.
+If you already have a working **S3 Connect** deployment and want to add Lambda-based filtering, follow [Legacy: AWS S3 Connect to Filter Migration](https://splunk.github.io/splunk-sap-logserv/content/install-setup/aws-remote-s3-connect-to-filter-migration-guide/) (a legacy guide kept outside the site navigation). The Python migration script adds the Lambda resources to your existing IAM infrastructure without recreating it. For most deployments the native index-time filtering above is the simpler path.
 
 <br>
 
 ### :material-circle-box:{ .taiconcolor } Lambda Filter Settings
 
-The Lambda function uses three environment variables for its filter configuration:
+The Lambda function uses three environment variables for its filter configuration (the Filter template's parameters `DaysInThePast`, `IncludeFilters` and `ExcludeFilters`):
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `DAYS_IN_THE_PAST` | Drop notifications for objects older than this many days | `7` |
-| `INCLUDE_FILTERS` | Comma-separated fnmatch patterns for paths to include | `linux/*,hana/*` |
-| `EXCLUDE_FILTERS` | Comma-separated fnmatch patterns for paths to exclude | `linux/cron,linux/slapd` |
+| `DAYS_IN_THE_PAST` | Forward a notification only if at least one of the object's records has a `_time` within this many days: a rolling cutoff, now minus N × 24 hours, recomputed on each run. (The Filters tab uses midnight UTC minus N days, so with the same N the Lambda keeps up to a day less.) 1 to 365 in the CloudFormation template; there is no "0 = off". | `7` |
+| `INCLUDE_FILTERS` | Comma-separated fnmatch patterns on `clz_dir/clz_subdir`; a record must match one of them. **An empty value drops every notification**: use `*/*` (the template's default) to include everything. (On the Filters tab an empty Include Filters cannot be saved.) | `linux/*,hana/*` |
+| `EXCLUDE_FILTERS` | Comma-separated fnmatch patterns on `clz_dir/clz_subdir` to exclude. Empty excludes nothing. | `linux/cron,linux/slapd` |
 
-:material-lightning-bolt:{ .taiconcolor } These use the same `clz_dir/clz_subdir` pattern format as the native TA filters. If you are using both approaches, keep the patterns aligned for consistent behavior. The Lambda has no equivalent of **Include Sources** or **Exclude Sources**: it reads the S3 object key, not the `source` value of each event, so file-level rules apply only on the Filters tab.
+:material-lightning-bolt:{ .taiconcolor } If you use both approaches, write the Lambda's patterns only in the form the Filters tab accepts (`dir/subdir` or a standalone `*`, with letters, numbers and `* ? . - : _`), so both match the same records. The Lambda's fnmatch accepts more, and differs: `[...]` character sets work, `*` also matches across `/` (`linux*` matches `linux/cron`), and a bare `*` in `EXCLUDE_FILTERS` drops everything, whereas on the Filters tab it excludes nothing. A record without `_time` never passes. The Lambda reads only `_time`, `clz_dir` and `clz_subdir` from each record, not its `source`, so **Include Sources** and **Exclude Sources** have no Lambda equivalent: file-level rules apply only on the Filters tab.
 
 <br>
 
@@ -852,20 +727,20 @@ The Lambda function uses three environment variables for its filter configuratio
 Consider a scenario where you want to ingest only `hana/*` and `linux/messages` logs from the last 7 days:
 
 ??? tip "Native TA filtering only (simplest)"
-    - **Setup:** Configure the Filters tab with include `hana/*, linux/messages` and days in past `7`
+    - **Setup:** Configure the Filters tab with include `hana/*, linux/messages` and Days in the Past `7`
     - **What happens:** All S3 objects are downloaded by Splunk, but unwanted events are dropped at index time via TRANSFORMS before consuming license
     - **Pros:** No extra AWS resources, managed from Splunk Web, upgrade notifications, works with any deployment scenario
     - **Cons:** Splunk still downloads and parses all S3 objects before filtering
 
 ??? tip "Lambda filtering only"
     - **Setup:** Configure Lambda with the same include/exclude/days patterns
-    - **What happens:** The Lambda drops S3 event notifications for unwanted objects before Splunk ever sees them. Splunk only downloads matching objects from S3
-    - **Pros:** Reduces S3 GET request costs, lower Splunk ingestion overhead
-    - **Cons:** Requires Lambda + local SQS + DLQ in AWS, no upgrade notifications, filter changes require updating Lambda environment variables
+    - **What happens:** The Lambda downloads each object and drops the notifications of objects with no wanted record before Splunk sees them. Splunk downloads only the objects the Lambda passed, and indexes each of them whole
+    - **Pros:** Lower forwarder download, CPU and ingestion overhead
+    - **Cons:** Requires Lambda + local SQS + DLQ in AWS; the Lambda reads every object, so total S3 GETs rise (Lambda + Splunk), plus Lambda and SQS charges; a passed object's unwanted records are indexed too; a notification the Lambda cannot process is lost; no upgrade notifications; filter changes require updating the Lambda's environment variables
 
 ??? tip "Both together (defense-in-depth)"
     - **Setup:** Same patterns configured in both Lambda and the Filters tab
-    - **What happens:** Lambda filters at the AWS level first, then native TA filtering catches anything that slips through at the Splunk level
+    - **What happens:** Lambda filters at the AWS level first, then native TA filtering drops the unwanted records of the objects the Lambda passed
     - **Pros:** Maximum coverage, safety net if either filter is misconfigured
     - **Cons:** Two places to maintain filter configurations
 
@@ -873,4 +748,7 @@ Consider a scenario where you want to ingest only `hana/*` and `linux/messages` 
 
 ## :material-circle-box:{ .cboxmove } Next Steps
 
-Return to the [Setup Guides Overview](setup-guides.md) for AWS data pipeline configuration, or see the [Developer Reference](../developer/developer-reference.md) for technical internals.
+- Setting up for the first time: [Decide Filtering](decide-filtering.md), then [Distribute the Data TA to Heavy Forwarders](distribute-data-ta.md).
+- Connecting your cloud: [Choose Your Cloud and AWS Scenario](choose-your-cloud.md).
+- Something not working: [Troubleshooting](../getting-started/troubleshooting.md) and the [Troubleshooting](#troubleshooting) section above.
+- Technical internals: [Data TA Internals](../developer/data-ta-internals.md).

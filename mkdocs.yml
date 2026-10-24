@@ -9,6 +9,22 @@ repo_url: "https://github.com/splunk/splunk-sap-logserv"
 
 # site_dir: site
 
+# The Connect-to-Filter migration guide stays out of the menu on purpose (user decision 2026-10-23):
+# it is still built, searchable and linked from the pages that need it.
+not_in_nav: |
+  /content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md
+
+validation:
+  nav:
+    omitted_files: info
+    not_found: warn
+    absolute_links: info
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: info
+    unrecognized_links: warn
+
 markdown_extensions:
   - toc:
       permalink: True
@@ -47,8 +63,16 @@ theme:
         name: Switch to light mode
   features:
     - content.code.copy
-    #- navigation.indexes
     - navigation.instant.preview
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.indexes
+    - navigation.path
+    - navigation.footer
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
 
 
 extra_css:
@@ -67,68 +91,74 @@ plugins:
   - print-site  # should be at the end
 
 nav:
-- Getting Started:
-    - About: 'index.md'
-    - Architecture: 'content/getting-started/architecture.md'
-    - Release Notes: 'content/overview/release-notes.md'
-    - Third-Party Software: 'content/overview/third-party-licenses.md'
-    - Supported Log Types: 'content/getting-started/supported-log-types.md'
-    - Prerequisites: 'content/getting-started/prerequisites.md'
-    - Quick Install Reference: 'content/getting-started/quick-install-reference.md'
-    - Upgrading to this release: 'content/getting-started/upgrading.md'
-- LogServ Data TA:
-    - Prerequisites: 'content/install-setup/prerequisites.md'
-    - Installing the Data TA: 'content/install-setup/install-ta.md'
+- Home: 'index.md'
+- Get Started:
+    - 'Start Here: Deployment Roadmap': 'content/getting-started/roadmap.md'
+    - '1. Plan':
+        - Architecture: 'content/getting-started/architecture.md'
+        - Supported Log Types: 'content/getting-started/supported-log-types.md'
+        - Where Each Package Goes: 'content/getting-started/package-placement.md'
+        - Plan and Prerequisites: 'content/getting-started/prerequisites.md'
+        - Splunk Cloud Considerations: 'content/getting-started/splunk-cloud.md'
+        - Capacity Planning and First Start: 'content/getting-started/capacity-planning.md'
+    - '2. Install the Data TA':
+        - Create the Indexes and Install the Data TA: 'content/install-setup/install-ta.md'
+        - Choose Cloud Attribution: 'content/install-setup/cloud-attribution.md'
+        - Decide Filtering: 'content/install-setup/decide-filtering.md'
+        - Distribute the Data TA to Heavy Forwarders: 'content/install-setup/distribute-data-ta.md'
+    - '3. Connect Your Cloud':
+        - Choose Your Cloud and AWS Scenario: 'content/install-setup/choose-your-cloud.md'
+        - AWS:
+            - AWS Remote S3 Connect: 'content/install-setup/aws-remote-s3-connect-guide.md'
+            - AWS Remote S3 Filter: 'content/install-setup/aws-remote-s3-filter-guide.md'
+            - AWS Remote S3 Copy: 'content/install-setup/aws-remote-s3-copy-guide.md'
+        - Azure Setup Guide: 'content/install-setup/azure-setup.md'
+        - GCP Setup Guide: 'content/install-setup/gcp-setup.md'
+    - '4. Verify Your Data': 'content/getting-started/verify-data.md'
+    - '5. Install the LogServ App':
+        - LogServ App Prerequisites: 'content/logserv-app/prerequisites.md'
+        - Install the App and Seed the Dashboards: 'content/logserv-app/installation.md'
+- Configure and Operate:
     - Configuring Filters: 'content/install-setup/configure-filters.md'
-    - Heavy Forwarder Sizing: 'content/install-setup/hf-sizing.md'
-    - Splunk Cloud Victoria Notes: 'content/install-setup/splunk-cloud-victoria-notes.md'
-    - Setup Guides Overview: 'content/install-setup/setup-guides.md'
-    - AWS Setup Guides:
-        - AWS Remote S3 Connect Setup Guide: 'content/install-setup/aws-remote-s3-connect-guide.md'
-        - AWS Remote S3 Filter Setup Guide: 'content/install-setup/aws-remote-s3-filter-guide.md'
-        - AWS Remote S3 Copy Setup Guide: 'content/install-setup/aws-remote-s3-copy-guide.md'
-        - AWS Direct S3 Polling (Backfill & Recovery): 'content/install-setup/aws-direct-s3-polling.md'
-#    - AWS Migrations Guide:
-#        - AWS Remote S3 Connect to Filter Migration: 'content/install-setup/aws-remote-s3-connect-to-filter-migration-guide.md'
-    - Azure Setup Guide: 'content/install-setup/azure-setup.md'
-    - GCP Setup Guide: 'content/install-setup/gcp-setup.md'
-- LogServ UI App:
-    - Prerequisites: 'content/logserv-app/prerequisites.md'
-    - Installing the LogServ App: 'content/logserv-app/installation.md'
-    - Performance & Data Freshness: 'content/logserv-app/dashboards/performance.md'
-    - Data Doctor (Diagnostics): 'content/logserv-app/dashboards/platform/diagnostics.md'
-    - Dashboards Overview:
-        - Overview: 'content/logserv-app/dashboards/index.md'
-        - Environment Health: 'content/logserv-app/dashboards/environment-health.md'
-        - Environment Topology: 'content/logserv-app/dashboards/topology.md'
-        - Applications:
-            - Applications: 'content/logserv-app/dashboards/applications.md'
-            - ABAP Network & Security: 'content/logserv-app/dashboards/applications/abap-security.md'
-            - ABAP Operations: 'content/logserv-app/dashboards/applications/abap-operations.md'
-            - Work Process Performance: 'content/logserv-app/dashboards/applications/work-process-performance.md'
-            - HANA Audit: 'content/logserv-app/dashboards/applications/hana-audit.md'
-            - HANA Trace: 'content/logserv-app/dashboards/applications/hana-trace.md'
-        - Integration:
-            - Integration: 'content/logserv-app/dashboards/integration.md'
-            - SAP Services: 'content/logserv-app/dashboards/integration/sap-services.md'
-            - SAP Router: 'content/logserv-app/dashboards/integration/sap-router.md'
-            - Cloud Connector: 'content/logserv-app/dashboards/integration/cloud-connector.md'
-            - Web Dispatcher: 'content/logserv-app/dashboards/integration/web-dispatcher.md'
-            - Web and API Performance: 'content/logserv-app/dashboards/integration/web-api-performance.md'
-        - Security:
-            - Security: 'content/logserv-app/dashboards/security.md'
-            - Network Perimeter: 'content/logserv-app/dashboards/security/network-perimeter.md'
-            - Cross-Stack Authentication: 'content/logserv-app/dashboards/security/cross-stack-authentication.md'
-            - Change & Configuration Activity: 'content/logserv-app/dashboards/security/change-config.md'
-        - Platform:
-            - Platform: 'content/logserv-app/dashboards/platform.md'
-            - Data Pipeline Overview: 'content/logserv-app/dashboards/platform/data-pipeline-overview.md'
-            - Multi-Cloud Overview: 'content/logserv-app/dashboards/platform/multi-cloud-overview.md'
-            - DNS Analytics: 'content/logserv-app/dashboards/platform/dns-analytics.md'
-            - Linux System & Security: 'content/logserv-app/dashboards/platform/linux.md'
-            - Windows Events: 'content/logserv-app/dashboards/platform/windows.md'
-            - Proxy Analytics: 'content/logserv-app/dashboards/platform/proxy.md'
-            - Host Details: 'content/logserv-app/dashboards/platform/host-details.md'
+    - Application Settings: 'content/ai-assistant/settings.md'
+    - 'Dashboard Data: Backfill and Freshness': 'content/logserv-app/dashboard-data.md'
+    - 'AWS S3 Direct: Backfill and Recovery': 'content/install-setup/aws-s3-direct.md'
+    - Troubleshooting: 'content/getting-started/troubleshooting.md'
+- Upgrade:
+    - Upgrading to This Release: 'content/getting-started/upgrading.md'
+- Dashboards:
+    - 'content/logserv-app/dashboards/index.md'
+    - Environment Health: 'content/logserv-app/dashboards/environment-health.md'
+    - Environment Topology: 'content/logserv-app/dashboards/topology.md'
+    - Applications:
+        - 'content/logserv-app/dashboards/applications/index.md'
+        - ABAP Network & Security: 'content/logserv-app/dashboards/applications/abap-security.md'
+        - ABAP Operations: 'content/logserv-app/dashboards/applications/abap-operations.md'
+        - Work Process Performance: 'content/logserv-app/dashboards/applications/work-process-performance.md'
+        - HANA Audit: 'content/logserv-app/dashboards/applications/hana-audit.md'
+        - HANA Trace: 'content/logserv-app/dashboards/applications/hana-trace.md'
+    - Integration:
+        - 'content/logserv-app/dashboards/integration/index.md'
+        - SAP Services: 'content/logserv-app/dashboards/integration/sap-services.md'
+        - SAP Router: 'content/logserv-app/dashboards/integration/sap-router.md'
+        - Cloud Connector: 'content/logserv-app/dashboards/integration/cloud-connector.md'
+        - Web Dispatcher: 'content/logserv-app/dashboards/integration/web-dispatcher.md'
+        - Web and API Performance: 'content/logserv-app/dashboards/integration/web-api-performance.md'
+    - Security:
+        - 'content/logserv-app/dashboards/security/index.md'
+        - Network Perimeter: 'content/logserv-app/dashboards/security/network-perimeter.md'
+        - Cross-Stack Authentication: 'content/logserv-app/dashboards/security/cross-stack-authentication.md'
+        - Change & Configuration Activity: 'content/logserv-app/dashboards/security/change-config.md'
+    - Platform:
+        - 'content/logserv-app/dashboards/platform/index.md'
+        - Data Pipeline Overview: 'content/logserv-app/dashboards/platform/data-pipeline-overview.md'
+        - DNS Analytics: 'content/logserv-app/dashboards/platform/dns-analytics.md'
+        - Linux System & Security: 'content/logserv-app/dashboards/platform/linux.md'
+        - Windows Events: 'content/logserv-app/dashboards/platform/windows.md'
+        - Proxy Analytics: 'content/logserv-app/dashboards/platform/proxy.md'
+        - Host Details: 'content/logserv-app/dashboards/platform/host-details.md'
+        - Multi-Cloud Overview: 'content/logserv-app/dashboards/platform/multi-cloud-overview.md'
+        - Data Doctor (Diagnostics): 'content/logserv-app/dashboards/platform/diagnostics.md'
 - Enterprise Security Integration:
     - Overview: 'content/enterprise-security/overview.md'
     - CIM Compliance: 'content/enterprise-security/cim-compliance.md'
@@ -138,20 +168,28 @@ nav:
     - Behavioral & Anomaly Detections: 'content/enterprise-security/behavioral-detections.md'
 - AI Assistant:
     - Overview: 'content/ai-assistant/overview.md'
+    - Set Up the AI Assistant: 'content/ai-assistant/enable.md'
+    - Splunk MCP Setup: 'content/ai-assistant/mcp-setup.md'
     - Predefined Prompts: 'content/ai-assistant/predefined-prompts.md'
     - Drill-down Chips: 'content/ai-assistant/drill-down-chips.md'
-    - Splunk MCP Setup: 'content/ai-assistant/mcp-setup.md'
-    - Settings & Configuration: 'content/ai-assistant/settings.md'
     - Audit Log: 'content/ai-assistant/audit-log.md'
-    - Build Variants: 'content/ai-assistant/templates-only-build.md'
+    - Restricting the LLM Path: 'content/ai-assistant/templates-only-build.md'
     - Free-form LLM Features:
         - Free-form Prompts: 'content/ai-assistant/free-form-prompts.md'
-        - Privacy Tiers: 'content/ai-assistant/privacy-tiers.md'
         - Power Mode: 'content/ai-assistant/power-mode.md'
         - Time-Window Reasoning: 'content/ai-assistant/time-window-reasoning.md'
-        - OWASP LLM Top 10 Compliance: 'content/ai-assistant/owasp-llm-compliance.md'
-        - SAIF Security Architecture: 'content/ai-assistant/security-architecture.md'
+    - Security & Compliance:
+        - Privacy Tiers: 'content/ai-assistant/privacy-tiers.md'
+        - OWASP LLM Top 10 (2025) Compliance: 'content/ai-assistant/owasp-llm-compliance.md'
+        - Security Architecture (SAIF): 'content/ai-assistant/security-architecture.md'
+- Reference:
+    - 'Release Notes: 0.1.2': 'content/overview/release-notes.md'
+    - 'Release Notes: 0.1.1': 'content/overview/release-notes-0.1.1.md'
+    - 'Release Notes: 0.0.6': 'content/overview/release-notes-0.0.6.md'
+    - 'Release Notes: 0.0.5 and Earlier': 'content/overview/release-notes-archive.md'
+    - Third-Party Software Licenses: 'content/overview/third-party-licenses.md'
 - Developer Reference:
-    - Testing Guide: 'content/developer/testing-guide.md'
-    - Architecture and Internals: 'content/developer/developer-reference.md'
-    - AI Assistant Implementation Reference: 'content/developer/ai-assistant-internals.md'
+    - Clean Deployment Test (Lab): 'content/developer/testing-guide.md'
+    - Data TA Internals: 'content/developer/data-ta-internals.md'
+    - LogServ App and AI Assistant Internals: 'content/developer/ai-assistant-internals.md'
+    - Building the Packages from Source: 'content/developer/build-from-source.md'

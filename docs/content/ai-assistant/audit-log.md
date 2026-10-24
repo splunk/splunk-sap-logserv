@@ -5,7 +5,13 @@ Every action the AI Assistant takes — predefined-prompt dispatches, free-form 
 Splunk writes those events only for a user whose role holds the **`edit_tcp`** or the **`edit_log_alert_event`** capability. Of Splunk Enterprise's default roles, `admin` holds both, `power` holds `edit_log_alert_event` and `user` holds neither. Users without either are not audited, and the AI Assistant panel shows them a warning; see [Who Can Write Audit Events](#who-can-write-audit-events).
 
 !!! note "Which categories fire with no LLM provider configured"
-    Until an admin configures an LLM provider credential — and in any deployment with **Templates-only mode** on or a compile-time [templates-only build](templates-only-build.md) installed — there is no LLM dispatch, no vendor call and no model discovery. In that state only **`local_only`** (every canned-prompt dispatch), **`audit_forwarder_failure`**, **`forwarder_disabled_acceptance`**, and **`ai_assistant_enable_acceptance`** are ever emitted; the other nine categories are defined but structurally dormant (nothing can trigger them). Once a credential is configured, eight of those nine can fire as well; `vendor_tier2` is declared but never emitted (see below).
+    With no provider credential, the active provider is the shipped default **Mock (development only)**, which contacts no vendor. In that state:
+
+    - every predefined prompt records **`local_only`**, and a failed forward records **`audit_forwarder_failure`**;
+    - the Settings page records **`ai_assistant_enable_acceptance`** and **`forwarder_disabled_acceptance`** when an admin answers an acknowledgement, **`vendor_tier2_elevation`** when an admin saves Tier 2, and **`model_discovery`** when an admin clicks **Refresh model list**;
+    - a question typed to the Mock provider records **`vendor_tier1`** (with `provider` = `mock`, zero cost), and can record **`user_prompt_jailbreak_flag`** and **`rate_limited_prompt`**.
+
+    With **Templates-only mode** on or a compile-time templates-only build installed ([Restricting the LLM Path](templates-only-build.md)), typed questions are refused before any of those last three. `security_blocked_spl`, `session_tool_cap_hit` and `daily_spend_cap_hit` need a real provider: they follow from tool calls and spend that only a real LLM produces. `vendor_tier2` is declared but never emitted (see below).
 
 ## :material-circle-box:{ .taiconcolor } The Thirteen Audit Categories
 
@@ -47,7 +53,7 @@ The Audit Log tab in [Settings → AI Assistant](settings.md#audit-log-tab) prov
 
 The table renders 25 rows per page (`PAGE_SIZE = 25`); footer shows "Page X of Y" + Previous / Next buttons (only when total exceeds 25). Clicking a row's **+** button expands to show the full event JSON.
 
-**Splunk reserved-field gotcha:** the `category` field on these events is a Splunk reserved name. The viewer's SPL uses `| eval category=json_extract(_raw, "category")` after `spath` to retrieve the audit-event category from the raw JSON, because `spath` does NOT overwrite reserved fields. It does the same for `user` (`| eval user=json_extract(_raw, "user")`, since build 394): when a search filters on `user` before `spath` — as the **User contains** filter does — Splunk extracts the field to apply the filter and `spath` adds the same value again, so the field comes back with two values. If you write your own searches against this index, replicate this pattern.
+**Splunk reserved-field gotcha:** the `category` field on these events is a Splunk reserved name. The viewer's SPL uses `| eval category=json_extract(_raw, "category")` after `spath` to retrieve the audit-event category from the raw JSON, because `spath` does NOT overwrite reserved fields. It does the same for `user` (`| eval user=json_extract(_raw, "user")`): when a search filters on `user` before `spath` — as the **User contains** filter does — Splunk extracts the field to apply the filter and `spath` adds the same value again, so the field comes back with two values. If you write your own searches against this index, replicate this pattern.
 
 ## :material-circle-box:{ .taiconcolor } Tamper-Resistance Threat Model
 
@@ -68,31 +74,42 @@ Optional admin-configurable forwarding of audit events to a separate Splunk / SI
 - **Auth.** The HEC token is sent on every POST as `Authorization: Splunk <token>` header. Token is stored in Splunk's encrypted password store at realm `logserv_ai_assistant_forwarder` name `hec_token` and never displayed in cleartext.
 - **Sanitized URL in failure events.** When a forwarder failure event records the `destinationUrl`, query strings + fragments are stripped to prevent accidental exposure of any auth-bearing URL params.
 
+**Who it covers.** The forward runs in each user's browser, which reads the forwarder's HEC token from Splunk's password store. By default only admins can read it. For any other user the forward fails (reason `no_token`) and a local `audit_forwarder_failure` event is written instead, so the destination receives only the events of users who can read the token.
+
 ### Configuring the forwarder
 
-1. Open Settings → AI Assistant → **General**.
-2. Find the **Audit & Telemetry** subsection.
-3. Set `audit_forwarder_url` to the HEC base URL (e.g., `https://siem.example.com:8088` — the App appends `/services/collector/event`).
-4. Optionally set `audit_forwarder_index` (recommended: a dedicated index like `splunk_audit` on the destination).
-5. Optionally set `audit_forwarder_source` (defaults to `logserv_ai_assistant_remote` — deliberately distinct from the local sourcetype `logserv:ai_assistant:audit` so forwarded copies are distinguishable).
-6. Set `audit_forwarder_enabled = true`.
-7. Open Settings → AI Assistant → **Splunk MCP** → **Audit Log Forwarder** panel.
-8. Click **Set** next to the HEC token field.
-9. Paste the HEC token from your destination Splunk's HEC input.
-10. Save. The next audit event triggers a forwarder POST.
-11. Check the destination Splunk for events arriving at the configured index/source.
+Before you start, make sure the destination's HTTP Event Collector accepts **cross-origin requests from your Splunk Web address** (scheme, host and port, as users open it). The browser sends each copy straight to the destination, so a destination that does not allow your Splunk Web origin refuses every forward. On a Splunk destination, HEC's list of allowed origins is its `crossOriginSharingPolicy` setting in `inputs.conf`; check the setting in the `inputs.conf.spec` of the destination's Splunk version.
+
+Store the token first. Each **Save Defaults** reads the stored token and applies it to your page at once; if forwarding is turned on before the token is stored, your page forwards nothing until it is reloaded, and each event records an `audit_forwarder_failure` (reason `no_token`) instead.
+
+1. Open Settings → AI Assistant → **Splunk MCP** → **Audit Log Forwarder** panel.
+2. Paste the HEC token from your destination's HEC input into the **HEC Token** field and click **Save**.
+3. Open Settings → AI Assistant → **General** and find the **Audit & Telemetry** section.
+4. Set **Forwarder HEC URL** to the HEC base URL (e.g., `https://siem.example.com:8088` — the App appends `/services/collector/event`).
+5. Optionally set **Forwarder remote index (optional)** (recommended: a dedicated index like `splunk_audit` on the destination).
+6. Optionally set **Forwarder source field** (defaults to `logserv_ai_assistant_remote` — deliberately distinct from the local sourcetype `logserv:ai_assistant:audit` so forwarded copies are distinguishable).
+7. Select **Audit log forwarder** (it then reads **Forwarding**) and click **Save Defaults**. The save applies the stored token to your page at once.
+8. Run a predefined prompt. Its audit event is forwarded.
+9. Check the destination for events arriving at the configured index and source. If none arrive, look for `audit_forwarder_failure` events in the local index: their `reason` gives the HTTP status or the failure.
+
+Other pages, yours in other browser tabs and other users' pages, pick up the forwarder settings and the token at their next page load. If you change only the token later, reload the page so that it uses the new token.
 
 ### When the admin saves with the forwarder OFF
 
-A [forwarder-disabled-acceptance modal](settings.md#legal-acknowledgement-modals) blocks the save until the admin acknowledges the integrity-mitigation responsibility. The acceptance is recorded as a `forwarder_disabled_acceptance` audit event with admin identity, Splunk-stamped IP, timestamp, and SHA-256 of the disclaimer revision. The event is written as soon as the answer is recorded, with the audit settings in place at that moment, so when the same save turns forwarding off, the acceptance is also sent to that forwarder: an attempt with the forwarder settings the page has applied, and when it fails (no HEC token, no URL, the destination refusing it), a local `audit_forwarder_failure` record is written instead (build 392).
+A [forwarder-disabled-acceptance modal](settings.md#legal-acknowledgement-modals) blocks the save until the admin acknowledges the integrity-mitigation responsibility. The acceptance is recorded as a `forwarder_disabled_acceptance` audit event with admin identity, Splunk-stamped IP, timestamp, and SHA-256 of the disclaimer revision. The event is written as soon as the answer is recorded, with the audit settings in place at that moment, so when the same save turns forwarding off, the acceptance is also sent to that forwarder: an attempt with the forwarder settings the page has applied, and when it fails (no HEC token, no URL, the destination refusing it), a local `audit_forwarder_failure` record is written instead.
 
 ## :material-circle-box:{ .taiconcolor } Audit Index Provisioning
 
-The `logserv_ai_assistant_audit` index is defined in the Data TA's `default/indexes.conf` and created automatically when the Data TA is installed on the indexer / search head. No customer-side provisioning is needed to create it; who can read it is set per role - see [Restricting Who Can Read the Audit Index](#restricting-who-can-read-the-audit-index).
+The `logserv_ai_assistant_audit` index must exist on the indexer tier before the AI Assistant writes to it: an event sent to an index that does not exist is dropped. The Data TA's `default/indexes.conf` defines it, with 90-day retention (`frozenTimePeriodInSecs = 7776000`):
 
-The index name is **macro-configurable** — see [Renaming an index](../install-setup/install-ta.md#renaming-an-index) for the procedure (update the `sap_logserv_audit_idx_macro` macro definition for reads, plus the `audit_index_name` field in Settings → AI Assistant → General → Audit & Telemetry for writes).
+- **Single instance** with the Data TA installed: the index is created; nothing to do.
+- **Standalone indexer, indexer cluster or Splunk Cloud Platform:** create it yourself, as for the SAP data index: **Settings → Indexes**, an `indexes.conf` stanza, an index-only app pushed from the cluster manager with `repFactor = auto`, or, on Splunk Cloud Platform, **Settings → Indexes** or ACS. See [Create the Indexes](../install-setup/install-ta.md#1-create-the-indexes).
 
-**Retention** is set by the Data TA to **90 days** (`frozenTimePeriodInSecs = 7776000` on `[logserv_ai_assistant_audit]`) — for compliance reviews going back further, override that stanza in `local/indexes.conf` on the indexer. Recommended retention for compliance use cases: **2 years** to cover annual audit cycles plus a buffer. For SOX / PCI / HIPAA contexts where regulator records-retention requirements apply, follow the regulator's spec.
+Who can read it is set per role; see [Restricting Who Can Read the Audit Index](#restricting-who-can-read-the-audit-index).
+
+The index name is **macro-configurable** — see [Renaming an index](../install-setup/install-ta.md#renaming-an-index) for the procedure (update the `sap_logserv_audit_idx_macro` macro definition for reads, plus the **Audit index name** field in Settings → AI Assistant → General → Audit & Telemetry for writes).
+
+**Retention.** The Data TA's definition keeps events **90 days**. For compliance reviews going back further, set a longer retention wherever the index is defined: `frozenTimePeriodInSecs` in the Data TA's `local/indexes.conf` on a single instance, in your own `indexes.conf` on a standalone indexer, in the index-only app of the cluster manager's bundle on an indexer cluster, or the *Searchable retention* under **Settings → Indexes** on Splunk Cloud Platform. Recommended retention for compliance use cases: **2 years** to cover annual audit cycles plus a buffer. For SOX / PCI / HIPAA contexts where regulator records-retention requirements apply, follow the regulator's spec.
 
 ## :material-circle-box:{ .taiconcolor } Who Can Write Audit Events
 

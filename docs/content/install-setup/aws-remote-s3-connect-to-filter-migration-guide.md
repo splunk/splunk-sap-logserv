@@ -1,7 +1,7 @@
-# AWS Remote S3 Connect to Filter Migration Guide
+# Legacy: AWS S3 Connect to Filter Migration
 
-!!! note "Legacy reference — not part of the documentation navigation"
-    This page is retained as an internal / legacy migration reference and is intentionally **not linked from the site navigation**. The migration it describes (adding Lambda-based S3 event filtering to an existing Connect deployment) has been superseded for most deployments by the Data TA's built-in [index-time filtering](configure-filters.md). If you were pointed here by a support engagement, the steps below remain valid.
+!!! note "Legacy guide"
+    This guide is for an existing AWS Remote S3 Connect deployment that wants to add Lambda-based filtering without recreating its IAM User and IAM Role. Most deployments should use the Data TA's built-in [index-time filtering](configure-filters.md) instead. A new deployment that wants the Lambda filter should follow the [AWS Remote S3 Filter Setup Guide](aws-remote-s3-filter-guide.md). The steps below remain valid.
 
 ### :material-circle-box:{ .taiconcolor } Introduction
 
@@ -34,7 +34,7 @@ The Python migration script performs the following actions on your existing depl
     - A Dead Letter SQS Queue - Default name is **_splunk-logserv-local-target-queue-dlq_**
     - A Lambda Function - Default name is **_splunk-logserv-lambda-filter_**
     - A CloudWatch LogGroup used by the Lambda Function
-    - An Event Source Mapping connecting the Lambda to the cross-account SQS Queue
+    - An Event Source Mapping connecting the Lambda to the cross-account SQS Queue. It is created enabled, so the Lambda starts reading SAP's queue as soon as the script finishes
 
 <br>
 
@@ -129,9 +129,9 @@ pip install boto3
 
 2.<b class="taiconcolor">a</b> Take note of the **AWS Region** in your **_SAP ECS account_** where the S3 Bucket and SQS Queue are located.
 
-2.<b class="taiconcolor">b</b> Log into your AWS **_Secondary account_** and change to the region that matches the region in your **_SAP ECS account_**
+2.<b class="taiconcolor">b</b> Log into your AWS **_Secondary account_** and change to the region that matches the region in your **_SAP ECS account_**. Create the bucket in that Region, the one your deployment runs in: Lambda requires its code bucket in the function's Region.
 
-2.<b class="taiconcolor">c</b> Choose a name for the new S3 bucket (**_splunk-logserv-lambda-binary_** is the default bucket name in the migration configuration file)
+2.<b class="taiconcolor">c</b> Choose a name of your own for the new S3 bucket. S3 bucket names are global: each name can be used by only one AWS account, so pick one no other account is likely to hold, for example `splunk-logserv-lambda-code-<your-account-id>-<region>`. The `splunk-logserv-lambda-binary` value in the migration configuration file is only a placeholder: you replace it with your name in step 4.
 
 2.<b class="taiconcolor">d</b> Navigate to the S3 console and create a <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/create-bucket-overview.html" target="_blank">general purpose S3 bucket</a> using all the default settings
 
@@ -170,9 +170,9 @@ Update the **_existing_resources_** section with the details from your current *
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| **iam_user_arn** | ARN of the existing IAM User | `arn:aws:iam::112543817624:user/splunk_logserv_user` |
+| **iam_user_arn** | ARN of the existing IAM User | `arn:aws:iam::222222222222:user/splunk_logserv_user` |
 | **iam_role_name** | Name of the existing IAM Role | `splunk-logserv-ta-role` |
-| **iam_role_arn** | ARN of the existing IAM Role | `arn:aws:iam::112543817624:role/splunk-logserv-ta-role` |
+| **iam_role_arn** | ARN of the existing IAM Role | `arn:aws:iam::222222222222:role/splunk-logserv-ta-role` |
 | **iam_role_policy_name** | Name of the existing inline policy on the IAM Role | `splunk-logserv-ta-policy` |
 
 #### :material-crop-square:{ .taiconcolor } Cross-Account Configuration
@@ -188,7 +188,7 @@ Update the **_cross_account_** section with the details from your **_SAP ECS acc
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| **sqs_queue_arn** | ARN of the SQS Queue in your SAP ECS account | `arn:aws:sqs:ap-south-1:395719258032:sap-logserv-queue` |
+| **sqs_queue_arn** | ARN of the SQS Queue in your SAP ECS account | `arn:aws:sqs:ap-south-1:111111111111:sap-logserv-queue` |
 | **s3_bucket_name** | Name of the S3 Bucket in your SAP ECS account | `sap-logserv-bucket` |
 
 #### :material-crop-square:{ .taiconcolor } Local SQS Configuration
@@ -227,10 +227,10 @@ Update the **_lambda_function_** section to configure the Lambda filter function
 }
 ```
 
-| Parameter | Description | Default |
+| Parameter | Description | Value in the shipped file |
 |-----------|-------------|---------|
 | **function_name** | Name for the Lambda function | `splunk-logserv-lambda-filter` |
-| **code_s3_bucket** | S3 bucket containing the Lambda ZIP file | `splunk-logserv-lambda-binary` |
+| **code_s3_bucket** | S3 bucket containing the Lambda ZIP file. **Replace the shipped value with the name of the bucket you created in step 2**; the script checks that the ZIP file is there before it changes anything | `splunk-logserv-lambda-binary` (a placeholder) |
 | **code_s3_key** | S3 key (path) to the Lambda ZIP file | `splunk-logserv-filter-lambda.zip` |
 | **handler** | Lambda handler function | `log-filterer-lambda.lambda_handler` |
 | **runtime** | Lambda runtime | `python3.12` |
@@ -239,23 +239,26 @@ Update the **_lambda_function_** section to configure the Lambda filter function
 
 #### :material-crop-square:{ .taiconcolor } Filter Settings Configuration
 
-Update the **_filter_settings_** section to configure the S3 event filtering behavior:
+Update the **_filter_settings_** section to configure the S3 event filtering behavior. To start by passing everything, and add exclusions once you know your volumes:
 
 ```json
 "filter_settings": {
     "days_in_the_past": 7,
-    "include_filters": "linux/*,hana/*",
-    "exclude_filters": "linux/cron,linux/messages,linux/localmessages,linux/slapd,linux/sudolog,linux/warn"
+    "include_filters": "*/*",
+    "exclude_filters": ""
 }
 ```
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| **days_in_the_past** | Filter out messages older than this many days | `7` |
-| **include_filters** | Comma-separated fnmatch patterns for paths to include | `linux/*,hana/*` |
-| **exclude_filters** | Comma-separated fnmatch patterns for paths to exclude | `linux/cron,linux/messages,...` |
+!!! warning "Replace the example values in the shipped file"
+    The shipped `migrate-config.json` holds an example, not a recommended default: its `include_filters` value `linux/*,hana/*` passes only the Linux and HANA folders, and its `exclude_filters` value then drops six of the Linux folders (`linux/cron`, `linux/messages`, `linux/localmessages`, `linux/slapd`, `linux/sudolog`, `linux/warn`). Used as shipped, it leaves out most Linux logs and every other log type. Enter your own values.
 
-:material-lightning-bolt:{ .taiconcolor } Use `*/*` for **include_filters** to include all paths. Leave **exclude_filters** empty to exclude nothing.
+| Parameter | Description | Value in the shipped file |
+|-----------|-------------|---------|
+| **days_in_the_past** | The Lambda passes an object on only when at least one of its records has a `_time` newer than this many days before the moment it processes the notification. Use 1 to 365: the script does not check the value, and 0 would drop almost everything. This is not the Data TA's Days in the Past, which counts from midnight UTC | `7` |
+| **include_filters** | Comma-separated fnmatch patterns for paths (`clz_dir/clz_subdir`) to include. **Do not leave it empty**: an empty value discards every notification | `linux/*,hana/*` (an example) |
+| **exclude_filters** | Comma-separated fnmatch patterns for paths to exclude | `linux/cron,linux/messages,...` (an example) |
+
+:material-lightning-bolt:{ .taiconcolor } Use `*/*` for **include_filters** to include all paths. Leave **exclude_filters** empty to exclude nothing. The Lambda matches with Python's `fnmatch`, so `*` also matches across the `/` (`linux*` matches `linux/cron`), and a bare `*` in **exclude_filters** excludes everything. See [AWS Lambda-Based Filtering](configure-filters.md#aws-lambda-based-filtering) for how this differs from the Data TA's filters.
 
 #### :material-crop-square:{ .taiconcolor } Event Source Mapping Configuration
 
@@ -350,6 +353,8 @@ python3 migrate-to-filter.py --config migrate-config.json --region us-east-1 --p
 
 The script will display progress for each step and provide a summary upon completion, including the new local SQS queue URL that you will need for the next step.
 
+:material-lightning-bolt:{ .taiconcolor } **Do step 6 straight away.** From the moment the script finishes, the Lambda and your existing input both read SAP's SQS queue, and each message goes to only one of them. Objects your existing input takes are indexed without the Lambda's filter; notifications the Lambda passes on wait in the new local queue until step 6 points the input at it.
+
 <br>
 
 ### :material-circle-box:{ .taiconcolor } 6. Update Splunk AWS Add-on Configuration
@@ -363,11 +368,13 @@ After the migration completes successfully, you need to update your existing SQS
 6.<b class="taiconcolor">c</b> Click **_Edit_** on the input
 
 6.<b class="taiconcolor">d</b> Update the **_SQS Queue Name_** field to use the new local queue URL from the migration output
-    - Example: `https://sqs.ap-south-1.amazonaws.com/112543817624/splunk-logserv-local-target-queue`
+    - Example: `https://sqs.ap-south-1.amazonaws.com/222222222222/splunk-logserv-local-target-queue`
 
 6.<b class="taiconcolor">e</b> Click **_Save_** to apply the changes
 
 The input will restart and begin polling the new local filtered queue.
+
+6.<b class="taiconcolor">f</b> If you gave the input the line `_meta = cloud_provider::aws` ([Choose Cloud Attribution](cloud-attribution.md)), check that its stanza in `$SPLUNK_HOME/etc/apps/Splunk_TA_aws/local/inputs.conf` still carries it. The form has no field for that line, so make sure the edit in the form did not remove it.
 
 <br>
 
@@ -490,10 +497,16 @@ After rollback, update your Splunk AWS Add-on SQS-Based S3 Input to use the orig
 - Verify the Lambda code ZIP file was uploaded correctly to S3
 - Check the handler name in the configuration matches the Lambda code
 
+!!! warning "Notifications the Lambda cannot process are lost from this path"
+    The filter Lambda does not retry. When it cannot read an object from the SAP ECS S3 Bucket, or cannot send the notification to the local SQS queue, it logs the error and reports the message as processed, so SAP's notification is deleted and that object is not ingested through this path. An unexpected error while processing a message is handled the same way. Only an invalid configuration of the Lambda itself returns messages to SAP's queue.
+
+    The objects stay in SAP's S3 Bucket. After you fix the cause, load the days the errors cover with [AWS S3 Direct](aws-s3-direct.md). In the Lambda's CloudWatch Logs, search for `Could not retrieve S3 object, discarding message`, `Failed to forward message to target SQS, discarding` and `Unexpected error processing message`.
+
 #### :material-crop-square:{ .taiconcolor } Messages Not Appearing in Local Queue
 
 - Review the Lambda CloudWatch logs for filtering decisions
-- Verify the **include_filters** patterns match your expected paths
+- Verify the **include_filters** patterns match your expected paths, and that the value is not empty
+- Check that **exclude_filters** is not a bare `*`, which excludes everything
 - Check the **days_in_the_past** setting is not filtering out your messages
 
 #### :material-crop-square:{ .taiconcolor } Splunk Not Ingesting
@@ -516,7 +529,7 @@ The Splunk TA for SAP LogServ includes **built-in index-time filtering** that wo
     - **Lambda-based filtering** (configured above) filters S3 event notifications *before* they reach Splunk, reducing the number of SQS messages processed by the Splunk AWS Add-on.
     - **Native TA filtering** (configured below) filters events *inside Splunk at index time* via TRANSFORMS-based queue routing. Filtered events never consume Splunk license.
     
-    Both use the same `clz_dir/clz_subdir` pattern syntax. Using both together means events are filtered at the AWS level first and then again at the Splunk level, providing a safety net if either filter configuration is incomplete.
+    Both match on `clz_dir/clz_subdir`, but not with the same rules: the Lambda uses Python's `fnmatch` on the joined path, where `*` also crosses the `/`, while the Data TA accepts only `dir/subdir` patterns or a bare `*` and matches each part on its own. Use patterns that are valid on the Filters tab in both places so they select the same folders ([AWS Lambda-Based Filtering](configure-filters.md#aws-lambda-based-filtering)). Using both together means events are filtered at the AWS level first and then again at the Splunk level, providing a safety net if either filter configuration is incomplete.
 
 <br>
 
@@ -568,7 +581,7 @@ Click **Save**. The TA validates your patterns and generates the necessary confi
 
 ### :material-circle-box:{ .taiconcolor } Deployment Server: Deploy to Forwarders
 
-If you are running on a Deployment Server with Heavy Forwarders, additional steps are required after saving filters.
+If you are running on a Deployment Server with heavy forwarders, additional steps are required after saving filters.
 
 After saving, the Filters tab will display a **"⚠ Deployment Server Detected"** banner with a **"Deploy to Forwarders"** button.
 
@@ -576,17 +589,19 @@ After saving, the Filters tab will display a **"⚠ Deployment Server Detected"*
 
 #### :material-crop-square:{ .taiconcolor } Configure the Server Class (First Time Only)
 
+If the Data TA does not yet reach your heavy forwarders through this server class, follow [Distribute the Data TA to Heavy Forwarders](distribute-data-ta.md) first. In short:
+
 1. Go to **Settings → Forwarder Management**
 2. Find the `SAP_LogServ_HeavyForwarders` server class
 3. Click the three-dot menu → **Edit agent assignment**
-4. Add your Heavy Forwarder IP addresses or hostnames
+4. Add your heavy forwarder IP addresses or hostnames by name. Do not use `*`: it would send the Data TA to every deployment client, search heads included, and restart each one
 5. Save the agent assignment
 
 #### :material-crop-square:{ .taiconcolor } Deploy
 
 1. Return to the Filters tab and click **"Deploy to Forwarders"**
 2. Confirm the deployment
-3. Wait for HFs to phone home (typically 30–60 seconds)
+3. Wait for the HFs to pick up the change at their next phone-home (every 60 seconds by default) and restart; allow 5 minutes or more
 4. Verify deployment status in **Settings → Forwarder Management**
 
 <br>
@@ -596,8 +611,10 @@ After saving, the Filters tab will display a **"⚠ Deployment Server Detected"*
 After deployment, verify that native filtering is operating correctly:
 
 ```spl
-`sap_logserv_idx_macro` | stats count by clz_dir, clz_subdir
+index=sap_logserv_logs earliest=-1h | stats count by clz_dir, clz_subdir
 ```
+
+Use your index name if you renamed it.
 
 You should see data only for log types matching your include patterns. See [Configuring Filters](configure-filters.md) for the full verification and troubleshooting guide.
 

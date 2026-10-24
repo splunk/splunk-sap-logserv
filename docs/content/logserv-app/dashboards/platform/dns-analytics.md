@@ -4,9 +4,15 @@
 
 ## :material-circle-box:{ .taiconcolor } Why This Dashboard Matters
 
-The DNS Analytics dashboard transforms DNS query data into a security detection tool. DNS is used by virtually all network communications and is often exploited by attackers for command-and-control (C2) beaconing, data exfiltration via DNS tunneling, and reconnaissance. Because DNS traffic is rarely inspected by traditional security tools, this dashboard fills a critical visibility gap in SAP infrastructure security.
+The DNS Analytics dashboard reads the BIND query log of your SAP landscape for security signals. DNS is used by almost all network communication and is often abused for command-and-control (C2) beaconing, data exfiltration through DNS tunneling, and reconnaissance. The dashboard shows query volume per client and record type, flags domains that are queried at regular intervals (beaconing), and ranks clients by how many different domains they query.
 
-## Panels
+## :material-circle-box:{ .taiconcolor } Requires
+
+- **Sourcetypes:** `isc:bind:query` and `isc:bind:queryerror` (the BIND query events, selected with `tag=dns`).
+- **Search-head add-ons:** none beyond the LogServ App, which has the BIND parsing built in. Do not install the standalone Splunk Add-on for ISC BIND alongside it: you would get duplicate field extraction, and the App shows a compatibility banner on its home view while that add-on is enabled.
+- **Dashboard Data rows** on **Settings → Dashboard Data**: *DNS Analytics*, and *Beaconing detection (Environment Health / DNS / Network Perimeter)* for the beaconing panels. On a new install, **Run backfill** there seeds the last 30 days by default (60, 90, 180 or 365 days, or a custom range, are also offered); without a backfill the summary-backed panels fill one hour (the beaconing panels one day) at a time. See [Backfilling on first install](../../dashboard-data.md#backfilling-on-first-install).
+
+## :material-circle-box:{ .taiconcolor } Panels
 
 - **Total Queries** -- Aggregate count of DNS queries in the selected time range
 - **Unique Clients** -- Count of distinct client IPs generating DNS queries
@@ -20,22 +26,6 @@ The DNS Analytics dashboard transforms DNS query data into a security detection 
 - **Queried Domains** -- Table of the most looked-up domains with unique client counts
 - **Clients by Domain Diversity** -- Table ranking clients by number of unique domains queried, with queries-per-domain ratio for DGA detection
 
-## :material-circle-box:{ .taiconcolor } Where the Data Comes From
-
-The source is the BIND DNS query stream (`isc:bind:query`, selected via `tag=dns`).
-
-- **Summary-backed panels** — query volume, clients, domains, resolvers and record types read
-  the `logserv_dns_rollup` KV Store collection (metrics `main`, `rtype`), populated at minute :25
-  of every hour by `logserv_dns_aggregate`.
-- **The beaconing panels** read the daily collections: `logserv_beaconing_rollup` (populated 00:30)
-  for the KPI and `logserv_beaconing_detail_rollup` (00:32, metric `qs` — per-(query, source)
-  inter-arrival gap statistics) for the detection tables. Daily cadence is inherent to the
-  detection: it measures the regularity of a query's inter-arrival gaps over a full day, so these
-  panels update once per day and need at least a day of history before they show anything.
-
-Summary-backed panels switch automatically to their exact raw-equivalent search when the selected window is shorter than 90 minutes, so sub-hour investigation stays real-time. The collection keeps 365 days of hourly history (trimmed by a daily retention search); a fresh install seeds the last 30 days from **Settings → Dashboard Data → Run backfill**. The global **Cloud** dropdown filters the summaries through the `cloud_provider` dimension stored in every rollup row. Full schedule and freshness reference: [Performance & Data Freshness](../performance.md).
-
-
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 
 - **Beaconing patterns** -- The Beaconing Activity panel uses statistical analysis (low variance in query intervals) to detect domains being contacted at regular intervals, which is a hallmark of malware C2 communication. Beaconing detection is computed once per day from per-day inter-arrival gaps, so a gap that straddles midnight is not counted, the numbers refresh daily rather than hourly, and the beaconing panels do not respond to sub-hour time ranges. Domains with low variance and high count are the highest priority.
@@ -45,4 +35,22 @@ Summary-backed panels switch automatically to their exact raw-equivalent search 
 - **High domain diversity** -- Clients querying many unique domains with a low queries-per-domain ratio in the Clients by Domain Diversity table may indicate Domain Generation Algorithm (DGA) activity or automated reconnaissance.
 - **Resolver imbalance** -- The DNS Resolvers table should show an expected workload split across your BIND servers. One resolver handling disproportionate load may indicate a misconfigured forwarder or a cluster failover that wasn't noticed.
 
+## :material-circle-box:{ .taiconcolor } Related Dashboards
 
+- [Network Perimeter](../security/network-perimeter.md) -- DNS beside firewall drops and proxy traffic, with the cross-source Suspicious Activity Indicator.
+- [Proxy Analytics](proxy.md) -- the HTTP connections that follow DNS resolution.
+- [Host Details](host-details.md) -- a host's DNS top queries beside its other activity.
+
+??? info "Where the data comes from"
+    The source is the BIND DNS query stream (`isc:bind:query` and `isc:bind:queryerror`, selected via `tag=dns`).
+
+    - **Summary-backed panels** — query volume, clients, domains, resolvers and record types read
+      the `logserv_dns_rollup` KV Store collection (metrics `main`, `rtype`), populated at minute :25
+      of every hour by `logserv_dns_aggregate`.
+    - **The beaconing panels** read the daily collections: `logserv_beaconing_rollup` (populated 00:30)
+      for the KPI and `logserv_beaconing_detail_rollup` (00:32, metric `qs` — per-(query, source)
+      inter-arrival gap statistics) for the detection tables. Daily cadence is inherent to the
+      detection: it measures the regularity of a query's inter-arrival gaps over a full day, so these
+      panels update once per day and need at least a day of history before they show anything.
+
+    The hourly summary-backed panels switch automatically to their exact raw-equivalent search when the selected window is shorter than 90 minutes, so sub-hour investigation stays real-time; the beaconing panels always read their daily summaries. Each collection keeps 365 days of history (trimmed by a daily retention search). The global **Cloud** dropdown filters the summaries through the `cloud_provider` dimension stored in every rollup row. Full schedule and freshness reference: [Dashboard Data: Backfill and Freshness](../../dashboard-data.md).
