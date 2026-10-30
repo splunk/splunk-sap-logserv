@@ -78,6 +78,9 @@ theme:
 extra_css:
   - css/extra.css
 
+extra_javascript:
+  - js/limited-preview-qr.js
+
 plugins:
   - search
   - mkdocstrings:
@@ -91,7 +94,9 @@ plugins:
   - print-site  # should be at the end
 
 nav:
-- Home: 'index.md'
+- Home:
+    - 'index.md'
+    - Limited Preview: 'content/overview/limited-preview-announcement.md'
 - Get Started:
     - 'Start Here: Deployment Roadmap': 'content/getting-started/roadmap.md'
     - '1. Plan':

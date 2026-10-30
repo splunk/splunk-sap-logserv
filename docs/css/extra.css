@@ -76,3 +76,30 @@ iframe {
     -webkit-mask-image: var(--md-admonition-icon--note);
     mask-image: var(--md-admonition-icon--note);
 }
+
+/* QR code for the public Limited Preview page, under its entry in the left menu
+ * (js/limited-preview-qr.js). Black on white with its quiet zone, so it scans on
+ * the dark scheme too. Left out where the menu becomes a drawer (Material's
+ * 76.234375em breakpoint). */
+.lp-qr {
+  margin: 0.6rem 0 0.4rem 0;
+}
+.lp-qr img {
+  display: block;
+  width: 7rem;
+  height: auto;
+  border-radius: 0.2rem;
+}
+.lp-qr span {
+  display: block;
+  max-width: 7rem;
+  margin-top: 0.3rem;
+  font-size: 0.6rem;
+  line-height: 1.3;
+  color: var(--md-default-fg-color--light);
+}
+@media screen and (max-width: 76.234375em) {
+  .lp-qr {
+    display: none;
+  }
+}
