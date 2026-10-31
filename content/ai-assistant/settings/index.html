@@ -1,0 +1,5377 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/ai-assistant/settings/">
+      
+      
+        <link rel="prev" href="../../install-setup/configure-filters/">
+      
+      
+        <link rel="next" href="../../logserv-app/dashboard-data/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Application Settings - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#application-settings" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Application Settings
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../install-setup/configure-filters/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure and Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/upgrading/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Upgrade
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../logserv-app/dashboards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dashboards
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../enterprise-security/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise Security Integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  AI Assistant
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../overview/release-notes/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer/testing-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/limited-preview-announcement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limited Preview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/demo-video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here: Deployment Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Plan
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    1. Plan
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Log Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/package-placement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where Each Package Goes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/splunk-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk Cloud Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/capacity-planning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Planning and First Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    2. Install the Data TA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/cloud-attribution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Cloud Attribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/decide-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decide Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/distribute-data-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribute the Data TA to Heavy Forwarders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Connect Your Cloud
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    3. Connect Your Cloud
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/choose-your-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Cloud and AWS Scenario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Verify Your Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Install the LogServ App
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    5. Install the LogServ App
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the App and Seed the Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure and Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure and Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring Filters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-two-top-level-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Two Top-Level Tabs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Two Top-Level Tabs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-assistant-sub-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Assistant sub-tabs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-can-open-the-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who Can Open the Page
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Who Can Open the Page">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-the-ai-assistant-settings-are-stored" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the AI Assistant settings are stored
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#general-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Tab
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="General Tab">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#feature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limits-quotas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits &amp; Quotas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Privacy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#power-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power Users
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audit-telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit &amp; Telemetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-model-discovery-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Model Discovery Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provider-credentials-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider Credentials Tab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splunk-mcp-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk MCP Tab
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Splunk MCP Tab">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#splunk-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audit-log-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit Log Forwarder
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-log-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit Log Tab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard-data-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard Data Tab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#legal-acknowledgement-modals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legal Acknowledgement Modals
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Legal Acknowledgement Modals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enable-acceptance-modal-orange-bordered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        &ldquo;AI Assistant — Liability terms&rdquo; Dialog (orange-bordered)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#forwarder-disabled-acceptance-modal-red-bordered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        &ldquo;Audit log integrity&rdquo; Dialog (red-bordered)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-the-hybrid-trigger-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the hybrid trigger logic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-ui-refresh-on-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live UI Refresh on Save
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboard-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-s3-direct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS S3 Direct: Backfill and Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upgrade
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/applications/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applications
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Applications
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Network & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Process Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Trace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/integration/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Connector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web and API Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/security/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Perimeter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Stack Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change & Configuration Activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/platform/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux System & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cloud Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Doctor (Diagnostics)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Security Integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise Security Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIM Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Searches & RBA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset & Identity Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat Intelligence Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Behavioral & Anomaly Detections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Assistant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Set Up the AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../predefined-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predefined Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../drill-down-chips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drill-down Chips
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audit-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../templates-only-build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricting the LLM Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_8" id="__nav_7_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form LLM Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Free-form LLM Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../free-form-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../power-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../time-window-reasoning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-Window Reasoning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_9" id="__nav_7_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../privacy-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP LLM Top 10 (2025) Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Architecture (SAIF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.1.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.5 and Earlier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Third-Party Software Licenses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clean Deployment Test (Lab)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-ta-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data TA Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App and AI Assistant Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/build-from-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Packages from Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-two-top-level-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Two Top-Level Tabs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Two Top-Level Tabs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ai-assistant-sub-tabs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Assistant sub-tabs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-can-open-the-page" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who Can Open the Page
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Who Can Open the Page">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#where-the-ai-assistant-settings-are-stored" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the AI Assistant settings are stored
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#general-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        General Tab
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="General Tab">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#feature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Feature
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limits-quotas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits &amp; Quotas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Privacy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#power-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Power Users
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audit-telemetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit &amp; Telemetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-model-discovery-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Model Discovery Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#provider-credentials-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Provider Credentials Tab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splunk-mcp-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk MCP Tab
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Splunk MCP Tab">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#splunk-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audit-log-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit Log Forwarder
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-log-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Audit Log Tab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dashboard-data-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dashboard Data Tab
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#legal-acknowledgement-modals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Legal Acknowledgement Modals
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Legal Acknowledgement Modals">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enable-acceptance-modal-orange-bordered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        &ldquo;AI Assistant — Liability terms&rdquo; Dialog (orange-bordered)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#forwarder-disabled-acceptance-modal-red-bordered" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        &ldquo;Audit log integrity&rdquo; Dialog (red-bordered)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-the-hybrid-trigger-logic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the hybrid trigger logic
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-ui-refresh-on-save" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live UI Refresh on Save
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="application-settings">Application Settings<a class="headerlink" href="#application-settings" title="Permanent link">&para;</a></h1>
+<p>The <strong>Application Settings</strong> page holds the LogServ App&rsquo;s admin settings. Open it with <strong>Settings</strong> in the LogServ App&rsquo;s navigation rail (near the bottom, above <strong>About</strong>); its URL is <code>#/settings</code> inside the App, and the old <code>#/settings/ai-assistant</code> URL still opens it. The page has two tabs:</p>
+<ul>
+<li><strong>AI Assistant</strong>: everything that governs the AI Assistant, on four sub-tabs (below). To turn the AI Assistant on for the first time, follow <a href="../enable/">Set Up the AI Assistant</a>.</li>
+<li><strong>Dashboard Data</strong>: the KV Store rollups behind every dashboard and the Environment Topology view: backfill, late-arriving data, retention and clear. See <a href="../../logserv-app/dashboard-data/">Dashboard Data: Backfill and Freshness</a>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>Application Settings
++-- AI Assistant              (top-level tab)
+|   +-- General               (sub-tab)
+|   +-- Provider Credentials  (sub-tab; hidden while Templates-only mode is on)
+|   +-- Splunk MCP            (sub-tab)
+|   +-- Audit Log             (sub-tab)
++-- Dashboard Data            (top-level tab)
+</code></pre></div>
+<p><img alt="Application Settings — two-level tab hierarchy (AI Assistant ▸ General sub-tab)" src="../../../images/settings-general.png" /></p>
+<h2 id="the-two-top-level-tabs"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> The Two Top-Level Tabs<a class="headerlink" href="#the-two-top-level-tabs" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tab</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AI Assistant</strong></td>
+<td>Everything specific to the AI Assistant feature, split across four sub-tabs (below).</td>
+</tr>
+<tr>
+<td><strong>Dashboard Data</strong></td>
+<td>App-wide admin controls for the KV Store rollup data layer that powers every dashboard <strong>and</strong> the Environment Topology view: the aggregation master switch, retention, the backfill, per-rollup status and clear (<a href="#dashboard-data-tab">see below</a>).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ai-assistant-sub-tabs">AI Assistant sub-tabs<a class="headerlink" href="#ai-assistant-sub-tabs" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Sub-tab</th>
+<th>Scope</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>General</strong></td>
+<td>Org-wide AI Assistant defaults: on/off, Templates-only mode, provider, model, privacy tier, the MCP gate, server URL and timeout, rate limit, spend cap, Power Mode roles, the audit index and the audit forwarder</td>
+</tr>
+<tr>
+<td><strong>Provider Credentials</strong></td>
+<td>LLM provider credentials (Anthropic / OpenAI / Azure OpenAI / AWS Bedrock). Hidden while <strong>Templates-only mode</strong> is on, and in a compile-time <a href="../templates-only-build/">templates-only build</a></td>
+</tr>
+<tr>
+<td><strong>Splunk MCP</strong></td>
+<td>The MCP Server bearer token and the audit forwarder&rsquo;s HEC token</td>
+</tr>
+<tr>
+<td><strong>Audit Log</strong></td>
+<td>Read-only browser of the audit events in the <code>logserv_ai_assistant_audit</code> index</td>
+</tr>
+</tbody>
+</table>
+<p>While <strong>Templates-only mode</strong> is on, an info banner at the top of the <strong>AI Assistant</strong> tab says that the provider, model, tier and Power Mode fields have no effect.</p>
+<h2 id="who-can-open-the-page"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Who Can Open the Page<a class="headerlink" href="#who-can-open-the-page" title="Permanent link">&para;</a></h2>
+<p>The LogServ App treats a user as an admin only when one of their roles is named exactly <code>admin</code>, <code>sc_admin</code> or <code>sc_subadmin</code>. Only those users see <strong>Settings</strong> in the navigation rail. Anyone else who opens <code>#/settings</code> gets <strong>403 — Admin access required</strong>, and cannot change the AI Assistant settings or run <strong>Dashboard Data</strong> Clear and Backfill. A delegated-admin role with any other name, on Splunk Cloud Platform or Splunk Enterprise, is not recognized; give such users one of the three roles itself (whether a role that only imports one of them is enough has not been tested). The page&rsquo;s own checks are not the security boundary: the KV Store collections and the knowledge objects behind it accept writes only from the same three roles (below).</p>
+<h3 id="where-the-ai-assistant-settings-are-stored">Where the AI Assistant settings are stored<a class="headerlink" href="#where-the-ai-assistant-settings-are-stored" title="Permanent link">&para;</a></h3>
+<p>The <strong>General</strong> sub-tab&rsquo;s settings and the state of the two legal acknowledgements live in KV Store collections of the LogServ App, not in <code>.conf</code> files:</p>
+<ul>
+<li><code>logserv_ai_assistant_settings</code>: one row, keyed <code>defaults</code>, holding every <strong>General</strong> setting.</li>
+<li><code>logserv_ai_assistant_acks</code>: one row per acknowledgement, holding the version last answered, the answer and its time. An acknowledgement is recorded once for the deployment, not per user; the audit event records who answered.</li>
+<li><code>logserv_ai_models</code>: the discovered-model cache (<a href="#how-model-discovery-works">How model discovery works</a>).</li>
+</ul>
+<p>All three ship with <code>read : [ * ]</code>, because every page load reads them, and <code>write : [ admin, sc_admin, sc_subadmin ]</code> in the App&rsquo;s <code>metadata/default.meta</code>. Writing a KV Store row needs only that collection-level permission, not <code>admin_all_objects</code>, so a delegated admin role without <code>admin_all_objects</code> (common on Splunk Cloud Platform) can still click <strong>Save Defaults</strong> and answer the acknowledgements. The shipped <code>default/ai_assistant_settings.conf</code> holds the defaults the App uses until the first save. On the first page load by an admin-tier user, the App copies any values left in <code>local/ai_assistant_settings.conf</code> and <code>local/ai_assistant_acks.conf</code> by an older build into these rows.</p>
+<p>The dashboard rollup, Environment Topology and platform-snapshot collections take writes from the same three roles, which is why <strong>Dashboard Data</strong> Clear and Backfill need one of them; the scheduled searches that fill those collections run as Splunk&rsquo;s system user.</p>
+<h2 id="general-tab"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> General Tab<a class="headerlink" href="#general-tab" title="Permanent link">&para;</a></h2>
+<p>The <strong>General</strong> sub-tab is divided into five sections: <strong>Feature</strong>, <strong>Limits &amp; Quotas</strong>, <strong>Privacy</strong>, <strong>Power Users</strong> and <strong>Audit &amp; Telemetry</strong>. Each table below lists the settings by their label on screen, then the key they are stored under (the same key as in <code>default/ai_assistant_settings.conf</code>).</p>
+<p>On a fresh install, the settings that matter for the predefined prompts are the <strong>Enable AI Assistant</strong> and <strong>Templates-only mode</strong> switches, the MCP rows and <strong>Audit &amp; Telemetry</strong>. The provider, model, tier, <strong>Limits &amp; Quotas</strong>, <strong>Privacy</strong> and <strong>Power Users</strong> settings govern free-form questions only, so they have nothing to govern until an admin selects a provider and stores its credential.</p>
+<p>The <strong>Save Defaults</strong> button, at the bottom, is active once something has changed; <strong>Revert</strong> discards the unsaved changes. <strong>Save Defaults</strong> records an audit event in three cases: a save that raises <strong>Privacy Tier</strong> to 2 (<code>vendor_tier2_elevation</code>; no dialog asks first), and an answer, Yes or No, to either acknowledgement dialog (<code>ai_assistant_enable_acceptance</code>, <code>forwarder_disabled_acceptance</code>). Other saves record none.</p>
+<h3 id="feature">Feature<a class="headerlink" href="#feature" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Enable AI Assistant</strong></td>
+<td><code>enabled</code></td>
+<td>Off</td>
+<td>Master switch. When off, the <strong>AI Assistant</strong> button is hidden for every user and the MCP check never runs. Every save that turns it on opens the <a href="#legal-acknowledgement-modals">liability acknowledgement</a> first.</td>
+</tr>
+<tr>
+<td><strong>Templates-only mode</strong></td>
+<td><code>templates_only_mode</code></td>
+<td>Off (reads <strong>Full LLM path</strong>)</td>
+<td>When on, the free-form, LLM-driven path is off at run time: the chat input is read-only, the model picker and the Power Mode toggle are hidden, the <strong>Provider Credentials</strong> sub-tab is hidden, and an info banner explains the mode. The predefined prompts, the Splunk MCP Server integration and the audit log stay active, and so does <strong>Model discovery</strong> while it is on (a metadata-only call to the active provider&rsquo;s model-listing API). Any admin can turn it off again. In a compile-time <a href="../templates-only-build/">templates-only build</a> this row is hidden and the mode is always on.</td>
+</tr>
+<tr>
+<td><strong>Active Provider</strong></td>
+<td><code>provider</code></td>
+<td>Mock (development only)</td>
+<td>The LLM vendor every user&rsquo;s free-form questions go to: <strong>Mock (development only)</strong>, <strong>Anthropic (Claude)</strong>, <strong>OpenAI (GPT)</strong>, <strong>Azure OpenAI</strong>, <strong>AWS Bedrock (Claude)</strong> or <strong>Ollama (Tier 0 — local)</strong>. Mock contacts no vendor and gives a canned reply. <strong>Do not select Ollama in this release:</strong> it runs the Mock provider (<a href="../privacy-tiers/#tier-0-and-the-ollama-provider-do-not-select">Privacy Tiers</a>).</td>
+</tr>
+<tr>
+<td><strong>Default Model</strong></td>
+<td><code>default_model</code></td>
+<td><code>mock-fast</code></td>
+<td>The model selected when a user opens the AI Assistant. The list is the provider&rsquo;s curated models plus any discovered ones (<a href="#how-model-discovery-works">How model discovery works</a>); each user&rsquo;s picker in the chat panel switches within the same list.</td>
+</tr>
+<tr>
+<td><strong>Model discovery</strong></td>
+<td><code>model_discovery_enabled</code></td>
+<td>On</td>
+<td>Lets the model lists refresh from the vendor&rsquo;s own model-listing API. When off, the App never calls a vendor model-listing endpoint and the pickers offer the curated list only. Hidden in a compile-time templates-only build.</td>
+</tr>
+<tr>
+<td><strong>Discovered models</strong></td>
+<td>—</td>
+<td>—</td>
+<td>Status row, shown while <strong>Model discovery</strong> is on: how many models were discovered for the active provider, when the list was last fetched, and the error of the last failed refresh, with a <strong>Refresh model list</strong> button.</td>
+</tr>
+<tr>
+<td><strong>Privacy Tier</strong></td>
+<td><code>tier</code></td>
+<td>Tier 1</td>
+<td>What a free-form vendor call may carry about your data: <a href="../privacy-tiers/">Privacy Tiers</a>. <strong>Do not select Tier 0 in this release:</strong> it summarizes like Tier 1 and still sends to the selected provider. Raising the tier to 2 records a <code>vendor_tier2_elevation</code> audit event.</td>
+</tr>
+<tr>
+<td><strong>MCP Required</strong></td>
+<td><code>mcp_required</code></td>
+<td>On (reads <strong>Required</strong>)</td>
+<td>When on, the chat waits for the MCP health check. When off, the AI Assistant runs in MCP-less chat mode: LLM streaming with no searches and no prompt browser (<a href="../mcp-setup/#mcp-less-chat-mode">Splunk MCP Setup</a>).</td>
+</tr>
+<tr>
+<td><strong>MCP Server URL</strong></td>
+<td><code>mcp_server_url</code></td>
+<td>blank</td>
+<td>The MCP endpoint. Blank uses <code>/en-US/splunkd/__raw/services/mcp</code> on this Splunk instance. See <a href="../mcp-setup/">Splunk MCP Setup</a>.</td>
+</tr>
+<tr>
+<td><strong>MCP request timeout (seconds)</strong></td>
+<td><code>mcp_timeout_seconds</code></td>
+<td><code>60</code></td>
+<td>How long the browser waits for each MCP request (a search, a saved-search run, the health check) before it aborts it. If a slow prompt shows <code>signal is aborted without reason</code>, raise it. The MCP Server has its own timeout (next row), and the lower of the two applies, so to let a search run past 60 seconds raise both. Range <code>5</code>–<code>600</code>.</td>
+</tr>
+<tr>
+<td><strong>MCP server timeout (read-only)</strong></td>
+<td>— (<code>mcp.conf [server] timeout</code> of the MCP Server app)</td>
+<td>—</td>
+<td>Shows the Splunk MCP Server&rsquo;s own request timeout next to the client timeout, or <strong>Not detected</strong> when the MCP Server is not installed or reachable. To change it, edit the MCP Server app&rsquo;s <code>mcp.conf</code> and restart Splunk: that app caches the value in a persistent process, so it cannot be changed from here.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="limits-quotas">Limits &amp; Quotas<a class="headerlink" href="#limits-quotas" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Rate limit (free-form prompts/hour)</strong></td>
+<td><code>rate_limit_per_hour</code></td>
+<td><code>30</code></td>
+<td>Per-user limit on free-form prompts in a rolling hour. Predefined prompts never count. <code>0</code> turns it off. Maps to <a href="../owasp-llm-compliance/">LLM10</a>.</td>
+</tr>
+<tr>
+<td><strong>Session tool-call cap</strong></td>
+<td><code>tool_calls_per_session_cap</code></td>
+<td><code>100</code></td>
+<td>Per-chat-session limit on searches the AI may run (saved searches and ad-hoc queries together), above the per-message limit of 8 tool turns. Clearing the chat starts a new session. <code>0</code> turns it off. Maps to <a href="../owasp-llm-compliance/">LLM06</a>.</td>
+</tr>
+<tr>
+<td><strong>Daily spend cap (USD)</strong></td>
+<td><code>daily_spend_cap_usd</code></td>
+<td><code>50.00</code></td>
+<td>Per-user daily limit on estimated free-form vendor spend (from token counts). The tally resets at local midnight; the prompt that crosses the cap still completes. <code>0</code> turns it off. Maps to <a href="../owasp-llm-compliance/">LLM10</a>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="privacy">Privacy<a class="headerlink" href="#privacy" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tier 2 PII column redaction</strong></td>
+<td><code>tier2_pii_redaction</code></td>
+<td>On (reads <strong>Redact identifiers</strong>)</td>
+<td>In Tier 2, redacts the values of identifier columns before they are sent to the LLM. Every field the App defines is classified one by one (user names, statements that name users, addresses, and host names with the hostname opt-in), and name patterns cover every other field: <code>email</code>, <code>user(name)</code> and <code>user_name</code> and their plurals, every <code>*_ip</code>, <code>*_addr</code> and <code>*_address</code> and a bare <code>ip</code>, the CIM <code>src</code>, <code>dest</code>, <code>dst</code> and <code>dvc</code>, <code>peer</code>, <code>mac</code>, <code>account</code>, camelCase <code>…User</code> / <code>…UserName</code> / <code>…Email</code>, and id names such as <code>user_id</code>, also after <code>.</code>, <code>:</code>, <code>-</code> or a space as in <code>Authentication.user</code> (<a href="../privacy-tiers/">Privacy Tiers</a> has the exact rules). It fails closed: a text column&rsquo;s values are sent in clear only when the App can trace the column through the SPL to fields that mark no identifier. <code>values(user)</code> or an alias of <code>user</code> count as <code>user</code>, and a pivot&rsquo;s text cells or a column computed by an <code>eval</code> expression, <code>rex</code>, <code>spath</code> or any other construct the App does not trace are redacted whatever they hold. Each value becomes a <code>&lt;redacted-XXXXXXX&gt;</code> tag, a keyed hash under a random key per chat session: the same value keeps its tag within a chat session, so cardinality reasoning still works, and tags cannot be linked across sessions or reversed by hashing candidates. While on, it also redacts every value of a text column shown as <code>col_N</code>, and sends <code>values withheld</code> for numeric columns whose name or a field they read marks an identifier, or that mix many fields. Column names are withheld as <code>col_N</code> whatever this setting, unless Splunk generates them or the query wrote every word of them. No effect in Tier 0 or Tier 1.</td>
+</tr>
+<tr>
+<td><strong>Tier 2 hostname redaction</strong></td>
+<td><code>tier2_redact_hostnames</code></td>
+<td>Off (reads <strong>Send hostnames</strong>)</td>
+<td>Also redacts host-name columns under the Tier 2 rule. Off by default, since host names are often not sensitive in SAP environments. Can be changed only while <strong>Tier 2 PII column redaction</strong> is on.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="power-users">Power Users<a class="headerlink" href="#power-users" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Power Mode roles</strong></td>
+<td><code>power_user_roles</code></td>
+<td>empty</td>
+<td>The Splunk roles whose members see the <code>✦ Power</code> toggle in the chat input (<a href="../power-mode/">Power Mode</a>). Empty hides the toggle for everyone. The list offers the roles defined on this Splunk instance.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="audit-telemetry">Audit &amp; Telemetry<a class="headerlink" href="#audit-telemetry" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Key</th>
+<th>Default</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Audit index name</strong></td>
+<td><code>audit_index_name</code></td>
+<td><code>logserv_ai_assistant_audit</code></td>
+<td>The index that receives audit writes. Rename it together with the <code>sap_logserv_audit_idx_macro</code> macro, which controls reads (<a href="../../install-setup/install-ta/#renaming-an-index">Renaming an index</a>).</td>
+</tr>
+<tr>
+<td><strong>Audit log forwarder</strong></td>
+<td><code>audit_forwarder_enabled</code></td>
+<td>Off (reads <strong>Local-only</strong>)</td>
+<td>When on, every audit event is also sent to the HEC endpoint below, on a separate Splunk instance or SIEM, for tamper-evidence. The destination HEC must allow cross-origin requests from this Splunk Web address. Saving with it off opens the <a href="#legal-acknowledgement-modals">audit-log integrity acknowledgement</a> until that is answered at its current version. See <a href="../audit-log/#hec-forwarder">Audit Log → HEC Forwarder</a>.</td>
+</tr>
+<tr>
+<td><strong>Forwarder HEC URL</strong></td>
+<td><code>audit_forwarder_url</code></td>
+<td>blank</td>
+<td>HEC base URL, for example <code>https://siem.example.com:8088</code>; the App appends <code>/services/collector/event</code>. Required when forwarding is on.</td>
+</tr>
+<tr>
+<td><strong>Forwarder remote index (optional)</strong></td>
+<td><code>audit_forwarder_index</code></td>
+<td>blank</td>
+<td>Index on the destination. Blank uses the HEC token&rsquo;s default index.</td>
+</tr>
+<tr>
+<td><strong>Forwarder source field</strong></td>
+<td><code>audit_forwarder_source</code></td>
+<td><code>logserv_ai_assistant_remote</code></td>
+<td><code>source</code> of every forwarded event, distinct from the local copies (sourcetype <code>logserv:ai_assistant:audit</code>), so the two can be told apart.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-model-discovery-works"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> How Model Discovery Works<a class="headerlink" href="#how-model-discovery-works" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Needs a configured provider credential</p>
+<p>Model discovery queries the configured provider, so it does nothing useful until a credential is configured. It is <strong>inert in a compile-time <a href="../templates-only-build/">templates-only build</a></strong>: no vendor model-listing call is ever made there, and its rows are hidden.</p>
+</div>
+<p>The model pickers (the <strong>Default Model</strong> setting and the chat panel&rsquo;s per-user picker) offer a <strong>merged model list</strong> per provider: a curated static baseline <strong>plus</strong> models discovered live from the configured vendor.</p>
+<p><strong>What discovery calls.</strong> Discovery is a <strong>metadata-only GET</strong> against the vendor&rsquo;s model-listing endpoint, with the same credential and in the same trust envelope as the credential check. No prompt text, no Splunk event data and no aggregates are involved; the request and response carry model metadata only.</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Discovery source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Anthropic</td>
+<td><code>GET /v1/models</code> (paginated; display names and context windows carried through)</td>
+</tr>
+<tr>
+<td>OpenAI</td>
+<td><code>GET /v1/models</code>, filtered to chat-capable families, with dated snapshots collapsed onto their alias</td>
+</tr>
+<tr>
+<td>Azure OpenAI</td>
+<td>Three-step deployment discovery: <code>/openai/v1/models</code> → <code>/openai/deployments</code> → the deployment name(s) configured on the Provider Credentials sub-tab</td>
+</tr>
+<tr>
+<td>AWS Bedrock</td>
+<td><code>ListFoundationModels</code>, filtered to Anthropic / on-demand / text / streaming / active</td>
+</tr>
+<tr>
+<td>Mock</td>
+<td>A synthetic <code>mock-discovered</code> entry (for testing with no key)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>When it refreshes.</strong> Three triggers, all governed by <strong>Model discovery</strong>:</p>
+<ol>
+<li><strong>Credential save</strong>: saving a provider credential on the Provider Credentials sub-tab refreshes that provider&rsquo;s list immediately.</li>
+<li><strong>Manual</strong>: the <strong>Refresh model list</strong> button on the General sub-tab.</li>
+<li><strong>24-hour TTL</strong>: opening the chat panel refreshes the active provider&rsquo;s list if the cached copy is older than 24 hours (at most once per page load, never for the Mock provider, and never if the panel is not opened).</li>
+</ol>
+<p><strong>Where the list lives.</strong> Discovered lists are cached in the <code>logserv_ai_models</code> KV Store collection (one row per provider: the sanitized model list, fetch time, fetching user and last error). Model ids and labels are allowlist-sanitized on write <strong>and</strong> on read, and the static baseline always survives the merge, so a poisoned or malformed cache entry cannot remove the known-good models.</p>
+<p><strong>Failure behavior.</strong> A failed refresh keeps the row&rsquo;s last good models and timestamp and only updates the error text (shown on the <strong>Discovered models</strong> row). The picker never shrinks below the static baseline.</p>
+<p><strong>Audit trail.</strong> Every refresh, success or failure, from any trigger, writes a <strong><code>model_discovery</code></strong> audit event (provider, trigger, ok, model count, duration, error), browsable on the Audit Log sub-tab.</p>
+<p><strong>Cost estimates stay honest.</strong> The vendor cost table used for spend tracking is keyed by exact model id. A discovered model with no known price reports <strong>$0</strong>; the App never guesses a price from an id prefix. The <strong>Daily spend cap (USD)</strong> therefore only counts models with known pricing. The Claude 5.x models (<code>claude-opus-5-5</code>, <code>claude-opus-5</code>, <code>claude-sonnet-5-5</code>, <code>claude-sonnet-5</code>, <code>claude-fable-5-1</code>, <code>claude-fable-5</code>, <code>claude-haiku-5-5</code>) are priced at Anthropic&rsquo;s published first-party rates, cache reads and writes included, so their turns count toward the cap. <code>claude-haiku-5-5</code> is priced at its rate for prompts up to 100K tokens; a longer prompt costs more than the estimate. Bedrock prices are set by AWS, so the App&rsquo;s AWS Bedrock entries are not derived from these rates.</p>
+<p><strong>How to turn it off.</strong> Clear <strong>Model discovery</strong> on the General sub-tab and save. From then on the App makes <strong>no</strong> vendor model-listing calls (all three triggers are gated), and the pickers offer the curated list only. Cached rows in <code>logserv_ai_models</code> are ignored while it is off and overwritten on the next refresh if it is turned on again.</p>
+<h2 id="provider-credentials-tab"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Provider Credentials Tab<a class="headerlink" href="#provider-credentials-tab" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Hidden while Templates-only mode is on</p>
+<p>This sub-tab is hidden while <strong>Templates-only mode</strong> is on and in a compile-time <a href="../templates-only-build/">templates-only build</a>; no LLM provider is used there. Otherwise, storing a credential here is what gives free-form questions a real LLM.</p>
+</div>
+<p>One panel per provider, each with that provider&rsquo;s credential fields. Credentials are stored in Splunk&rsquo;s encrypted password store through <code>/servicesNS/nobody/&lt;app&gt;/storage/passwords</code>; the page shows only whether a value is stored, its length and, for some fields, its first characters, never the cleartext.</p>
+<table>
+<thead>
+<tr>
+<th>Panel</th>
+<th>Fields (realm <code>logserv_ai_assistant_&lt;provider&gt;</code>, name)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Anthropic</strong></td>
+<td><strong>API Key</strong> (<code>anthropic</code>, <code>api_key</code>)</td>
+</tr>
+<tr>
+<td><strong>OpenAI</strong></td>
+<td><strong>API Key</strong> (<code>openai</code>, <code>api_key</code>)</td>
+</tr>
+<tr>
+<td><strong>Azure OpenAI</strong></td>
+<td><strong>API Key</strong> (<code>azure_openai</code>, <code>api_key</code>), <strong>Endpoint URL</strong> (<code>endpoint</code>), <strong>Deployment Name</strong> (<code>deployment</code>)</td>
+</tr>
+<tr>
+<td><strong>AWS Bedrock</strong></td>
+<td><strong>API Key</strong> (<code>bedrock</code>, <code>api_key</code>), <strong>AWS Region</strong> (<code>region</code>). Bedrock API keys only; IAM credentials are not supported.</td>
+</tr>
+<tr>
+<td><strong>Ollama (Tier 0 — air-gapped local)</strong></td>
+<td><strong>Base URL</strong> (<code>ollama</code>, <code>url</code>). Not used in this release: the Ollama provider runs Mock.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Storing a credential:</strong></p>
+<ol>
+<li>Find the provider&rsquo;s panel and type or paste the value into the field.</li>
+<li>Click <strong>Save</strong> (<strong>Update</strong> when a value is already stored). The value goes to Splunk&rsquo;s encrypted password store, and the row then reads <strong>Stored: length N</strong>.</li>
+</ol>
+<p><strong>Removing a credential:</strong> click <strong>Clear</strong> next to the field and confirm.</p>
+<p>Saving a credential records no audit event itself. When <strong>Model discovery</strong> is on, saving a field of the Anthropic, OpenAI, Azure OpenAI or AWS Bedrock panel starts a refresh of that provider&rsquo;s model list, which records a <code>model_discovery</code> event (trigger <code>credential_save</code>).</p>
+<p>If <strong>Active Provider</strong> names a provider whose credential is not stored, the first free-form question fails with <code>Required credential not set: logserv_ai_assistant_&lt;provider&gt;:&lt;field&gt;</code>.</p>
+<p>Each user&rsquo;s browser reads the provider credential from Splunk&rsquo;s password store when that user sends a free-form question, so a user whose role cannot read stored passwords (Splunk&rsquo;s <code>list_storage_passwords</code> capability, which <code>admin</code> holds) gets an error instead of an answer.</p>
+<h2 id="splunk-mcp-tab"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Splunk MCP Tab<a class="headerlink" href="#splunk-mcp-tab" title="Permanent link">&para;</a></h2>
+<p><img alt="Settings — Splunk MCP tab" src="../../../images/settings-mcp.png" /></p>
+<p>Two panels:</p>
+<h3 id="splunk-mcp-server">Splunk MCP Server<a class="headerlink" href="#splunk-mcp-server" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Realm</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Bearer Token</strong></td>
+<td><code>logserv_ai_assistant_mcp</code></td>
+<td><code>bearer_token</code></td>
+</tr>
+</tbody>
+</table>
+<p>An OAuth/JWT token issued for your Splunk MCP Server, pasted by an admin. <strong>Optional</strong>: by default the App authenticates to the MCP Server with the user&rsquo;s own Splunk Web session cookie. See <a href="../mcp-setup/#authentication">Splunk MCP Setup → Authentication</a>.</p>
+<h3 id="audit-log-forwarder">Audit Log Forwarder<a class="headerlink" href="#audit-log-forwarder" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Realm</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>HEC Token</strong></td>
+<td><code>logserv_ai_assistant_forwarder</code></td>
+<td><code>hec_token</code></td>
+</tr>
+</tbody>
+</table>
+<p>The HEC token for forwarding audit events to a separate Splunk instance or SIEM. The destination URL and the on/off switch are on the General sub-tab under <strong>Audit &amp; Telemetry</strong>. The token is sent on every forwarded audit event as <code>Authorization: Splunk &lt;token&gt;</code>. See <a href="../audit-log/#hec-forwarder">Audit Log → HEC Forwarder</a>.</p>
+<h2 id="audit-log-tab"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Audit Log Tab<a class="headerlink" href="#audit-log-tab" title="Permanent link">&para;</a></h2>
+<p><img alt="Settings — Audit Log tab" src="../../../images/settings-audit.png" /></p>
+<p>Read-only browser of every event in the <code>logserv_ai_assistant_audit</code> index. The tab searches the index as the signed-in admin, whose role must allow it (<a href="../audit-log/#restricting-who-can-read-the-audit-index">Restricting who can read the audit index</a>). The search window is the global time range in the header: the viewer re-runs on every change, and there is no separate time-range control. Filters: a category multi-select (13 categories: <code>local_only</code>, <code>vendor_tier1</code>, <code>vendor_tier2</code>, <code>security_blocked_spl</code>, <code>rate_limited_prompt</code>, <code>user_prompt_jailbreak_flag</code>, <code>session_tool_cap_hit</code>, <code>daily_spend_cap_hit</code>, <code>audit_forwarder_failure</code>, <code>vendor_tier2_elevation</code>, <code>forwarder_disabled_acceptance</code>, <code>ai_assistant_enable_acceptance</code>, <code>model_discovery</code>), a user-contains text filter, and a result limit (50 / 100 / 250 / 500, default 100).</p>
+<p>Clicking a row&rsquo;s <strong>+</strong> button shows the full event JSON. The table shows 25 rows per page; a &ldquo;Showing N-M of T events&rdquo; line sits above it, and &ldquo;Page X of Y&rdquo; with Previous / Next buttons below it when T is over 25.</p>
+<p><strong>Tamper-resistance disclaimer</strong> at the top of the panel:</p>
+<blockquote>
+<p>Audit events live in a Splunk index. A host-root admin can edit the bucket files. Mitigation: forward audit events to a separate Splunk instance / SIEM / S3-with-Object-Lock owned by a different admin team. Configure the HEC forwarder under Settings → General → Audit &amp; Telemetry.</p>
+</blockquote>
+<p>See <a href="../audit-log/">Audit Log</a> for the threat model and the forwarder.</p>
+<h2 id="dashboard-data-tab"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Dashboard Data Tab<a class="headerlink" href="#dashboard-data-tab" title="Permanent link">&para;</a></h2>
+<p>The <strong>Dashboard Data</strong> top-level tab is the admin control surface for the KV Store rollup layer behind every dashboard <strong>and</strong> the Environment Topology view: the hourly-aggregation master switch, the 365-day retention, the backfill, the late-arriving data check, a per-rollup status and action table, and a global clear. Its Clear and Backfill need one of the three admin role names (<a href="#who-can-open-the-page">Who can open the page</a>).</p>
+<p>It manages the dashboard data layer, not the AI Assistant, so its controls are documented with that layer: <strong><a href="../../logserv-app/dashboard-data/#the-dashboard-data-settings-tab">Dashboard Data: Backfill and Freshness → The Dashboard Data settings tab</a></strong>. On a fresh install, run its backfill once: <a href="../../logserv-app/dashboard-data/#backfilling-on-first-install">Backfilling on first install</a>.</p>
+<p>A read-only view of the same rollup health, freshness and 30-day-history completeness, is available to <strong>every</strong> user on the <strong><a href="../../logserv-app/dashboards/platform/diagnostics/">Data Doctor&rsquo;s Diagnostics page</a></strong> (<em>Platform → Diagnostics</em>), which points back here for the backfill and clear controls.</p>
+<h2 id="legal-acknowledgement-modals"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Legal Acknowledgement Modals<a class="headerlink" href="#legal-acknowledgement-modals" title="Permanent link">&para;</a></h2>
+<p>Two legal acknowledgements gate the General sub-tab&rsquo;s <strong>Save Defaults</strong>. Both follow Splunk&rsquo;s <code>splunk_instrumentation</code> <code>optInVersion</code> pattern: each has a version (<code>optInVersion</code> in the App&rsquo;s <code>default/ai_assistant_acks.conf</code>), the deployment records the version it last answered and the answer (in the <code>logserv_ai_assistant_acks</code> KV Store collection), and raising the version asks again. Both answers, Yes and No, are recorded, and each answer also writes an audit event with the admin&rsquo;s user name, the network address Splunk records for the request (<code>host</code>), the time, and the SHA-256 of the acknowledgement text.</p>
+<p>On a fresh install, the first <strong>Save Defaults</strong> that turns the AI Assistant on shows both, the liability terms first (<a href="../enable/#4-turn-on-the-ai-assistant-and-answer-both-acknowledgements">Set Up the AI Assistant</a>). If an answer cannot be recorded, or the save after a Yes fails, the dialog closes and the error shows on the page.</p>
+<h3 id="enable-acceptance-modal-orange-bordered">&ldquo;AI Assistant — Liability terms&rdquo; Dialog (orange-bordered)<a class="headerlink" href="#enable-acceptance-modal-orange-bordered" title="Permanent link">&para;</a></h3>
+<p>The <strong>AI Assistant — Liability terms</strong> dialog opens:</p>
+<ul>
+<li>on every save that turns <strong>Enable AI Assistant</strong> on, whatever was answered before; and</li>
+<li>on a save while the AI Assistant is on, when its terms are at a newer version than the one last answered on this deployment (the current version is 3).</li>
+</ul>
+<p>The text has seven clauses: data egress acknowledgement, customer responsibility, AS-IS warranty disclaimer, indemnification, limitation of liability, authority warrant, and record of acknowledgement. Its <strong>Active LLM provider</strong> line names the provider in effect and, when the same save also changes the provider, the one a Yes saves.</p>
+<ul>
+<li><strong>I accept (record Yes and enable):</strong> the save goes ahead (with the second acknowledgement first, when it is due) and the version is recorded as answered. An <code>ai_assistant_enable_acceptance</code> audit event records the answer.</li>
+<li><strong>I do not accept:</strong> the save stops. An AI Assistant being turned on stays off. One that is already on (asked again after a version change) is turned off: only <strong>Enable AI Assistant</strong> changes, nothing else in that save, and it is written before the No is recorded, so if turning it off fails, nothing is recorded and the question comes back at the next save. Turning it on again asks every time.</li>
+</ul>
+<h3 id="forwarder-disabled-acceptance-modal-red-bordered">&ldquo;Audit log integrity&rdquo; Dialog (red-bordered)<a class="headerlink" href="#forwarder-disabled-acceptance-modal-red-bordered" title="Permanent link">&para;</a></h3>
+<p>The <strong>Audit log integrity</strong> dialog opens:</p>
+<ul>
+<li>on every save that turns <strong>Audit log forwarder</strong> off; and</li>
+<li>on a save with the forwarder off, when its terms are at a newer version than the one last answered on this deployment (the current version is 2).</li>
+</ul>
+<p>The text covers the integrity responsibility: with the forwarder off, the audit events exist only in the local index, which a host-root admin can edit.</p>
+<ul>
+<li><strong>I accept (record Yes and save):</strong> the save goes ahead with forwarding off.</li>
+<li><strong>I do not accept (record No):</strong> the save stops and the forwarder setting stays as it was, but the answer is recorded, so the next save does not ask again unless forwarding is turned from on to off.</li>
+</ul>
+<p>Its <code>forwarder_disabled_acceptance</code> audit event is posted as soon as the answer is recorded, for either answer, so a Yes is logged even when the save after it fails. The event goes where the audit settings in place at that moment send it: when the same save turns forwarding off, it is also sent to the forwarder being turned off, and if that send fails, its <code>audit_forwarder_failure</code> record goes to the event&rsquo;s audit index.</p>
+<h3 id="why-the-hybrid-trigger-logic">Why the hybrid trigger logic<a class="headerlink" href="#why-the-hybrid-trigger-logic" title="Permanent link">&para;</a></h3>
+<p>Version-only gating (answer once, never asked again until the version changes) is what Splunk&rsquo;s own telemetry uses. The App also asks on every deliberate turn-on of the AI Assistant and every deliberate turn-off of the forwarder, because each is a change of the legal and security posture that may be made by a different admin, with different context, than the last one.</p>
+<h2 id="live-ui-refresh-on-save"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Live UI Refresh on Save<a class="headerlink" href="#live-ui-refresh-on-save" title="Permanent link">&para;</a></h2>
+<p>When a save changes what users see (<strong>Enable AI Assistant</strong>, <strong>MCP Required</strong>, <strong>Power Mode roles</strong>, <strong>Templates-only mode</strong> and the like), the App applies the new settings to the running page without a reload: turning the AI Assistant off removes the <strong>AI Assistant</strong> button, and turning it on shows it. Other users&rsquo; open pages pick the change up at their next page load. For the callback wiring, see <a href="../../developer/ai-assistant-internals/">LogServ App and AI Assistant Internals</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../install-setup/configure-filters/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Configuring Filters">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Configuring Filters
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../logserv-app/dashboard-data/" class="md-footer__link md-footer__link--next" aria-label="Next: Dashboard Data: Backfill and Freshness">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Dashboard Data: Backfill and Freshness
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.instant.preview", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.path", "navigation.footer", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+        <script src="../../../js/limited-preview-qr.js"></script>
+      
+    
+  </body>
+</html>

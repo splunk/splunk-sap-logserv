@@ -1,0 +1,5736 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/overview/release-notes-0.1.1/">
+      
+      
+        <link rel="prev" href="../release-notes/">
+      
+      
+        <link rel="next" href="../release-notes-0.0.6/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Release Notes: 0.1.1 - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#release-notes-011" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Release Notes: 0.1.1
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../install-setup/configure-filters/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure and Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/upgrading/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Upgrade
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../logserv-app/dashboards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dashboards
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../enterprise-security/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise Security Integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ai-assistant/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  AI Assistant
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../release-notes/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer/testing-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limited-preview-announcement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limited Preview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../demo-video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here: Deployment Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Plan
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    1. Plan
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Log Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/package-placement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where Each Package Goes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/splunk-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk Cloud Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/capacity-planning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Planning and First Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    2. Install the Data TA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/cloud-attribution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Cloud Attribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/decide-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decide Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/distribute-data-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribute the Data TA to Heavy Forwarders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Connect Your Cloud
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    3. Connect Your Cloud
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/choose-your-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Cloud and AWS Scenario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Verify Your Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Install the LogServ App
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    5. Install the LogServ App
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the App and Seed the Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure and Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure and Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring Filters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboard-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-s3-direct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS S3 Direct: Backfill and Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upgrade
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/applications/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applications
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Applications
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Network & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Process Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Trace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/integration/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Connector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web and API Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/security/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Perimeter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Stack Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change & Configuration Activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/platform/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux System & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cloud Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Doctor (Diagnostics)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Security Integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise Security Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIM Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Searches & RBA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset & Identity Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat Intelligence Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Behavioral & Anomaly Detections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Assistant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/enable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Set Up the AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predefined Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drill-down Chips
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricting the LLM Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_8" id="__nav_7_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form LLM Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Free-form LLM Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-Window Reasoning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_9" id="__nav_7_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP LLM Top 10 (2025) Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Architecture (SAIF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-ta-the-days_in_past-guard-now-fires-at-the-prefix-depth-the-screen-recommends-2026-09-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data TA — the days_in_past guard now fires at the prefix depth the screen recommends (2026-09-18)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splunk-mcp-server-2x-support-and-the-published-artifact-returns-to-the-full-llm-build-build-335" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk MCP Server 2.x support, and the published artifact returns to the full-LLM build (build 335)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-ta-the-aws-s3-direct-screen-for-backfill-and-recovery-2026-09-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data TA — the AWS S3 Direct screen, for backfill and recovery (2026-09-11)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#string-accuracy-pass-from-the-zero-trust-docs-audit-build-334" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        String-accuracy pass from the zero-trust docs audit (build 334)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#elkjs-license-attribution-restored-in-the-shipped-notices-build-333" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        elkjs license attribution restored in the shipped notices (build 333)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-packaging-templates-only-canonical-app-all-four-artifacts-at-version-011-2026-08-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release packaging — templates-only canonical App; all four artifacts at version 0.1.1 (2026-08-18)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#topology-top-5-high-traffic-sids-legend-declutter-data-doctor-copy-open-in-search-on-the-rollup-spl-builds-331332" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topology top-5 High Traffic SIDs + legend declutter; Data Doctor copy + open-in-search on the rollup SPL (builds 331–332)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-hostname-user-names-on-ip-endpoints-build-330" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — hostname + user names on IP endpoints (build 330)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-group-select-and-move-builds-326328" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — group select and move (builds 326–328)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-highregular-traffic-sids-node-icons-host-app-server-visibility-builds-324325" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — High/Regular Traffic SIDs, node icons, host + app-server visibility (builds 324–325)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-the-right-panel-says-what-it-means-builds-322323" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — the right panel says what it means (builds 322–323)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-the-edge-details-tabs-work-again-build-321" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — the Edge Details tabs work again (build 321)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-rollup-spl-in-reports-full-length-raw-samples-build-320" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — rollup SPL in reports + full-length raw samples (build 320)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-operator-supplied-evidence-refinements-build-319" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — operator-supplied evidence refinements (build 319)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-partial-data-diagnosis-blank-columns-and-zero-values-build-318" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — partial-data diagnosis: blank columns and zero values (build 318)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-deep-evidence-cache-reconciliation-field-probes-clause-bisect-build-317" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — deep evidence: cache reconciliation, field probes, clause bisect (build 317)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-platform-snapshot-data-coverage-raw-samples-drawer-polish-builds-315316" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor: platform snapshot, data coverage, raw samples, drawer polish (builds 315–316)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-operator-supplied-ingest-evidence-build-314" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — operator-supplied ingest evidence (build 314)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-logserv-data-doctor-missing-data-diagnostic-builds-306313" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The LogServ Data Doctor — missing-data diagnostic (builds 306–313)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#about-dialog-version-build-number-and-build-date-builds-302303" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        About dialog — version, build number and build date (builds 302–303)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stale-prompt-count-removed-from-the-ai-assistant-banner-build-301" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stale prompt count removed from the AI Assistant banner (build 301)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates-only-build-variant-now-really-disables-the-llm-build-300" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Templates-only build variant now really disables the LLM (build 300)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#after-hours-window-fix-build-299" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After-hours window fix (build 299)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sub-hour-time-ranges-read-raw-events-a-global-refresh-button-and-a-60-second-mcp-timeout-default-builds-289298" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-hour time ranges read raw events, a global Refresh button, and a 60-second MCP timeout default (builds 289–298)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-assistant-configurable-mcp-request-timeout-builds-287288" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Assistant — configurable MCP request timeout (builds 287–288)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-assistant-predefined-prompts-on-the-rollup-tier-builds-285286" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Assistant — predefined prompts on the rollup tier (builds 285–286)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linux-windows-dashboard-chart-fixes-build-284" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux + Windows dashboard-chart fixes (build 284)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#global-cloud-provider-filter-build-282" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Cloud Provider filter (build 282)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-readability-live-activity-panel-link-graph-restyle-builds-279281" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings readability, Live Activity panel, link-graph restyle (builds 279–281)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blue-gradient-icon-set-build-278" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blue-gradient icon set (build 278)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-assistant-dynamic-model-discovery-builds-275276" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Assistant — dynamic model discovery (builds 275/276)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-star-system-force-layout-floating-edges-builds-260277" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — star-system Force layout + floating edges (builds 260–277)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cisco-magnetic-re-theme-light-dark-mode-builds-246259" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cisco Magnetic re-theme — light + dark mode (builds 246–259)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-notes-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release-notes-archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.5 and Earlier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../third-party-licenses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Third-Party Software Licenses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clean Deployment Test (Lab)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-ta-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data TA Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App and AI Assistant Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/build-from-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Packages from Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-ta-the-days_in_past-guard-now-fires-at-the-prefix-depth-the-screen-recommends-2026-09-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data TA — the days_in_past guard now fires at the prefix depth the screen recommends (2026-09-18)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splunk-mcp-server-2x-support-and-the-published-artifact-returns-to-the-full-llm-build-build-335" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk MCP Server 2.x support, and the published artifact returns to the full-LLM build (build 335)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-ta-the-aws-s3-direct-screen-for-backfill-and-recovery-2026-09-11" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data TA — the AWS S3 Direct screen, for backfill and recovery (2026-09-11)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#string-accuracy-pass-from-the-zero-trust-docs-audit-build-334" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        String-accuracy pass from the zero-trust docs audit (build 334)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#elkjs-license-attribution-restored-in-the-shipped-notices-build-333" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        elkjs license attribution restored in the shipped notices (build 333)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#release-packaging-templates-only-canonical-app-all-four-artifacts-at-version-011-2026-08-18" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Release packaging — templates-only canonical App; all four artifacts at version 0.1.1 (2026-08-18)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#topology-top-5-high-traffic-sids-legend-declutter-data-doctor-copy-open-in-search-on-the-rollup-spl-builds-331332" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topology top-5 High Traffic SIDs + legend declutter; Data Doctor copy + open-in-search on the rollup SPL (builds 331–332)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-hostname-user-names-on-ip-endpoints-build-330" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — hostname + user names on IP endpoints (build 330)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-group-select-and-move-builds-326328" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — group select and move (builds 326–328)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-highregular-traffic-sids-node-icons-host-app-server-visibility-builds-324325" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — High/Regular Traffic SIDs, node icons, host + app-server visibility (builds 324–325)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-the-right-panel-says-what-it-means-builds-322323" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — the right panel says what it means (builds 322–323)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-the-edge-details-tabs-work-again-build-321" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — the Edge Details tabs work again (build 321)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-rollup-spl-in-reports-full-length-raw-samples-build-320" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — rollup SPL in reports + full-length raw samples (build 320)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-operator-supplied-evidence-refinements-build-319" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — operator-supplied evidence refinements (build 319)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-partial-data-diagnosis-blank-columns-and-zero-values-build-318" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — partial-data diagnosis: blank columns and zero values (build 318)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-deep-evidence-cache-reconciliation-field-probes-clause-bisect-build-317" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — deep evidence: cache reconciliation, field probes, clause bisect (build 317)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-platform-snapshot-data-coverage-raw-samples-drawer-polish-builds-315316" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor: platform snapshot, data coverage, raw samples, drawer polish (builds 315–316)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-doctor-operator-supplied-ingest-evidence-build-314" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Doctor — operator-supplied ingest evidence (build 314)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-logserv-data-doctor-missing-data-diagnostic-builds-306313" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The LogServ Data Doctor — missing-data diagnostic (builds 306–313)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#about-dialog-version-build-number-and-build-date-builds-302303" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        About dialog — version, build number and build date (builds 302–303)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stale-prompt-count-removed-from-the-ai-assistant-banner-build-301" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Stale prompt count removed from the AI Assistant banner (build 301)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#templates-only-build-variant-now-really-disables-the-llm-build-300" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Templates-only build variant now really disables the LLM (build 300)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#after-hours-window-fix-build-299" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        After-hours window fix (build 299)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sub-hour-time-ranges-read-raw-events-a-global-refresh-button-and-a-60-second-mcp-timeout-default-builds-289298" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-hour time ranges read raw events, a global Refresh button, and a 60-second MCP timeout default (builds 289–298)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-assistant-configurable-mcp-request-timeout-builds-287288" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Assistant — configurable MCP request timeout (builds 287–288)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-assistant-predefined-prompts-on-the-rollup-tier-builds-285286" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Assistant — predefined prompts on the rollup tier (builds 285–286)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linux-windows-dashboard-chart-fixes-build-284" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linux + Windows dashboard-chart fixes (build 284)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#global-cloud-provider-filter-build-282" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Cloud Provider filter (build 282)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings-readability-live-activity-panel-link-graph-restyle-builds-279281" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Settings readability, Live Activity panel, link-graph restyle (builds 279–281)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#blue-gradient-icon-set-build-278" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Blue-gradient icon set (build 278)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-assistant-dynamic-model-discovery-builds-275276" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Assistant — dynamic model discovery (builds 275/276)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-topology-star-system-force-layout-floating-edges-builds-260277" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Topology — star-system Force layout + floating edges (builds 260–277)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cisco-magnetic-re-theme-light-dark-mode-builds-246259" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cisco Magnetic re-theme — light + dark mode (builds 246–259)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="release-notes-011">Release Notes: 0.1.1<a class="headerlink" href="#release-notes-011" title="Permanent link">&para;</a></h1>
+<p>This page lists what changed in the 0.1.1 line of Splunk for SAP LogServ, newest first. The 0.1.1 line was frozen on 2026-09-18, at App build 335, and receives no further changes; its work continues in <a href="../release-notes/">0.1.2</a>. To upgrade from a 0.1.1 build, follow <a href="../../getting-started/upgrading/">Upgrading to This Release</a>.</p>
+<h2 id="compatibility"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Compatibility<a class="headerlink" href="#compatibility" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Splunk platform versions</td>
+<td>9.4.3 and later</td>
+</tr>
+<tr>
+<td>CIM</td>
+<td>5.0.0 and later (per <code>app.manifest</code>)</td>
+</tr>
+<tr>
+<td>Supported OS for data collection</td>
+<td>Platform independent</td>
+</tr>
+<tr>
+<td>Vendor products</td>
+<td>SAP LogServ for SAP ECS in Amazon Web Services (AWS), Microsoft Azure, and Google Cloud Platform (GCP)</td>
+</tr>
+<tr>
+<td>Published App artifact</td>
+<td>The <strong>full-LLM build variant</strong> — the free-form LLM path is present but inert until an LLM provider credential is configured; predefined prompts + MCP dispatch work with no credential (see <a href="../../ai-assistant/templates-only-build/">Restricting the LLM Path</a>)</td>
+</tr>
+<tr>
+<td>AI Assistant prerequisite</td>
+<td><a href="https://splunkbase.splunk.com/app/7931">Splunk MCP Server (Splunkbase App 7931)</a> v1.0.3 or later and below v3.0.0 — the 2.x major is supported as of App build 335; v1.1.0+ recommended — on the search head where the LogServ App is installed</td>
+</tr>
+<tr>
+<td>Azure ingest</td>
+<td>A dedicated first-party add-on — <strong>Splunk TA for SAP LogServ on Azure</strong> (<code>splunk_ta_sap_logserv_azure</code>), installed per heavy forwarder</td>
+</tr>
+<tr>
+<td>GCP ingest</td>
+<td>A dedicated first-party add-on — <strong>Splunk TA for SAP LogServ on GCP</strong> (<code>splunk_ta_sap_logserv_gcp</code>), installed per heavy forwarder</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">v0.1.1 = the LLM-capable source line, and the published tarball is the full-LLM build again</p>
+<p>v0.1.1 is the <strong>LLM-capable</strong> source line, at full feature parity with v0.0.6 — the entire dashboard-performance data-layer rewrite (tstats + KV-Store rollups, backfill panel, staggered schedules), the Azure and GCP ingest add-ons, the three-way Multi-Cloud Overview, the Enterprise Security enable + re-stagger, and every AI Assistant fix (prompt repairs, the MCP time-range fix, rollup-backed host prompts). The source additionally carries the full LLM-driven AI Assistant (four vendor providers, free-form chat, Power Mode, privacy tiers, Provider Credentials). <strong>As of App build 335 the published v0.1.1 App artifact is the full-LLM build variant</strong> (see the build 335 entry), so those features are active once an LLM provider credential is configured; a compile-time templates-only variant of the same source remains available for restricted deployments. Everything in <a href="../release-notes-0.0.6/">Release Notes: 0.0.6</a> is included in v0.1.1; that page maps the v0.0.6 builds 254–266 to the v0.1.1 builds they came from.</p>
+</div>
+<h2 id="data-ta-the-days_in_past-guard-now-fires-at-the-prefix-depth-the-screen-recommends-2026-09-18"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Data TA — the <code>days_in_past</code> guard now fires at the prefix depth the screen recommends (2026-09-18)<a class="headerlink" href="#data-ta-the-days_in_past-guard-now-fires-at-the-prefix-depth-the-screen-recommends-2026-09-18" title="Permanent link">&para;</a></h2>
+<p>The AWS S3 Direct screen blocks a key prefix whose events the forwarder&rsquo;s own <code>days_in_past</code> filter would discard on arrival — the check that stops you creating an input which ingests nothing and reports success. It reads the date partition out of the prefix, and it required all six path segments (<code>logserv/&lt;clz_dir&gt;/&lt;clz_subdir&gt;/&lt;YYYY&gt;/&lt;MM&gt;/&lt;DD&gt;/</code>), while the screen&rsquo;s own depth gate admits <strong>four</strong> and both its message and the field help recommend exactly four. An operator who followed the screen&rsquo;s advice produced a prefix the guard could never evaluate — and the same blind spot silenced the SQS double-ingest warning for any prefix coarser than a single day.</p>
+<p>The check now reads a year, month or day partition, and both callers reason about the <strong>newest</strong> instant the partition can contain:</p>
+<ul>
+<li>a <code>&lt;YYYY&gt;/</code> prefix wholly behind the cutoff now blocks, where it was previously accepted unexamined;</li>
+<li>a prefix for the year still being written does <strong>not</strong> block on account of its January — deciding on the oldest instant instead would have produced exactly that false block;</li>
+<li>a year-wide prefix now raises the SQS overlap warning it could not raise before;</li>
+<li>a month out of range (<code>2025/13/</code>) and a day that would roll into the next month (<code>2025/06/31/</code>) are refused rather than silently widened to a date you never wrote.</li>
+</ul>
+<p>The day-level message is word for word the one that already shipped, so nothing changes for a prefix that already worked. See <a href="../../install-setup/aws-s3-direct/">AWS S3 Direct: Backfill and Recovery</a>.</p>
+<h2 id="splunk-mcp-server-2x-support-and-the-published-artifact-returns-to-the-full-llm-build-build-335"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Splunk MCP Server 2.x support, and the published artifact returns to the full-LLM build (build 335)<a class="headerlink" href="#splunk-mcp-server-2x-support-and-the-published-artifact-returns-to-the-full-llm-build-build-335" title="Permanent link">&para;</a></h2>
+<p>The AI Assistant refused to operate against <strong>Splunk MCP Server (Splunkbase App 7931) v2.0.0</strong>: a site that installed the current MCP Server saw an “uncertified version” panel in place of the Assistant. The App carries a deliberate upper bound on the MCP Server version — a supply-chain guard, because a major release is free to rename tools or reshape the request/response envelope, and the bound turns a silent degradation into a clear message. That ceiling moves from <strong>2.0.0 to 3.0.0</strong>, so the whole 2.x major is now accepted. Unchanged: the <strong>v1.0.3 floor</strong> (CVE-2026-20205) and the fail-closed handling of an absent or unparseable version string. <strong>3.x</strong> becomes the new ceiling.</p>
+<p>What the change rests on is worth stating plainly. The connection handshake is verified against 2.0.0 in the field — the health probe reads the server version only after the connection succeeds, so seeing the “uncertified” panel at all proves that the transport, the authentication and the protocol handshake were accepted. The tool-listing and tool-call shapes have since been verified too, by a manual check against a live 2.0.0 server: the tool names the Assistant dispatches and the result envelope it reads were both unchanged by that major. Two bounds on that — it is a spot-check of <strong>2.0.0</strong>, not an automated regression suite, and it says nothing about later 2.x minors. On a 2.x minor you are the first to run, run one predefined prompt and confirm the result tile carries data.</p>
+<p>This build is also the point at which the published App artifact returns to the <strong>full-LLM build variant</strong> — see <a href="../../ai-assistant/templates-only-build/">Restricting the LLM Path</a> and the upgrade note in <a href="../../getting-started/upgrading/">Upgrading</a>.</p>
+<h2 id="data-ta-the-aws-s3-direct-screen-for-backfill-and-recovery-2026-09-11"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Data TA — the AWS S3 Direct screen, for backfill and recovery (2026-09-11)<a class="headerlink" href="#data-ta-the-aws-s3-direct-screen-for-backfill-and-recovery-2026-09-11" title="Permanent link">&para;</a></h2>
+<p>The Data TA gains a screen — <strong>Splunk Web → <em>Splunk TA for SAP LogServ</em> → AWS S3 Direct</strong> — that creates and manages LogServ-scoped <strong>Generic S3</strong> inputs inside the Splunk Add-on for AWS from the browser, as the signed-in user. It adds no Python, no REST handler and no capability of its own.</p>
+<p>Generic S3 polls a bucket prefix directly, with no queue. It is a <strong>secondary</strong> channel — backfill, a bucket with no SQS notifications configured, and recovery after an outage — and SQS-Based S3 remains the steady-state path. The screen exists because the add-on&rsquo;s own input form is effectively closed to most operators: its bucket dropdown is populated by <code>list_buckets()</code>, which requires the unscopable <code>s3:ListAllMyBuckets</code>. The screen asks for the bucket name instead, so the input can be created with only the scoped actions a run actually needs — and <strong><code>s3:ListBucket</code> is the one people miss</strong>, because the SQS-Based S3 path never requires it.</p>
+<p>Two things about this input surprise people, and the screen guards both:</p>
+<ul>
+<li><strong>The key prefix selects the events; the scan-window dates bound the S3 object&rsquo;s <code>LastModified</code> — its upload time, never the event time.</strong> A re-staged archive can hold 2025 events in objects written in 2026, so a scan window narrowed to the event dates selects nothing and the run reports success having fetched none. Scan-from therefore defaults to a floor of <code>2000-01-01T00:00:00Z</code> and the prefix does the selecting.</li>
+<li><strong>A blank scan bound is not rejected by the add-on</strong> — an empty scan-until means <em>unbounded</em>, and an empty scan-from means <em>the last seven days</em>. The screen requires both, offers them as UTC calendar controls, validates as you type, and re-checks before writing.</li>
+</ul>
+<p>The scan floor is <code>2000-01-01T00:00:00Z</code> rather than the Unix epoch for a concrete reason: <strong>Splunk&rsquo;s own <code>search/timeparser</code> rejects every 1970 date.</strong> The add-on validates these dates locally when the input is created but resolves them through that parser on every poll, so a 1970 floor saved cleanly and then failed on every subsequent poll — a silent input that never collected anything and could not be repaired from the form. The screen refuses any date before 1971.</p>
+<p>See <a href="../../install-setup/aws-s3-direct/">AWS S3 Direct: Backfill and Recovery</a>.</p>
+<h2 id="string-accuracy-pass-from-the-zero-trust-docs-audit-build-334"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> String-accuracy pass from the zero-trust docs audit (build 334)<a class="headerlink" href="#string-accuracy-pass-from-the-zero-trust-docs-audit-build-334" title="Permanent link">&para;</a></h2>
+<p>Eight string/label defects surfaced by the 2026-08-18 zero-trust documentation audit, all string/comment/conf-level with no logic change: the three Settings-page strings (and two shipped-conf comments) that still named the audit index by its retired pre-rename form now say <code>logserv_ai_assistant_audit</code>; the Environment Topology Live Activity caption now reads &ldquo;Top N busiest edges&rdquo; (the table lists the busiest edges of any integration type, not just RFC); the Network Perimeter activity chart title no longer claims a log-scale y-axis; the Host Details &ldquo;Windows Event Codes&rdquo; subtitle no longer claims a top-15 cap (the table paginates all event codes); the ES Risk Notable&rsquo;s description now says it aggregates the SAP-side detection searches (its SPL reads all of them, not just the original five correlation searches); the two behavioral-anomaly notable descriptions now describe the daily scan of hourly buckets since the start of the previous day instead of &ldquo;the most recent hour&rdquo;; the templates-only Settings banner branches on the build flag, so a templates-only build no longer instructs admins to toggle off a mode that is fixed at compile time; and <code>collections.conf</code> types the <code>mcp_timeout_seconds</code> field so the setting round-trips typed like its sibling fields.</p>
+<h2 id="elkjs-license-attribution-restored-in-the-shipped-notices-build-333"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> elkjs license attribution restored in the shipped notices (build 333)<a class="headerlink" href="#elkjs-license-attribution-restored-in-the-shipped-notices-build-333" title="Permanent link">&para;</a></h2>
+<p>The Environment Topology layout engine <code>elkjs</code> (EPL-2.0) has been bundled since the topology&rsquo;s ELK layouts shipped, but its entry was missing from the generated <code>THIRD-PARTY-NOTICES.md</code> — the package was never formally declared as a dependency, so the notices generator (which walks the resolved workspace <code>node_modules</code>) skipped it. Build 333 declares the dependency properly; the shipped notices now carry the <code>elkjs@0.11.1</code> section with the full EPL-2.0 license text (1236 packages, up from 1235). No functional change — the bundled elkjs bytes are identical. See <a href="../third-party-licenses/">Third-Party Software Licenses</a>. Found by the 2026-08-18 zero-trust documentation audit.</p>
+<h2 id="release-packaging-templates-only-canonical-app-all-four-artifacts-at-version-011-2026-08-18"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Release packaging — templates-only canonical App; all four artifacts at version 0.1.1 (2026-08-18)<a class="headerlink" href="#release-packaging-templates-only-canonical-app-all-four-artifacts-at-version-011-2026-08-18" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Superseded by build 335</p>
+<p>The templates-only packaging decision recorded here was reversed in build 335 — the published App artifact is the <strong>full-LLM build variant</strong> again. The version alignment of all four artifacts at 0.1.1 still stands. See the <a href="#splunk-mcp-server-2x-support-and-the-published-artifact-returns-to-the-full-llm-build-build-335">build 335 entry</a>.</p>
+</div>
+<p>At the time of this release the published v0.1.1 App tarball was the <strong>templates-only build variant</strong> of the current build: the AI Assistant&rsquo;s full predefined-prompt catalog (via the Splunk MCP Server) is fully functional, and the free-form LLM path is <strong>disabled at compile time</strong> — no runtime setting, including a stored <code>templates_only_mode = 0</code> from a previous LLM-enabled install, can re-enable it (see <a href="../../ai-assistant/templates-only-build/">Restricting the LLM Path</a>). The regular, LLM-enabled build of the same source and build number remains available as an archived variant for approved deployments. In the same release pass, the <strong>Data TA was rebuilt</strong> as a canonical 0.1.1 artifact (functionally identical to its predecessor), and the <strong>Azure and GCP ingest add-ons moved from their independent <code>0.0.6</code> versioning to <code>0.1.1</code></strong> — their tarball filenames change accordingly (<code>splunk_ta_sap_logserv_azure-0.1.1.tar.gz</code>, <code>splunk_ta_sap_logserv_gcp-0.1.1.tar.gz</code>) with no functional change. All four artifacts pass AppInspect Cloud-mode precert with 0 errors / 0 failures at their historical baselines.</p>
+<h2 id="topology-top-5-high-traffic-sids-legend-declutter-data-doctor-copy-open-in-search-on-the-rollup-spl-builds-331332"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Topology top-5 High Traffic SIDs + legend declutter; Data Doctor copy + open-in-search on the rollup SPL (builds 331–332)<a class="headerlink" href="#topology-top-5-high-traffic-sids-legend-declutter-data-doctor-copy-open-in-search-on-the-rollup-spl-builds-331332" title="Permanent link">&para;</a></h2>
+<p>In the diagnostic drawer&rsquo;s <em>Rollup-populating saved searches</em> section, each printed saved-search definition now carries two corner actions on the SPL block: <strong>copy to clipboard</strong> (copies the definition verbatim) and <strong>open in the Search app</strong>, which opens the SPL in a new browser tab scoped to the diagnosed time window. The opened search has its terminal <code>| outputlookup</code> write <strong>removed first</strong> — run verbatim over an arbitrary window, an aggregation search would upsert partial bucket rows over correct summary rows, and the drawer never offers a control that can change data. When the write cannot be removed with certainty the open action is simply not rendered (the copy always is), and a build-time check proves the removal against every shipped aggregation search&rsquo;s definition on every release.</p>
+<p>The <strong>High Traffic SID</strong> classification now marks the top <strong>five</strong> SAP systems by total incident calls (was ten since build 324); every other SAP system is <strong>Regular Traffic SID</strong>. Remote partners are unaffected. The ranking mechanics are unchanged — data-derived at render time, SAP systems only, inbound + outbound + bidirectional calls all count — and on an estate with five or fewer systems every SID is still High Traffic.</p>
+<p>The partner donuts&rsquo; legend rows also dropped their per-row <strong>ownership badge</strong> (user feedback: confusing). Because the graph folds every inventory-attributed address into its owner&rsquo;s node, &ldquo;owner not established&rdquo; was the only verdict a legend row could ever show — a uniform column of it carried no information. Legend rows now show the endpoint and its call count; ownership badges continue to render where the verdict can actually vary (the Hosts tab rows and the Edge Details &ldquo;By app server&rdquo; table), and the underlying inventory is unchanged.</p>
+<h2 id="environment-topology-hostname-user-names-on-ip-endpoints-build-330"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Environment Topology — hostname + user names on IP endpoints (build 330)<a class="headerlink" href="#environment-topology-hostname-user-names-on-ip-endpoints-build-330" title="Permanent link">&para;</a></h2>
+<p>The square partner nodes labelled with raw IP addresses can now say <strong>who and what is behind the address</strong>, straight from the logs. When the evidence exists, a square renders up to two extra lines under its IP — the machine&rsquo;s <strong>hostname</strong>, and a <strong>user line</strong> (the name when exactly one distinct user was seen from that address, a count like &ldquo;7 users&rdquo; otherwise, with the full list on hover) — and the Details panel&rsquo;s Overview gains matching rows under the Tag: <strong>Hostname</strong> (with its evidence source), <strong>Users</strong> (every name, grouped by source — HANA audit, Windows logons, SAP start service, SSH sessions) and <strong>Names as of</strong> (how fresh the mapping is). The evidence is same-event only: HANA audit client registrations carry the client host name and the executing DB user next to <code>client_ip</code>; Windows <strong>4624 successful-logon</strong> events carry <code>WorkstationName</code> and <code>TargetUserName</code> next to <code>IpAddress</code> (failed logon guesses deliberately claim nothing, and a workstation name is only trusted when it differs from the logging host itself — for interactive and service logons the field names the <em>local</em> machine); SAP start service authentication lines carry <code>user(...)</code> and the remote address on one line; and Linux <code>sshd</code> session lines carry the user and source IP. Ambiguity <strong>suppresses rather than guesses</strong>: a hostname renders only when the IP maps to exactly one machine name (short name + FQDN count as one) and that name is not claimed by a crowd of addresses, and gateway logs are deliberately excluded as a source (their peer-IP and partner-hostname lines never co-occur on one event, so correlating them would be guesswork). The mapping is <strong>&ldquo;latest known&rdquo;</strong> — refreshed daily into a new <code>logserv_topology_ip_enrichment</code> KV Store collection (folded into the Environment Topology (graph) rollup in Settings → Dashboard Data, so Clear + Backfill cover it) and deliberately not scoped to the time-range picker, so names do not blink out on narrow windows. The build also fixed a self-inflicted deployment lesson worth recording: the new <em>daily</em> aggregation search is single-pipeline rather than the usual <code>| union</code> shape, because a 30-day daily scan in a union&rsquo;s non-first arms would silently truncate at scale — and its first draft carried a literal <code>search</code> prefix, which a <em>saved</em> search treats as a search <strong>term</strong> (saved searches prepend search context themselves), silently matching only events containing the word &ldquo;search&rdquo;; caught in live verification, fixed before promotion.</p>
+<h2 id="environment-topology-group-select-and-move-builds-326328"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Environment Topology — group select and move (builds 326–328)<a class="headerlink" href="#environment-topology-group-select-and-move-builds-326328" title="Permanent link">&para;</a></h2>
+<p>The topology canvas now supports moving a whole cluster at once. Hold <strong>Shift and drag</strong> on empty canvas to draw a selection box — every node it touches joins the group and gains a <strong>dashed outline</strong> (deliberately neutral ink, so it can never be misread as a health signal or an edge colour), a status chip at the canvas top-right shows the count, and <strong>dragging any highlighted node moves the whole group rigidly</strong>, edges following their nodes. <strong>Shift/Ctrl/Cmd + click</strong> adds or removes a single node; a <strong>plain click</strong> inspects a node in the Details panel and releases the group; <strong>Escape</strong> or an empty-canvas click clears it; <strong>arrow keys</strong> nudge a focused group; with <strong>Snap mode</strong> on, release applies <em>one shared</em> grid offset so the group&rsquo;s shape is preserved. Group moves mark the layout Unsaved and are captured by Save Layout like any drag, including keyboard nudges; the group survives data refreshes and time-range changes. Plain drag on empty canvas still pans — nothing about the existing gestures changed. Group membership is announced to assistive technology (<code>aria-selected</code>), keyboard focus regained a visible ring (the imported canvas library removes it), and the canvas&rsquo;s screen-reader instructions were corrected to the real key set. Under the hood the change also retires two latent hazards: the canvas library&rsquo;s <strong>Backspace-deletes-selected-nodes</strong> default is now explicitly disabled, and its built-in selection rectangle — which silently swallowed clicks over the selection&rsquo;s bounding box — is suppressed in favour of the per-node outlines. Adversarially reviewed before implementation (three lenses over the design against the installed canvas-library source; 33 findings including 3 blockers, all folded — among them: the snap pass would have deformed the group by rounding each member independently, a duplicate drag handler would have written NaN positions, and group drags would have rubber-banded through the canvas&rsquo;s 600 ms glide animation). The rendered verification pass then surfaced two follow-up fixes shipped as builds 327 and 328: the HANA-tenant circles&rsquo; bottom chip had overlapped their health ring since the build-324 tenant redesign (tenants are the one node variant whose name renders inside the disc, so the chip sat directly under the ring at the shared 2 px margin — it now clears at the SID label&rsquo;s 22 px), and Escape initially never cleared the group because Splunk Web keeps a permanently-mounted <em>hidden</em> &ldquo;Disconnected from Splunk server&rdquo; dialog in the DOM, which the handler&rsquo;s any-dialog guard mistook for an open modal — only a <em>visible</em> dialog now owns Escape.</p>
+<h2 id="environment-topology-highregular-traffic-sids-node-icons-host-app-server-visibility-builds-324325"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Environment Topology — High/Regular Traffic SIDs, node icons, host + app-server visibility (builds 324–325)<a class="headerlink" href="#environment-topology-highregular-traffic-sids-node-icons-host-app-server-visibility-builds-324325" title="Permanent link">&para;</a></h2>
+<p>The SID classification, the node visuals, and two long-standing &ldquo;what exactly am I looking at&rdquo; gaps were reworked:</p>
+<ol>
+<li><strong>High Traffic / Regular Traffic SIDs</strong> — the classification formerly labelled &ldquo;Focused SAP SID&rdquo; is now purely data-derived: the view ranks SAP systems at render time by the <strong>total calls touching them</strong> (inbound + outbound + bidirectional) and marks the top ten <strong>High Traffic</strong>; every other SID is <strong>Regular Traffic</strong>. Only SAP systems compete for the slots — a high-volume client IP can no longer occupy one — and the last hard-coded seed is gone from the aggregation searches (stored rows are classification-neutral; old rows read identically). On estates with ten or fewer systems every SID is High Traffic, by design. Both kinds render at the same large size with the health halo; the Systems-panel highlight now means High Traffic.</li>
+<li><strong>Node icons + tenant circles</strong> — every SAP system circle carries an interior icon (an app-server rack for application systems, the database cylinder for database systems), HANA <strong>tenant databases</strong> render as full-size circles with a combined app-servers + database icon and the tag &ldquo;APP SERVERS - HANA TENANT&rdquo; (chip: &ldquo;HANA TENANT&rdquo;), and horizontal dividers now separate every section in the right panel&rsquo;s tabs.</li>
+<li><strong>Host + instance visibility</strong> — hovering a SAP system shows a <strong>Hosts</strong> row (distinct hosts that logged its events in the window), the panel Overview gains a <strong>&ldquo;Hosts (in range)&rdquo;</strong> fact, and the Hosts tab lists the SAP <strong>instance numbers</strong> seen on each host (<code>inst 00, 01</code>). All three read the same hourly rollup as the Hosts tab itself, so the numbers agree; on a tenant node the count is scoped by the tenant&rsquo;s shared name and the panel says so inline.</li>
+<li><strong>RFC per-app-server accuracy</strong> — RFC rollup rows are now keyed <strong>per SID-side gateway listening address</strong> (<code>local_ip</code>), fixing a latent last-write-wins collision in which a multi-app-server SID&rsquo;s RFC call counts undercounted whenever two of its app servers served the same partner in the same hour. The Edge Details Overview gains a <strong>&ldquo;By app server&rdquo;</strong> table splitting each RFC edge&rsquo;s calls and errors by app-server address, with inventory owner badges. The rows partition the edge&rsquo;s calls, so they sum to the <em>Calls in window</em> fact above them.</li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Upgrading an existing install — the topology graph rollup needs a one-time Clear + Backfill</p>
+<p><strong>Superseded by build 378 of 0.1.2.</strong> On a current build, the build-378 rebuild of <strong>Environment Topology (graph)</strong> replaces this migration: its <strong>Clear</strong> and <strong>Backfill</strong>, or its <a href="../../getting-started/upgrading/#narrower-repair-build-378">narrower repair</a>, also re-key the RFC rows, so an install older than build 324 needs no separate RFC migration (see <a href="../../getting-started/upgrading/#coming-from-app-build-377-or-earlier">Upgrading to This Release</a> and the <a href="../release-notes/#sap-router-and-rfc-connections-in-the-topology-the-hana-audit-host-hana-trace-lines-read-by-their-format-and-the-sap-client-in-the-icm-trace-rebuild-eleven-rollups-once-build-378">build-378 entry</a>). Do not run the RFC-only steps below on a current build: the shipped <code>[logserv_topology_backfill_edges]</code> search now has two gateway arms, outbound and inbound, so keeping &ldquo;the single&rdquo; gateway sub-search rebuilds only one direction, after step 1 has deleted every RFC row. The text below applied to builds 324–377.</p>
+<p>The per-app-server change <strong>re-keys the topology graph rollup&rsquo;s RFC rows</strong>. After upgrading, run <strong>Clear</strong> and then <strong>Backfill</strong> once on <strong>&ldquo;Environment Topology (graph)&rdquo;</strong> in Settings → Dashboard Data. Running Backfill <em>without</em> the Clear would double-count RFC history (the old collided rows survive next to the new per-app-server rows), and the panel&rsquo;s completeness check will otherwise skip the rollup as already complete. Until the migration runs, RFC calls recorded before the upgrade appear as &ldquo;(not recorded)&rdquo; in the By-app-server table and keep the pre-upgrade undercount.</p>
+<p><strong>The Clear discards topology graph history older than the backfill window</strong> (at the time a fixed 30 days; from builds 353–360 of 0.1.2, presets up to 365 days or a custom UTC range; the graph retains up to 365 days). On installs older than 30 days, prefer the surgical RFC-only migration, which keeps everything else:</p>
+<ol>
+<li>Delete the RFC rows (the query deletes every RFC row, not only the collided ones): <code>DELETE /servicesNS/nobody/splunk_app_sap_logserv/storage/collections/data/logserv_topology_edges?query={"type":"rfc"}</code> (management port, admin credentials).</li>
+<li>Re-run only the RFC arm: from the <code>[logserv_topology_backfill_edges]</code> search in <code>default/savedsearches.conf</code>, keep the single <code>sourcetype=sap:abap:gateway</code> sub-search plus everything after the last <code>]</code>, and dispatch it as a normal search over your full raw-data span.</li>
+</ol>
+<p>New installs are unaffected — the standard first-install backfill produces the new keys directly. The Hosts-tab <strong>instance numbers</strong> need no clear: they populate going forward from the hourly aggregation, and a plain Backfill (no Clear) on &ldquo;Environment Topology (detail tabs)&rdquo; fills the backfill window immediately (at the time, the last 30 days); host rows aggregated before the upgrade simply show no instance list until then.</p>
+</div>
+<h2 id="environment-topology-the-right-panel-says-what-it-means-builds-322323"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Environment Topology — the right panel says what it means (builds 322–323)<a class="headerlink" href="#environment-topology-the-right-panel-says-what-it-means-builds-322323" title="Permanent link">&para;</a></h2>
+<p>Three things the node panel showed but never explained. Each is now stated on
+the panel itself.</p>
+<ul>
+<li>
+<p><strong>&ldquo;Which of these IP addresses are my system&rsquo;s own?&rdquo;</strong> — none of the ones you
+  can see, and that is by design. An address the inventory attributes to a
+  system is folded into that system&rsquo;s node before the graph is drawn, so an
+  address still shown separately is one no system has claimed. Every endpoint on
+  the partner charts and the Hosts tab now carries that verdict — <code>owner: XCP</code>
+  or <code>owner not established</code> — with the caveat stated inline that ownership
+  comes from an inventory which is <strong>not</strong> limited to the selected time range.
+  &ldquo;Owner not established&rdquo; is the expected reading on the partner charts, not a
+  fault, and the panel says so.</p>
+</li>
+<li>
+<p><strong>&ldquo;Is &lsquo;Top partners&rsquo; inbound or outbound?&rdquo;</strong> — it was both, summed. It is now
+  <strong>two charts</strong>, one per direction, each listing <em>every</em> partner with its exact
+  call count. There is no &ldquo;other&rdquo; bucket and the legend is not capped, so a
+  system with many partners makes the panel taller rather than the list shorter.
+  <strong>Hover any slice</strong> for its endpoint, exact count and share of the total —
+  worth reaching for on the small ones, because a slice too small to be visible
+  is drawn slightly larger so it does not disappear, and the panel says so
+  whenever that has been applied. Exact per-direction totals were
+  added to the facts table so the charts reconcile against the headline, and
+  traffic the data records as <strong>bidirectional</strong> (HANA Tenant) is counted on its
+  own line instead of being assigned a direction the record denies.</p>
+</li>
+<li>
+<p><strong>&ldquo;What are the hosts on the Hosts tab to this system?&rdquo;</strong> — they are the
+  system&rsquo;s own hosts, which is why the inbound/outbound split you might expect
+  does not apply to them. Instead, a new <strong>Calls by host and edge type</strong> table
+  sits beneath: it names a receiving host wherever the data supports one, and
+  falls back to an edge-type row where it does not, so it accounts for <strong>all</strong>
+  of the node&rsquo;s calls and can be checked against the Total calls figure on the
+  Overview tab.</p>
+</li>
+</ul>
+<p>The Hosts read was also silently capped at 20 rows while the caption reported
+that cap as the host count; the cap is now 100, and when it is reached the panel
+says so. Three chart-rendering defects that the previous four-partner limit had
+been hiding are fixed at the same time: very small slices rendered as background
+while their legend row still claimed a colour, a single-slice chart drew nothing
+at all, and an empty one asserted &ldquo;0 calls&rdquo; as if it were a measurement.</p>
+<div class="admonition note">
+<p class="admonition-title">Where the numbers come from</p>
+<p>Nothing here adds a search or a scheduled job. The traffic breakdown is
+computed in the browser from the same hourly rows that already produce the
+node&rsquo;s totals, which is what lets the two reconcile exactly. The one search
+change is an added <code>eventstats</code> inside the existing Hosts read, so the panel
+can tell how many hosts exist beyond the ones it is showing.</p>
+</div>
+<h2 id="environment-topology-the-edge-details-tabs-work-again-build-321"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Environment Topology — the Edge Details tabs work again (build 321)<a class="headerlink" href="#environment-topology-the-edge-details-tabs-work-again-build-321" title="Permanent link">&para;</a></h2>
+<p>Selecting an edge on the Environment Topology canvas now populates its detail
+tabs. Since build 240 the four tabs had shown &ldquo;no events for this edge&rdquo; for
+every edge on every time range: the view passed the <em>rendered</em> edge&rsquo;s key —
+a composite of its two endpoints and its type — to searches that accept only
+the <em>stored</em> edge id, so each search was rejected before it ran and nothing was
+ever dispatched. The headline figures on the Overview tab came from data
+already in the browser, which is why the pane still looked alive.</p>
+<ul>
+<li><strong>Operations, Performance and Errors</strong> now read the hourly topology rollup
+  scoped by the stored ids behind the edge you clicked. Where inventory
+  retargeting collapses several underlying edges into one on the canvas, the
+  tabs cover all of them; in the rare case that an edge spans more underlying
+  edges than one search may address, the tab says how many it covered rather
+  than quietly showing a partial total.</li>
+<li><strong>Activity</strong> is no longer a search at all — it is computed from the same rows
+  that produce the Overview totals, so the &ldquo;successful calls + errors&rdquo; legend
+  is an exact decomposition of &ldquo;calls in window&rdquo;. Previously the two were
+  resolved over slightly different windows.</li>
+<li><strong>Empty tabs now explain themselves.</strong> A tab that was queried and came back
+  empty reads differently from one that could not be queried, so a silent
+  failure of this kind cannot hide again. Note that RFC edges legitimately have
+  no Operations or Performance rows — those fields are absent from gateway
+  events.</li>
+<li><strong>Three labels corrected on surfaces this made visible again</strong>: the HANA
+  Tenant performance chart is titled mean and maximum rather than percentiles
+  (percentiles cannot be merged across hourly buckets), the HANA Audit Overview
+  row is labelled &ldquo;Auth failures (CONNECT)&rdquo; to distinguish it from the broader
+  Errors tab, and two RFC performance cells that no search has ever populated
+  were removed.</li>
+</ul>
+<p>A build-time check now derives the stored id&rsquo;s shape directly from the shipped
+searches and refuses to build if the interface stops matching, so this class of
+mismatch cannot return unnoticed.</p>
+<h2 id="data-doctor-rollup-spl-in-reports-full-length-raw-samples-build-320"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Data Doctor — rollup SPL in reports + full-length raw samples (build 320)<a class="headerlink" href="#data-doctor-rollup-spl-in-reports-full-length-raw-samples-build-320" title="Permanent link">&para;</a></h2>
+<p>Two report/drawer enrichments for support workflows:</p>
+<ul>
+<li><strong>The full SPL of the saved searches that populate a rollup</strong> now appears in the panel
+  diagnosis drawer&rsquo;s technical detail, in Copy technical summary, and in the panel and
+  dashboard PDFs. Each entry is attributed by its parsed <code>outputlookup</code> target (never
+  guessed from the registry — the multi-collection rollups made that distinction matter),
+  carries its cron schedule verbatim and its last-modified timestamp, and sits under a
+  pinned intro stating the SPL is current configuration that was <strong>not</strong> run by the
+  diagnosis. Each aggregate names its install-backfill stanza with an &ldquo;as shipped, the
+  search text is identical&rdquo; note whose premise a build-time check derives from the shipped
+  configuration on every release. The dashboard PDF&rsquo;s section is de-duplicated and covers
+  every rollup the dashboard reads — healthy panels included; unreadable entries render
+  their reason plus an explicit &ldquo;N of M could not be read&rdquo; completeness line.</li>
+<li><strong>Raw event samples are no longer truncated to 500 characters</strong> — each opt-in sample is
+  included in full, up to a disclosed 20,000-character safety ceiling (twice Splunk&rsquo;s
+  default per-event truncation). The ceiling is applied <em>before</em> redaction (whose e-mail
+  matcher is now bounded — linear on any input), the credential scrubber gains
+  space-delimited SQL/CLI secret shapes (<code>PASSWORD "x"</code>, <code>IDENTIFIED BY x</code>, <code>-P x</code>,
+  <code>-pXxx</code>, <code>--password x</code>), and the samples section + cover banner state that the PDF&rsquo;s
+  Latin-1 font may not render every character — the <code>.json</code> twin carries the exact text.
+  Reports stored by earlier builds remain re-downloadable (the persistence shape check
+  accepts the prior banner wording).</li>
+</ul>
+<h2 id="data-doctor-operator-supplied-evidence-refinements-build-319"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Data Doctor — operator-supplied evidence refinements (build 319)<a class="headerlink" href="#data-doctor-operator-supplied-evidence-refinements-build-319" title="Permanent link">&para;</a></h2>
+<p>The operator-supplied ingest-filter evidence (the Diagnostics-page paste) is sharpened on five
+fronts:</p>
+<ul>
+<li><strong>Replay/backdate-proof out-of-date detection</strong> — the &ldquo;supplied configuration may have
+  changed&rdquo; check now also compares <em>index time</em> (from bucket metadata), so replayed events
+  with old timestamps no longer evade it; a five-minute clock-skew grace prevents false
+  contradictions, and the index-time signal only ever softens a verdict (to <em>possible</em>), never
+  silences the diagnosis.</li>
+<li><strong>Days-in-past corroboration</strong> — the &ldquo;dropped by design&rdquo; verdict now reports whether
+  anything older than the cutoff exists in the index at all (from the same bucket-metadata
+  probe, at zero extra search cost), with deliberately non-committal wording when nothing
+  older exists: a filter, a young index and ordinary retention are indistinguishable there.</li>
+<li><strong>A sliding-cutoff context line</strong> on &ldquo;never received&rdquo; / &ldquo;newer data exists&rdquo; / &ldquo;may have
+  stopped&rdquo; verdicts whose window ends before the supplied cutoff — the cutoff is surfaced
+  without over-claiming it as the cause.</li>
+<li><strong>The Cloud Provider stamp rides the paste</strong> — a <code>local/transforms.conf</code> or settings-conf
+  paste records the Data TA&rsquo;s configured <code>cloud_provider</code> stamp, and provider-filtered panels
+  explain how it interacts with their Cloud filter (including the <code>aws</code>-matches-unattributed
+  nuance). Stored in the facts row (new <code>cloud_provider_stamp</code> column), shown in the page
+  summary and in every report&rsquo;s supplied-filters section.</li>
+<li><strong>A drawer pointer</strong> — when a panel diagnosis lands on an ingest-ambiguous verdict with no
+  usable configuration supplied, the drawer (and its <em>Copy technical summary</em>) now points at
+  the Diagnostics-page paste.</li>
+</ul>
+<p>Also fixed: transforms-paste pattern recovery now inverts every <code>re.escape</code>d character (a
+hyphen-bearing include/exclude pattern previously mis-recovered), lists clamped on read are
+marked approximate, and a per-probe runtime cap is no longer dropped by the dashboard sweep&rsquo;s
+probe deduplication.</p>
+<h2 id="data-doctor-partial-data-diagnosis-blank-columns-and-zero-values-build-318"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Data Doctor — partial-data diagnosis: blank columns and zero values (build 318)<a class="headerlink" href="#data-doctor-partial-data-diagnosis-blank-columns-and-zero-values-build-318" title="Permanent link">&para;</a></h2>
+<p>Missing data is not always an empty panel. The Data Doctor now diagnoses panels that <strong>have</strong>
+data — a table with rows but a blank column, or a KPI stuck at a zero you believe should not be
+zero — with two new entry points that work on populated panels:</p>
+<ul>
+<li>Every chart and table panel&rsquo;s toolbar gains a fifth icon, <strong>Diagnose this panel</strong>, opening the
+  diagnosis drawer under a <strong>&ldquo;Panel diagnosis&rdquo;</strong> header (the empty-panel header remains <em>&ldquo;Why is
+  this empty?&rdquo;</em>).</li>
+<li>Every KPI card gains a corner diagnose control, revealed on hover or keyboard focus. On a card
+  showing a zero (formatted zeros like &ldquo;0 ms&rdquo; count) it routes into the new zero-value
+  resolution.</li>
+</ul>
+<p>What the partial-data diagnosis adds:</p>
+<ul>
+<li><strong>Column coverage.</strong> The table reports which displayed columns are blank — as <strong>counts only,
+  never values</strong> (nothing from your rows leaves the panel). Each fully-blank column is traced to
+  the raw-event field it displays (through any renames in the query) and corroborated against a
+  sample of the source events, distinguishing <em>&ldquo;the field is not populated on the source events
+  at all&rdquo;</em> (a search-time-extraction gap) from <em>&ldquo;the source events carry it but the summarised
+  rows do not&rdquo;</em> (a summarisation gap — the backfill settles it) from <em>&ldquo;the aggregation provably
+  does not store that column — a backfill cannot add it.&rdquo;</em> Columns computed inside the query, or
+  drawn by a custom renderer, are honestly set aside rather than probed.</li>
+<li><strong>Zero-value resolution.</strong> A zero KPI is reconciled against the summarised layer and — when
+  the panel&rsquo;s raw equivalent emits a single comparable value — a live raw computation.
+  Summarised rows that genuinely sum to zero, or an agreeing raw equivalent, certify <em>&ldquo;the value
+  genuinely is zero&rdquo;</em> (never a backfill prescription); a disagreeing raw equivalent is reported
+  as a <strong>possible</strong> summarisation gap, never a confirmed fault.</li>
+<li><strong>The honest floor.</strong> When every displayed column is populated and accounted for, the
+  diagnosis says so — <em>&ldquo;no defect found&rdquo;</em> — and the floor is unreachable while any column could
+  not be checked (those are named instead).</li>
+</ul>
+<p>A populated panel&rsquo;s rows are living proof the read path works, so the emptiness checks are
+skipped with explicit <em>&ldquo;Not applicable — this panel returned data&rdquo;</em> ledger notes; a panel that
+has not finished loading is refused with a plain explanation rather than diagnosed on unknown
+facts.</p>
+<h2 id="data-doctor-deep-evidence-cache-reconciliation-field-probes-clause-bisect-build-317"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Data Doctor — deep evidence: cache reconciliation, field probes, clause bisect (build 317)<a class="headerlink" href="#data-doctor-deep-evidence-cache-reconciliation-field-probes-clause-bisect-build-317" title="Permanent link">&para;</a></h2>
+<p>The Data Doctor&rsquo;s check catalogue is complete. Four deep checks now run <strong>in the panel diagnosis
+drawer only</strong> (never in a dashboard sweep — they are the only probes allowed to scan raw events):</p>
+<ul>
+<li><strong>Summarised-vs-raw reconciliation.</strong> An empty panel that reads summarised data is re-run as
+  its exact raw-query equivalent over the already-summarised period. If the raw query returns
+  rows the summary lacks, the diagnosis is the <strong>confirmed</strong> <em>&ldquo;the summary appears to be missing
+  data it should have&rdquo;</em> (re-run the backfill); if both agree there is nothing, the diagnosis is
+  the health-certifying <em>&ldquo;there is genuinely nothing to show&rdquo;</em>. Only panels whose raw equivalent
+  groups results carry this signal — a scalar count is skipped with an honest note.</li>
+<li><strong>Field presence probe.</strong> A raw panel that filters on a field is checked against a sample of
+  its own sourcetype&rsquo;s events: a field populated on <strong>zero</strong> sampled events reads as a likely
+  search-time-extraction gap (<em>&ldquo;this field is not populated&rdquo;</em> — a missing add-on or broken
+  props chain), and a populated field whose expected value never appears reads as a possible
+  vocabulary/casing drift (<em>&ldquo;none of this panel&rsquo;s expected values appear&rdquo;</em>).</li>
+<li><strong>Clause relaxation.</strong> For an empty raw panel, each filter clause is removed in turn (after a
+  control probe confirms the emptiness is in the base search): the diagnosis names <strong>which
+  clause excludes every event</strong> and how many events removing it would match.</li>
+<li><strong>Lookup registration.</strong> A panel using a non-summarised lookup verifies it is registered on
+  the search head (a CSV under <code>default/lookups/</code> does not register — only the app-root
+  <code>lookups/</code> directory does).</li>
+</ul>
+<p>The environment <strong>report</strong>&rsquo;s rollup table gains a &ldquo;Recent buckets&rdquo; bucket-continuity column
+(context only — the live Diagnostics page deliberately omits it), and cached verdicts under a
+Cloud Provider filter now state whether any summarised rows carry that provider at all.</p>
+<p>Build 317 also fixes a live defect found during this work&rsquo;s review: the Environment Health
+dashboard&rsquo;s sub-hour raw queries still used a retired field name (<code>audit_action</code>), silently
+dropping every HANA failed-CONNECT from the Auth Failures KPI at ranges under 90 minutes and
+leaving the Recent Critical Events &ldquo;Detail&rdquo; column empty for HANA rows. Both now read the
+correct <code>action_type</code> field.</p>
+<h2 id="data-doctor-platform-snapshot-data-coverage-raw-samples-drawer-polish-builds-315316"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Data Doctor: platform snapshot, data coverage, raw samples, drawer polish (builds 315–316)<a class="headerlink" href="#data-doctor-platform-snapshot-data-coverage-raw-samples-drawer-polish-builds-315316" title="Permanent link">&para;</a></h2>
+<p>The Data Doctor&rsquo;s deferred capabilities are now built:</p>
+<ul>
+<li><strong>Platform health snapshot (Tier B).</strong> A new hourly scheduled search, <code>logserv_diag_platform_aggregate</code> (two minutes past each hour), copies scheduler outcomes and skip/deferral reasons, search-concurrency warnings, per-index throughput, pipeline-queue depth and PCRE-limit events from <code>index=_internal</code> into the world-readable <code>logserv_diag_platform_snapshot</code> KV collection — so a <strong>non-admin</strong> diagnosis can see platform health. The Diagnostics page and the environment report render it as a Platform-health section; when the snapshot is stale, empty or unreadable, the section says <strong>NOT AVAILABLE</strong> with the verified reason rather than guessing. A stale dashboard summary&rsquo;s diagnosis can now carry a scheduler-skip evidence line — always provenance-badged (&ldquo;recorded by the hourly platform snapshot, a collection any authenticated Splunk user can write&rdquo; <em>(superseded by builds 384–385 of 0.1.2: the collection is writable by the admin, sc_admin and sc_subadmin roles only, and the badge reads &ldquo;a collection only Splunk administrators can write&rdquo;)</em>) and never able to raise the verdict&rsquo;s confidence. A daily retention search (<code>logserv_diag_platform_retention</code>) trims the collection to 30 days. The hourly cron slot was freed by moving the four ES behavioral-anomaly searches from <code>:02</code> to <code>:30</code> of hours 02–05 (behaviourally neutral — their analysis windows are snapped in SPL).</li>
+<li><strong>Data coverage in the environment report.</strong> A daily event-volume chart (ASCII, up to the most recent 60 days), the <code>clz_dir</code>/<code>clz_subdir</code> distribution <strong>with its coverage denominator</strong> (events without the routing metadata are called out, not hidden), and per-host counts.</li>
+<li><strong>Opt-in raw event samples in the panel report.</strong> The diagnosis drawer&rsquo;s Download PDF gains an &ldquo;Include raw event samples&rdquo; checkbox (default off, never sticky): up to 5 recent events of the panel&rsquo;s sourcetype(s), credential-scrubbed and email/user-redacted, truncated to 500 characters <em>(superseded by build 320: samples now ship in full, up to a 20,000-character ceiling; see the build-320 entry)</em>, clearly labelled as <strong>not</strong> filtered by the panel&rsquo;s own host/provider selections. The report&rsquo;s cover banner states the samples&rsquo; presence, and a sample-bearing report is <strong>download-only — never saved</strong> to the Saved-reports list (storing raw events in a world-readable collection would bypass index access controls).</li>
+<li><strong>The drawer now closes on any route change</strong> — browser Back <strong>and</strong> in-app navigation — closing the long-documented C10 quirk.</li>
+<li><strong>PDF text fidelity.</strong> The <code>→</code> arrow rendered as mojibake in every generated PDF (the standard PDF fonts are cp1252-only); it is now ASCII across every report string, with a permanent build gate preventing regressions.</li>
+<li><strong>The four behavioral-anomaly ES searches moved from <code>:02</code> to <code>:30</code></strong>, still once a day in hours 02–05, so the hourly platform snapshot has <code>:02</code> to itself.</li>
+<li>The shipped scheduler layout is now verified by a permanent build gate: <strong>every enabled scheduled search occupies its own (hour, minute) slot — zero cron collisions.</strong></li>
+</ul>
+<h2 id="data-doctor-operator-supplied-ingest-evidence-build-314"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Data Doctor — operator-supplied ingest evidence (build 314)<a class="headerlink" href="#data-doctor-operator-supplied-ingest-evidence-build-314" title="Permanent link">&para;</a></h2>
+<p>The Data Doctor closes its own biggest declared boundary: the Data TA&rsquo;s ingest-tier filters
+(include/exclude + days-in-past), which run on the heavy forwarder / indexer tier and are
+invisible from a search head. The <strong>Platform → Diagnostics</strong> page now prints the exact command
+to read them, accepts the pasted output (REST JSON/XML, the generated <code>local/transforms.conf</code>,
+or the settings conf), credential-scrubs and parses it, and stores it as operator-supplied
+evidence. Two new diagnosis verdicts consume it: <em>&ldquo;Events this old are discarded at ingest by
+design&rdquo;</em> (window vs the days-in-past cutoff) and <em>&ldquo;<code>&lt;log type&gt;</code> events are excluded at ingest
+by the configured filter rule <code>&lt;rule&gt;</code>&ldquo;</em> (the include/exclude reconciliation) — each carrying a
+<em>&ldquo;Recorded as supplied by \&lt;user&gt;, \&lt;date&gt;&ldquo;</em> provenance line, hedged when the supply is
+stale, approximate or partial, and standing down entirely when observed events contradict it.
+Reports gain an &ldquo;Ingest-tier filters (supplied by operator)&rdquo; section and a machine-readable
+<code>ingestFacts</code> block; a paste matching a heavy forwarder&rsquo;s shipped-defaults shape is flagged
+rather than trusted. One new KV collection (<code>logserv_diag_ingest_facts</code>, a fixed single row,
+no scheduled searches). See
+<a href="../../logserv-app/dashboards/platform/diagnostics/#supplying-the-ingest-filter-configuration">Supplying the ingest-filter configuration</a>.</p>
+<h2 id="the-logserv-data-doctor-missing-data-diagnostic-builds-306313"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> The LogServ Data Doctor — missing-data diagnostic (builds 306–313)<a class="headerlink" href="#the-logserv-data-doctor-missing-data-diagnostic-builds-306313" title="Permanent link">&para;</a></h2>
+<p>When a panel is empty, the app now explains why — or finds out. The <strong>Data Doctor</strong> is a
+built-in missing-data diagnostic, usable by any non-admin user, in four layers:</p>
+<ul>
+<li><strong>Empty-panel hints (automatic).</strong> Every empty chart, table and KPI card corrects its own
+  empty message when the reason is already knowable without a search: an active Cloud/host
+  filter, a time range shorter than the panel&rsquo;s data granularity, a failed search, or a query
+  clause that can never match. KPI cards use a compact form so the equalised row height holds.</li>
+<li><strong>&ldquo;Why is this empty?&rdquo; — the panel diagnosis drawer.</strong> A budgeted, cancellable series of
+  probes walks a gated verdict cascade (the panel&rsquo;s own error first, then index visibility and
+  presence, the summarised-data layer, sourcetype presence/staleness) and answers in plain
+  language with a confidence level and <strong>who can act</strong> — including the verdict a diagnostic
+  must be able to give: <em>&ldquo;there genuinely are no such events — nothing is broken.&rdquo;</em> Panels that
+  read summarised data are traced back to the source events their aggregation consumes, so an
+  unbuilt rollup (&ldquo;run the backfill&rdquo;) is distinguished from genuinely absent data. A probe
+  that failed or ran out of budget renders NOT CHECKED — never OK, never a fault.</li>
+<li><strong>Data Doctor reports (PDF + JSON) at three scopes.</strong> The drawer downloads a panel report;
+  the Actions menu adds <strong>Diagnose dashboard (PDF)</strong> (every panel on the open dashboard
+  classified, the empty ones deep-diagnosed) and <strong>Environment report (PDF)</strong> (index,
+  sourcetype and rollup health for the whole install). Each download is a branded, selectable-
+  text PDF plus a machine-readable <code>.json</code> twin (<code>logserv.diag/1</code>) — generated entirely in the
+  browser, containing no raw log events, intended for a Splunk support ticket.</li>
+<li>
+<p><strong>The Diagnostics page (<code>#/diagnostics</code>, builds 311–312).</strong> <em>Platform → Diagnostics</em> renders the
+  environment health live — summary facts, a per-rollup table with independent <strong>Freshness</strong>
+  and <strong>History</strong> verdicts (History uses the same ~30-day completeness convention as Settings →
+  Dashboard Data), per-sourcetype window counts + all-time last-seen, the full &ldquo;what was
+  checked&rdquo; ledger, and the explicit list of what cannot be checked from a browser session.
+  Every downloaded report is also <strong>saved automatically</strong> to a new <code>logserv_diag_reports</code>
+  KV collection and listed on the page for re-download (identical PDF, or the JSON twin) —
+  kept 365 days, newest 100, trimmed by a nightly retention search at 01:56 search-head local time. The page
+  carries no destructive or admin controls; admin remedies are named as text.</p>
+</li>
+<li>
+<p><strong>Fresh-install correctness (build 313).</strong> Five new root causes are diagnosed for the
+  states a brand-new install actually hits: <strong>routing not applied</strong> (events arriving but
+  none parsed into the solution&rsquo;s log types — the Data TA missing from the forwarder/indexer
+  tier), <strong>feed not started</strong> (an empty summary whose SOURCE events have never arrived — the
+  backfill is no longer prescribed when it cannot help), <strong>Windows extraction add-on
+  missing</strong> (<code>Splunk_TA_windows</code> absent on the search tier while the Windows events exist),
+  <strong>KV Store not ready</strong> (mongod warm-up after a restart, previously indistinguishable from
+  &ldquo;never built&rdquo;), and <strong>future-dated events</strong> (source clock/timezone misconfiguration). The
+  index-authorization verdict now names every cause its evidence cannot separate (role,
+  missing Data TA, macro override, disabled index); a &ldquo;never arrived&rdquo; claim is scoped to the
+  index actually probed; a disabled summarisation job upgrades the stale-summary verdict to
+  confirmed and names the job; the companion-apps check now includes the Data TA (with its
+  expected-tier note); and saved panel reports carry the panel&rsquo;s real title instead of
+  &ldquo;(untitled)&rdquo;.</p>
+</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Honesty guarantees, enforced at build time</p>
+<p>The diagnostic&rsquo;s rules are pinned by mutation-tested build-gate consistency suites (the build fails on any drift): a free check may never assert a system fault without
+dispatched evidence, an unchecked probe may never read as OK, a rollup may never be
+certified healthy from an unchecked collection, and the reports retention can never wipe
+the saved-reports collection on an empty read (<code>override_if_empty=false</code> — verified live).</p>
+</div>
+<h2 id="about-dialog-version-build-number-and-build-date-builds-302303"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> About dialog — version, build number and build date (builds 302–303)<a class="headerlink" href="#about-dialog-version-build-number-and-build-date-builds-302303" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Superseded by builds 338–349 of 0.1.2</p>
+<p>The navigation bar&rsquo;s menus were replaced by the left navigation rail. <strong>About</strong> is now at the bottom of the rail, below a divider and after <strong>Settings</strong> (admins only). The dialog shows the same version, build and build date.</p>
+</div>
+<p>The navigation bar has a new <strong>About</strong> item, to the right of <em>Platform</em>. Clicking it opens a dialog
+showing the app icon, the product name <strong>Splunk for SAP LogServ</strong>, and the <strong>version</strong>, <strong>build
+number</strong> and <strong>build date</strong> of the app you are running, with a <strong>Close</strong> button. Clicking outside the dialog or pressing
+<code>Esc</code> also closes it.</p>
+<p>This makes the running build identifiable from inside the UI — useful when confirming an upgrade
+landed, or when reporting an issue.</p>
+<div class="admonition tip">
+<p class="admonition-title">The numbers always match the installed app</p>
+<p>Version and build are read from the app&rsquo;s own <code>app.conf</code> when the app is built, and the build date
+is stamped at the same moment — none of them are typed into the page, so the dialog cannot show a
+stale value. The build date is UTC.</p>
+</div>
+<h2 id="stale-prompt-count-removed-from-the-ai-assistant-banner-build-301"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Stale prompt count removed from the AI Assistant banner (build 301)<a class="headerlink" href="#stale-prompt-count-removed-from-the-ai-assistant-banner-build-301" title="Permanent link">&para;</a></h2>
+<p>The AI Assistant&rsquo;s templates-only banner told users to &ldquo;run any of the <strong>48</strong> saved searches&rdquo; — the
+catalog actually holds <strong>61</strong> predefined prompts. The count is now gone rather than corrected: the
+catalog has grown across releases (40 → 42 → 48 → 61), and a hard-coded number in a user-visible
+string goes stale silently. The banner now reads &ldquo;any of the predefined saved searches&rdquo;.</p>
+<p>The same stale count was swept from four other places: the shipped <code>ai_assistant_settings.conf</code>
+comment (visible to admins via <code>btool</code>), two rows in the developer AI Assistant internals reference,
+and the architecture page&rsquo;s description of the predefined-prompt path. No behavior change.</p>
+<h2 id="templates-only-build-variant-now-really-disables-the-llm-build-300"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Templates-only build variant now really disables the LLM (build 300)<a class="headerlink" href="#templates-only-build-variant-now-really-disables-the-llm-build-300" title="Permanent link">&para;</a></h2>
+<p>The app can be built in two variants from one source tree: the standard build (<code>yarn build</code>) with the
+full LLM-driven AI Assistant, and a <strong>templates-only</strong> build (<code>yarn build:templates-only</code>) intended for
+partner and restricted-environment distribution, where only the predefined-prompt path is available.</p>
+<p>The templates-only build flag was correctly wired, but it no longer disabled what it claimed to. The
+user-facing gating had moved to the <strong>runtime</strong> <code>templates_only_mode</code> admin setting, so the build flag
+was left gating only model discovery and two Settings rows — <strong>a templates-only build still had working
+free-form LLM chat</strong>.</p>
+<p>The build flag now <em>forces the runtime setting on</em>, at the single point where the setting is read:</p>
+<ul>
+<li><strong>Every read path reports templates-only.</strong> The config reader normalizes both storage sources — the
+  KV Store settings row and the <code>ai_assistant_settings.conf</code> stanza — through one function, and falls
+  back to a built-in default if both reads fail. All three now report <code>templates_only_mode: true</code> in a
+  templates-only build, whatever is stored. The existing runtime behavior then applies unchanged: chat
+  input read-only, Send disabled, the free-form dispatch path short-circuits with an in-chat notice,
+  model picker and Power Mode hidden, Provider Credentials tab hidden, explanatory banner shown.</li>
+<li><strong>Why patching the shipped conf default alone was not enough.</strong> The KV Store row takes precedence
+  over the conf file, so a deployment upgrading from a standard build — whose row already holds
+  <code>templates_only_mode = 0</code> — would have kept the LLM path enabled.</li>
+<li><strong>The Settings &ldquo;Templates-only mode&rdquo; toggle is hidden</strong> in a templates-only build. It could not turn
+  the LLM path back on, so showing it would be a control that lies.</li>
+<li>The build also writes <code>templates_only_mode = true</code> into the packaged <code>default/ai_assistant_settings.conf</code>
+  so the shipped artifact is self-describing to <code>btool</code> and the REST conf endpoint.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">What this does <em>not</em> change</p>
+<p>The standard full-LLM build is unaffected — verified at the byte level: the two variants&rsquo; compiled
+bundles are the same size and differ only in the compiled flag value (plus a per-build style-engine
+salt). The vendor provider modules are still present in the templates-only bundle; this is a
+functional disable, not a code strip. If you need a distribution with the vendor code physically
+removed, that is the separate v0.0.6 line, frozen at App build 266 with no later fixes (see <a href="../release-notes-0.0.6/">Release Notes: 0.0.6</a>).</p>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Upgrading a templates-only deployment</p>
+<p>No action needed. Because the setting is forced at read time, an existing KV Store row that says
+the LLM path is enabled is overridden automatically. If you later move that deployment to a standard
+build, the LLM path stays off until an admin explicitly re-enables it in Settings — the safe direction.</p>
+</div>
+<h2 id="after-hours-window-fix-build-299"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> After-hours window fix (build 299)<a class="headerlink" href="#after-hours-window-fix-build-299" title="Permanent link">&para;</a></h2>
+<p>Every &ldquo;after hours&rdquo; filter in the product was a silent no-op. The <code>[sap:hana:audit]</code> search-time
+calculated fields chained one <code>EVAL</code> onto another (<code>hour_of_day</code> derived from <code>EVAL-audit_datetime</code>),
+which Splunk does not reliably resolve — so <code>hour_of_day</code> and <code>day_of_week</code> measured <strong>0% populated</strong>
+and <code>is_business_hours</code> was pinned to the dead constant <code>"false"</code> on every event.</p>
+<p>Two opposite failure modes followed, decided purely by how the comparison was quoted:</p>
+<ul>
+<li><strong>HANA Audit → &ldquo;After-Hours / Weekend Admin Activity&rdquo;</strong> compared against a bare <code>false</code>. In a <code>where</code>
+  clause a bare <code>false</code> parses as a <em>field reference</em>, not a boolean, so the test never matched: the
+  filter degenerated to weekend-only. The panel <strong>omitted every weekday after-hours event</strong> — the most
+  security-relevant slice — and labelled every row &ldquo;Weekend&rdquo; (the &ldquo;After Hours&rdquo; and
+  &ldquo;Weekend / After Hours&rdquo; labels could never render).</li>
+<li><strong>Change &amp; Configuration Activity → &ldquo;After-Hours Changes&rdquo;</strong> (the KPI, its sparkline, the &ldquo;Recent
+  After-Hours Changes&rdquo; table, and the <code>logserv_compliance_rollup</code>) used the quoted form
+  <code>is_business_hours="false"</code>, which matched the dead constant and flagged <strong>100% of HANA events</strong> as
+  after-hours.</li>
+</ul>
+<p>Both are fixed. <code>props.conf</code> now derives each field inline from <code>_time</code>, and — more importantly —
+every consumer computes the window inline instead of reading a search-time calculated field. That
+indirection was an invisible dependency for a security filter, and it fails silently in <em>both</em>
+directions, so the dashboards, the ENRICH classifier and the rollup aggregation arms no longer rely
+on it.</p>
+<p><strong>One canonical window now applies to all three change sources:</strong> business hours are
+<strong>08:00–18:59</strong>, so after-hours is <code>hour &lt; 8 OR hour &gt; 18 OR weekend</code>. Previously HANA delegated to
+the dead fields while Windows and Linux used a different 07:00–19:59 window.</p>
+<div class="admonition warning">
+<p class="admonition-title">Rebuild the compliance rollup after upgrading</p>
+<p>In this build <code>is_after_hours</code> was part of the <code>logserv_compliance_rollup</code> <code>_key</code>, so rows written before it
+carry the old classification under different keys. A re-aggregation or a backfill writes new rows beside them
+instead of replacing them. After upgrading, open <strong>Settings → Dashboard Data</strong>, click <strong>Clear</strong> on the
+<strong>Change &amp; Configuration Activity</strong> row, then use that row&rsquo;s own <strong>Backfill</strong> with a window that covers the
+history you want. <strong>Run backfill</strong> neither clears nor runs on rows it considers complete. From build 357 of
+0.1.2 the flag is no longer stored; coming from build 356 or earlier, the rebuild listed in
+<a href="../../getting-started/upgrading/#the-work-list">Upgrading to This Release → The Work List</a> covers this.</p>
+</div>
+<p>Two deliberate exceptions are documented in <code>props.conf</code> and intentionally left unchanged: the three
+Enterprise Security off-hours correlation searches use <code>hour &lt; 8 OR hour &gt;= 18</code> (tuned detections
+whose notable/risk volume depends on the window), and the <code>logserv_hana_after_hours_admin</code> prompt
+uses a wider business day (<code>hour &lt; 6 OR hour &gt;= 20</code>) as a deep-overnight tripwire — its own
+description states that window.</p>
+<h2 id="sub-hour-time-ranges-read-raw-events-a-global-refresh-button-and-a-60-second-mcp-timeout-default-builds-289298"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Sub-hour time ranges read raw events, a global Refresh button, and a 60-second MCP timeout default (builds 289–298)<a class="headerlink" href="#sub-hour-time-ranges-read-raw-events-a-global-refresh-button-and-a-60-second-mcp-timeout-default-builds-289298" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>The MCP request timeout defaults to 60 seconds</strong> (build 289). An install with no saved <code>mcp_timeout_seconds</code> now waits 60 seconds, the MCP Server&rsquo;s own default, instead of 30; a saved value still wins.</li>
+<li><strong>Time ranges under 90 minutes read raw events</strong> (builds 290–296). The dashboards read hourly rollups keyed on <code>bucket_ts</code>, so a sub-hour range read a rolled-up panel empty (a window inside one hour matched no bucket) or about four times too high (a window across an hour boundary matched the whole hour). A range under 90 minutes now runs the panel&rsquo;s raw search, and a wider one reads the hourly rollup. This covers every rollup-backed panel of the 21 dashboards, both Sourcetype Mapping link graphs and the Host Details Role Activity tab; the sparklines, the beaconing tables and the <code>| head N</code> event lists stay on the rollups.</li>
+<li><strong>A global Refresh button</strong> (build 297) in the navigation bar re-runs the current view&rsquo;s panels for the selected range, beside the per-dashboard auto-refresh interval.</li>
+<li><strong>Web Dispatcher follows the Cloud filter</strong> (build 298). Its Top URIs, Traffic by Status Code and Response Time Trend panels showed every provider&rsquo;s data whatever the <strong>Cloud</strong> dropdown said.</li>
+</ul>
+<p>These builds shipped to the v0.0.6 line as builds 264 and 265.</p>
+<h2 id="ai-assistant-configurable-mcp-request-timeout-builds-287288"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> AI Assistant — configurable MCP request timeout (builds 287–288)<a class="headerlink" href="#ai-assistant-configurable-mcp-request-timeout-builds-287288" title="Permanent link">&para;</a></h2>
+<p>The AI Assistant&rsquo;s browser-side MCP request timeout is now an admin setting instead of a hardcoded 30 seconds. <strong>Settings → AI Assistant → General</strong> gains an <strong>MCP request timeout (seconds)</strong> field (default <code>30</code>, range <code>5</code>–<code>600</code>; build 289 raised the default to <code>60</code>) that bounds how long the browser waits for each MCP request — tool dispatch, saved-search run, health probe — before aborting it with the <code>signal is aborted without reason</code> error. Raise it if a legitimately-slow prompt aborts on a high-ingest instance. It reads per-request from the same KV-Store settings row as the rest of the AI config (<code>mcp_timeout_seconds</code>); MCPClient resolves it exactly like <code>mcp_server_url</code>. Note this is the browser-side abort — the MCP server (App 7931) has its own separate <code>mcp.conf [server] timeout</code> (60s default), so the effective ceiling for any one request is the lower of the two. Build 288 (v0.0.6 build 263) adds a <strong>read-only display</strong> of the MCP server&rsquo;s own timeout (App 7931&rsquo;s <code>mcp.conf [server] timeout</code>, read cross-app) right beside the client field, so an admin sees both numbers and their relationship at a glance; it degrades to &ldquo;Not detected&rdquo; when App 7931 isn&rsquo;t installed. The server timeout stays edited the normal way (that app&rsquo;s <code>mcp.conf</code> + a Splunk restart) — it&rsquo;s a different, persistent-process app, so it can&rsquo;t be changed live from our UI.</p>
+<h2 id="ai-assistant-predefined-prompts-on-the-rollup-tier-builds-285286"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> AI Assistant — predefined prompts on the rollup tier (builds 285–286)<a class="headerlink" href="#ai-assistant-predefined-prompts-on-the-rollup-tier-builds-285286" title="Permanent link">&para;</a></h2>
+<p>Twenty-three high-volume predefined prompts are converted from raw index scans to reads of the hourly KV-Store rollups that already power the dashboards. On high-ingest environments (~10M events/day), the raw scans behind prompts like <em>Source IPs flagged by firewall and/or proxy</em> exceeded the AI Assistant&rsquo;s 30-second dispatch timeout (the default at the time; now the configurable <code>mcp_timeout_seconds</code>, default 60 s) at wide time ranges and failed with &ldquo;signal is aborted without reason&rdquo;; the same prompts now complete in well under 2 seconds even over 30 days.</p>
+<ul>
+<li><strong>Converted prompts</strong> cover firewall, proxy, DNS, Web Dispatcher, ICM, ABAP work-process, Windows logon/lockout, cross-stack authentication, Linux PAM + firewall-agent, HANA failed-auth + trace-severity, Cloud Connector, error categories, and top-systems-by-calls.</li>
+<li><strong>Five new rollup metrics</strong> back the prompts that had no existing rollup dimension: <code>pam</code> + <code>cgsfw</code> on the Linux rollup, <code>wperr</code> on the Work Process rollup, <code>denieddest</code> on the Proxy rollup, and <code>logon</code> on the Windows rollup. The Settings → Dashboard Data backfill covers them automatically.</li>
+<li><strong>Three prompts intentionally report differently:</strong> <em>Web Dispatcher slow URIs</em> now ranks by average response time with a per-URI max column (percentiles don&rsquo;t roll up across hourly buckets); <em>DNS queries to suspected beaconing domains</em> now uses the DNS dashboards&rsquo; gap-variance beaconing detection (daily granularity); and the two <em>cross-stack auth failure</em> prompts now use the Cross-Stack Authentication dashboard&rsquo;s canonical failure definition, so their numbers match that dashboard.</li>
+<li>Rollup freshness semantics apply: results reflect data through the most-recently-completed hour. Prompt time ranges keep working — the dispatch window bounds the rollup read.</li>
+<li>The prompt catalog (intent map) is at v0.0.12; saved-search and intent-map SPL remain byte-synced.</li>
+</ul>
+<p>A follow-up round in the same session fixed four trend prompts that rendered all-zero charts and two ES prompts that still timed out: the MCP server caps tool responses at its default 100-row limit keeping the FIRST rows, so an hourly trend over 30 days (721 rows) displayed only its oldest ~4 days — the ten &gt;100-row time-series prompts now bin adaptively (<code>bins=90 minspan=1h</code>: unchanged hourly behavior at short windows, ~30–90 complete-window points at wide ones, totals verified conserved exactly); the after-hours-admin ES prompt&rsquo;s web-traffic join subsearch now reads the sourcetype-mapping rollup (row-identical, and the prompt completes at any window); and the web-dispatcher response-time anomaly is re-expressed on a new per-host hourly <code>wd_host</code> web-timing rollup metric as an avg+max z-score (percentiles don&rsquo;t roll up) — its daily scheduled detection drops from minutes of raw scanning to sub-second as well. Intent map at v0.0.13.</p>
+<h2 id="linux-windows-dashboard-chart-fixes-build-284"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Linux + Windows dashboard-chart fixes (build 284)<a class="headerlink" href="#linux-windows-dashboard-chart-fixes-build-284" title="Permanent link">&para;</a></h2>
+<p>Two dashboard charts are fixed:</p>
+<ol>
+<li><strong>Linux — &ldquo;SAP Application Activity&rdquo;</strong> — the chart rendered 26 long <code>sap_app</code> / <code>sap_sid</code> combinations as a vertical column chart, so the x-axis labels clipped to &ldquo;…&rdquo;. It is now a <strong>horizontal top-15 bar chart</strong> — each bar is one <code>sap_app / sap_sid</code> combination with its full label on the roomy y-axis — ranked by event volume.</li>
+<li><strong>Windows — &ldquo;Critical / Error&rdquo; KPI + &ldquo;PowerShell Activity&rdquo; chart</strong> — both were empty because of query mismatches, not missing data. <strong>PowerShell Activity</strong> now matches any PowerShell source (Windows PowerShell events index as <code>XmlWinEventLog:Microsoft-Windows-PowerShell/Operational</code>, and on the AWS S3 path as <code>WinEventLog:Powershell</code>). The <strong>Critical / Error</strong> KPI now counts CIM <code>severity IN ("critical","high")</code> — Splunk_TA_windows maps Windows Critical (Level 1) → <code>critical</code> and Error (Level 2) → <code>high</code>, i.e. the severe end of the CIM severity vocabulary.</li>
+</ol>
+<h2 id="global-cloud-provider-filter-build-282"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Global Cloud Provider filter (build 282)<a class="headerlink" href="#global-cloud-provider-filter-build-282" title="Permanent link">&para;</a></h2>
+<p>A persistent <strong>Cloud Provider</strong> dropdown (<code>All / aws / azure / gcp</code>) now sits in every dashboard&rsquo;s title row, to the left of the Refresh-interval picker, and filters <strong>every panel</strong> on that dashboard by cloud provider. The selection is <strong>global and remembered per user</strong> — it carries across dashboard navigation and full page reloads — so you can scope the entire app to one cloud with a single choice. It is intentionally <strong>absent on the three views where it does not apply</strong>: <strong>Multi-Cloud Overview</strong> (already a side-by-side provider split), <strong>Environment Topology</strong>, and <strong>Settings</strong>.</p>
+<p>Under the hood, every non-topology KV-Store rollup grain was extended with a <code>cloud_provider</code> dimension, so the filter reads straight from the fast rollup tier with no extra query cost. Events with no cloud attribution are counted as <code>aws</code> (the same convention Multi-Cloud Overview uses). A Windows Service-Events / PowerShell source-matching fix (<code>WinEventLog:System</code> now also matches <code>XmlWinEventLog:System</code>) rides along.</p>
+<div class="admonition warning">
+<p class="admonition-title">Upgrading an existing install — clear the rollups once, then re-backfill</p>
+<p>This release <strong>changes the rollup grain</strong> (it adds <code>cloud_provider</code> to the rollup key), so the previous rollup rows are not overwritten by the new ones — leaving them in place would double-count the &ldquo;All&rdquo; view. On upgrade, clear the rollups once and re-seed them: <strong>Settings → Dashboard Data → Clear all rollups</strong>, then <strong>Run backfill</strong> (or let the hourly aggregation refill them over the following day). New installs are unaffected — just run the initial backfill as usual. To upgrade from a build before 282 to the current release, follow <a href="../../getting-started/upgrading/#the-work-list">The Work List</a>.</p>
+</div>
+<h2 id="settings-readability-live-activity-panel-link-graph-restyle-builds-279281"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Settings readability, Live Activity panel, link-graph restyle (builds 279–281)<a class="headerlink" href="#settings-readability-live-activity-panel-link-graph-restyle-builds-279281" title="Permanent link">&para;</a></h2>
+<p>Three UX fixes:</p>
+<ol>
+<li><strong>Settings readability</strong> — the Settings page, the Dashboard Data panel, and the Audit Log viewer move to a wider field-label column (<code>clamp(320px, 30%, 520px)</code>, previously a fixed 200 px) with larger text: 14 px field labels and 13 px hints, intros, and panel subtitles — matching the page-subtitle size.</li>
+<li><strong>Environment Topology &ldquo;Live Activity&rdquo; panel</strong> — the bottom panel previously clipped mid-row against its zone (its bottom outline never rendered once the partners table outgrew the panel). It now fills its zone exactly, so the panel outline completes at any height; the partners table scrolls internally under a sticky header; the default expanded height grew from 220 px to 300 px; and expanding the collapsed panel raises a smaller saved-layout height up to the default. Saved layouts otherwise keep their persisted heights, and the resize divider now allows up to 640 px.</li>
+<li><strong>Sourcetype Mapping link-graph restyle</strong> — the node bars on the two &ldquo;Source to sourcetype mapping&rdquo; panels (Data Pipeline Overview and Host Details) were hard to read in dark mode. In dark mode they now use mid-tone fills — blue <code>#4d9dbf</code>, hover-path purple <code>#9c80e4</code>, each with a slight vertical gradient — with dark-grey labels; in light mode the stock fills stay, gaining the same subtle gradient and white labels.</li>
+</ol>
+<h2 id="blue-gradient-icon-set-build-278"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Blue-gradient icon set (build 278)<a class="headerlink" href="#blue-gradient-icon-set-build-278" title="Permanent link">&para;</a></h2>
+<p>The LogServ product branding moves from orange to the brand <strong>blue gradient</strong> (top <code>#2276CE</code> → bottom <code>#0F55A3</code>, mid ≈ Cisco <code>#1870C5</code>):</p>
+<ol>
+<li><strong>App icon</strong> — the &ldquo;LS&rdquo; launcher/app-header icon is recolored to the gradient and reshaped to <strong>panel-matched corner radii</strong> (4 px at the 36 px rendered size — the same <code>border-radius: 4px</code> token as the dashboard panel cards). The identical icon ships in the Data TA and the Azure/GCP ingest add-ons, so the Splunk launcher renders every LogServ component consistently.</li>
+<li><strong>Docs help icon</strong> — the orange &ldquo;?&rdquo; affordance in every dashboard title row is repainted with the same gradient: the rotating square outline becomes an SVG rounded-rect with a gradient stroke (same 4 px radius and 12-second spin), and the glyph an SVG gradient-fill text — a form that also renders faithfully in the dashboard PNG/PDF exports.</li>
+</ol>
+<h2 id="ai-assistant-dynamic-model-discovery-builds-275276"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> AI Assistant — dynamic model discovery (builds 275/276)<a class="headerlink" href="#ai-assistant-dynamic-model-discovery-builds-275276" title="Permanent link">&para;</a></h2>
+<p>Each LLM provider&rsquo;s model picker (the chat panel&rsquo;s per-user picker and the Settings → General <code>default_model</code> dropdown) now offers a <strong>live-discovered model list</strong> instead of a fixed hardcoded set:</p>
+<ol>
+<li><strong>Curated baseline ∪ vendor-discovered</strong> — the App merges a static curated baseline (always available, even offline) with models discovered from the configured vendor: Anthropic and OpenAI <code>/v1/models</code>, <strong>Azure OpenAI deployment discovery</strong> (three-step: <code>/openai/v1/models</code> → <code>/openai/deployments</code> → the admin&rsquo;s configured deployment names), and <strong>AWS Bedrock</strong> <code>ListFoundationModels</code> (Anthropic, on-demand, text, streaming, active models only). Discovery calls are <strong>metadata-only GETs</strong> using the same credential and trust envelope as the existing credential-validation check — no prompt or event data is involved.</li>
+<li><strong>Three refresh triggers</strong> — saving a provider credential, a manual <strong>&ldquo;Refresh model list&rdquo;</strong> button on Settings → General, and a lazy 24-hour refresh when the chat panel opens. Results cache in the <code>logserv_ai_models</code> KV Store collection; every refresh (success or failure) writes a <strong><code>model_discovery</code> audit event</strong> with provider, trigger, model count and duration.</li>
+<li><strong>Failures never shrink the picker</strong> — a failed refresh keeps the last-good discovered list and the static baseline is always the floor. A governance toggle (<strong><code>model_discovery_enabled</code></strong>, default on) disables all vendor listing calls; the pickers then offer the curated baseline only.</li>
+<li><strong>Refreshed baselines + honest pricing</strong> — the curated model ids and the vendor cost table used for spend tracking were refreshed to the current model generations. Cost estimates remain <strong>exact-id keyed</strong>: a discovered model with no known price reports $0 rather than a guessed figure.</li>
+<li><strong>Azure credential-name fix</strong> — the Azure OpenAI provider now accepts the field names the Settings page actually stores (<code>endpoint</code> / <code>deployment</code>) in addition to the legacy names (<code>resource_url</code> / <code>deployments</code>). This also fixes free-form <strong>streaming</strong> for Azure configurations entered through the Settings page.</li>
+</ol>
+<p>Model discovery queries the active provider, so it does nothing until a provider credential is configured; in a compile-time templates-only build it is inert and these controls are hidden.</p>
+<h2 id="environment-topology-star-system-force-layout-floating-edges-builds-260277"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Environment Topology — star-system Force layout + floating edges (builds 260–277)<a class="headerlink" href="#environment-topology-star-system-force-layout-floating-edges-builds-260277" title="Permanent link">&para;</a></h2>
+<p>The topology view&rsquo;s Force layout and edge rendering were rebuilt:</p>
+<ol>
+<li><strong>Star-system layout</strong> — every high-traffic hub (focused SIDs plus secondary SIDs with enough leaf partners) gets its own proportional horizontal slot with partners ringed around it at a radius scaled to partner count; smaller secondary systems anchor as satellites fanned around their nearest hub, and tiny systems ring tighter. The old behavior — multiple large systems piling onto the canvas center — is gone. The layout is <strong>deterministic</strong>: the same data renders the same picture on every load.</li>
+<li><strong>Viewport-aware canvas</strong> — the layout world sizes itself to the canvas aspect ratio, and collapsing or expanding the Live Activity panel <strong>re-fits the graph</strong> so it claims or yields the vertical space (previously collapsing just revealed empty canvas).</li>
+<li><strong>Floating edges</strong> — edges now run center-to-center as gently bowed curves clipped at each node&rsquo;s visible boundary, so arrowheads land <strong>on the health ring / outline outer edge</strong> instead of under the node box. Bidirectional pairs bow apart and stay separately clickable; labels sit at the curve apex.</li>
+<li><strong>Two-mode polish (builds 271–272)</strong> — a light-mode contrast sweep fixed four spots where near-black text landed on colored fills (the Live Activity source pills, the Save/Manage Layouts modal buttons, and the toolbar&rsquo;s active-toggle state), and the panel-toggle re-fit was hardened to measure the canvas live so it stays correct even in throttled background windows.</li>
+<li><strong>PNG / PDF export now renders the topology faithfully (builds 273–274)</strong> — the Actions → Download PNG/PDF capture previously dropped every edge (the rasterizer clips svg content to each svg&rsquo;s box, and the flow library draws edges outside an unsized box) and mis-placed the node health rings. The capture now pre-renders the topology&rsquo;s svg layers through the browser&rsquo;s native SVG renderer before compositing, so exported images match the on-screen canvas — edges, labels, arrowheads, and health rings included.</li>
+<li><strong>Secondary SAP SID circles enlarged (build 277)</strong> — secondary SIDs now render at <strong>90% of the focused-SID size</strong> (previously ~two-thirds), so smaller SAP systems read clearly at typical zoom levels. Edge arrowhead clipping, the Layered/Tree layout bounding boxes, and the Force layout&rsquo;s collision spacing all scale with the new size. Database-tagged <strong>partner</strong> nodes keep their previous smaller disc — the change applies to SAP SIDs only.</li>
+</ol>
+<h2 id="cisco-magnetic-re-theme-light-dark-mode-builds-246259"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Cisco Magnetic re-theme — light + dark mode (builds 246–259)<a class="headerlink" href="#cisco-magnetic-re-theme-light-dark-mode-builds-246259" title="Permanent link">&para;</a></h2>
+<p>The entire App — all 21 dashboards, the Environment Topology view, Settings, the AI Assistant, the audit-log viewer, and every modal — was restyled to follow the <strong>Cisco Magnetic design system</strong>, with a <strong>user-switchable light / dark mode</strong>:</p>
+<ol>
+<li><strong>Sun / moon toggle</strong> in the navigation bar&rsquo;s right cluster. The choice persists per user per browser; the default is <strong>dark</strong> (continuity with the previous look). Both palettes are the real Magnetic &ldquo;classic&rdquo; token sets, with the OneCD teal brand accent on navigation-active states and Magnetic interact blue on buttons, links, selection, and focus.</li>
+<li><strong>Typography</strong> — the App now bundles and uses <strong>Inter</strong> (body / UI), <strong>Sharp Sans</strong> (display titles), and <strong>Roboto Mono</strong> (code / SPL) with automatic fallback to the platform stack if a font file fails to load. Font attributions ship in <code>THIRD-PARTY-NOTICES.md</code> and <code>LICENSES/</code>.</li>
+<li><strong>Surfaces and chrome</strong> — cyan-outlined dark cards became Magnetic container cards (subtle borders, 4 px radius, flat surfaces, interact-blue hover affordance and focus rings); tables, KPI cards, buttons, chips, banners, tabs, and spinners follow the Magnetic component grammar in both modes.</li>
+<li><strong>Charts</strong> — all chart palettes are mode-aware, built on the Magnetic 11-color accent palette and sentiment ramps; chart gradients flatten appropriately in light mode. Tooltips render on the Magnetic inverse surface in both modes.</li>
+<li><strong>Fixes shipped inside the arc</strong> — chart tooltips no longer inherit the bar gradient (build 249–251), PDF download works through the App&rsquo;s own download path (build 256), and panel-chrome clicks no longer swallow the chart zoom controls&rsquo; clicks (build 253).</li>
+</ol>
+<p>The dashboards&rsquo; <em>content</em> — every panel, query, and drilldown — is unchanged; this arc is visual only. Documentation screenshots are being refreshed to the new look progressively.</p>
+<h2 id="next-steps"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Before you upgrade, follow <a href="../../getting-started/upgrading/">Upgrading to This Release</a>.</li>
+<li>What the current release changes: <a href="../release-notes/">Release Notes: 0.1.2</a>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../release-notes/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Release Notes: 0.1.2">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Release Notes: 0.1.2
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../release-notes-0.0.6/" class="md-footer__link md-footer__link--next" aria-label="Next: Release Notes: 0.0.6">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Release Notes: 0.0.6
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.instant.preview", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.path", "navigation.footer", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+        <script src="../../../js/limited-preview-qr.js"></script>
+      
+    
+  </body>
+</html>

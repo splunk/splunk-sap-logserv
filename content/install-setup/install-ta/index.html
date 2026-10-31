@@ -1,0 +1,5162 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/install-setup/install-ta/">
+      
+      
+        <link rel="prev" href="../../getting-started/capacity-planning/">
+      
+      
+        <link rel="next" href="../cloud-attribution/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Create the Indexes and Install the Data TA - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#create-the-indexes-and-install-the-data-ta" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Create the Indexes and Install the Data TA
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../getting-started/roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../configure-filters/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure and Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/upgrading/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Upgrade
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../logserv-app/dashboards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dashboards
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../enterprise-security/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise Security Integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ai-assistant/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  AI Assistant
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../overview/release-notes/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer/testing-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/limited-preview-announcement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limited Preview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/demo-video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here: Deployment Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Plan
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    1. Plan
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Log Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/package-placement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where Each Package Goes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/splunk-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk Cloud Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/capacity-planning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Planning and First Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    2. Install the Data TA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High Level Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-where-to-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Where to Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-create-the-indexes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create the Indexes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Create the Indexes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-the-indexes-on-a-separate-indexer-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating the Indexes on a Separate Indexer Tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-who-can-search-the-indexes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Who Can Search the Indexes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-download-the-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Download the Packages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-install-the-data-ta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Install the Data TA
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Install the Data TA">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#splunk-enterprise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk Enterprise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#splunk-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk Cloud
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-before-you-distribute-two-index-time-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Before You Distribute: Two Index-Time Decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-distribute-to-the-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Distribute to the Heavy Forwarders
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-check-the-build-on-each-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Check the Build on Each Heavy Forwarder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#renaming-an-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Renaming an Index
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Renaming an Index">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#to-rename-the-sap-data-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        To Rename the SAP Data Index
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#to-rename-the-ai-assistant-audit-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        To Rename the AI Assistant Audit Index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-the-tas-on-a-search-head" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the TAs on a search head
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-macros-and-deployment-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Macros and the Deployment Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloud-attribution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Cloud Attribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decide-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decide Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../distribute-data-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribute the Data TA to Heavy Forwarders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Connect Your Cloud
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    3. Connect Your Cloud
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../choose-your-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Cloud and AWS Scenario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../azure-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Verify Your Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Install the LogServ App
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    5. Install the LogServ App
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the App and Seed the Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure and Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure and Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure-filters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring Filters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboard-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-s3-direct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS S3 Direct: Backfill and Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upgrade
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/applications/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applications
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Applications
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Network & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Process Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Trace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/integration/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Connector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web and API Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/security/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Perimeter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Stack Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change & Configuration Activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/platform/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux System & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cloud Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Doctor (Diagnostics)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Security Integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise Security Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIM Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Searches & RBA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset & Identity Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat Intelligence Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Behavioral & Anomaly Detections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Assistant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/enable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Set Up the AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predefined Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drill-down Chips
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricting the LLM Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_8" id="__nav_7_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form LLM Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Free-form LLM Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-Window Reasoning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_9" id="__nav_7_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP LLM Top 10 (2025) Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Architecture (SAIF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.1.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.5 and Earlier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Third-Party Software Licenses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clean Deployment Test (Lab)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-ta-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data TA Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App and AI Assistant Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/build-from-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Packages from Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High Level Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-where-to-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Where to Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-create-the-indexes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Create the Indexes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Create the Indexes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#creating-the-indexes-on-a-separate-indexer-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating the Indexes on a Separate Indexer Tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-who-can-search-the-indexes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check Who Can Search the Indexes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-download-the-packages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Download the Packages
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-install-the-data-ta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Install the Data TA
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Install the Data TA">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#splunk-enterprise" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk Enterprise
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#splunk-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk Cloud
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-before-you-distribute-two-index-time-decisions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Before You Distribute: Two Index-Time Decisions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-distribute-to-the-heavy-forwarders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Distribute to the Heavy Forwarders
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-check-the-build-on-each-heavy-forwarder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Check the Build on Each Heavy Forwarder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#renaming-an-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Renaming an Index
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Renaming an Index">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#to-rename-the-sap-data-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        To Rename the SAP Data Index
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#to-rename-the-ai-assistant-audit-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        To Rename the AI Assistant Audit Index
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#running-the-tas-on-a-search-head" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the TAs on a search head
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-macros-and-deployment-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Macros and the Deployment Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../../getting-started/roadmap/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Get Started
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="./" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    2. Install the Data TA
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="create-the-indexes-and-install-the-data-ta">Create the Indexes and Install the Data TA<a class="headerlink" href="#create-the-indexes-and-install-the-data-ta" title="Permanent link">&para;</a></h1>
+<p>This page creates the two indexes the solution writes to and installs the <strong>Data TA</strong> (<code>splunk_ta_sap_logserv</code>, shown in Splunk Web as <strong>Splunk TA for SAP LogServ</strong>). Use it after you have planned your topology (<a href="../../getting-started/package-placement/">Where Each Package Goes</a>, <a href="../../getting-started/prerequisites/">Plan and Prerequisites</a>) and before you connect your cloud. For the LogServ App, see <a href="../../logserv-app/installation/">Installing the LogServ App</a>.</p>
+<h3 id="high-level-steps"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> High Level Steps<a class="headerlink" href="#high-level-steps" title="Permanent link">&para;</a></h3>
+<p>Follow the steps in order:</p>
+<ol>
+<li>Decide where the Data TA goes.</li>
+<li>Create the two indexes on the indexer tier, with the retention you want, before any data arrives.</li>
+<li>Download the packages.</li>
+<li>Install the Data TA (Splunk Enterprise or Splunk Cloud).</li>
+<li>Before you distribute it: choose cloud attribution and decide filtering.</li>
+<li>Distribute the Data TA to the heavy forwarders.</li>
+<li>Check the build on each heavy forwarder.</li>
+</ol>
+<p>Less common tasks (renaming an index, running the add-ons on a search head, macros on the Deployment Server) are under <a href="#advanced">Advanced</a> at the bottom of this page.</p>
+<p><br></p>
+<h3 id="3-where-to-install"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 1. Where to Install<a class="headerlink" href="#3-where-to-install" title="Permanent link">&para;</a></h3>
+<p>The Data TA goes where LogServ data is parsed: on the heavy forwarders that run the ingest inputs, or on the single instance. A Deployment Server holds it in order to distribute it. The indexes are created on the indexer tier (step 2). Which instance gets which package, for every topology, is on <a href="../../getting-started/package-placement/#package-matrix">Where Each Package Goes</a> (the matrix, and <a href="../../getting-started/package-placement/#per-topology-checklists">By Topology</a>). For the Data TA, that means one of these:</p>
+<ul>
+<li><strong>Single instance:</strong> that instance.</li>
+<li><strong>Heavy forwarders managed by a Deployment Server:</strong> the Deployment Server only; it pushes the Data TA to the heavy forwarders (<a href="../distribute-data-ta/">Distribute the Data TA</a>). This holds with Splunk Cloud too.</li>
+<li><strong>Heavy forwarders without a Deployment Server:</strong> each heavy forwarder that runs a LogServ input, installed directly.</li>
+<li><strong>Splunk Cloud with no heavy forwarder:</strong> the Splunk Cloud search head, because the inputs run there. This is not blocked, but we strongly recommend a heavy forwarder; see <a href="#running-the-tas-on-a-search-head">Running the TAs on a search head</a>.</li>
+</ul>
+<p>Indexers and search heads that run no LogServ inputs do not need it: create the two indexes on the indexer tier instead (step 2; installing the Data TA on an indexer is allowed but adds nothing beyond its index definitions), and the LogServ App carries the search-time content.</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> The Data TA parses every LogServ event on the heavy forwarders (or the single instance), so its cost per event decides how many heavy forwarders your volume needs; see <a href="../../getting-started/capacity-planning/">Capacity Planning and First Start</a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">With a Deployment Server, install the Data TA on the Deployment Server only</p>
+<p>When a Deployment Server manages your heavy forwarders, do <strong>not</strong> also install the Data TA directly on those forwarders. A push from the Deployment Server replaces the forwarder&rsquo;s copy of the app, its <code>local/</code> folder included, so local settings on the forwarder are lost. The Data TA does not reach the forwarders by itself either: the forwarders must be deployment clients, you save the Configuration page on the Deployment Server, assign the forwarders to the <code>SAP_LogServ_HeavyForwarders</code> server class and click <strong>Deploy to Forwarders</strong>. <a href="../distribute-data-ta/">Distribute the Data TA to Heavy Forwarders</a> gives the steps.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Why not the Inputs Data Manager (IDM)?</p>
+<p>On the Splunk Cloud Classic Experience, inputs run on an Inputs Data Manager (IDM). The Data TA&rsquo;s <code>app.manifest</code> declares the workloads <code>_search_heads</code> and <code>_indexers</code> only; it does not declare <code>_forwarders</code>. Whether Splunk Cloud installs such an app on an IDM is not documented, and this path has not been tested. Use a heavy forwarder you manage yourself. With no heavy forwarder on the Victoria Experience, the inputs run on the search head, and the Data TA goes there too. (The LogServ Azure and GCP add-ons declare <code>_forwarders</code>, and also <code>_search_heads</code>, so a search head is an allowed target for them too, although a heavy forwarder is strongly recommended; installing them on a Splunk Cloud search head has not been tested.)</p>
+</div>
+<p><br></p>
+<h3 id="1-create-the-indexes"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 2. Create the Indexes<a class="headerlink" href="#1-create-the-indexes" title="Permanent link">&para;</a></h3>
+<p>The solution uses two indexes:</p>
+<table>
+<thead>
+<tr>
+<th>Index</th>
+<th>Purpose</th>
+<th>Default name</th>
+<th>Macro</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SAP data index</strong></td>
+<td>Receives every LogServ event (logs ingested from AWS S3, Azure Blob Storage or Google Cloud Storage and routed to their sourcetypes)</td>
+<td><code>sap_logserv_logs</code></td>
+<td><code>sap_logserv_idx_macro</code></td>
+</tr>
+<tr>
+<td><strong>AI Assistant audit index</strong></td>
+<td>Receives every audit event the AI Assistant writes: predefined-prompt dispatches, free-form vendor calls (when the LLM path is enabled), security blocks, privacy-tier elevations, legal acknowledgements</td>
+<td><code>logserv_ai_assistant_audit</code></td>
+<td><code>sap_logserv_audit_idx_macro</code></td>
+</tr>
+</tbody>
+</table>
+<p>Create both on the indexer tier <strong>before any data arrives</strong>. An event sent to an index that does not exist on the indexers is dropped (unless your indexers set <code>lastChanceIndex</code>), and an index created later does not get those events back.</p>
+<p><strong>Retention.</strong> The Data TA sets no retention for <code>sap_logserv_logs</code>, so the platform default applies unless you set one. It sets 90 days for the audit index (<code>frozenTimePeriodInSecs = 7776000</code>). Set the retention of <code>sap_logserv_logs</code> to cover the oldest data you will load, including any history you load later with <a href="../aws-s3-direct/">AWS S3 Direct</a>.</p>
+<p>How you create them depends on your topology:</p>
+<ul>
+<li><strong>Single instance</strong> — nothing to do. The Data TA ships <code>default/indexes.conf</code> with both indexes, and that one instance is the indexer, so installing the Data TA creates them. To give <code>sap_logserv_logs</code> a retention other than the default, add <code>frozenTimePeriodInSecs = &lt;seconds&gt;</code> under <code>[sap_logserv_logs]</code> in the Data TA&rsquo;s <code>local/indexes.conf</code> and restart Splunkd.</li>
+<li><strong>Standalone indexer, indexer cluster or Splunk Cloud</strong> — create them yourself, as described in <a href="#creating-the-indexes-on-a-separate-indexer-tier">Creating the indexes on a separate indexer tier</a> below.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Why the indexer needs the index definitions</p>
+<p>Events are stored on the indexer tier, so both indexes must be defined there. The Data TA does its parsing on the heavy forwarders (or the single instance), and a heavy forwarder parses each event before it forwards it, so on an indexer the only part of the Data TA that would do anything is its <code>indexes.conf</code>. That is why the indexes are created on the indexer tier by the tier&rsquo;s own method rather than by installing the Data TA there. If you do install the Data TA on a standalone indexer, its <code>default/indexes.conf</code> creates the indexes there, and its two scheduled scripts (the filter upgrade check every 10 minutes and the daily filter refresh) still run on it, doing nothing useful. On the Deployment Server and the heavy forwarders, which store no LogServ events, the index definitions do no harm.</p>
+</div>
+<h4 id="creating-the-indexes-on-a-separate-indexer-tier"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Creating the Indexes on a Separate Indexer Tier<a class="headerlink" href="#creating-the-indexes-on-a-separate-indexer-tier" title="Permanent link">&para;</a></h4>
+<p>Use the same settings the Data TA&rsquo;s <code>default/indexes.conf</code> uses, so paths and retention match:</p>
+<div class="highlight"><pre><span></span><code><span class="k">[sap_logserv_logs]</span>
+<span class="na">homePath</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s">$SPLUNK_DB/sap_logserv_logs/db</span>
+<span class="na">coldPath</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="s">$SPLUNK_DB/sap_logserv_logs/colddb</span>
+<span class="na">thawedPath</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">$SPLUNK_DB/sap_logserv_logs/thaweddb</span>
+
+<span class="k">[logserv_ai_assistant_audit]</span>
+<span class="na">homePath</span><span class="w">               </span><span class="o">=</span><span class="w"> </span><span class="s">$SPLUNK_DB/logserv_ai_assistant_audit/db</span>
+<span class="na">coldPath</span><span class="w">               </span><span class="o">=</span><span class="w"> </span><span class="s">$SPLUNK_DB/logserv_ai_assistant_audit/colddb</span>
+<span class="na">thawedPath</span><span class="w">             </span><span class="o">=</span><span class="w"> </span><span class="s">$SPLUNK_DB/logserv_ai_assistant_audit/thaweddb</span>
+<span class="na">frozenTimePeriodInSecs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">7776000</span>
+</code></pre></div>
+<p>Add <code>frozenTimePeriodInSecs</code> to <code>[sap_logserv_logs]</code> to set its retention. Then pick the method that matches how your indexer tier is managed.</p>
+<p><strong>Standalone indexer (Splunk Enterprise).</strong> Either:</p>
+<ul>
+<li><strong>Splunk Web:</strong> <strong>Settings → Indexes → New Index</strong>. Create <code>sap_logserv_logs</code>, then <code>logserv_ai_assistant_audit</code>, leaving the default paths. Then set their retention with <code>frozenTimePeriodInSecs</code> in <code>indexes.conf</code> (Splunk Web writes each new index to the <code>local/indexes.conf</code> of the app chosen in the form&rsquo;s <strong>App</strong> field): <code>7776000</code> seconds (about 90 days) for the audit index, to match the bundled default, and the value you want for <code>sap_logserv_logs</code>. Restart Splunkd. Or</li>
+<li><strong>Config file:</strong> add the stanzas above to <code>$SPLUNK_HOME/etc/system/local/indexes.conf</code> (or to a small index-definition app of your own) on the indexer and restart Splunkd.</li>
+</ul>
+<p><strong>Indexer cluster.</strong> Put the stanzas in an index-only app under the cluster manager, <code>$SPLUNK_HOME/etc/manager-apps/&lt;your_index_app&gt;/local/indexes.conf</code>, and add <code>repFactor = auto</code> to <strong>both</strong> stanzas. Without <code>repFactor = auto</code> an index is not replicated across the peers. Then push the configuration bundle from the manager node: <code>splunk apply cluster-bundle</code> on its command line, or the bundle actions on its <strong>Settings → Indexer Clustering</strong> page in Splunk Web. Every peer receives the index definitions. The peers need nothing else from the Data TA. Putting the whole Data TA in the bundle is allowed but unnecessary; if you do, remove its <code>inputs.conf</code> first, as Splunk recommends for add-ons on indexer clusters.</p>
+<p><strong>Splunk Cloud.</strong> Create both indexes yourself, with the retention you want, before any data arrives: in the Splunk Cloud console (<strong>Settings → Indexes → New Index</strong>, where the retention is the <em>Searchable retention</em>) or with the <strong>Admin Config Service (ACS)</strong>. When you install the Data TA on a Victoria Experience stack as a private app, Splunk also installs its indexing-related <code>default/</code> files, <code>indexes.conf</code> among them, on the Cloud indexers (its <code>local/</code> files do not go there), but Splunk does not document that this creates the indexes, so do not rely on it.</p>
+<h4 id="check-who-can-search-the-indexes"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Check Who Can Search the Indexes<a class="headerlink" href="#check-who-can-search-the-indexes" title="Permanent link">&para;</a></h4>
+<p>Each role that uses the LogServ App&rsquo;s dashboards must be able to search <code>sap_logserv_logs</code>. On Splunk Enterprise the default <code>user</code> role allows <code>*</code>, which matches every index whose name does not start with <code>_</code>, so roles that keep <code>*</code> (or import such a role) already can. Check your roles in <strong>Settings → Roles → <em>role</em> → Indexes</strong>, on Splunk Cloud too, and add the index to any role with a narrowed list. Give access to the audit index only as <a href="../../ai-assistant/audit-log/#restricting-who-can-read-the-audit-index">Audit Log → Restricting who can read the audit index</a> describes.</p>
+<p>Both index names can be changed; see <a href="#renaming-an-index">Renaming an index</a>.</p>
+<p><br></p>
+<h3 id="3-download-the-packages"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 3. Download the Packages<a class="headerlink" href="#3-download-the-packages" title="Permanent link">&para;</a></h3>
+<p>All four packages of this release, their AppInspect reports and a README with the release details are in the <a href="https://github.com/splunk/splunk-sap-logserv/tree/main/release_binaries" target="_blank">release_binaries folder of the GitHub repository</a>:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Package</th>
+<th>Version</th>
+<th>Build</th>
+<th>md5</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>splunk_ta_sap_logserv-0.1.2.tar.gz</code></td>
+<td>Data TA (Splunk TA for SAP LogServ)</td>
+<td>0.1.2</td>
+<td>1792598960</td>
+<td><code>41a04986683c5d33014d8ab2fdb832f6</code></td>
+</tr>
+<tr>
+<td><code>splunk_app_sap_logserv-0.1.2.tar.gz</code></td>
+<td>LogServ App (Splunk App for SAP LogServ)</td>
+<td>0.1.2</td>
+<td>394</td>
+<td><code>1d82a2ac049391b2d7b2fb347d112649</code></td>
+</tr>
+<tr>
+<td><code>splunk_ta_sap_logserv_azure-0.1.2.tar.gz</code></td>
+<td>LogServ Azure add-on (Splunk TA for SAP LogServ on Azure)</td>
+<td>0.1.2</td>
+<td>1792558069</td>
+<td><code>5a5b0cfcd5f77dfa1e22dcc3545c8306</code></td>
+</tr>
+<tr>
+<td><code>splunk_ta_sap_logserv_gcp-0.1.2.tar.gz</code></td>
+<td>LogServ GCP add-on (Splunk TA for SAP LogServ on GCP)</td>
+<td>0.1.2</td>
+<td>1792558072</td>
+<td><code>42713371e1ba1042b1149065cc1c59a9</code></td>
+</tr>
+</tbody>
+</table>
+<p>This page installs the Data TA. The LogServ App goes on the search tier (<a href="../../logserv-app/installation/">Installing the LogServ App</a>); the Azure and GCP add-ons are installed later, per heavy forwarder, in the <a href="../azure-setup/">Azure</a> and <a href="../gcp-setup/">GCP</a> setup guides. The Splunk Add-on for AWS comes from Splunkbase (app 1876) and is not part of this release.</p>
+<p>To check a download, compare its md5 with the table: <code>md5sum &lt;file&gt;</code> on Linux, <code>md5 &lt;file&gt;</code> on macOS, <code>certutil -hashfile &lt;file&gt; MD5</code> on Windows.</p>
+<p><br></p>
+<h3 id="4-install-the-data-ta"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 4. Install the Data TA<a class="headerlink" href="#4-install-the-data-ta" title="Permanent link">&para;</a></h3>
+<p>Install it on each instance that step 1 names: the Deployment Server, each heavy forwarder without a Deployment Server, the single instance, or the Splunk Cloud search head that runs the inputs.</p>
+<h4 id="splunk-enterprise"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Splunk Enterprise<a class="headerlink" href="#splunk-enterprise" title="Permanent link">&para;</a></h4>
+<p>Your Deployment Server, heavy forwarders and single instance run Splunk Enterprise, also when your search tier is Splunk Cloud.</p>
+<p>4.<b class="taiconcolor">a</b> From the Splunk Web home screen, click the gear icon next to Apps.</p>
+<p>4.<b class="taiconcolor">b</b> Click Install app from file.</p>
+<p>4.<b class="taiconcolor">c</b> Locate the downloaded <code>splunk_ta_sap_logserv-0.1.2.tar.gz</code> file and click Upload.</p>
+<p>4.<b class="taiconcolor">d</b> If Splunk Enterprise prompts you to restart, do so.</p>
+<p>4.<b class="taiconcolor">e</b> Verify that the add-on appears in the list of apps and add-ons. You can also find it on the server at <code>$SPLUNK_HOME/etc/apps/splunk_ta_sap_logserv</code>.</p>
+<p>On a Deployment Server this installs the Data TA in <code>etc/apps/</code> only. It is copied into <code>etc/deployment-apps/</code> for the forwarders when you first save its Configuration page there (<a href="../distribute-data-ta/">Distribute the Data TA</a>).</p>
+<div class="admonition note">
+<p class="admonition-title">If splunkd runs with a proxy variable, exempt its own management port</p>
+<p>The add-on&rsquo;s configuration pages (and the Azure and GCP add-ons&rsquo; inputs) talk to the local splunkd management port, by default <code>127.0.0.1:8089</code>, through Splunk&rsquo;s Python HTTP client, which honours the <code>HTTP_PROXY</code> / <code>HTTPS_PROXY</code> environment variables. If the environment splunkd runs in sets either of them, for example in <code>splunk-launch.conf</code> or the systemd unit, also set <code>NO_PROXY=127.0.0.1,localhost</code> (plus the host name in <code>mgmtHostPort</code>, if it is not a loopback address). Otherwise those calls, with their session key, are sent to the proxy instead of to splunkd.</p>
+</div>
+<h4 id="splunk-cloud"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Splunk Cloud<a class="headerlink" href="#splunk-cloud" title="Permanent link">&para;</a></h4>
+<p>Install the Data TA on your Splunk Cloud stack only when the inputs run on the Cloud search head (Splunk Cloud with no heavy forwarder). With your own heavy forwarders, install it there with the Splunk Enterprise steps above instead; the Splunk Cloud stack does not need it (installing it there is allowed).</p>
+<p>The app installation workflow depends on your Splunk Cloud Platform Experience, <strong>Victoria</strong> or <strong>Classic</strong>. To find yours, in Splunk Web click <strong>Support &amp; Services &gt; About</strong>.</p>
+<ul>
+<li><a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-apps-and-add-ons-in-splunk-cloud-platform/manage-private-apps-on-your-splunk-cloud-platform-deployment#b5f810d7_e842_487d_b752_3662cfb646bc__Install_a_private_app_on_Victoria_Experience" target="_blank">Installation instructions for Victoria Experience</a></li>
+<li><a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-apps-and-add-ons-in-splunk-cloud-platform/manage-private-apps-on-your-splunk-cloud-platform-deployment#e86cbd1a_f4ec_4256_9299_f2c56c9842ad__Install_a_private_app_on_Classic_Experience" target="_blank">Installation instructions for Classic Experience</a></li>
+</ul>
+<p>Create the indexes yourself either way (step 2). For what differs when the inputs run on a search head, see <a href="#running-the-tas-on-a-search-head">Running the TAs on a search head</a> and <a href="../../getting-started/splunk-cloud/">Splunk Cloud Considerations</a>.</p>
+<p><br></p>
+<h3 id="5-before-you-distribute-two-index-time-decisions"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 5. Before You Distribute: Two Index-Time Decisions<a class="headerlink" href="#5-before-you-distribute-two-index-time-decisions" title="Permanent link">&para;</a></h3>
+<p>The Data TA attributes each event to its cloud and applies your filters at index time, so whatever is indexed before you decide stays as it was indexed. Decide both before the first Save on the Deployment Server, and before any input starts:</p>
+<ol>
+<li><a href="../cloud-attribution/">Choose Cloud Attribution</a>: the Cloud Provider value (normally <strong>Not set</strong>) and the per-input <code>_meta</code> line for AWS.</li>
+<li><a href="../decide-filtering/">Decide Filtering</a>: whether to turn filtering on, and with which values.</li>
+</ol>
+<p><br></p>
+<h3 id="6-distribute-to-the-heavy-forwarders"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 6. Distribute to the Heavy Forwarders<a class="headerlink" href="#6-distribute-to-the-heavy-forwarders" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>With a Deployment Server:</strong> follow <a href="../distribute-data-ta/">Distribute the Data TA to Heavy Forwarders</a>. The forwarders receive the Data TA only after those steps.</li>
+<li><strong>Without a Deployment Server:</strong> the Data TA is already on each heavy forwarder (step 4). Enter the same Configuration values and click <strong>Save</strong> on each one; see <a href="../distribute-data-ta/#without-a-deployment-server">Without a Deployment Server</a>.</li>
+<li><strong>Single instance, or the Splunk Cloud search head that runs the inputs:</strong> nothing to distribute. Enter your Configuration values there and click <strong>Save</strong>.</li>
+</ul>
+<p><br></p>
+<h3 id="7-check-the-build-on-each-heavy-forwarder"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 7. Check the Build on Each Heavy Forwarder<a class="headerlink" href="#7-check-the-build-on-each-heavy-forwarder" title="Permanent link">&para;</a></h3>
+<p>Before you create any input, check on each heavy forwarder (or the single instance) that it runs this Data TA build: see <a href="../../getting-started/capacity-planning/#version-check">Version Check</a>. The routing runs where the data is parsed, so a forwarder that has not received the Data TA yet indexes every event under the base <code>sap_logserv_logs</code> sourcetype, permanently.</p>
+<p><br></p>
+<h2 id="advanced"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Advanced<a class="headerlink" href="#advanced" title="Permanent link">&para;</a></h2>
+<h3 id="renaming-an-index"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Renaming an Index<a class="headerlink" href="#renaming-an-index" title="Permanent link">&para;</a></h3>
+<p>Both indexes are macro-configurable, so you can use other names (for example, to follow a corporate naming convention) without changing the apps: you create the index, update the macros, and point the writers at the new name.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Both the Data TA and the LogServ App include a macro named <strong>sap_logserv_idx_macro</strong> that resolves to <code>index="sap_logserv_logs"</code>. The LogServ App also includes <strong>sap_logserv_audit_idx_macro</strong> for the audit index.</p>
+</div>
+<h4 id="to-rename-the-sap-data-index"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> To Rename the SAP Data Index<a class="headerlink" href="#to-rename-the-sap-data-index" title="Permanent link">&para;</a></h4>
+<p>A rename touches three places: the indexer tier, every ingest input (normally on the heavy forwarders), and the search head. The Deployment Server is not involved. On a single instance all three are the same instance.</p>
+<ol>
+<li><strong>Pick a new name</strong> (for example <code>myorg_sap_logs</code>).</li>
+<li><strong>Create the index on the indexer tier</strong> under that name, with the methods in <a href="#creating-the-indexes-on-a-separate-indexer-tier">Creating the indexes on a separate indexer tier</a> (on a single instance: <strong>Settings → Indexes → New Index</strong>, or a stanza in the Data TA&rsquo;s <code>local/indexes.conf</code>). On Splunk Cloud, use <strong>Settings → Indexes</strong> or ACS: a <code>local/indexes.conf</code> does not reach the Cloud indexers. See the Splunk docs for <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-your-indexes-and-data-in-splunk-cloud-platform/manage-splunk-cloud-platform-indexes" target="_blank">Splunk Cloud</a> or <a href="https://docs.splunk.com/Documentation/Splunk/9.4.2/Indexer/Setupmultipleindexes#Create_events_indexes" target="_blank">Splunk Enterprise</a>.</li>
+<li>
+<p><strong>Update the macro in every app on the search head that ships it.</strong> Open <strong>Settings → Advanced search → Search macros</strong>, set <strong>App</strong> to <strong>All</strong>, and filter on <code>sap_logserv_idx_macro</code>. Edit the row whose app is <code>splunk_app_sap_logserv</code> and change the definition from <code>index="sap_logserv_logs"</code> to <code>index="myorg_sap_logs"</code>. Where the Data TA is also installed on this search head (a single instance, or a search head that runs the inputs), edit the row whose app is <code>splunk_ta_sap_logserv</code> too. Each edit is saved in that app&rsquo;s <code>local/macros.conf</code>. Both are needed: the scheduled rollups and the <strong>Settings → Dashboard Data</strong> backfill run in the LogServ App and use its copy, while the live dashboard panels run in each user&rsquo;s default app, where Splunk ranks the Data TA&rsquo;s copy above the App&rsquo;s (other apps are ranked in reverse alphabetical order). Check the result:</p>
+<div class="highlight"><pre><span></span><code>| rest /servicesNS/-/-/configs/conf-macros splunk_server=local
+| search title=sap_logserv_idx_macro
+| table eai:acl.app definition
+</code></pre></div>
+<p>Then run <code>`sap_logserv_idx_macro` | stats count</code> in the Search app once data arrives in the new index.</p>
+</li>
+<li>
+<p><strong>Point every ingest input at the new index.</strong> The destination index is set by each input&rsquo;s <code>index</code> field, in the ingest add-on for your cloud, not in this Data TA: for <strong>AWS</strong>, each SQS-Based S3 input in the Splunk Add-on for AWS (see the <a href="../aws-remote-s3-connect-guide/">AWS Remote S3 Connect Setup Guide</a>), and the Index field of every later backfill on the <a href="../aws-s3-direct/">AWS S3 Direct</a> screen; for <strong>Azure</strong>, each <code>sap_logserv_azure_queue</code> input&rsquo;s <code>index</code> field (<a href="../azure-setup/">Azure Setup Guide</a>); for <strong>GCP</strong>, each <code>sap_logserv_gcp_pubsub</code> input&rsquo;s <code>index</code> field (<a href="../gcp-setup/">GCP Setup Guide</a>). These inputs normally run on the heavy forwarders. The AWS S3 Direct screen offers only the indexes defined on the instance it runs on, so to pick the new name there, define the index on that forwarder too, for example with <strong>Settings → Indexes</strong> on it. (On a forwarder the Deployment Server manages, do not put it in the Data TA&rsquo;s <code>local/</code>: the next push replaces that folder.)</p>
+</li>
+</ol>
+<p>The Data TA still ships its own <code>[sap_logserv_logs]</code> stanza in <code>default/indexes.conf</code>, and a <code>local/indexes.conf</code> cannot remove it: Splunk merges the two files setting by setting, so <code>local/</code> can only override values. An unused, empty <code>sap_logserv_logs</code> index does no harm. If you do not want it, disable it once every ingest input points at the new index: on each instance where the Data TA defines it and events are stored (a single instance, or an indexer you installed the Data TA on), add the following to the Data TA&rsquo;s <code>local/indexes.conf</code> (or use <strong>Settings → Indexes → Disable</strong>), then restart Splunkd. Do not edit or delete the Data TA&rsquo;s <code>default/indexes.conf</code>; an upgrade replaces it and brings the stanza back.</p>
+<div class="highlight"><pre><span></span><code><span class="k">[sap_logserv_logs]</span>
+<span class="na">disabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">true</span>
+</code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">The AI Assistant and a renamed data index</p>
+<p>After <code>sap_logserv_idx_macro</code> is changed, the AI Assistant refuses free-form queries that start with the macro: its query guard compares the macro with the shipped definition <code>index="sap_logserv_logs"</code> (<a href="../../ai-assistant/free-form-prompts/#spl-guard">The SPL Guard</a>).</p>
+</div>
+<h4 id="to-rename-the-ai-assistant-audit-index"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> To Rename the AI Assistant Audit Index<a class="headerlink" href="#to-rename-the-ai-assistant-audit-index" title="Permanent link">&para;</a></h4>
+<ol>
+<li><strong>Pick a new name.</strong> Do <strong>not</strong> start it with an underscore: <code>_</code>-prefixed index names are reserved for Splunk&rsquo;s internal indexes, AppInspect rejects them for custom apps, and Splunk Cloud will not accept them (the shipped index was itself renamed off an underscore prefix for these reasons).</li>
+<li><strong>Create the index</strong> on the indexer tier under that name, with the same methods as above.</li>
+<li><strong>Update the macro definition.</strong> Open <strong>Settings → Advanced search → Search macros</strong>, find <code>sap_logserv_audit_idx_macro</code> (only the LogServ App ships it), and change the definition from <code>index="logserv_ai_assistant_audit"</code> to <code>index="&lt;your_new_name&gt;"</code>. This controls READS: the in-app Audit Log viewer and any user-written queries resolve the macro to your renamed index.</li>
+<li><strong>Update the LogServ App config.</strong> Open <strong>Settings → AI Assistant → General → Audit &amp; Telemetry</strong>, set the <strong>Audit index name</strong> field to your renamed index, and Save Defaults. This controls WRITES: the App posts audit events to the configured index name.</li>
+</ol>
+<p>The config field controls writes; the macro controls reads. They MUST point at the same index, but Splunk does not keep them in step for you: keep them aligned whenever you rename.</p>
+<p><br></p>
+<h3 id="running-the-tas-on-a-search-head"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Running the TAs on a search head<a class="headerlink" href="#running-the-tas-on-a-search-head" title="Permanent link">&para;</a></h3>
+<p>We strongly recommend against installing the Data TA, the LogServ Azure add-on or the LogServ GCP add-on on a search head, Splunk Cloud included: ingest belongs on the heavy forwarders, and inputs on a search head put that load on the tier your users search on. Nothing blocks it, though. On a search head that runs the inputs itself (with the Splunk Add-on for AWS, or with the Azure or GCP add-on), the Data TA parses and filters there as it does on a heavy forwarder, and the <a href="../aws-s3-direct/">AWS S3 Direct screen</a> works there too; on Splunk Cloud, and on an instance with no enabled AWS input, it shows a warning that recommends a heavy forwarder. Two things work differently there:</p>
+<ul>
+<li><strong>Search head clusters.</strong> A search head cluster does not replicate inputs, so an input created on a member (on the Azure or GCP add-on&rsquo;s Inputs page, or on the AWS S3 Direct screen) runs only on that member. An input the deployer pushes to every member runs on every member: a Generic S3 input then reads every object on each member, so each object is indexed once per member; the Azure and GCP add-ons share their queue or subscription between the members, and a message goes to one member, but each member keeps its own dedup record, so a redelivered message can be indexed twice. The filter rules and the Cloud Provider stamp that the Data TA&rsquo;s Configuration page generates are written only on the member where you save them. The saved Filters settings normally reach the other members (not when the save falls back to writing the settings file, as it does for an account without <code>admin_all_objects</code>), and another member rebuilds its rules from them at its own daily filter refresh, but only while Enable Filtering is checked and Days in the Past is greater than 0: turning filtering off, and rules saved with Days in the Past at 0, never reach the other members. Save the Filters and Cloud Provider tabs on every member that runs inputs.</li>
+<li><strong>Deployment clients.</strong> On a search head that is a deployment client for other apps but holds the Data TA directly, the daily filter refresh runs as it does on a single instance. It is skipped only where the Deployment Server delivers the Data TA, or where the instance&rsquo;s record of what its Deployment Server sent (<code>$SPLUNK_HOME/var/run/serverclass.xml</code>) is missing, unreadable or lists no app. The same rule applies to a heavy forwarder that holds the Data TA directly; see <a href="../configure-filters/#heavy-forwarder-without-a-deployment-server">Heavy Forwarder without a Deployment Server</a>.</li>
+</ul>
+<p><br></p>
+<h3 id="6-macros-and-deployment-server"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Macros and the Deployment Server<a class="headerlink" href="#6-macros-and-deployment-server" title="Permanent link">&para;</a></h3>
+<p>When the Deployment Server pushes the Data TA to the heavy forwarders, its <code>macros.conf</code> travels with it, but heavy forwarders run no user searches, so a macro there has no effect. Macros matter on the search tier. Where the Data TA is also installed on a search head (a single instance, or a search head that runs the inputs), its copy of <code>sap_logserv_idx_macro</code> is the one the live dashboard panels use, ranked above the LogServ App&rsquo;s copy; see step 3 of <a href="#to-rename-the-sap-data-index">To Rename the SAP Data Index</a>.</p>
+<p>What this means in practice:</p>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Where the change happens</th>
+<th>Deployment Server involved?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>You rename the data index</td>
+<td><strong>Indexer tier:</strong> create the new index. <strong>Ingest inputs</strong> (normally on the heavy forwarders): set <code>index</code> to the new name on every SQS-Based S3 input, <code>sap_logserv_azure_queue</code> input and <code>sap_logserv_gcp_pubsub</code> input, and on later AWS S3 Direct backfills (WRITE). <strong>Search head:</strong> override <code>sap_logserv_idx_macro</code> in each app that ships it there (READ). See <a href="#renaming-an-index">Renaming an index</a>.</td>
+<td>No: none of these is pushed by the Deployment Server, and the Data TA routes by sourcetype, not by index</td>
+</tr>
+<tr>
+<td>You rename the audit index</td>
+<td><strong>Indexer tier:</strong> create the new index. <strong>Search head:</strong> Settings → AI Assistant → General → Audit index name (WRITE), plus <code>sap_logserv_audit_idx_macro</code> in the LogServ App (READ). See <a href="#renaming-an-index">Renaming an index</a>.</td>
+<td>No</td>
+</tr>
+<tr>
+<td>You want a custom diagnostic macro on every heavy forwarder</td>
+<td>Add it to <code>etc/deployment-apps/splunk_ta_sap_logserv/local/macros.conf</code> on the Deployment Server, then <strong>Deploy to Forwarders</strong>; the forwarders pull it at their next phone-home. <strong>Operational effect: none</strong>, because forwarders do not resolve macros. Keep a copy in <code>etc/apps/splunk_ta_sap_logserv/local/macros.conf</code> as well: when the Data TA&rsquo;s version changes, the next Configuration save, or the next daily filter refresh, replaces the whole <code>deployment-apps</code> copy, hand edits included, with a copy of <code>etc/apps/splunk_ta_sap_logserv/</code>.</td>
+<td>Yes (cosmetic)</td>
+</tr>
+</tbody>
+</table>
+<p>What the Deployment Server does push usefully from this Data TA: the <strong>filter rules</strong> and the <strong>Cloud Provider</strong> stamp, managed on the Data TA&rsquo;s Configuration page on the Deployment Server. See <a href="../configure-filters/">Configuring Filters</a> and <a href="../cloud-attribution/">Choose Cloud Attribution</a>.</p>
+<p><br></p>
+<h2 id="next-steps"><span class="twemoji cboxmove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="../cloud-attribution/">Choose Cloud Attribution</a>, then <a href="../decide-filtering/">Decide Filtering</a>: both before the first Save on the Deployment Server.</li>
+<li><a href="../distribute-data-ta/">Distribute the Data TA to Heavy Forwarders</a>, if a Deployment Server manages them.</li>
+<li><a href="../choose-your-cloud/">Choose Your Cloud and AWS Scenario</a> to connect your cloud.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../getting-started/capacity-planning/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Capacity Planning and First Start">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Capacity Planning and First Start
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../cloud-attribution/" class="md-footer__link md-footer__link--next" aria-label="Next: Choose Cloud Attribution">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Choose Cloud Attribution
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.instant.preview", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.path", "navigation.footer", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+        <script src="../../../js/limited-preview-qr.js"></script>
+      
+    
+  </body>
+</html>

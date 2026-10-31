@@ -1,0 +1,5426 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/logserv-app/dashboard-data/">
+      
+      
+        <link rel="prev" href="../../ai-assistant/settings/">
+      
+      
+        <link rel="next" href="../../install-setup/aws-s3-direct/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Dashboard Data: Backfill and Freshness - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#dashboard-data-backfill-and-freshness" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Dashboard Data: Backfill and Freshness
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../install-setup/configure-filters/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure and Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/upgrading/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Upgrade
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../dashboards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dashboards
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../enterprise-security/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise Security Integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ai-assistant/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  AI Assistant
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../overview/release-notes/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer/testing-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/limited-preview-announcement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limited Preview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/demo-video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here: Deployment Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Plan
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    1. Plan
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Log Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/package-placement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where Each Package Goes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/splunk-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk Cloud Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/capacity-planning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Planning and First Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    2. Install the Data TA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/cloud-attribution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Cloud Attribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/decide-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decide Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/distribute-data-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribute the Data TA to Heavy Forwarders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Connect Your Cloud
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    3. Connect Your Cloud
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/choose-your-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Cloud and AWS Scenario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Verify Your Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Install the LogServ App
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    5. Install the LogServ App
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the App and Seed the Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure and Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure and Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring Filters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-dashboard-data-settings-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Dashboard Data settings tab
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Dashboard Data settings tab">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backfilling-on-first-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backfilling on first install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#late-arriving-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Late-arriving data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-rollup-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-rollup table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregation-retention-global-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aggregation &amp; retention (global controls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#danger-zone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Danger zone
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-data-freshness-means-per-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What &ldquo;data freshness&rdquo; means per panel
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What “data freshness” means per panel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sub-hour-time-ranges-automatic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-hour time ranges (automatic)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-dashboards-source-their-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the dashboards source their data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How the dashboards source their data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-kv-store-rollup-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The KV-Store rollup layer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scheduled-search-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scheduled-search schedule
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scheduled-search schedule">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hourly-aggregate-band-0328" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hourly aggregate band (:03–:28)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#daily-band-00300236" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Daily band (00:30–02:36)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enterprise-security-band-enabled-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enterprise Security band (enabled by default)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measured-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measured behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior-with-multiple-search-heads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior with multiple search heads
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-know-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to know at a glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-s3-direct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS S3 Direct: Backfill and Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upgrade
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/environment-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/applications/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applications
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Applications
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Network & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Process Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Trace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/integration/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Connector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web and API Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/security/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Perimeter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Stack Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change & Configuration Activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/platform/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux System & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cloud Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Doctor (Diagnostics)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Security Integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise Security Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIM Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Searches & RBA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset & Identity Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat Intelligence Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Behavioral & Anomaly Detections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Assistant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/enable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Set Up the AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predefined Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drill-down Chips
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricting the LLM Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_8" id="__nav_7_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form LLM Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Free-form LLM Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-Window Reasoning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_9" id="__nav_7_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP LLM Top 10 (2025) Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Architecture (SAIF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.1.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.5 and Earlier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Third-Party Software Licenses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clean Deployment Test (Lab)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-ta-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data TA Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App and AI Assistant Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/build-from-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Packages from Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-dashboard-data-settings-tab" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Dashboard Data settings tab
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Dashboard Data settings tab">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backfilling-on-first-install" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backfilling on first install
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#late-arriving-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Late-arriving data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#per-rollup-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-rollup table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregation-retention-global-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aggregation &amp; retention (global controls)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#danger-zone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Danger zone
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-data-freshness-means-per-panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What &ldquo;data freshness&rdquo; means per panel
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What “data freshness” means per panel">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sub-hour-time-ranges-automatic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-hour time ranges (automatic)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-dashboards-source-their-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the dashboards source their data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How the dashboards source their data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-kv-store-rollup-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The KV-Store rollup layer
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scheduled-search-schedule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scheduled-search schedule
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scheduled-search schedule">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hourly-aggregate-band-0328" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hourly aggregate band (:03–:28)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#daily-band-00300236" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Daily band (00:30–02:36)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enterprise-security-band-enabled-by-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enterprise Security band (enabled by default)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#measured-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Measured behavior
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#behavior-with-multiple-search-heads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Behavior with multiple search heads
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-know-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to know at a glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="dashboard-data-backfill-and-freshness">Dashboard Data: Backfill and Freshness<a class="headerlink" href="#dashboard-data-backfill-and-freshness" title="Permanent link">&para;</a></h1>
+<p>Most LogServ App dashboard panels read hourly summaries (rollups) kept in KV Store. This page covers the admin tasks on <strong>Settings → Dashboard Data</strong>: filling the rollups with history after an install, rebuilding days whose data arrived late, and clearing a rollup. It then explains how fresh each panel is, and ends with the reference for the scheduled searches behind the rollups.</p>
+<h2 id="the-dashboard-data-settings-tab"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> The Dashboard Data settings tab<a class="headerlink" href="#the-dashboard-data-settings-tab" title="Permanent link">&para;</a></h2>
+<p>The <strong>Dashboard Data</strong> tab on the <strong>Application Settings</strong> page (<strong>Settings → Dashboard Data</strong>) is the single control surface for the KV-Store rollup layer, for every dashboard <strong>and</strong> the Environment Topology view. It holds the hourly-aggregation master switch, the retention window, the backfill, the late-arriving data check, a per-rollup status and action table, and a global clear.</p>
+<p><strong>Who can use it.</strong> The Settings page opens only for users who hold a role named exactly <code>admin</code>, <code>sc_admin</code> or <code>sc_subadmin</code>, and the rollup collections accept writes only from those roles. A user who holds none of them does not see <strong>Settings</strong> in the navigation rail and gets &ldquo;Admin access required&rdquo; on the page&rsquo;s URL, so Backfill and Clear need one of those three roles.</p>
+<p>The Environment Topology graph and its detail tabs are rows in the same table: their aggregation, backfill, retention and clear work exactly as for every dashboard rollup. The backfill runs each of their searches as its own top-level job, so it does not truncate at high event volume.</p>
+<div class="admonition tip">
+<p class="admonition-title">Non-admins can SEE this health without Settings access</p>
+<p>The <strong><a href="../dashboards/platform/diagnostics/">Data Doctor&rsquo;s Diagnostics page</a></strong> (<em>Platform → Diagnostics</em>)
+shows every rollup collection&rsquo;s freshness and its 30-day-history completeness — the same
+completeness convention this tab uses — read-only, to every user. It names this tab as the
+remedy when a backfill is needed, but the controls themselves stay here.</p>
+</div>
+<p><img alt="Settings — Dashboard Data tab (merged rollup management)" src="../../../images/settings-dashboard-data.png" /></p>
+<h3 id="backfilling-on-first-install">Backfilling on first install<a class="headerlink" href="#backfilling-on-first-install" title="Permanent link">&para;</a></h3>
+<p>A freshly installed rollup collection is empty until its scheduled aggregation has run, and those runs read only the most recent hours. Any install whose index already holds events (data loaded with AWS S3 Direct, ingest that ran before the App was installed, or a few days of normal arrival) needs a backfill to show that history.</p>
+<ol>
+<li>Open <strong>Settings → Dashboard Data</strong>.</li>
+<li>Review the per-rollup status. Rollups with no history show a &ldquo;Dashboard history backfill needed&rdquo; banner and a warning row. Rollups whose history could not be measured just now get a banner of their own with <strong>Re-check</strong>; they are not counted as needing a backfill.</li>
+<li>In <strong>Backfill window</strong>, pick the window (see below).</li>
+<li>Click <strong>Run backfill</strong> (the button targets only the incomplete rollups; once all are complete it becomes <strong>Re-run backfill (all)</strong>).</li>
+</ol>
+<p>By default the backfill seeds <strong>30 days</strong> of history into every rollup collection. The <strong>Backfill window</strong> control above the button also offers 60, 90, 180 and 365 days, or a custom range of whole UTC days, reaching back as far as the 365-day retention (an earlier start is refused rather than silently clamped). A window longer than a month is dispatched in monthly chunks per search, and choosing one longer than 90 days shows a cost warning. The two flat Environment Topology collections (inventory, IP enrichment) always refresh over the last 30 days: they describe current state rather than history — the inventory maps each IP address or host to its most recent SAP system. When backfilling after a historical S3 ingest, match the <strong>dates in the S3 keys</strong> you ingested — on the Data TA&rsquo;s AWS S3 Direct screen, its <strong>Scan from</strong> and <strong>Scan until</strong> — not a hand-made input&rsquo;s write-time scan window; see <a href="../../install-setup/aws-s3-direct/">AWS S3 Direct: Backfill and Recovery</a>.</p>
+<p>The backfill dispatches each rollup&rsquo;s component aggregation searches as <strong>top-level Splunk jobs</strong> — this matters at scale: the bundled <code>*_backfill</code> saved searches use a single <code>\| union</code> that Splunk auto-finalizes at a subsearch wall-clock limit, which silently truncates results at high event volume. The Dashboard Data button avoids that by running each component as its own unrestricted job. It shows a progress bar, is <strong>idempotent</strong> (re-running upserts the same rows), and is <strong>resumable</strong> (it detects collections that are already complete and skips them).</p>
+<p>After the initial backfill, the hourly aggregation keeps each collection current and the 365-day retention grows the cached history toward a full year (seed-and-grow). You only need to run the backfill again if you reinstall, deliberately clear a collection, an upgrade note asks for one, or you roll the App back to an earlier build across one that changed a rollup key: the restored build writes rows under its old keys beside the newer build&rsquo;s rows, and those hours are counted twice until you <strong>Clear</strong> and <strong>Backfill</strong> the rows that build changed (see <a href="../../getting-started/upgrading/">Upgrading</a>).</p>
+<p><strong>How long it waits.</strong> Each search is waited on for as long as Splunk reports it running — there is no fixed time limit, because one month of a large estate can take hours. A rollup is marked <strong>failed — re-run</strong> only on Splunk&rsquo;s own verdict: the job failed, its search process died, or the job disappeared. If you cancel, or the panel stops waiting (after 24 hours, or after 15 minutes without being able to reach Splunk), a search that is still running is marked <strong>still running on server</strong> instead: it finishes on its own and writes its rows. Hover the row for the search IDs to follow them under <strong>Activity → Jobs</strong>; re-running that rollup before they finish repeats their work.</p>
+<p><strong>Environment Topology node counts and inventory.</strong> Two of the Environment Topology (graph) collections combine the results of several searches: a node&rsquo;s event count is the sum over every log source that reports it, and an IP address or host is mapped to its most recent SAP system with its events counted over every source (of the systems seen in its most recent hour, the one with the most events; an exact tie keeps the previous mapping). For those two, each search writes its results into a scratch KV Store collection, <code>logserv_backfill_stage</code>, and once every search of a month (for the inventory, of its 30 days) has finished, one more search adds them up and writes the rows — but only after the page has counted every collected result back from the scratch collection, before and after. Keep the page open until the Environment Topology (graph) row has finished: a month whose searches did not all finish, or whose results did not all read back (KV Store still starting after a restart, for example), is discarded rather than written in part — the row reads <strong>failed — re-run</strong>, also when the panel stopped waiting for one of those searches — and the next backfill rebuilds it. The scratch rows are deleted once a month is written; rows a closed page or a failed month left behind are deleted by a later backfill after seven days.</p>
+<div class="admonition warning">
+<p class="admonition-title">Keep long backfills clear of the nightly retention run</p>
+<p>Each rollup&rsquo;s <code>*_retention</code> search rewrites its whole collection once a night (00:34–00:58, 01:30–01:58 and 02:34–02:36 in the search head&rsquo;s time zone). Rows a backfill writes into a collection <em>while</em> that collection&rsquo;s retention is running can be lost. Start a long backfill so that it does not overlap that window — or re-run it afterwards, which restores anything lost (the backfill is idempotent).</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">If you skip the backfill</p>
+<p>You don&rsquo;t have to run it. Without a backfill, rolled-up panels simply start populating from the next hourly aggregation onward, filling in one hour at a time. The backfill is purely to make that history available immediately.</p>
+</div>
+<h3 id="late-arriving-data">Late-arriving data<a class="headerlink" href="#late-arriving-data" title="Permanent link">&para;</a></h3>
+<p>SAP LogServ data reaches Splunk through S3, Azure Blob and GCS notification queues, and some of it arrives after its hour has been aggregated: a log file delivered a few minutes after the hour, a weekly log rotation that delivers a week of lines at once, a queue backlog drained after an outage. Each hourly aggregation re-reads the hour before as well, so an event up to about an hour late is still counted, and an hour whose aggregation was skipped is rebuilt by the next run. Anything later is missing from the rolled-up panels until its hours are rebuilt.</p>
+<p>The <strong>Late-arriving data</strong> row at the top of the Backfill section finds those hours. It compares the index with the <strong>Multi-Cloud Overview</strong> rollup — which counts every event, per cloud provider, sourcetype and hour — per hour and sourcetype over the last 30 days (UTC), and lists the days on which the index holds events the rollups do not, most recent first:</p>
+<div class="highlight"><pre><span></span><code>2026-09-26: 28,193 events in 42 hours (linux_secure, sap_logserv_logs)
+</code></pre></div>
+<p>It leaves out the last three hours, which the hourly schedule may still rebuild, and anything older than the Multi-Cloud Overview rollup&rsquo;s oldest hour. It also finds hours whose aggregation was switched off or skipped. Fewer events in the index than in a rollup — deleted or frozen data — is never reported. <strong>Backfill N days</strong> rebuilds every rollup for exactly those days, one window per run of consecutive days, with the same per-search dispatch as the backfill above, and the check runs again when it finishes; <strong>check again</strong> re-runs it at any time. A banner at the top of the tab repeats the count while any day is listed.</p>
+<p>The check needs the Multi-Cloud Overview aggregation switched on and that rollup&rsquo;s history measured; otherwise the row says why it did not run.</p>
+<p>The same check also runs <strong>every day at 05:40</strong> (search-head time) as the saved search <code>logserv_late_arrival_check</code>, over the last 30 days up to three hours ago, and records a <strong>triggered alert</strong> (<em>Activity → Triggered Alerts</em>, kept 2 days) when it finds a day — so a delivery that arrived days late is reported even if nobody opens this tab. Add an alert action, an email for example, to be told. The daily run never judges an hour older than the Multi-Cloud Overview rollup&rsquo;s oldest, so a new install that has not run its first backfill raises no alert; it does raise one while hourly aggregation is switched off, because the rollups then fall behind the index. To run it at another time, change its schedule in <em>Settings → Searches, reports, and alerts</em>; keep the window ending at least three hours back, and keep it out of the nightly retention window (00:34–02:36), which rewrites the rollup it compares against.</p>
+<div class="admonition note">
+<p class="admonition-title">Why the schedule does not re-read days</p>
+<p>Each rollup&rsquo;s search is one <code>| union</code> of several searches, and Splunk stops a union&rsquo;s inner searches after about 30 seconds. An hourly run that re-read days would hit that limit on a large estate and overwrite good rows with lower counts. The backfill avoids it by running each inner search on its own — which is why late days are rebuilt from this tab rather than by the schedule.</p>
+</div>
+<h3 id="per-rollup-table">Per-rollup table<a class="headerlink" href="#per-rollup-table" title="Permanent link">&para;</a></h3>
+<p>One row per logical rollup (each dashboard, plus <strong>Environment Topology (graph)</strong>, <strong>Environment Topology (detail tabs)</strong>, and <strong>Beaconing detection</strong>). Some rows serve more than one dashboard, and their labels name each one: <strong>ABAP Operations</strong> is rebuilt with <em>Work Process Performance / ABAP Operations</em>, <strong>Web Dispatcher</strong> reads <em>Web &amp; API Performance / Web Dispatcher</em> as well as its own <em>Web Dispatcher Slowest Traces</em>, and <strong>Network Perimeter</strong> reads its <strong>Firewall Drops in Transit</strong> count from <em>Linux System &amp; Security / Network Perimeter</em>. Rebuild every row a dashboard reads. Columns:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dashboard</strong></td>
+<td>The dashboard / view this rollup powers.</td>
+</tr>
+<tr>
+<td><strong>Schedule</strong></td>
+<td>The aggregate search&rsquo;s cron (e.g. <code>5 * * * *</code>); hover for the next scheduled run.</td>
+</tr>
+<tr>
+<td><strong>Aggregation</strong></td>
+<td>Per-rollup enable toggle (acts on that rollup&rsquo;s aggregate search(es); a multi-collection rollup like the topology graph toggles all of its searches).</td>
+</tr>
+<tr>
+<td><strong>History</strong></td>
+<td>How far back the rollup reaches, measured from its oldest bucket — e.g. <code>106.7d of history</code> (about 30 days or more counts as complete), <code>empty</code>, or live <code>backfilling N/M</code> while a backfill runs, then <code>refreshing…</code> for the moment it takes to re-measure the depth once that row&rsquo;s searches have finished. After a run it can also read <code>failed — re-run</code>, <code>truncated — re-run</code>, or <code>still running on server</code> (hover for the search IDs). When the panel could not measure the history — Splunk had no free search slot, as is common just after a backfill, or the check search itself failed — the cell reads <code>check failed — re-check</code>: hover for the reason, and <strong>re-check</strong> measures that row again (<code>checking…</code> meanwhile). The checks run three at a time, and one that Splunk turns away is tried again after 2, 4 and 8 seconds.</td>
+</tr>
+<tr>
+<td><strong>Actions</strong></td>
+<td><strong>Backfill</strong> (this rollup only, per-arm top-level dispatch) · <strong>Clear</strong> (delete this rollup&rsquo;s collection(s), confirm-gated).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="aggregation-retention-global-controls">Aggregation &amp; retention (global controls)<a class="headerlink" href="#aggregation-retention-global-controls" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Hourly aggregation — master switch.</strong> Enables/disables the scheduled saved searches that populate every rollup collection. Reads the live state of all aggregate searches and shows <strong>Enabled (all)</strong>, <strong>Disabled (all)</strong>, or <strong>Mixed (N/M on)</strong>. Toggling flips them all (Mixed → enable all). Use the per-rollup toggles in the table to control one at a time.</li>
+<li><strong>Retention window — 365 days</strong> (read-only). Bucket rows older than this are trimmed daily by each rollup&rsquo;s <code>*_retention</code> saved search. The trim never empties a collection on an empty read (<code>override_if_empty=false</code>), so a collection whose rows are all older than 365 days keeps them until new rows arrive. Uniform across all rollups; change <code>default/savedsearches.conf</code> to alter, and keep <code>override_if_empty=false</code> on every <code>outputlookup</code> of a retention search you change.</li>
+</ul>
+<h3 id="danger-zone">Danger zone<a class="headerlink" href="#danger-zone" title="Permanent link">&para;</a></h3>
+<p><strong>Clear all rollups</strong> — a confirm-gated button that deletes every row from all rollup collections at once. Use sparingly (e.g. to wipe a contaminated dataset before re-running a backfill against a corrected schema). Every dashboard is empty until the hourly aggregation or a backfill repopulates it.</p>
+<h2 id="what-data-freshness-means-per-panel"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> What &ldquo;data freshness&rdquo; means per panel<a class="headerlink" href="#what-data-freshness-means-per-panel" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>tstats</code> and raw panels are real-time</strong> — they reflect events the instant they are indexed.</li>
+<li><strong>Rolled-up panels are accurate to the most-recently-completed hour, for time ranges of 90 minutes or wider.</strong> The hourly aggregation runs in the first half of each hour (<code>:03</code>–<code>:28</code>, one rollup per minute), so within the current partial hour a rolled-up panel shows data through the last completed hour, not the live partial hour. An event that reaches Splunk more than about an hour after its hour is counted once its days are rebuilt — see <a href="#late-arriving-data">Late-arriving data</a>.</li>
+<li><strong>Sub-hour time ranges are real-time</strong> — every rolled-up panel switches to raw events automatically (see below).</li>
+</ul>
+<h3 id="sub-hour-time-ranges-automatic">Sub-hour time ranges (automatic)<a class="headerlink" href="#sub-hour-time-ranges-automatic" title="Permanent link">&para;</a></h3>
+<p>The rollups are keyed on whole-hour buckets, so a <strong>sub-hour</strong> time range — anything narrower than 90 minutes, such as Splunk&rsquo;s <em>Last 15 minutes</em> or <em>Last 60 minutes</em> — cannot be answered correctly from the hourly cache alone: a window that falls inside a single hour matches no completed bucket (the panel would read <strong>empty</strong>), and a window that straddles an hour boundary would pull the whole hour (<strong>over-counting</strong>). To keep short ranges correct, every rolled-up panel <strong>automatically routes a sub-hour window to its underlying raw-event query</strong> instead of the cache — so a <em>Last 15 minutes</em> range shows accurate, real-time data at minute granularity with <strong>no action needed</strong>. For a window of 90 minutes or wider, the panel reads the fast hourly cache as usual.</p>
+<p>The switch is based purely on the selected range&rsquo;s span (a 90-minute threshold), is transparent to the user, and applies across every rolled-up dashboard — including the two Sourcetype Mapping link graphs and the Host Details Role Activity tab. At 90 minutes and wider, a rolled-up chart never draws buckets finer than one hour, because the summaries are hourly; at <em>Last 24 hours</em> it draws hourly bars where a chart counted from the index draws 15-minute ones. Every time chart prints its bucket in its subtitle (see <a href="../dashboards/#chart-time-buckets">Chart Time Buckets</a>). Because the sub-hour path runs the panel&rsquo;s actual raw query, it is <strong>exact</strong> — not an approximation of the cache. (The trade-off is only speed, not correctness: a sub-hour raw query is inexpensive because it scans a small window, while a multi-day raw scan is what the hourly cache exists to avoid.)</p>
+<div class="admonition lightning">
+<p class="admonition-title">Investigating live activity</p>
+<p>Sub-hour ranges are already real-time (above), so you can simply narrow the time-range picker to see live activity on any rolled-up dashboard. For deeper ad-hoc investigation at any range, a panel&rsquo;s <strong>Open in Search</strong> toolbar action jumps into Splunk&rsquo;s Search app with the panel&rsquo;s actual query and your selected time range pre-applied — the rollup read for a cached panel at a wide range, the raw query at sub-hour ranges.</p>
+</div>
+<h2 id="how-the-dashboards-source-their-data"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> How the dashboards source their data<a class="headerlink" href="#how-the-dashboards-source-their-data" title="Permanent link">&para;</a></h2>
+<p>Every panel reads from the cheapest <em>correct</em> data source for what it shows. There are two fast tiers plus a small set of panels that stay on raw events.</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Used for</th>
+<th>Freshness</th>
+<th>Cost</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>tstats</code> on indexed fields</strong></td>
+<td>Pure counts and averages over indexed dimensions (event volumes, host / sourcetype / cloud-provider breakdowns)</td>
+<td>Real-time</td>
+<td>Very low — reads the index&rsquo;s tsidx, no raw-event scan</td>
+</tr>
+<tr>
+<td><strong>KV-Store precompute rollups</strong></td>
+<td>Most charts, tables, and KPIs across the dashboard suite</td>
+<td>Hourly for wide ranges; <strong>real-time for sub-hour ranges</strong> (automatic — see above)</td>
+<td>Near-zero at read time — a scheduled search precomputes the data once per hour</td>
+</tr>
+<tr>
+<td><strong>Raw events</strong></td>
+<td>Per-event listings, streamstats periodicity (beaconing), and a few timing traces that cannot be rolled up</td>
+<td>Real-time</td>
+<td>Bounded with <code>\| head N</code> where the panel is a time-ordered listing</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition info">
+<p class="admonition-title">No CIM data-model acceleration is required</p>
+<p>The dashboards do <strong>not</strong> depend on accelerating the Common Information Model (CIM) Web / Authentication / Network data models. The fast path is the app&rsquo;s own KV-Store rollups, which work regardless of whether you have accelerated any CIM model. (The app&rsquo;s CIM <em>tagging</em> for Splunk Enterprise Security correlation is a separate, independent feature — see <a href="../../enterprise-security/cim-compliance/">Enterprise Security → CIM Compliance</a>.)</p>
+</div>
+<h3 id="the-kv-store-rollup-layer">The KV-Store rollup layer<a class="headerlink" href="#the-kv-store-rollup-layer" title="Permanent link">&para;</a></h3>
+<p>Behind the rolled-up panels is a set of <strong>KV-Store rollup collections</strong> (<code>logserv_*_rollup</code>, plus the Environment Topology graph collections). For each, a scheduled saved search (one per rollup) aggregates the last two completed hours of raw events into hour-bucketed rows — the previous hour, and the one before it again, so an event that arrives a little late is still counted (see <a href="#late-arriving-data">Late-arriving data</a>); the aggregates are staggered one per minute across <code>:03</code>–<code>:28</code> of every hour. (Three rollups aggregate <strong>daily</strong> rather than hourly and are day-bucketed: the two beaconing detections and the topology IP-enrichment names.) The dashboard reads the collection back, filtered to the global time-range picker&rsquo;s window via a <code>bucket_ts</code> range. Because the heavy aggregation happens once per hour in the background, opening a dashboard re-reads precomputed rows in roughly <strong>0.1–0.6 seconds</strong> instead of dispatching a full raw scan.</p>
+<p>A daily retention search trims each collection to a rolling <strong>365-day</strong> window. It never empties a collection on an empty read (<code>override_if_empty=false</code>), so a KV Store that is still starting up after a Splunkd restart cannot wipe a rollup.</p>
+<h2 id="reference"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Reference<a class="headerlink" href="#reference" title="Permanent link">&para;</a></h2>
+<h3 id="scheduled-search-schedule"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Scheduled-search schedule<a class="headerlink" href="#scheduled-search-schedule" title="Permanent link">&para;</a></h3>
+<p>The app&rsquo;s scheduled searches are organized into three non-overlapping bands, plus one daily check, so that no two enabled scheduled searches ever fire in the same minute and the hourly aggregation never contends with the daily retention. This keeps the scheduler from bursting at high event volume.</p>
+<table>
+<thead>
+<tr>
+<th>Band</th>
+<th>When</th>
+<th>What runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Hourly aggregates</strong></td>
+<td><code>:03</code>–<code>:28</code> every hour, one per minute</td>
+<td>The always-on rollup-aggregate searches (<code>logserv_*_aggregate</code> / <code>logserv_topology_aggregate_*</code>), plus the Data Doctor&rsquo;s platform snapshot at <code>:02</code></td>
+</tr>
+<tr>
+<td><strong>Daily retention + daily aggregates</strong></td>
+<td><code>00:30</code>–<code>00:58</code>, <code>01:30</code>–<code>01:58</code> and <code>02:32</code>–<code>02:36</code>, two minutes apart</td>
+<td>Every rollup&rsquo;s retention trim, the two daily beaconing aggregates, the topology IP-enrichment aggregate, and the Data Doctor report/snapshot trims</td>
+</tr>
+<tr>
+<td><strong>Enterprise Security</strong></td>
+<td><code>:00</code>–<code>:01</code>, <code>:29</code>, odd <code>:31</code>–<code>:59</code>, plus <code>:30</code> in hours <code>02</code>–<code>05</code> (the daily anomaly scans)</td>
+<td>The <code>splunk_sap_logserv_es_*</code> searches (enabled by default) — see note below</td>
+</tr>
+<tr>
+<td><strong>Late-arriving data check</strong></td>
+<td><code>05:40</code> daily</td>
+<td><code>logserv_late_arrival_check</code> — a read-only <code>tstats</code> comparison of the index with the Multi-Cloud Overview rollup (about 5 s on the reference box); see <a href="#late-arriving-data">Late-arriving data</a></td>
+</tr>
+</tbody>
+</table>
+<p>The per-search tables below give each search&rsquo;s <strong>run time</strong> as <em>typical / busy</em> — the average and worst single-run duration observed on the validation fleet (~10.7M events/day). Aggregate run times scale with the <strong>per-hour event volume</strong>; retention run times scale with the <strong>collection size</strong>. Run times are indicative, measured on a ~10.7M events/day validation instance. Every hourly aggregate completes well within its one-minute slot; the heaviest daily retention trims take about a minute and sit in the two-minutes-apart daily band.</p>
+<h4 id="hourly-aggregate-band-0328"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Hourly aggregate band (<code>:03</code>–<code>:28</code>)<a class="headerlink" href="#hourly-aggregate-band-0328" title="Permanent link">&para;</a></h4>
+<p>Each rollup aggregate dispatches the last two completed hours (<code>-2h@h</code>..<code>@h</code>) and rewrites both. The newest bucket is still the just-completed hour, so the firing minute is freshness-neutral — spreading them one-per-minute simply avoids a burst at <code>:05</code>. Peak concurrency is ~1–2 instead of 26. The run times below were measured when each run read one hour; reading two roughly doubles them. Two keep a one-hour window: <code>logserv_topology_aggregate_inventory</code> (keyed by value, not by hour) and the Data Doctor&rsquo;s platform snapshot at <code>:02</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Fires</th>
+<th>Aggregate search</th>
+<th>Powers (dashboard)</th>
+<th>Run time (typ. / busy)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>:03</code></td>
+<td><code>logserv_stmap_aggregate</code></td>
+<td>Host Details · Sourcetype Mapping <strong>+</strong> Data Pipeline Overview · Linked Graph</td>
+<td>1 / 2 s</td>
+</tr>
+<tr>
+<td><code>:04</code></td>
+<td><code>logserv_hostrole_aggregate</code></td>
+<td>Host Details · Role Activity</td>
+<td>4 / 5 s</td>
+</tr>
+<tr>
+<td><code>:05</code></td>
+<td><code>logserv_topology_aggregate_nodes</code></td>
+<td>Environment Topology (graph)</td>
+<td>6 / 20 s</td>
+</tr>
+<tr>
+<td><code>:06</code></td>
+<td><code>logserv_topology_aggregate_edges</code></td>
+<td>Environment Topology (graph)</td>
+<td>3 / 12 s</td>
+</tr>
+<tr>
+<td><code>:07</code></td>
+<td><code>logserv_topology_aggregate_inventory</code></td>
+<td>Environment Topology (graph)</td>
+<td>3 / 13 s</td>
+</tr>
+<tr>
+<td><code>:08</code></td>
+<td><code>logserv_topology_detail_aggregate</code></td>
+<td>Environment Topology (detail tabs)</td>
+<td>13 / 35 s</td>
+</tr>
+<tr>
+<td><code>:09</code></td>
+<td><code>logserv_wp_perf_aggregate</code></td>
+<td>Work Process Performance <strong>+</strong> ABAP Operations</td>
+<td>5 / 16 s</td>
+</tr>
+<tr>
+<td><code>:10</code></td>
+<td><code>logserv_severity_aggregate</code></td>
+<td>Environment Health</td>
+<td>5 / 18 s</td>
+</tr>
+<tr>
+<td><code>:11</code></td>
+<td><code>logserv_hana_aggregate</code></td>
+<td>HANA Audit</td>
+<td>3 / 12 s</td>
+</tr>
+<tr>
+<td><code>:12</code></td>
+<td><code>logserv_compliance_aggregate</code></td>
+<td>Change &amp; Configuration Activity</td>
+<td>3 / 15 s</td>
+</tr>
+<tr>
+<td><code>:13</code></td>
+<td><code>logserv_saprouter_aggregate</code></td>
+<td>SAP Router</td>
+<td>2 / 7 s</td>
+</tr>
+<tr>
+<td><code>:14</code></td>
+<td><code>logserv_abapnet_aggregate</code></td>
+<td>ABAP Network &amp; Security</td>
+<td>6 / 21 s</td>
+</tr>
+<tr>
+<td><code>:15</code></td>
+<td><code>logserv_xstack_auth_aggregate</code></td>
+<td>Cross-Stack Authentication</td>
+<td>3 / 10 s</td>
+</tr>
+<tr>
+<td><code>:16</code></td>
+<td><code>logserv_perimeter_aggregate</code></td>
+<td>Network Perimeter</td>
+<td>6 / 22 s</td>
+</tr>
+<tr>
+<td><code>:17</code></td>
+<td><code>logserv_linux_aggregate</code></td>
+<td>Linux System &amp; Security <strong>+</strong> Network Perimeter</td>
+<td>7 / 24 s</td>
+</tr>
+<tr>
+<td><code>:18</code></td>
+<td><code>logserv_web_timing_aggregate</code></td>
+<td>Web &amp; API Performance <strong>+</strong> Web Dispatcher</td>
+<td>8 / 21 s</td>
+</tr>
+<tr>
+<td><code>:19</code></td>
+<td><code>logserv_hana_trace_aggregate</code></td>
+<td>HANA Trace</td>
+<td>2 / 6 s</td>
+</tr>
+<tr>
+<td><code>:20</code></td>
+<td><code>logserv_windows_aggregate</code></td>
+<td>Windows</td>
+<td>2 / 6 s</td>
+</tr>
+<tr>
+<td><code>:21</code></td>
+<td><code>logserv_sapservices_aggregate</code></td>
+<td>SAP Services</td>
+<td>2 / 6 s</td>
+</tr>
+<tr>
+<td><code>:22</code></td>
+<td><code>logserv_mc_aggregate</code></td>
+<td>Multi-Cloud Overview</td>
+<td>2 / 7 s</td>
+</tr>
+<tr>
+<td><code>:23</code></td>
+<td><code>logserv_cloudconn_aggregate</code></td>
+<td>Cloud Connector</td>
+<td>4 / 10 s</td>
+</tr>
+<tr>
+<td><code>:24</code></td>
+<td><code>logserv_proxy_aggregate</code></td>
+<td>Proxy</td>
+<td>4 / 12 s</td>
+</tr>
+<tr>
+<td><code>:25</code></td>
+<td><code>logserv_dns_aggregate</code></td>
+<td>DNS Analytics</td>
+<td>2 / 5 s</td>
+</tr>
+<tr>
+<td><code>:26</code></td>
+<td><code>logserv_pipeline_aggregate</code></td>
+<td>Data Pipeline Overview</td>
+<td>2 / 5 s</td>
+</tr>
+<tr>
+<td><code>:27</code></td>
+<td><code>logserv_hostdetails_aggregate</code></td>
+<td>Host Details (Overview tab)</td>
+<td>2 / 7 s</td>
+</tr>
+<tr>
+<td><code>:28</code></td>
+<td><code>logserv_webdisp_slowtrace_aggregate</code></td>
+<td>Web Dispatcher · Slowest Request Traces</td>
+<td>1 / 3 s</td>
+</tr>
+</tbody>
+</table>
+<h4 id="daily-band-00300236"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Daily band (<code>00:30</code>–<code>02:36</code>)<a class="headerlink" href="#daily-band-00300236" title="Permanent link">&para;</a></h4>
+<p>Retention trims and the daily aggregates run off-peak — 15 searches at <code>00:30</code>–<code>00:58</code>, 15 more at <code>01:30</code>–<code>01:58</code>, and 3 at <code>02:32</code>–<code>02:36</code>, all two minutes apart. Keeping them at minute <code>:30</code> or later guarantees they never collide with the hourly aggregate band (which fires at <code>:03</code>–<code>:28</code> of <em>every</em> hour); the two Data Doctor trims take the last two slots of hour <code>01</code>, <code>01:56</code> and <code>01:58</code>. Each retention search trims its collection to the rolling 365-day window and never empties it on an empty read (<code>override_if_empty=false</code>); the two beaconing aggregates (<code>00:30</code>, <code>00:32</code>) precompute the per-day DNS/perimeter beaconing statistics. (Retention run times scale with collection size, so the larger rollups — Environment Topology detail, Host Role Activity, DNS, Web &amp; API, Network Perimeter — take longest; all are off-peak and collision-free.)</p>
+<table>
+<thead>
+<tr>
+<th>Fires</th>
+<th>Daily search</th>
+<th>Action (dashboard)</th>
+<th>Run time (typ. / busy)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>00:30</code></td>
+<td><code>logserv_beaconing_aggregate</code></td>
+<td>Aggregate daily beaconing counts → Environment Health · DNS Analytics</td>
+<td>2 / 4 s</td>
+</tr>
+<tr>
+<td><code>00:32</code></td>
+<td><code>logserv_beaconing_detail_aggregate</code></td>
+<td>Aggregate daily beaconing gap-stats → DNS Analytics · Network Perimeter</td>
+<td>1 / 2 s</td>
+</tr>
+<tr>
+<td><code>00:34</code></td>
+<td><code>logserv_topology_retention</code></td>
+<td>Trim Environment Topology (graph — nodes)</td>
+<td>about 22 s</td>
+</tr>
+<tr>
+<td><code>00:36</code></td>
+<td><code>logserv_wp_perf_retention</code></td>
+<td>Trim Work Process Performance</td>
+<td>10 / 14 s</td>
+</tr>
+<tr>
+<td><code>00:38</code></td>
+<td><code>logserv_severity_retention</code></td>
+<td>Trim Environment Health</td>
+<td>7 / 8 s</td>
+</tr>
+<tr>
+<td><code>00:40</code></td>
+<td><code>logserv_hana_retention</code></td>
+<td>Trim HANA Audit</td>
+<td>5 / 7 s</td>
+</tr>
+<tr>
+<td><code>00:42</code></td>
+<td><code>logserv_compliance_retention</code></td>
+<td>Trim Change &amp; Configuration Activity</td>
+<td>2 / 2 s</td>
+</tr>
+<tr>
+<td><code>00:44</code></td>
+<td><code>logserv_saprouter_retention</code></td>
+<td>Trim SAP Router</td>
+<td>2 / 2 s</td>
+</tr>
+<tr>
+<td><code>00:46</code></td>
+<td><code>logserv_abapnet_retention</code></td>
+<td>Trim ABAP Network &amp; Security</td>
+<td>4 / 5 s</td>
+</tr>
+<tr>
+<td><code>00:48</code></td>
+<td><code>logserv_xstack_auth_retention</code></td>
+<td>Trim Cross-Stack Authentication</td>
+<td>3 / 3 s</td>
+</tr>
+<tr>
+<td><code>00:50</code></td>
+<td><code>logserv_perimeter_retention</code></td>
+<td>Trim Network Perimeter</td>
+<td>28 / 31 s</td>
+</tr>
+<tr>
+<td><code>00:52</code></td>
+<td><code>logserv_linux_retention</code></td>
+<td>Trim Linux System &amp; Security</td>
+<td>7 / 8 s</td>
+</tr>
+<tr>
+<td><code>00:54</code></td>
+<td><code>logserv_web_timing_retention</code></td>
+<td>Trim Web &amp; API Performance</td>
+<td>25 / 36 s</td>
+</tr>
+<tr>
+<td><code>00:56</code></td>
+<td><code>logserv_hana_trace_retention</code></td>
+<td>Trim HANA Trace</td>
+<td>5 / 7 s</td>
+</tr>
+<tr>
+<td><code>00:58</code></td>
+<td><code>logserv_windows_retention</code></td>
+<td>Trim Windows</td>
+<td>4 / 5 s</td>
+</tr>
+<tr>
+<td><code>01:30</code></td>
+<td><code>logserv_sapservices_retention</code></td>
+<td>Trim SAP Services</td>
+<td>1 / 2 s</td>
+</tr>
+<tr>
+<td><code>01:32</code></td>
+<td><code>logserv_mc_retention</code></td>
+<td>Trim Multi-Cloud Overview</td>
+<td>13 / 15 s</td>
+</tr>
+<tr>
+<td><code>01:34</code></td>
+<td><code>logserv_beaconing_retention</code></td>
+<td>Trim beaconing counts</td>
+<td>&lt; 1 s</td>
+</tr>
+<tr>
+<td><code>01:36</code></td>
+<td><code>logserv_cloudconn_retention</code></td>
+<td>Trim Cloud Connector</td>
+<td>4 / 4 s</td>
+</tr>
+<tr>
+<td><code>01:38</code></td>
+<td><code>logserv_proxy_retention</code></td>
+<td>Trim Proxy</td>
+<td>4 / 5 s</td>
+</tr>
+<tr>
+<td><code>01:40</code></td>
+<td><code>logserv_dns_retention</code></td>
+<td>Trim DNS Analytics</td>
+<td>35 / 38 s</td>
+</tr>
+<tr>
+<td><code>01:42</code></td>
+<td><code>logserv_pipeline_retention</code></td>
+<td>Trim Data Pipeline Overview</td>
+<td>5 / 6 s</td>
+</tr>
+<tr>
+<td><code>01:44</code></td>
+<td><code>logserv_hostdetails_retention</code></td>
+<td>Trim Host Details</td>
+<td>8 / 8 s</td>
+</tr>
+<tr>
+<td><code>01:46</code></td>
+<td><code>logserv_webdisp_slowtrace_retention</code></td>
+<td>Trim Web Dispatcher · Slowest Traces</td>
+<td>2 / 2 s</td>
+</tr>
+<tr>
+<td><code>01:48</code></td>
+<td><code>logserv_beaconing_detail_retention</code></td>
+<td>Trim beaconing gap-stats</td>
+<td>1 / 1 s</td>
+</tr>
+<tr>
+<td><code>01:50</code></td>
+<td><code>logserv_topology_detail_retention</code></td>
+<td>Trim Environment Topology (detail tabs)</td>
+<td>63 / 69 s</td>
+</tr>
+<tr>
+<td><code>01:52</code></td>
+<td><code>logserv_stmap_retention</code></td>
+<td>Trim Sourcetype Mapping</td>
+<td>24 / 24 s</td>
+</tr>
+<tr>
+<td><code>01:54</code></td>
+<td><code>logserv_hostrole_retention</code></td>
+<td>Trim Host Role Activity</td>
+<td>38 / 38 s</td>
+</tr>
+<tr>
+<td><code>01:56</code></td>
+<td><code>logserv_diag_reports_retention</code></td>
+<td>Trim the Data Doctor&rsquo;s saved diagnostic reports (365 d + row cap)</td>
+<td>&lt; 1 s</td>
+</tr>
+<tr>
+<td><code>01:58</code></td>
+<td><code>logserv_diag_platform_retention</code></td>
+<td>Trim the Data Doctor&rsquo;s platform snapshot (30 d)</td>
+<td>&lt; 1 s</td>
+</tr>
+<tr>
+<td><code>02:32</code></td>
+<td><code>logserv_topology_enrichment_aggregate</code></td>
+<td>Recompute the topology IP-node hostname/user names (daily, last 30 d)</td>
+<td>5 / 8 s</td>
+</tr>
+<tr>
+<td><code>02:34</code></td>
+<td><code>logserv_topology_enrichment_retention</code></td>
+<td>Trim the topology IP-enrichment names (365 d on last-seen)</td>
+<td>&lt; 1 s</td>
+</tr>
+<tr>
+<td><code>02:36</code></td>
+<td><code>logserv_topology_edges_retention</code></td>
+<td>Trim Environment Topology (graph — edges)</td>
+<td>about 8 s</td>
+</tr>
+</tbody>
+</table>
+<p>The two Environment Topology (graph) trim times are single-night estimates, not typical / busy measurements like the other rows.</p>
+<h4 id="enterprise-security-band-enabled-by-default"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Enterprise Security band (enabled by default)<a class="headerlink" href="#enterprise-security-band-enabled-by-default" title="Permanent link">&para;</a></h4>
+<p>The 22 <code>splunk_sap_logserv_es_*</code> searches ship <strong>enabled</strong> (see <a href="../../enterprise-security/overview/#the-es-schedule-collision-free">Enterprise Security → The ES schedule</a>) on crons that sit entirely in the minutes the always-on bands leave free — <code>:00</code>–<code>:01</code>, <code>:29</code>, and the odd minutes <code>:31</code>–<code>:59</code> — so they are collision-free with both the aggregate band (<code>:02</code>–<code>:28</code>, including the Data Doctor’s <code>:02</code> platform snapshot) and the daily band (<code>00:30</code>–<code>00:58</code>, <code>01:30</code>–<code>01:58</code> and <code>02:32</code>–<code>02:36</code>). 16 correlation searches run hourly, the 2 Asset/Identity feeds every 4 hours, and the 4 behavioral-anomaly searches once a day each, at <code>:30</code> (hours 02–05). Two of them (<code>splunk_sap_logserv_es_anomaly_user_auth_volume</code> and <code>splunk_sap_logserv_es_anomaly_after_hours_admin</code>) scan 30 days of raw events, and the other two read the KV Store rollups.</p>
+<h4 id="measured-behavior"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Measured behavior<a class="headerlink" href="#measured-behavior" title="Permanent link">&para;</a></h4>
+<p>On the validation fleet (335M events), the hourly aggregates each complete in seconds and the slowest daily retention trim is ~1 minute (see the per-search tables above); the scheduler logs <strong>0 skipped / 0 deferred</strong>. The two heaviest ES searches — the 30-day anomaly scans (~150–340 s and ~50–120 s) — run <strong>once a day</strong>, so they add no hourly load.</p>
+<p>The Data Doctor adds two scheduled searches: <code>logserv_diag_platform_aggregate</code> (hourly at <code>:02</code>, a seconds-fast scan of the last hour of <code>index=_internal</code>) and <code>logserv_diag_platform_retention</code> (daily at 01:58, trims the platform snapshot to 30 days). The shipped schedule is verified by a permanent build gate: <strong>every enabled scheduled search has a unique (hour, minute) — zero cron collisions</strong>.</p>
+<h3 id="behavior-with-multiple-search-heads"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Behavior with multiple search heads<a class="headerlink" href="#behavior-with-multiple-search-heads" title="Permanent link">&para;</a></h3>
+<p>How these scheduled searches behave depends on the search-head topology:</p>
+<p><strong>Search Head Cluster (SHC) — the supported multi-SH topology.</strong> Works cleanly, with no extra configuration:</p>
+<ul>
+<li>The SHC <strong>captain delegates each scheduled search to a single member</strong> per fire, so every aggregate and retention search runs <strong>once cluster-wide per interval — not once per member</strong>. There is no multiplication of load by the number of search heads.</li>
+<li><strong>KV Store is automatically replicated across the cluster.</strong> Whichever member runs an aggregate writes the rollup to its local KV Store, and Splunk replicates the collection to every member — so <strong>all search heads serve the dashboards from the same rolled-up data</strong>, regardless of which member computed it. (The rollup design depends on KV Store, which is cluster-replicated by default.)</li>
+<li>The app&rsquo;s saved searches and collection definitions deploy to all members via the <strong>SHC deployer</strong> (<code>splunk apply shcluster-bundle</code>), Splunk&rsquo;s standard process. The one-click <strong>Settings → Dashboard Data → Run backfill</strong> also works cluster-wide — an admin runs it from any member and the results replicate.</li>
+<li>The one-search-per-minute staggering helps here too: it keeps the per-minute scheduled load at ~1, which the captain can place on any member without bunching.</li>
+</ul>
+<p><strong>Independent (non-clustered) search heads.</strong> If the app is installed on two or more <strong>standalone</strong> search heads that are <em>not</em> in a SHC, each one runs its <strong>own</strong> copy of the schedule against its <strong>own</strong> KV Store (there is no replication between independent search heads). The aggregates therefore run N times — once per search head — which is redundant indexer load, and each search head maintains its rollups independently (they can drift slightly in timing). It is not broken — each search head&rsquo;s dashboards work off its own rollups — but it is wasteful. <strong>Recommendation:</strong> use a SHC for multi-SH deployments. If independent search heads are unavoidable, keep the schedule enabled, and run the backfill, on every one of them: each search head&rsquo;s dashboards read only the rollups in its own KV Store, so a search head whose aggregates are switched off shows empty rolled-up panels at ranges of 90 minutes or wider.</p>
+<p><strong>Single search head</strong> (the default — one SH, with or without separate indexers): the search head runs the whole schedule itself, dispatching the raw scans to its indexer peers and writing the rollups to its own KV Store. Nothing special is required.</p>
+<div class="admonition info">
+<p class="admonition-title">KV Store must be enabled and healthy</p>
+<p>The rollups live in Splunk&rsquo;s KV Store, so KV Store must be enabled on the search head(s) — it is by default, and is already required for the Environment Topology view and the AI Assistant settings. On a SHC, KV Store replication must be healthy for rollups computed on one member to appear on the others.</p>
+</div>
+<h2 id="what-to-know-at-a-glance"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> What to know at a glance<a class="headerlink" href="#what-to-know-at-a-glance" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Most panels are hourly-fresh; counts and per-event listings are real-time.</strong> If a rolled-up trend looks an hour behind at a multi-day range, that&rsquo;s expected.</li>
+<li><strong>Sub-hour time ranges (under 90 minutes) are real-time automatically</strong> — a rolled-up panel routes a <em>Last 15 minutes</em>-style window to its raw query, so short ranges stay minute-accurate with no manual step.</li>
+<li><strong>Scheduled searches are staggered into collision-free bands</strong> — hourly aggregates at <code>:03</code>–<code>:28</code> (plus the platform snapshot at <code>:02</code>), daily retention + maintenance at <code>00:30</code>–<code>00:58</code>, <code>01:30</code>–<code>01:58</code> and <code>02:32</code>–<code>02:36</code>, the late-arriving data check at <code>05:40</code>, and the ES content (enabled by default) in the minutes those bands leave free — <code>:00</code>/<code>:01</code> for the feeds, <code>:29</code> and odd <code>:31</code>–<code>:59</code> for the hourly correlations, and <code>:30</code> at hours 02–05 for the daily anomaly searches — so no two enabled scheduled searches collide.</li>
+<li><strong>After installing on an index that already holds history, run Settings → Dashboard Data → Run backfill once</strong> — 30 days by default, or a longer window up to 365 days, or a custom range. It needs a role named <code>admin</code>, <code>sc_admin</code> or <code>sc_subadmin</code>.</li>
+<li><strong>Late-arriving data is listed and rebuilt in Settings → Dashboard Data.</strong> The hourly aggregation re-reads the hour before, which catches events up to about an hour late; the days holding anything later are listed under <em>Late-arriving data</em>, with a one-click backfill of exactly those days.</li>
+<li><strong>No CIM acceleration is needed</strong> for dashboard performance.</li>
+<li><strong>Use a panel&rsquo;s Open in Search action</strong> for ad-hoc raw-event investigation at any range (sub-hour ranges are already real-time on the dashboard itself). The panel toolbar is described in the <a href="../dashboards/#per-panel-toolbar">Dashboards Overview</a>.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../ai-assistant/settings/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Application Settings">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Application Settings
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../install-setup/aws-s3-direct/" class="md-footer__link md-footer__link--next" aria-label="Next: AWS S3 Direct: Backfill and Recovery">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                AWS S3 Direct: Backfill and Recovery
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.instant.preview", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.path", "navigation.footer", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+        <script src="../../../js/limited-preview-qr.js"></script>
+      
+    
+  </body>
+</html>

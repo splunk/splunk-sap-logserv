@@ -1,0 +1,5559 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/getting-started/upgrading/">
+      
+      
+        <link rel="prev" href="../troubleshooting/">
+      
+      
+        <link rel="next" href="../../logserv-app/dashboards/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Upgrading to This Release - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#upgrading-to-this-release" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Upgrading to This Release
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../install-setup/configure-filters/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure and Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Upgrade
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../logserv-app/dashboards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dashboards
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../enterprise-security/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise Security Integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ai-assistant/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  AI Assistant
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../overview/release-notes/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer/testing-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/limited-preview-announcement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limited Preview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/demo-video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here: Deployment Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Plan
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    1. Plan
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../supported-log-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Log Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../package-placement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where Each Package Goes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../splunk-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk Cloud Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../capacity-planning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Planning and First Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    2. Install the Data TA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/cloud-attribution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Cloud Attribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/decide-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decide Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/distribute-data-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribute the Data TA to Heavy Forwarders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Connect Your Cloud
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    3. Connect Your Cloud
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/choose-your-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Cloud and AWS Scenario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../verify-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Verify Your Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Install the LogServ App
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    5. Install the LogServ App
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the App and Seed the Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure and Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure and Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring Filters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboard-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-s3-direct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS S3 Direct: Backfill and Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upgrade
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#find-your-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Find Your Builds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-work-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The Work List
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The Work List">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rows-to-rebuild-by-starting-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rows to Rebuild, by Starting Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ui-app-splunk_app_sap_logserv-what-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LogServ App
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#coming-from-app-build-377-or-earlier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coming From App Build 377 or Earlier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#coming-from-a-pre-rollup-build-dashboards-populate-from-a-cache-that-starts-empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coming From a Pre-rollup Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-scheduled-searches-new-collections-and-a-restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Scheduled Searches, New Collections, and a Restart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visible-ui-panel-changes-when-coming-from-v005-era-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visible UI / Panel Changes When Coming From v0.0.5-era Builds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-time-field-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search-Time Field Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-ta-work-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data TA
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ingest-add-ons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LogServ Azure and GCP Add-ons
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-upgrade-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upgrade Sequence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Upgrade Sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-ta-splunk_ta_sap_logserv-routine-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating the Data TA
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#on-splunk-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On Splunk Cloud
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-rebuild-a-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. How to Rebuild a Row
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. How to Rebuild a Row">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#narrower-repair-build-378" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Narrower Repair After App Build 378
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#narrower-repair-build-383" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Narrower Repair After App Build 383
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-preserved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Is Preserved
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restricted-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restricted Deployments: Templates-only and v0.0.6
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#removing-the-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removing the Solution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        At a Glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/applications/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applications
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Applications
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Network & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Process Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Trace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/integration/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Connector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web and API Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/security/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Perimeter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Stack Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change & Configuration Activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/platform/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux System & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cloud Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Doctor (Diagnostics)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Security Integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise Security Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIM Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Searches & RBA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset & Identity Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat Intelligence Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Behavioral & Anomaly Detections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Assistant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/enable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Set Up the AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predefined Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drill-down Chips
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricting the LLM Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_8" id="__nav_7_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form LLM Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Free-form LLM Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-Window Reasoning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_9" id="__nav_7_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP LLM Top 10 (2025) Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Architecture (SAIF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.1.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.5 and Earlier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Third-Party Software Licenses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clean Deployment Test (Lab)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-ta-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data TA Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App and AI Assistant Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/build-from-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Packages from Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#find-your-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Find Your Builds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-work-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. The Work List
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. The Work List">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rows-to-rebuild-by-starting-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rows to Rebuild, by Starting Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ui-app-splunk_app_sap_logserv-what-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LogServ App
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#coming-from-app-build-377-or-earlier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coming From App Build 377 or Earlier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#coming-from-a-pre-rollup-build-dashboards-populate-from-a-cache-that-starts-empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coming From a Pre-rollup Build
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-scheduled-searches-new-collections-and-a-restart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Scheduled Searches, New Collections, and a Restart
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visible-ui-panel-changes-when-coming-from-v005-era-builds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Visible UI / Panel Changes When Coming From v0.0.5-era Builds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#search-time-field-changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Search-Time Field Changes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#data-ta-work-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data TA
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ingest-add-ons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LogServ Azure and GCP Add-ons
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-upgrade-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Upgrade Sequence
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Upgrade Sequence">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#data-ta-splunk_ta_sap_logserv-routine-upgrade" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Updating the Data TA
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#on-splunk-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        On Splunk Cloud
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-rebuild-a-row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. How to Rebuild a Row
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. How to Rebuild a Row">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#narrower-repair-build-378" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Narrower Repair After App Build 378
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#narrower-repair-build-383" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Narrower Repair After App Build 383
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-preserved" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Is Preserved
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restricted-deployments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restricted Deployments: Templates-only and v0.0.6
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rollback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rollback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#removing-the-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Removing the Solution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        At a Glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="upgrading-to-this-release">Upgrading to This Release<a class="headerlink" href="#upgrading-to-this-release" title="Permanent link">&para;</a></h1>
+<p>Use this page to bring an existing Splunk for SAP LogServ installation up to the current release: LogServ App build 394, Data TA build 1792598960, LogServ Azure add-on build 1792558069 and LogServ GCP add-on build 1792558072, all at version 0.1.2. It applies whether you come from 0.0.5, 0.0.6, 0.1.1 or an earlier 0.1.2 build: find your builds, note the rows of the work list that apply to them, then follow the upgrade sequence.</p>
+<div class="admonition info">
+<p class="admonition-title">What an upgrade does not touch</p>
+<p>No data is re-ingested. Events already indexed keep the sourcetype, host, source and folder fields they were indexed with: the Data TA&rsquo;s routing changes apply only to events parsed after you update it. The <code>local/</code> configuration of every package and the App&rsquo;s KV Store data (settings, acknowledgements, saved layouts, dashboard data) survive the upgrade. Two things do change for data you already have: some search-time fields, which every search computes anew, and the values some dashboard rollups store, which is why some rows in <strong>Settings → Dashboard Data</strong> need a one-time rebuild.</p>
+</div>
+<p><br></p>
+<h2 id="find-your-builds"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 1. Find Your Builds<a class="headerlink" href="#find-your-builds" title="Permanent link">&para;</a></h2>
+<p><strong>LogServ App.</strong> Click <strong>About</strong> at the bottom of the App&rsquo;s left navigation rail. The dialog shows the version, the build and the build date. (App builds 302 to 338 have <strong>About</strong> in the top navigation bar; earlier builds have none.) On any build, the same from a search on the search head:</p>
+<div class="highlight"><pre><span></span><code>| rest /services/apps/local splunk_server=local
+| search title=splunk_app_sap_logserv
+| table title version build
+</code></pre></div>
+<p><strong>Data TA.</strong> Check each instance that parses LogServ data, every heavy forwarder or the single instance, not only the Deployment Server: see <a href="../capacity-planning/#version-check">Version Check</a>. Every 0.1.2 Data TA build has the version <code>0.1.2</code>; the builds are told apart only by their build number, which is the time the package was built, in epoch seconds.</p>
+<p><strong>LogServ Azure and GCP add-ons.</strong> Run the search above on each heavy forwarder, or search head, that runs them, with <code>title=splunk_ta_sap_logserv_azure</code> or <code>title=splunk_ta_sap_logserv_gcp</code>.</p>
+<p>Then read your App build in the work list&rsquo;s terms:</p>
+<table>
+<thead>
+<tr>
+<th>Your LogServ App</th>
+<th>Use in the work list</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Version 0.1.2</td>
+<td>Its build number</td>
+</tr>
+<tr>
+<td>Version 0.1.1, build 282 to 335, or version 0.0.6, build 258 or later (266 is its last build, and carries the 0.1.1 changes up to build 299)</td>
+<td>Build 335</td>
+</tr>
+<tr>
+<td>Version 0.1.1, build 245 to 281, or version 0.0.6 before build 258</td>
+<td>Build 281: a full rebuild of the dashboard data</td>
+</tr>
+<tr>
+<td>Version 0.0.5, or version 0.1.1, build 244 or earlier</td>
+<td>Build 244: a pre-rollup build</td>
+</tr>
+</tbody>
+</table>
+<p><br></p>
+<h2 id="the-work-list"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 2. The Work List<a class="headerlink" href="#the-work-list" title="Permanent link">&para;</a></h2>
+<p>Each row of the tables below starts at the last build that lacks a change. <strong>Apply every row whose build is at or above yours</strong>, all of them, in one pass after the upgrade. Rows about <strong>Settings → Dashboard Data</strong> say which rows there to rebuild; <a href="#how-to-rebuild-a-row">How to Rebuild a Row</a> gives the steps.</p>
+<h4 id="rows-to-rebuild-by-starting-build"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Rows to Rebuild, by Starting Build<a class="headerlink" href="#rows-to-rebuild-by-starting-build" title="Permanent link">&para;</a></h4>
+<p>The Dashboard Data steps of the App work list, combined for the builds an upgrade usually starts from. A row that one change clears and another only backfills needs its Clear and Backfill once. The rows are named as in <strong>Settings → Dashboard Data</strong>; <em>Beaconing detection</em> there reads <em>Beaconing detection (Environment Health / DNS / Network Perimeter)</em>.</p>
+<table>
+<thead>
+<tr>
+<th>Your App build</th>
+<th>Clear, then Backfill</th>
+<th>Backfill only, without Clear</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>383 or later</td>
+<td>None</td>
+<td>None</td>
+</tr>
+<tr>
+<td>379</td>
+<td>Work Process Performance / ABAP Operations</td>
+<td>None</td>
+</tr>
+<tr>
+<td>378</td>
+<td>Work Process Performance / ABAP Operations</td>
+<td>Host Role Activity (Host Details); Environment Topology (graph)</td>
+</tr>
+<tr>
+<td>364 to 377</td>
+<td>12 rows: Work Process Performance / ABAP Operations; HANA Audit; HANA Trace; Environment Health; ABAP Network &amp; Security; Host Role Activity (Host Details); Environment Topology (graph); Environment Topology (detail tabs); Multi-Cloud Overview; Data Pipeline Overview; Host Details; Sourcetype Mapping (Host Details / Data Pipeline)</td>
+<td>Change &amp; Configuration Activity; Cross-Stack Authentication</td>
+</tr>
+<tr>
+<td>358 to 363 (the released builds 360, 362 and 363)</td>
+<td>14 rows: the 12 above, Proxy Analytics and Cross-Stack Authentication</td>
+<td>Change &amp; Configuration Activity; Network Perimeter; Beaconing detection</td>
+</tr>
+<tr>
+<td>355 or earlier: 336 (the first 0.1.2 build), or 335 (from the table above)</td>
+<td>17 rows: the 14 above, Beaconing detection, Change &amp; Configuration Activity and Linux System &amp; Security / Network Perimeter</td>
+<td>Network Perimeter</td>
+</tr>
+<tr>
+<td>281 (from the table above)</td>
+<td>Every row, with <strong>Clear all data</strong></td>
+<td>None</td>
+</tr>
+<tr>
+<td>244 (from the table above)</td>
+<td>Every row, with <strong>Clear all data</strong>: the rollups start empty, but the Environment Topology (graph) row already holds the earlier build&rsquo;s rows</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>The other steps of the work list still apply to you, whichever line of this table you are on.</p>
+<h4 id="ui-app-splunk_app_sap_logserv-what-changes"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> LogServ App<a class="headerlink" href="#ui-app-splunk_app_sap_logserv-what-changes" title="Permanent link">&para;</a></h4>
+<p>Coming from App build 388 or later, there is nothing to rebuild, and no acknowledgement is asked again.</p>
+<table>
+<thead>
+<tr>
+<th>Coming from App build</th>
+<th>Changed in</th>
+<th>After upgrading</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>386 or earlier</td>
+<td>388</td>
+<td>With the AI Assistant enabled, the next admin who clicks <strong>Save Defaults</strong> in <strong>Settings → AI Assistant → General</strong> is asked once to accept the enablement acknowledgement, now at version 3; answering No turns the AI Assistant off. While it is disabled nothing is asked, until it is turned on, which always asks. A <code>local/ai_assistant_acks.conf</code> that sets <code>optInVersion</code> under <code>[logserv-ai-assistant-enable-tc]</code> keeps the old version: remove that line. See <a href="../../ai-assistant/settings/#legal-acknowledgement-modals">Legal Acknowledgement Modals</a>.</td>
+</tr>
+<tr>
+<td>385 or earlier</td>
+<td>386</td>
+<td>With audit forwarding off, the next <strong>Save Defaults</strong> asks once to acknowledge the audit-log integrity text, now at version 2. With forwarding on nothing is asked. An <code>optInVersion</code> line under <code>[logserv-ai-assistant-tc]</code> in <code>local/ai_assistant_acks.conf</code> keeps the old version: remove it.</td>
+</tr>
+<tr>
+<td>383 or earlier</td>
+<td>385</td>
+<td>The App&rsquo;s collections that hold dashboard data (the rollups, the five Environment Topology data collections and the Data Doctor&rsquo;s platform snapshot) can be written by the <code>admin</code>, <code>sc_admin</code> and <code>sc_subadmin</code> roles only; every role still reads them. The topology layout collections (saved layouts, their defaults and each user&rsquo;s layout mode), the dashboard refresh intervals and the Data Doctor&rsquo;s saved reports and ingest facts stay writable by every role. The App&rsquo;s scheduled searches and the Settings backfill keep working. Its searches that write these collections run as the user who starts them. A <code>[collections/&lt;name&gt;]</code> stanza with an <code>access</code> line in the App&rsquo;s <code>metadata/local.meta</code> keeps its own permissions: remove it to take the new ones. A scheduled search of your own that writes into one of these collections and is owned by a non-admin user stops writing. Start the App&rsquo;s writing searches (a retention, a backfill, an ES feed) through the REST API only with an admin-tier account.</td>
+</tr>
+<tr>
+<td>379 or earlier</td>
+<td>383, the first released build after 379</td>
+<td><strong>Clear, then Backfill</strong> Work Process Performance / ABAP Operations, or use the <a href="#narrower-repair-build-383">narrower repair</a>. <code>wp_category_name</code> takes SAP&rsquo;s names for the work process trace components: ten values are renamed and nine more letters get names (<a href="#search-time-field-changes">field changes</a>). The AI Assistant&rsquo;s settings, acknowledgements and model cache can be written by admin-tier roles only. Users whose roles hold neither <code>edit_tcp</code> nor <code>edit_log_alert_event</code> now see a warning in the AI Assistant panel: their AI Assistant activity is not written to the audit index (<a href="../../ai-assistant/audit-log/#who-can-write-audit-events">Who Can Write Audit Events</a>).</td>
+</tr>
+<tr>
+<td>378 or earlier</td>
+<td>379</td>
+<td><strong>Backfill</strong>, without Clear, Host Role Activity (Host Details) and Environment Topology (graph). Where the next row applies too, its Clear and Backfill cover both.</td>
+</tr>
+<tr>
+<td>377 or earlier</td>
+<td>378</td>
+<td><strong>Clear, then Backfill</strong> eleven rows and <strong>Backfill</strong> two more: see <a href="#coming-from-app-build-377-or-earlier">Coming From App Build 377 or Earlier</a>. HANA audit, HANA trace and ICM fields change (<a href="#search-time-field-changes">field changes</a>).</td>
+</tr>
+<tr>
+<td>376 or earlier</td>
+<td>377</td>
+<td>Nothing to rebuild. A <code>search</code> override in <code>local/savedsearches.conf</code> for <code>logserv_topology_aggregate_nodes</code>, <code>logserv_topology_aggregate_edges</code>, <code>logserv_topology_detail_aggregate</code>, <code>logserv_topology_enrichment_aggregate</code> or one of their backfill twins keeps the old loopback filter, which leaves out only 127.0.0.1: remove it to take the shipped search, which leaves out every loopback address (127.0.0.0/8). Claude 5.x turns now count toward the AI Assistant&rsquo;s daily spend cap (<code>daily_spend_cap_usd</code>, <strong>Settings → AI Assistant → General</strong>): raise it if your users run those models heavily.</td>
+</tr>
+<tr>
+<td>375 or earlier</td>
+<td>376</td>
+<td><strong>Before upgrading</strong>, export the threat-intel lists you keep by hand (step 1 of the <a href="#recommended-upgrade-sequence">upgrade sequence</a>). After upgrading, if ES reads the asset and identity feed CSVs and your upgrade method does not keep the App&rsquo;s <code>lookups/</code> directory, dispatch both feeds once (<a href="../../enterprise-security/asset-identity-feed/#customer-wire-up">Customer Wire-up</a>). A <code>search</code> override of <code>logserv_topology_retention</code> in <code>local/savedsearches.conf</code> keeps the old search, which trims the edges inside a subsearch of the nodes trim: remove it. The nightly retention window now ends at 02:36.</td>
+</tr>
+<tr>
+<td>374 or earlier</td>
+<td>375</td>
+<td>Earlier builds could empty a rollup when Splunkd restarted just before the nightly retention. In <strong>Settings → Dashboard Data</strong>, a row whose aggregation is on but whose <strong>History</strong> reads <code>empty</code>, or much shorter than you expect, can be rebuilt with <strong>Backfill</strong> over the history you want, as far back as its raw events are still in the index (at most 365 days). A <code>search</code> override for a <code>logserv_*_retention</code> stanza in <code>local/savedsearches.conf</code> keeps the old behaviour: remove it, or add <code>override_if_empty=false</code> to each <code>outputlookup</code> it runs.</td>
+</tr>
+<tr>
+<td>366 or earlier</td>
+<td>367</td>
+<td>Nothing to rebuild. <code>vendor_product</code> and <code>app</code> on <code>linux:slapd</code> change for Pacemaker lines (<a href="#search-time-field-changes">field changes</a>).</td>
+</tr>
+<tr>
+<td>363 or earlier</td>
+<td>364 to 365</td>
+<td><strong>Clear, then Backfill</strong> Proxy Analytics, HANA Audit and Cross-Stack Authentication; then <strong>Backfill</strong>, without Clear, Network Perimeter, Environment Health, Beaconing detection and the two Environment Topology rows, which recount what they hold. Rows written before keep the old values, some under the old key <code>(none)</code>. Proxy request totals fall where Squid&rsquo;s <code>store.log</code> and <code>cache.log</code> are collected: those lines are not requests and are no longer counted. Several fields change (<a href="#search-time-field-changes">field changes</a>).</td>
+</tr>
+<tr>
+<td>357 or earlier</td>
+<td>356 to 358</td>
+<td><strong>Clear, then Backfill</strong> Linux System &amp; Security / Network Perimeter: it recorded fragments of ordinary words as <strong>Kernel Event Types</strong>. Coming from 356 or earlier, also Change &amp; Configuration Activity: it stored the after-hours flag in the time zone of the search that wrote the row, so where a Settings backfill ran in another time zone than the search head&rsquo;s, hours were stored twice. Coming from 355 or earlier, also Beaconing detection: it keyed each day on midnight in the writing search&rsquo;s time zone, so a day could be stored twice. Each rebuild is safe whether or not your data was affected.</td>
+</tr>
+<tr>
+<td>281 or earlier</td>
+<td>282</td>
+<td>The dashboard rollups (all but the Environment Topology&rsquo;s) added <code>cloud_provider</code> to the keys of their rows. <strong>Clear all data</strong> (<strong>Settings → Dashboard Data</strong>, Danger zone), then <strong>Run backfill</strong> over the history you want. This replaces every other Clear and Backfill of this list.</td>
+</tr>
+<tr>
+<td>244 or earlier</td>
+<td>245</td>
+<td>The dashboards move to the rollup collections, which the upgrade creates empty; the Environment Topology collections already hold the earlier build&rsquo;s rows: see <a href="#coming-from-a-pre-rollup-build-dashboards-populate-from-a-cache-that-starts-empty">Coming From a Pre-rollup Build</a>. <strong>Clear all data</strong> (<strong>Settings → Dashboard Data</strong>, Danger zone), then one <strong>Run backfill</strong> over the history you want. This replaces every other Clear and Backfill of this list.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="coming-from-app-build-377-or-earlier"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Coming From App Build 377 or Earlier<a class="headerlink" href="#coming-from-app-build-377-or-earlier" title="Permanent link">&para;</a></h4>
+<p>App build 378 changes values that several rollups store, most of them in the keys the rows are stored under:</p>
+<ul>
+<li>the search-time <code>host</code> of HANA audit events is the HANA host that wrote the record (the client&rsquo;s host name is <code>src_host</code>), and HANA audit records with no client fields now parse;</li>
+<li>HANA trace lines take severity, component and duration from their exact format (<code>backup.log</code> levels; hdbcons timings in microseconds and seconds converted to milliseconds; hdbcons, SQL-trace, load and availability files carry no severity);</li>
+<li>RFC edges in the Environment Topology count connections, in the direction they were made;</li>
+<li>the three digits after a session ID in the ICM trace (<code>dev_icm</code>) are read as the SAP client (<code>sap_client</code>), no longer as an HTTP status, so the ICM error counts change and the ICM status panels are replaced.</li>
+</ul>
+<p>Rows written earlier keep the old values, most under the old keys. The first hourly run after the upgrade rewrites the last hour or two under the new keys, so those hours count twice until rebuilt, and so does any later Backfill over earlier days, <strong>Backfill N days</strong> for late-arriving data included. Until you rebuild: HANA Audit&rsquo;s <em>Failed Operations by HANA Host</em> lists client hosts beside the HANA hosts for the days before the upgrade; HANA Trace keeps record files under UNKNOWN and <code>backup.log</code> lines under fragment components, and misses microsecond-timed commands; ABAP Network &amp; Security counts ICM sessions in SAP clients 400 to 599 as ICM errors; the Environment Topology draws a second, reversed edge for the old RFC rows, and an edge with a node of its own for each client host name of the old HANA audit rows. After the upgrade, the average on HANA Trace&rsquo;s <em>hdbcons Command Duration (Avg / Max)</em> panel usually falls, because microsecond-timed commands now count.</p>
+<p><strong>After</strong> the upgrade (a Clear before it is undone by the old build&rsquo;s last runs), <strong>Clear, then Backfill</strong> each of these rows with a window that covers its whole history, using each row&rsquo;s own <strong>Backfill</strong>:</p>
+<ul>
+<li>HANA Audit</li>
+<li>HANA Trace</li>
+<li>Environment Health</li>
+<li>ABAP Network &amp; Security</li>
+<li>Host Role Activity (Host Details)</li>
+<li>Environment Topology (graph)</li>
+<li>Environment Topology (detail tabs)</li>
+<li>Multi-Cloud Overview</li>
+<li>Data Pipeline Overview</li>
+<li>Host Details</li>
+<li>Sourcetype Mapping (Host Details / Data Pipeline)</li>
+</ul>
+<p>Then <strong>Backfill</strong>, without Clear, <strong>Change &amp; Configuration Activity</strong> and <strong>Cross-Stack Authentication</strong>: they gain the HANA audit records that have no client fields, under keys that do not change.</p>
+<ul>
+<li>
+<p>A Backfill without the Clear counts the upgraded hours twice, on Environment Health too, which sums its error counts across hosts. On ABAP Network &amp; Security alone it keeps the old ICM error counts instead. Where the search below returns 0, your ICM error counts were never affected, and a <strong>Backfill</strong> alone is enough on that row:</p>
+<div class="highlight"><pre><span></span><code>| inputlookup logserv_abapnet_rollup where metric="icmerr" | stats count
+</code></pre></div>
+</li>
+<li>
+<p>Keep the Settings page open until the <strong>Environment Topology (graph)</strong> row has finished: that row writes each month only once every search of the month has finished. SAP Router edges have no history until the Environment Topology rows are backfilled.</p>
+</li>
+<li>The Clear removes everything a row holds, including history older than the raw events still in your index, which no Backfill can bring back. To keep that history, use the <a href="#narrower-repair-build-378">narrower repair</a> instead.</li>
+<li>This rebuild also re-keys the RFC rows by application server, the change of 0.1.1 builds 324 to 325. No separate RFC migration is needed: do not run the RFC-only steps in the <a href="../../overview/release-notes-0.1.1/">0.1.1 release notes</a> on this release. The shipped edges backfill now has two gateway searches, one per direction, and those steps keep only one of them.</li>
+<li>A <code>search</code> override in <code>local/savedsearches.conf</code> for a rollup aggregation or backfill search keeps the old search after the upgrade: compare it with the shipped one, or remove it.</li>
+<li><code>sap:abap:icm</code> leaves the CIM Web data model (its <code>sap_abap_icm_request</code> eventtype is removed). If that data model is accelerated, ICM events summarized before the upgrade stay in its summaries until they age out of the summary range or you rebuild the acceleration.</li>
+<li>With a Data TA build before 1792189743, the AWS S3 Direct screen does not list the <code>sap/saprouter</code> folder under the two Environment Topology rows: when you load SAP Router history from S3 for the topology, also select its <strong>SAP Router</strong> row.</li>
+</ul>
+<h4 id="coming-from-a-pre-rollup-build-dashboards-populate-from-a-cache-that-starts-empty"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Coming From a Pre-rollup Build<a class="headerlink" href="#coming-from-a-pre-rollup-build-dashboards-populate-from-a-cache-that-starts-empty" title="Permanent link">&para;</a></h4>
+<p>Current dashboards read most panels from KV Store rollup collections. On the first upgrade from a pre-rollup build (0.0.5, or a 0.1.1 build 244 or earlier) the rollup collections are created empty, and the rolled-up panels show no data until they fill. The Environment Topology collections are not empty: the earlier build already kept and filled them, with RFC edges keyed before the per-application-server breakdown and drawn in the opposite direction, and HANA audit edges to client hosts. A Backfill does not remove those rows, and the topology keeps them for up to 365 days beside the new ones, so the Environment Topology would draw doubled or reversed RFC edges and nodes for client hosts.</p>
+<ol>
+<li><strong>Clear all data</strong> first: in <strong>Settings → Dashboard Data</strong>, Danger zone, after the upgrade and clear of the nightly retention window. It empties every rollup and the Environment Topology collections; the rollups are empty anyway.</li>
+<li><strong>Run the backfill once</strong> (recommended on any install with real data): choose a <strong>Backfill window</strong> that covers the raw history your index holds, usually the 365-day preset, then click <strong>Run backfill</strong>. The window is 30 days by default; it also offers 60, 90, 180 or 365 days, or a custom range of whole UTC days back to the 365-day retention. The backfill is idempotent and can be run again. See <a href="../../logserv-app/dashboard-data/#backfilling-on-first-install">Backfilling on First Install</a>. Without it, the hourly aggregation searches fill the collections one hour at a time from the upgrade on.</li>
+</ol>
+<p>The <code>tstats</code> panels (Data Pipeline Overview, the Host Details counts, Multi-Cloud Overview and the count KPIs) read the index directly and work at once, and so does every panel at a time range under 90 minutes, which reads raw events.</p>
+<p>Coming from a 0.0.5 build before 192 or a 0.1.1 build before 240, open the App once as an admin after the upgrade: on that first page load it copies the AI Assistant settings and acknowledgements that those builds kept in <code>local/</code> conf files into the KV Store.</p>
+<h4 id="new-scheduled-searches-new-collections-and-a-restart"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> New Scheduled Searches, New Collections, and a Restart<a class="headerlink" href="#new-scheduled-searches-new-collections-and-a-restart" title="Permanent link">&para;</a></h4>
+<p>Relative to a pre-rollup build, the upgrade adds the rollup aggregation, retention and detection searches and the rollup collections. A Splunkd restart is required for the collections to be created and the new searches to register; Splunk Web&rsquo;s <strong>Install app from file</strong> upgrade asks for it. The scheduled searches are staggered so the scheduler never bursts; see <a href="../../logserv-app/dashboard-data/#scheduled-search-schedule">Scheduled-Search Schedule</a>.</p>
+<h4 id="visible-ui-panel-changes-when-coming-from-v005-era-builds"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Visible UI / Panel Changes When Coming From v0.0.5-era Builds<a class="headerlink" href="#visible-ui-panel-changes-when-coming-from-v005-era-builds" title="Permanent link">&para;</a></h4>
+<ul>
+<li>Every chart and table panel header has a toolbar (<strong>Open in Search</strong>, <strong>Download CSV</strong>, <strong>Inspect</strong>, <strong>Refresh</strong>), a loading spinner and the Data Doctor&rsquo;s <strong>Diagnose</strong> action; empty panels explain themselves (<a href="../../logserv-app/dashboards/platform/diagnostics/">Data Doctor</a>).</li>
+<li>Percentile charts (p50 / p95 / p99) become <strong>Avg + Max</strong> by hour; HANA Trace&rsquo;s slowest-operations panel is a top-by-max table; Web Dispatcher&rsquo;s <em>Top URIs</em> has no <em>Unique Clients</em> column.</li>
+<li>Rolled-up panels are hourly-fresh at wide time ranges; ranges under 90 minutes use the panels&rsquo; raw searches, so short-range investigation stays real-time.</li>
+<li>The App uses the Cisco Magnetic theme (dark by default, with a light mode), a left navigation rail, and the current Environment Topology layout and node designs.</li>
+<li>Your browser may briefly serve a cached bundle; a hard refresh loads the new build.</li>
+</ul>
+<h4 id="search-time-field-changes"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Search-Time Field Changes<a class="headerlink" href="#search-time-field-changes" title="Permanent link">&para;</a></h4>
+<p>The App computes these fields when a search runs, so the change applies to events old and new as soon as the App is upgraded. The App&rsquo;s dashboards use the new fields. Saved searches, alerts and reports of your own that read them need the new names or values.</p>
+<table>
+<thead>
+<tr>
+<th>Coming from App build</th>
+<th>Sourcetype</th>
+<th>Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>379 or earlier</td>
+<td><code>sap:abap:workprocess</code></td>
+<td><code>wp_category_name</code> takes SAP&rsquo;s names for the trace components: C, D, M, N, O, Q, R, S, T and X are renamed (for example <code>C = Database (DBSL)</code>, <code>D = Diag Processor</code>, <code>Q = Other</code>), and E, G, H, I, J, L, P, V and W, which read <code>&lt;letter&gt; = Other</code>, get names.</td>
+</tr>
+<tr>
+<td>377 or earlier</td>
+<td><code>sap:hana:audit</code></td>
+<td><code>host</code> is the HANA host that wrote the record; the client&rsquo;s host name is the new <code>src_host</code>. Searches that group <code>by host</code> now group by HANA host. Records with no client fields parse fully.</td>
+</tr>
+<tr>
+<td>377 or earlier</td>
+<td><code>sap:hana:tracelogs</code></td>
+<td>Record files (hdbcons, SQL trace, loads, system availability) carry no <code>hana_trace_severity</code>; <code>backup.log</code> lines carry their own level and component. New fields: <code>hana_trace_file_type</code>, <code>hana_backup_level</code>, <code>hana_op</code>, <code>hana_op_duration</code>, <code>hana_op_duration_unit</code>; <code>hana_op_duration_ms</code> is always in milliseconds.</td>
+</tr>
+<tr>
+<td>377 or earlier</td>
+<td><code>sap:abap:icm</code></td>
+<td><code>icm_status_code</code>, <code>status</code> and <code>action</code> are gone. The SAP client of a session is <code>sap_client</code>, its user <code>icm_user</code>, its terminal <code>icm_terminal</code>. <code>icm_is_error</code> is true only on lines the ICM logged as errors. On connection lines <code>src</code> and <code>dest</code> follow the connection&rsquo;s direction (<code>icm_conn_role</code>). The <code>sap_abap_icm_request</code> eventtype and its tag are removed.</td>
+</tr>
+<tr>
+<td>377 or earlier</td>
+<td><code>sap:webdispatcher:access</code></td>
+<td>New <code>sap_sid</code> and <code>sap_instance</code>, read from the log&rsquo;s path.</td>
+</tr>
+<tr>
+<td>377 or earlier</td>
+<td><code>sap:saprouter</code>, <code>sap:abap:gateway</code></td>
+<td>New fields for the SAP Router targets (<code>saprouter_target_*</code>, <code>saprouter_fail_target_ip</code>) and the gateway&rsquo;s connection records (<code>gw_remgw_*</code>, <code>gw_client_*</code>, <code>rfc_peer_port</code>, <code>rfc_local_port</code>).</td>
+</tr>
+<tr>
+<td>366 or earlier</td>
+<td><code>linux:slapd</code></td>
+<td><code>vendor_product</code> and <code>app</code> read <code>Pacemaker</code> and <code>pacemaker</code> on <code>pacemaker.log</code> lines; <code>slapd.log</code> lines keep <code>OpenLDAP</code> and <code>slapd</code>.</td>
+</tr>
+<tr>
+<td>364 or earlier</td>
+<td><code>linux:slapd</code></td>
+<td><code>os_user</code> is removed. Pacemaker lines carry <code>resource_agent</code> and <code>cluster_resource</code>, or <code>pacemaker_daemon</code> and <code>pacemaker_function</code>.</td>
+</tr>
+<tr>
+<td>364 or earlier</td>
+<td><code>sap:hana:audit</code></td>
+<td><code>sql_statement</code> and <code>command</code> are shown without JSON escapes.</td>
+</tr>
+<tr>
+<td>364 or earlier</td>
+<td><code>sap:sapstartsrv</code></td>
+<td><code>source_location</code> reads file names that contain a dot and skips the <code>[Thr N]</code> thread marker.</td>
+</tr>
+<tr>
+<td>364 or earlier</td>
+<td><code>squid:cache</code>, <code>squid:store</code></td>
+<td>New sourcetype stanzas for the Data TA&rsquo;s new Squid routes, with no automatic key=value fields.</td>
+</tr>
+<tr>
+<td>363 or earlier</td>
+<td><code>linux:sudolog</code></td>
+<td><code>command</code> holds the whole command, with continuation lines joined and escapes removed.</td>
+</tr>
+<tr>
+<td>363 or earlier</td>
+<td><code>lastlog</code></td>
+<td><code>USERNAME</code> accepts user names with <code>-</code>, the header line is skipped, and the new <code>PORT</code> field holds lastlog&rsquo;s Port column (for example <code>&lt;console&gt;</code>).</td>
+</tr>
+<tr>
+<td>363 or earlier</td>
+<td><code>sap:hana:audit</code></td>
+<td><code>status</code> and <code>target_user</code> are read for every action, not only connect-type actions; user and privilege statements match in any letter case and when quoted; <code>audit_datetime</code> is set on records whose time ends in <code>Z</code>.</td>
+</tr>
+<tr>
+<td>363 or earlier</td>
+<td><code>squid:access</code></td>
+<td>Proxy fields are also extracted from Squid&rsquo;s <code>logformat=splunk_recommended_squid</code> form.</td>
+</tr>
+<tr>
+<td>363 or earlier</td>
+<td><code>sap:abap:gateway</code>, <code>sap:scc:http_access</code>, <code>sap:sapstartsrv</code>, <code>sap:saphostexec</code></td>
+<td><code>gw_error_detail</code>, the Cloud Connector&rsquo;s <code>http_version</code> and the <code>error_message</code> of the Start Service and the Host Agent end where the line ends.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="data-ta-work-list"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Data TA<a class="headerlink" href="#data-ta-work-list" title="Permanent link">&para;</a></h4>
+<p>The Data TA does its work where LogServ data is parsed, on the heavy forwarders or a single instance, so its changes reach events parsed after it is updated there; events indexed earlier keep their sourcetype and fields. Apply every row whose build is later than yours. Coming from 0.0.5, 0.0.6 or 0.1.1, every 0.1.2 row applies: their routing is that of the first 0.1.2 build.</p>
+<table>
+<thead>
+<tr>
+<th>Coming from Data TA</th>
+<th>Changed in</th>
+<th>What changes, and what to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A build before 1792598960</td>
+<td>1792598960 (2026-10-21)</td>
+<td>Parsing, routing and filtering are unchanged, and nothing has to be saved again. The AWS S3 Direct screen accepts the Splunk Add-on for AWS 8.1.0 and any later version (earlier builds warned about any version but 8.1.0) and no longer blocks a search head or Splunk Cloud.</td>
+</tr>
+<tr>
+<td>A build before 1792189743</td>
+<td>1792189743 (2026-10-16)</td>
+<td><strong>Before you update</strong>, remove routes of your own from the Data TA&rsquo;s <code>local/transforms.conf</code>, such as the six <code>(?s)^</code> routes of build 1791935359 if you added them there as a test (<a href="../capacity-planning/#version-check">Version Check</a>): <code>local/</code> wins over <code>default/</code> key by key, so the old REGEX would stay in effect with the new 100,000-character window, a combination that exceeds Splunk&rsquo;s regex match limit. Every metadata rule and sourcetype route now reads up to 100,000 characters of a line; earlier builds read 4,096. An AWS event longer than about 4 KB used to keep the input&rsquo;s own host and source, get no folder fields and stay <code>sap_logserv_logs</code>, while the filters (from 1791565776) already judged it by its folder fields; it now gets its real host, source, folder fields and sourcetype. Searches of your own that find such events under <code>sap_logserv_logs</code> need their final sourcetype. The ICM route takes only the ABAP ICM folder (<code>abap/icm</code>): a <code>webdispatcher/icm</code> folder keeps <code>sap_logserv_logs</code>. The BIND, Windows and sssd routes match only within the <code>source</code> value.</td>
+</tr>
+<tr>
+<td>A build before 1791935359</td>
+<td>1791935359 (2026-10-13)</td>
+<td>Data TA builds from 0.0.4.1 up to, but not including, this one carry five or six routes whose cost grows with the square of the line length: 2.4 ms of CPU per event on the lab heavy forwarder, about 400 events a second for one pipeline set. Update every instance that parses LogServ data before you size or add hardware (<a href="../capacity-planning/">Capacity Planning and First Start</a>).</td>
+</tr>
+<tr>
+<td>A build before 1791565776</td>
+<td>1791565776 (2026-10-09)</td>
+<td><strong>Configuration → Filters</strong> gains <strong>Include Sources</strong> and <strong>Exclude Sources</strong> (empty by default), and the filter rules read the whole line. Behaviour change: an Include Filters list that mixes <code>*/*</code> or a standalone <code>*</code> with other entries now keeps every event. Before, <code>*/*, linux/cron</code> dropped every event without folder fields, and <code>*, linux/cron</code> kept only <code>linux/cron</code>. To keep an allow-list, remove <code>*/*</code> and <code>*</code> from it. HANA <code>.trc</code> files and <code>backup.log</code> delivered without folder fields get <code>sap:hana:tracelogs</code> from their path (<a href="../supported-log-types/#data-delivered-without-folder-fields">Data Delivered Without Folder Fields</a>). With Filtering on, open <strong>Configuration → Filters</strong> after the update, click <strong>Save</strong>, and on a Deployment Server click <strong>Deploy to Forwarders</strong>, so the forwarders get the regenerated rules. On a Deployment Server with Filtering on and Days in the Past above 0, the daily filter refresh now finds and reloads the server class (before, whether it found it depended on the default app of the user the refresh runs as, and when it did not, the forwarders kept the previous cutoff), so each forwarder in the server class restarts about once a day to apply the new cutoff (<a href="../../install-setup/configure-filters/#days-in-the-past">Days in the Past</a>). Use App build 377 or later with it: the Data Doctor of App build 376 and earlier ignores source rules and reports folder patterns with <code>*</code> or <code>?</code> as only partly read (<a href="../../install-setup/configure-filters/#reading-the-active-filter-configuration">Reading the Active Filter Configuration</a>).</td>
+</tr>
+<tr>
+<td>A build before 1790374045</td>
+<td>1790374045 (2026-09-25)</td>
+<td>The Data TA declares the folder paths <code>linux/proxy</code> and <code>linux/pacemaker</code>: with Filtering on and an explicit Include Filters list, add them where those logs should be kept, because events under them are dropped at the forwarder (<a href="../../install-setup/configure-filters/#upgrade-notifications">Upgrade Notifications</a>).</td>
+</tr>
+<tr>
+<td>A build before 1790368041</td>
+<td>1790368041 (2026-09-25)</td>
+<td>Squid&rsquo;s <code>cache.log</code> goes to <code>squid:cache</code> and <code>store.log</code> to <code>squid:store</code>; <code>access.log</code> stays <code>squid:access</code>, and all three keep the <code>proxy/squid</code> filter path. Events indexed earlier keep <code>squid:access</code>. The App&rsquo;s dashboards count <code>access.log</code> lines only; searches of your own that read the other two files under <code>squid:access</code> need the new names.</td>
+</tr>
+<tr>
+<td>A build before 1790292318</td>
+<td>1790292318 (2026-09-24)</td>
+<td>Long NDJSON lines are unwrapped and kept whole: lines with many escaped characters, from about 1.5 KB, no longer keep their envelope, and lines up to 100,000 bytes are no longer cut at 10,000. Events indexed earlier keep their envelope.</td>
+</tr>
+<tr>
+<td>A 0.0.5 build whose version reads <code>0.0.5.0</code> (four parts), or 0.0.5.1</td>
+<td>0.0.5 (version <code>0.0.5</code>)</td>
+<td>The audit index is <code>logserv_ai_assistant_audit</code>; those builds define <code>_ai_assistant_audit</code> instead. Where the Data TA holds your index definitions, the update defines the new index; where they are defined elsewhere (the indexer tier, Splunk Cloud), create <code>logserv_ai_assistant_audit</code> there (<a href="../../install-setup/install-ta/#1-create-the-indexes">Create the Indexes</a>), and update a copy of the Data TA that an indexer holds. Then check that <strong>Audit index name</strong> under <strong>Settings → AI Assistant → General → Audit &amp; Telemetry</strong> reads <code>logserv_ai_assistant_audit</code>. Audit events written earlier stay in <code>_ai_assistant_audit</code> and are not searchable under the new name.</td>
+</tr>
+<tr>
+<td>0.0.4.2 or earlier</td>
+<td>0.0.5</td>
+<td>The cron, warn, sudo and slapd logs move from Splunk&rsquo;s <code>syslog</code> sourcetype to <code>linux:cron</code>, <code>linux:warn</code>, <code>linux:sudolog</code> and <code>linux:slapd</code>. Events indexed as <code>syslog</code> keep it until retention removes them; the App&rsquo;s Linux and Change &amp; Configuration searches read both.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Splunk Add-on for AWS.</strong> Nothing in the solution enforces a version. Splunk&rsquo;s advisory SVD-2026-1005 (third-party package fixes) says to upgrade the add-on to 8.2.2 or later, so run 8.2.2 or later on the forwarders; these docs were checked with 8.3.1. The AWS S3 Direct screen was validated with 8.1.0 and shows an advisory for an older version.</p>
+<p><strong>AWS Copy stacks.</strong> A stack created from an earlier <code>splunk-logserv-remote-s3-copy.yaml</code> runs its Lambda on <code>python3.9</code>, which AWS has deprecated. The current template uses <code>python3.12</code>; the function&rsquo;s code is unchanged. Update the stack with the current template, keeping your parameter values (<a href="../../install-setup/aws-remote-s3-copy-guide/">AWS Remote S3 Copy guide</a>). Filter stacks already run <code>python3.12</code> and need no change.</p>
+<p><strong>Cloud Provider dropdown.</strong> If the Data TA&rsquo;s <strong>Configuration → Cloud Provider</strong> tab is set to a cloud on your forwarders, read <a href="../../install-setup/cloud-attribution/">Choose Cloud Attribution</a> before you change anything. The inputs of the LogServ Azure and GCP add-ons always stamp <code>cloud_provider</code>, the AWS S3 Direct screen stamps every input it creates, and the dropdown adds its value beside such a stamp, not in its place, so those events carry the field twice. The recommended setting is <strong>Not set</strong>, with <code>_meta = cloud_provider::aws</code> on each SQS-Based S3 input; to move a fleet from the dropdown set to <strong>AWS</strong> to that setting, see <a href="../../install-setup/cloud-attribution/#alternative-the-dropdown-set-to-aws">Alternative for AWS-Only Fleets</a>. A change applies to events parsed after it.</p>
+<h4 id="ingest-add-ons"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> LogServ Azure and GCP Add-ons<a class="headerlink" href="#ingest-add-ons" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Update them on each heavy forwarder, or search head, that runs them</strong>, never through the Deployment Server: each input&rsquo;s credential (the Azure SAS, the GCP service-account key) is stored, encrypted, in the add-on&rsquo;s own <code>local/passwords.conf</code> on that instance. An app upgrade keeps that file, and nothing has to be moved to <code>system/local</code>; a Deployment Server push would replace it. See <a href="../../install-setup/azure-setup/#install-the-azure-add-on">Install the Azure Add-on</a> and the <a href="../../install-setup/gcp-setup/">GCP Setup Guide</a>.</li>
+<li><strong>Any 0.1.2 build runs the same code.</strong> Builds 1792558069 (Azure) and 1792558072 (GCP) change only the workloads the add-ons declare (so that a search head is an allowed target, Splunk Cloud included) and their README and Inputs-page text, and builds 1792213309 and 1792213464 only their third-party notices, package pins and README text; every Python file is that of the first 0.1.2 builds.</li>
+<li><strong>Azure, coming from 0.0.5.</strong> 0.0.5 read Azure data with the Splunk Add-on for Microsoft Cloud Services (Splunkbase 3110), which its setup guide placed in the <code>SAP_LogServ_HeavyForwarders</code> server class. Set up the LogServ Azure add-on on the forwarder that will read SAP&rsquo;s queue (<a href="../../install-setup/azure-setup/#configure-the-input">Configure the Input</a>), then disable the Microsoft Cloud Services input that read the LogServ storage, so no blob is indexed twice.</li>
+<li><strong>GCP, onboarded with an SAP-issued key.</strong> The add-on signs in with the service-account key its input holds, wherever that account lives, so a deployment that uses a key SAP issued for a service account in the SAP-managed LogServ project needs no change. New onboarding uses the customer-homed sequence in <a href="../../install-setup/gcp-setup/#the-onboarding-sequence">The Onboarding Sequence</a>.</li>
+<li><strong>GCP, coming from the Splunk Add-on for Google Cloud Platform (Splunkbase 3088).</strong> As of its version 5.0.3 (checked 2026-07-05), its <em>Cloud Pub/Sub Based Bucket</em> input does not decompress gzipped objects, so it fails on LogServ&rsquo;s <code>*.json.gz</code> objects, and it needs <code>roles/pubsub.viewer</code> beyond the roles SAP documents. Use the LogServ GCP add-on, and disable any 3088 input on the LogServ subscription.</li>
+</ul>
+<p><br></p>
+<h2 id="recommended-upgrade-sequence"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 3. Upgrade Sequence<a class="headerlink" href="#recommended-upgrade-sequence" title="Permanent link">&para;</a></h2>
+<p>The packages can be updated in either order. This order checks the forwarders before the App and leaves the Dashboard Data rebuild, which reads the indexed events, for the end.</p>
+<ol>
+<li><strong>Prepare.</strong><ul>
+<li>Find your builds and note the work-list rows that apply.</li>
+<li>Export the threat-intel lists you keep by hand. <code>logserv_ti_malicious_domains.csv</code>, <code>logserv_ti_malicious_ips.csv</code> and <code>logserv_ti_compromised_credentials.csv</code> ship in the App&rsquo;s <code>lookups/</code> directory as header-only files, so an upgrade may replace rows you added. For example <code>| inputlookup logserv_ti_malicious_domains | outputcsv logserv_ti_malicious_domains_backup</code> writes to <code>$SPLUNK_HOME/var/run/splunk/csv/</code> on the search head; re-upload the list afterwards under <strong>Settings → Lookups → Lookup table files</strong>. A list that a recurring saved search writes (<a href="../../enterprise-security/threat-intel/">Threat Intelligence Integration</a>) is refilled on that search&rsquo;s next run.</li>
+<li>Note the <code>local/</code> overrides the rows name: <code>search</code> overrides in <code>local/savedsearches.conf</code>, <code>[collections/...]</code> stanzas in the App&rsquo;s <code>metadata/local.meta</code>, <code>optInVersion</code> lines in <code>local/ai_assistant_acks.conf</code>, and routes of your own in the Data TA&rsquo;s <code>local/transforms.conf</code>. Remove those routes before you update the Data TA.</li>
+<li>Plan the Dashboard Data rebuild for a time clear of the nightly retention window: 00:34–00:58, 01:30–01:58 and 02:34–02:36 in the search head&rsquo;s local time.</li>
+</ul>
+</li>
+<li><strong>Update the Data TA where it parses data</strong>, as described in <a href="#data-ta-splunk_ta_sap_logserv-routine-upgrade">Updating the Data TA</a> below.</li>
+<li><strong>Update the LogServ Azure and GCP add-ons</strong> on each heavy forwarder, or search head, that runs them: <strong>Apps → Manage Apps → Install app from file</strong> with <strong>Upgrade app</strong> selected, or <code>$SPLUNK_HOME/bin/splunk install app &lt;tarball&gt; -update 1</code>, then restart Splunk. On a Splunk Cloud search head, update them as private apps (<a href="#on-splunk-cloud">On Splunk Cloud</a>).</li>
+<li><strong>Check each forwarder&rsquo;s build</strong> (<a href="../capacity-planning/#version-check">Version Check</a>).</li>
+<li><strong>Update the LogServ App on the search head.</strong> On Splunk Enterprise: <strong>Apps → Manage Apps → Install app from file</strong>, select the tarball and <strong>Upgrade app</strong>, then restart Splunk when asked. On a search head cluster, never update the members one by one: on the deployer, replace <code>$SPLUNK_HOME/etc/shcluster/apps/splunk_app_sap_logserv</code> with the new build, keeping any <code>local/</code> you keep there, then run <code>splunk apply shcluster-bundle</code> (<a href="../../logserv-app/installation/#splunk-enterprise-search-head-cluster">Splunk Enterprise: search head cluster</a>). On Splunk Cloud, see <a href="#on-splunk-cloud">On Splunk Cloud</a>.</li>
+<li><strong>Hard-refresh the browser</strong>, then open <strong>About</strong> and check that it shows build 394.</li>
+<li><strong>Work through the App rows of the work list</strong>, the Dashboard Data rebuild included (<a href="#how-to-rebuild-a-row">How to Rebuild a Row</a>). If you also load history from S3 with the <a href="../../install-setup/aws-s3-direct/">AWS S3 Direct</a> screen, let that backfill finish first, so that one rebuild includes it.</li>
+<li><strong>Enterprise Security content.</strong> The App ships its <code>splunk_sap_logserv_es_*</code> searches enabled: correlation searches hourly, behavioral anomalies daily, feeds every 4 hours. They run on their schedules whether or not Enterprise Security is installed, and their notable and risk actions need it. On a search head without Enterprise Security, disable them (<a href="../../enterprise-security/overview/#disabling-or-tuning-the-es-content">Disabling or Tuning the ES Content</a>). Thirteen of them also run the AI Assistant&rsquo;s Security-pack prompts: if you use those prompts, read that section before you disable anything.</li>
+<li><strong>Check the result.</strong> In <strong>Settings → Dashboard Data</strong>, every row shows its history and none reads <em>failed — re-run</em> or <em>truncated — re-run</em>; the dashboards show data for the ranges you rebuilt.</li>
+</ol>
+<h4 id="data-ta-splunk_ta_sap_logserv-routine-upgrade"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Updating the Data TA<a class="headerlink" href="#data-ta-splunk_ta_sap_logserv-routine-upgrade" title="Permanent link">&para;</a></h4>
+<p>Install the new tarball over the existing one where the Data TA runs: <strong>Apps → Manage Apps → Install app from file</strong> with <strong>Upgrade app</strong> selected, or <code>$SPLUNK_HOME/bin/splunk install app &lt;tarball&gt; -update 1</code>, then restart Splunk when asked. An app upgrade keeps <code>local/</code>.</p>
+<ul>
+<li><strong>Single instance</strong>, or <strong>heavy forwarders without a Deployment Server:</strong> on each instance. Coming from a build before 1791565776 with Filtering on, click <strong>Save</strong> on <strong>Configuration → Filters</strong> on each one.</li>
+<li><strong>Heavy forwarders with a Deployment Server:</strong> on the Deployment Server only, then into <code>deployment-apps/</code> and out to the forwarders, as below. Do not install it directly on a forwarder that the Deployment Server manages: the next push replaces that copy, its <code>local/</code> included.</li>
+<li><strong>A Splunk Cloud search head that runs LogServ inputs:</strong> as a private app (<a href="#on-splunk-cloud">On Splunk Cloud</a>).</li>
+<li><strong>An indexer:</strong> only if you installed the Data TA there. On an indexer only its <code>indexes.conf</code> takes effect. The 0.0.5 builds with the version <code>0.0.5</code>, and 0.0.6, 0.1.1 and 0.1.2, define the same two indexes, <code>sap_logserv_logs</code> and <code>logserv_ai_assistant_audit</code>, so such a copy can stay as it is; updating it there as well does no harm. Early 0.0.5 builds (version <code>0.0.5.0</code>) and 0.0.5.1 define <code>_ai_assistant_audit</code> instead: update that copy, or create <code>logserv_ai_assistant_audit</code> on the indexer tier (<a href="#data-ta-work-list">Data TA</a>).</li>
+</ul>
+<p>With a Deployment Server:</p>
+<ol>
+<li>Install the new build over <code>etc/apps/splunk_ta_sap_logserv/</code> on the Deployment Server.</li>
+<li>
+<p>Replace the copy in <code>etc/deployment-apps/</code>, keeping its <code>local/</code> folder. A Save on the Configuration page copies the Data TA into <code>deployment-apps/</code> only when that copy is missing or its version differs, and every 0.1.2 build has the version <code>0.1.2</code>, so a later 0.1.2 build never gets there by itself (<a href="../../install-setup/distribute-data-ta/#later-builds-with-the-same-version">Later Builds With the Same Version</a>). As the user Splunk runs as:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span><span class="nv">$SPLUNK_HOME</span>/etc/deployment-apps
+mv<span class="w"> </span>splunk_ta_sap_logserv<span class="w"> </span>~/splunk_ta_sap_logserv.before-upgrade
+tar<span class="w"> </span>-xzf<span class="w"> </span>/path/to/splunk_ta_sap_logserv-0.1.2.tar.gz<span class="w"> </span>-C<span class="w"> </span>.
+cp<span class="w"> </span>-a<span class="w"> </span>~/splunk_ta_sap_logserv.before-upgrade/local<span class="w"> </span>splunk_ta_sap_logserv/
+grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">"^(version|build)"</span><span class="w"> </span>splunk_ta_sap_logserv/default/app.conf
+</code></pre></div>
+<p>The last command shows the new build. If the old copy has a <code>metadata/local.meta</code>, copy it into <code>splunk_ta_sap_logserv/metadata/</code> as well. Keep the moved copy until every forwarder runs the new build. The same steps work coming from 0.0.5, 0.0.6 or 0.1.1. (There a Save would also replace the <code>deployment-apps/</code> copy, because the version changes, with a copy of <code>etc/apps/splunk_ta_sap_logserv/</code>, <code>local/</code> included, which drops anything you added by hand under <code>deployment-apps/splunk_ta_sap_logserv/local/</code>.)</p>
+</li>
+<li>
+<p>Coming from a build before 1791565776 with Filtering on: open <strong>Configuration → Filters</strong> on the Deployment Server and click <strong>Save</strong>, so the rules are generated in the new form and copied into <code>deployment-apps/</code>.</p>
+</li>
+<li>Click <strong>Deploy to Forwarders</strong> on the Filters tab. Each forwarder picks the change up at its next phone-home (60 seconds by default) and restarts; allow 5 minutes or more. The button reloads every server class on the Deployment Server (<a href="../../install-setup/distribute-data-ta/#4-deploy-to-forwarders">Deploy to Forwarders</a>).</li>
+<li>Check the build on each forwarder (<a href="../capacity-planning/#version-check">Version Check</a>).</li>
+</ol>
+<h4 id="on-splunk-cloud"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> On Splunk Cloud<a class="headerlink" href="#on-splunk-cloud" title="Permanent link">&para;</a></h4>
+<p>Update each package on the Splunk Cloud stack the way you installed it, as a private app: in Splunk Web, open the gear icon next to <strong>Apps</strong>, then <strong>Install app from file</strong> and <strong>Upload App</strong>, sign in with your splunk.com account and upload the tarball. When the <strong>Uploaded Apps</strong> table shows it as <strong>Approved</strong> (Splunk Cloud vets the package first), click <strong>Install</strong>. The Data TA is needed on the stack only where LogServ inputs run on the search head (<a href="../splunk-cloud/">Splunk Cloud Considerations</a>).</p>
+<p>Every 0.1.2 build keeps the version <code>0.1.2</code>. On a Splunk Cloud 10.5 stack, later 0.1.2 builds of the App and the Data TA installed over earlier ones in this way, without a restart prompt (tested 2026-10-21); other Splunk Cloud versions have not been tested. If your stack does not offer <strong>Install</strong> because version 0.1.2 is already installed, stop there: do not uninstall the installed app to make room for the new one, because uninstalling removes its <code>local/</code> configuration. Open a Splunk Cloud support case instead.</p>
+<p>Forwarders you run yourself are updated as described above. The narrower repairs below need the search head&rsquo;s management port, which on Splunk Cloud must first be opened for you. If you cannot reach it, use the Clear and Backfill instead.</p>
+<p><br></p>
+<h2 id="how-to-rebuild-a-row"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 4. How to Rebuild a Row<a class="headerlink" href="#how-to-rebuild-a-row" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Rebuild <strong>after</strong> the upgrade, on the new build: a Clear done before the upgrade is undone by the old build&rsquo;s last hourly runs.</li>
+<li>Pick a time clear of the nightly retention window, 00:34–00:58, 01:30–01:58 and 02:34–02:36 search-head time. A retention search rewrites its whole collection and erases rows that a backfill running at the same time has just added.</li>
+<li>Open <strong>Settings → Dashboard Data</strong> (<a href="../../logserv-app/dashboard-data/#the-dashboard-data-settings-tab">The Dashboard Data Settings Tab</a>). Under <strong>Backfill window</strong>, choose a window that covers the history you want: the 365-day preset reaches as far back as a rollup keeps rows, and a custom range takes whole UTC days. The default is 30 days. A window longer than 90 days shows a cost warning first; for scale, a 365-day backfill of every row took 195 minutes on the reference system. The two flat Environment Topology collections (the host-to-SID inventory and the IP enrichment) always read the last 30 days.</li>
+<li>For each <strong>Clear, then Backfill</strong> row: note its <strong>History</strong>, click <strong>Clear</strong> and confirm, then click the same row&rsquo;s <strong>Backfill</strong>. Wait until it has finished before you start the next row.</li>
+<li>For each <strong>Backfill only</strong> row: click its own <strong>Backfill</strong>, without Clear.</li>
+<li>Use each row&rsquo;s own <strong>Backfill</strong>, not the button under the window (<strong>Run backfill</strong>, or <strong>Re-run backfill (all)</strong>): it backfills only the rows it considers incomplete, or every row when it considers all of them complete. Use it only where this page says so: after <strong>Clear all data</strong>, coming from build 281 or earlier.</li>
+<li>Keep the page open until the <strong>Environment Topology (graph)</strong> row has finished.</li>
+<li>A row that shows <em>failed — re-run</em> or <em>truncated — re-run</em> needs its <strong>Backfill</strong> again; repeating a backfill is safe.</li>
+</ol>
+<p>The Clear removes everything a row holds, including history older than the raw events your index still holds, which no Backfill can bring back. For the two biggest rebuilds a narrower repair keeps that history.</p>
+<h4 id="narrower-repair-build-378"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Narrower Repair After App Build 378<a class="headerlink" href="#narrower-repair-build-378" title="Permanent link">&para;</a></h4>
+<p>Use this instead of the Clear and Backfill of <a href="#coming-from-app-build-377-or-earlier">Coming From App Build 377 or Earlier</a> to keep history older than your raw events. It deletes only the rows inside the window you will backfill and leaves older rows as they are. It needs the search head&rsquo;s management port; if you cannot reach it (on Splunk Cloud it must first be opened for you), use the Clear and Backfill instead.</p>
+<ol>
+<li>
+<p><strong>Pick the window.</strong> Its first day, <em>W</em>, is the first UTC day whose raw events your index still holds in full, and no earlier than 365 days ago, the furthest a Backfill reaches. This search finds the oldest event over all time (<code>earliest=0</code>; the time picker does not limit it) and returns <em>W</em> as the epoch seconds of that UTC midnight:</p>
+<div class="highlight"><pre><span></span><code>| tstats min(_time) as first where `sap_logserv_idx_macro` earliest=0
+| eval W = max((floor(first/86400)+1)*86400, floor(relative_time(now(), "-365d")/86400)*86400)
+</code></pre></div>
+<p>The day of the oldest event may be held only in part, so <em>W</em> is the UTC midnight after it. Rows older than <em>W</em> keep their old values, and no raw event is left that a later Backfill could count beside them. The custom range of step 3 starts on <em>W</em>&rsquo;s date in UTC.</p>
+</li>
+<li>
+<p><strong>Delete the rows from <em>W</em> onward</strong>, after the upgrade and clear of the nightly retention window: one REST call per collection in the table, on the search head&rsquo;s management port, with an admin-tier account. For example:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-k<span class="w"> </span>-u<span class="w"> </span>admin<span class="w"> </span>-G<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"https://&lt;search-head&gt;:8089/servicesNS/nobody/splunk_app_sap_logserv/storage/collections/data/logserv_hana_category_rollup"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">'query={"bucket_ts":{"$gte":&lt;W&gt;}}'</span>
+</code></pre></div>
+<p>The same call with <code>-X GET</code> in place of <code>-X DELETE</code> returns rows the query matches (at most 50,000 by default, so it shows what the query matches, not how many): check it first. A DELETE without its query empties the whole collection.</p>
+<table>
+<thead>
+<tr>
+<th>Row</th>
+<th>Collections</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HANA Audit</td>
+<td><code>logserv_hana_category_rollup</code></td>
+</tr>
+<tr>
+<td>HANA Trace</td>
+<td><code>logserv_hana_trace_rollup</code></td>
+</tr>
+<tr>
+<td>Environment Health</td>
+<td><code>logserv_severity_rollup</code></td>
+</tr>
+<tr>
+<td>ABAP Network &amp; Security</td>
+<td><code>logserv_abapnet_rollup</code></td>
+</tr>
+<tr>
+<td>Host Role Activity (Host Details)</td>
+<td><code>logserv_hostrole_rollup</code></td>
+</tr>
+<tr>
+<td>Environment Topology (graph)</td>
+<td><code>logserv_topology_nodes</code> and <code>logserv_topology_edges</code>; and all of <code>logserv_topology_inventory</code> (the call without <code>query</code>), which has no time field and holds only the current mapping of addresses and hosts to systems: the Backfill rebuilds it from the last 30 days</td>
+</tr>
+<tr>
+<td>Environment Topology (detail tabs)</td>
+<td><code>logserv_topology_detail_rollup</code></td>
+</tr>
+<tr>
+<td>Multi-Cloud Overview</td>
+<td><code>logserv_mc_rollup</code></td>
+</tr>
+<tr>
+<td>Data Pipeline Overview</td>
+<td><code>logserv_pipeline_rollup</code></td>
+</tr>
+<tr>
+<td>Host Details</td>
+<td><code>logserv_hostdetails_rollup</code></td>
+</tr>
+<tr>
+<td>Sourcetype Mapping (Host Details / Data Pipeline)</td>
+<td><code>logserv_stmap_rollup</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li>
+<p><strong>Then backfill.</strong> Do every delete before any Backfill. Then <strong>Backfill</strong> each of the eleven rows with its own <strong>Backfill</strong> over a custom range from <em>W</em> to today, and <strong>Backfill</strong> Change &amp; Configuration Activity and Cross-Stack Authentication without Clear. Keep the Settings page open until the Environment Topology (graph) row has finished.</p>
+</li>
+</ol>
+<h4 id="narrower-repair-build-383"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Narrower Repair After App Build 383<a class="headerlink" href="#narrower-repair-build-383" title="Permanent link">&para;</a></h4>
+<p>The Clear of <strong>Work Process Performance / ABAP Operations</strong> also removes the dispatcher, ICM and ABAP Operations panels&rsquo; history, although their stored values did not change. To keep the older history, delete only the trace-component rows (<code>metric</code> <code>wp</code>) from <em>W</em> onward, with <em>W</em> chosen as in the build-378 repair above:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-k<span class="w"> </span>-u<span class="w"> </span>admin<span class="w"> </span>-G<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"https://&lt;search-head&gt;:8089/servicesNS/nobody/splunk_app_sap_logserv/storage/collections/data/logserv_wp_perf_rollup"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">'query={"metric":"wp","bucket_ts":{"$gte":&lt;W&gt;}}'</span>
+</code></pre></div>
+<p>Check the query with <code>-X GET</code> first, as above. Then <strong>Backfill</strong> the row with its own <strong>Backfill</strong> over a custom range from <em>W</em> to today. The Backfill rewrites the row&rsquo;s other rows in that range under the keys they already have, so nothing is counted twice; trace-component rows older than <em>W</em> keep their old names. If you cannot reach the management port, use the Clear and Backfill instead.</p>
+<p><br></p>
+<h2 id="what-is-preserved"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> What Is Preserved<a class="headerlink" href="#what-is-preserved" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>local/</code> configuration</strong> survives an app upgrade: the App&rsquo;s <code>ai_assistant_settings.conf</code>, any acknowledgement files written by 0.0.5 builds before 192 or 0.1.1 builds before 240 (later builds keep the acknowledgements in the KV Store) and the credentials in its <code>passwords.conf</code>; the Data TA&rsquo;s filter and Cloud Provider settings; the Azure and GCP inputs and their credentials. On forwarders that a Deployment Server manages, the Data TA&rsquo;s <code>local/</code> is the one in the Deployment Server&rsquo;s <code>deployment-apps/</code> copy.</li>
+<li><strong>KV Store data</strong> persists: settings, acknowledgements, saved topology layouts, dashboard preferences and the rollup collections. Collections and their data survive an app upgrade; the work list names the rows whose stored values must be rebuilt.</li>
+<li><strong>Indexed events</strong> keep their index, sourcetype and index-time fields. Search-time fields follow the installed App (<a href="#search-time-field-changes">Search-Time Field Changes</a>).</li>
+<li><strong>Dashboard URLs</strong> are unchanged across recent releases. The Settings page moved from <code>#/settings/ai-assistant</code> to <code>#/settings</code> (the old URL redirects) and is titled <strong>Application Settings</strong>, with two top-level tabs, <strong>AI Assistant</strong> and <strong>Dashboard Data</strong>: update any runbook that names the old page title.</li>
+</ul>
+<p><br></p>
+<h2 id="restricted-deployments"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Restricted Deployments: Templates-only and v0.0.6<a class="headerlink" href="#restricted-deployments" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>The published App is the full-LLM build.</strong> No templates-only package is published for 0.1.2. After you upgrade a deployment that ran the templates-only build, or the v0.0.6 line, its stored <code>templates_only_mode</code> setting governs, and a deployment with no stored value takes the shipped default, <strong>off</strong>. Free-form questions are then allowed whenever the AI Assistant is enabled. Nothing goes to an LLM vendor until an admin selects a provider and saves its credential (the shipped provider is a built-in mock), but a provider credential stored before the upgrade is used again. An upgrade creates no credential.</li>
+<li><strong>To keep the deployment restricted</strong>, turn <strong>Templates-only mode</strong> on under <strong>Settings → AI Assistant → General</strong> after the upgrade and click <strong>Save Defaults</strong>, or build the templates-only variant from this release&rsquo;s source and install that instead (<a href="../../ai-assistant/templates-only-build/">Restricting the LLM Path</a>, <a href="../../developer/build-from-source/">Building the Packages from Source</a>).</li>
+<li><strong>v0.0.6</strong> remains the option where a policy requires the LLM vendor code to be absent from the package. It is frozen at App build 266 and receives no fixes: it lacks every change of 0.1.1 after build 299 and of every 0.1.2 build (<a href="../../overview/release-notes-0.1.1/">Release Notes: 0.1.1</a>, <a href="../../overview/release-notes/">Release Notes: 0.1.2</a>). An upgrade from v0.0.6 to 0.1.2 brings the vendor code back, restricted only by the setting above.</li>
+</ul>
+<p><br></p>
+<h2 id="rollback"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Rollback<a class="headerlink" href="#rollback" title="Permanent link">&para;</a></h2>
+<p>Reinstalling an earlier App tarball restores its <code>default/</code> content, and your <code>local/</code> configuration stays. It does not roll back the KV Store data:</p>
+<ul>
+<li>Collections that only the newer build created stay in place, unused by the older App.</li>
+<li>If the build you leave changed what a rollup stores (the Clear rows of the work list: builds 282, 356 to 358, 364 to 365, 378 and 383), the restored build&rsquo;s hourly aggregation rewrites the last hour or two (Beaconing detection: the last two days) under its old keys, beside the rows the newer build wrote, and any Backfill it runs over earlier days does the same. Those hours are then counted twice. After rolling back across such a build, wait until the restored build is running, then <strong>Clear</strong> and <strong>Backfill</strong> the rows its work-list entry names (<a href="#how-to-rebuild-a-row">How to Rebuild a Row</a>). A Clear done before the rollback is undone by the newer build&rsquo;s last runs, and upgrading again later needs the same rebuild again.</li>
+<li>Rolling back to App build 374 or earlier brings back retention searches that can empty a rollup after a restart.</li>
+</ul>
+<p>The Data TA rolls back the same way, and its <code>local/</code> filter configuration stays. Rolling it back also removes the parsing, routing and filtering changes made since that build (<a href="#data-ta-work-list">Data TA</a>); events parsed in the meantime keep the sourcetype they got. With a Deployment Server, an earlier build that has the same version goes into <code>deployment-apps/</code> by hand, as for an upgrade.</p>
+<p><br></p>
+<h2 id="removing-the-solution"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Removing the Solution<a class="headerlink" href="#removing-the-solution" title="Permanent link">&para;</a></h2>
+<p>To take Splunk for SAP LogServ out of a deployment, stop the data first, then remove each package from the tier it is on. The indexed data and the App&rsquo;s KV Store data are handled in their own steps.</p>
+<ol>
+<li><strong>Stop the data.</strong><ul>
+<li><strong>AWS:</strong> on each heavy forwarder, disable or delete the SQS-Based S3 inputs of the Splunk Add-on for AWS that read SAP&rsquo;s queue. The backfill inputs that the AWS S3 Direct screen created also live in the Splunk Add-on for AWS: delete them with <strong>Delete all</strong> on that screen while the Data TA is still installed. In AWS, delete the CloudFormation stack you created from the Connect, Filter or Copy template. With Copy, empty its bucket first: CloudFormation does not delete a bucket that still holds objects. The Lambda code bucket you created for Filter or Copy is not part of the stack.</li>
+<li><strong>Azure and GCP:</strong> delete the inputs on each heavy forwarder or search head that runs them, or remove the add-ons in step 4.</li>
+<li>Tell SAP that the access it granted for the connection is no longer needed.</li>
+</ul>
+</li>
+<li><strong>Decide what happens to the indexed data, before you remove the Data TA.</strong> Removing a package does not delete indexed data: the buckets of <code>sap_logserv_logs</code> and <code>logserv_ai_assistant_audit</code> stay on disk. Where the Data TA&rsquo;s own <code>indexes.conf</code> defines the two indexes (a single instance, or an indexer you installed it on), removing the Data TA removes their definitions, and the data can no longer be searched. To keep it searchable, define both indexes elsewhere now, for example by copying the two stanzas of the Data TA&rsquo;s <code>default/indexes.conf</code> into <code>system/local/indexes.conf</code> on that instance. Deleting the data is step 5.</li>
+<li>
+<p><strong>Search head: the LogServ App.</strong></p>
+<ul>
+<li>If Enterprise Security reads the App&rsquo;s asset and identity lookups (<code>splunk_for_sap_logserv_assets</code>, <code>splunk_for_sap_logserv_identities</code>), remove them from ES&rsquo;s Asset and Identity Management first (<a href="../../enterprise-security/asset-identity-feed/#add-to-es-identity-management">Add to ES Identity Management</a>): they are removed with the App.</li>
+<li>
+<p>Its settings, acknowledgement records, saved layouts and dashboard data are in its KV Store collections, all named <code>logserv_*</code>, not in its directory. Export what you want to keep. If none of it may remain, delete the collections&rsquo; contents right before you remove the App, while it is still installed: one REST call per collection, with an admin-tier account, on the management port (on Splunk Cloud it must first be opened for you). The collections are the stanzas of the App&rsquo;s <code>default/collections.conf</code>, 40 in build 394. This lists their names from the tarball you installed:</p>
+<div class="highlight"><pre><span></span><code>tar<span class="w"> </span>-xzOf<span class="w"> </span>splunk_app_sap_logserv-0.1.2.tar.gz<span class="w"> </span>splunk_app_sap_logserv/default/collections.conf<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">'s/^\[\(.*\)\]$/\1/p'</span>
+</code></pre></div>
+<p>Then, for each name:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-k<span class="w"> </span>-u<span class="w"> </span>admin<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"https://&lt;search-head&gt;:8089/servicesNS/nobody/splunk_app_sap_logserv/storage/collections/data/&lt;collection&gt;"</span>
+</code></pre></div>
+</li>
+<li>
+<p>Remove the App: on Splunk Enterprise, <code>$SPLUNK_HOME/bin/splunk remove app splunk_app_sap_logserv</code> as the user Splunk runs as, then restart Splunk (or stop Splunk, delete <code>$SPLUNK_HOME/etc/apps/splunk_app_sap_logserv</code> and start Splunk); on a search head cluster, delete <code>splunk_app_sap_logserv</code> from the deployer&rsquo;s <code>$SPLUNK_HOME/etc/shcluster/apps/</code> and push the bundle with <code>splunk apply shcluster-bundle</code>, which removes it from the members; on Splunk Cloud, uninstall it as you would any private app. Its own credentials (<code>local/passwords.conf</code>), lookups and configuration go with its directory. Notable and risk events its searches already wrote stay in Enterprise Security&rsquo;s indexes.</p>
+</li>
+<li>The add-ons the App needs on the search head (CIM, the Windows and Unix and Linux add-ons, the Splunk MCP Server) are separate apps: remove them only if nothing else uses them.</li>
+</ul>
+</li>
+<li>
+<p><strong>Heavy forwarders and the Deployment Server.</strong></p>
+<ul>
+<li><strong>With a Deployment Server:</strong> the Data TA reached the forwarders through the <code>SAP_LogServ_HeavyForwarders</code> server class. In <strong>Settings → Forwarder Management</strong> (Agent Management in Splunk Enterprise 10.0 and later), take the Data TA out of that class, or delete the class if it holds nothing else (the 0.0.5 Azure setup put the Splunk Add-on for Microsoft Cloud Services in it too). In the files, the class is the <code>[serverClass:SAP_LogServ_HeavyForwarders]</code> stanza and the Data TA&rsquo;s place in it the <code>[serverClass:SAP_LogServ_HeavyForwarders:app:splunk_ta_sap_logserv]</code> stanza, in the <code>serverclass.conf</code> that <code>$SPLUNK_HOME/bin/splunk btool serverclass list --debug | grep SAP_LogServ</code> shows. Remove only those stanzas, never the whole file, which holds your other server classes too, then run <code>$SPLUNK_HOME/bin/splunk reload deploy-server</code>. Then check each forwarder, and where <code>$SPLUNK_HOME/etc/apps/splunk_ta_sap_logserv</code> is still there, remove it. Last, remove the Data TA from the Deployment Server itself, <code>etc/apps/splunk_ta_sap_logserv</code> and <code>etc/deployment-apps/splunk_ta_sap_logserv</code> together: while it is installed in <code>etc/apps/</code>, its daily filter refresh can copy it back into <code>deployment-apps/</code>.</li>
+<li><strong>Without a Deployment Server:</strong> remove the Data TA from each forwarder (<code>$SPLUNK_HOME/bin/splunk remove app splunk_ta_sap_logserv</code>, then restart).</li>
+<li><strong>LogServ Azure and GCP add-ons:</strong> remove them from each forwarder or search head that runs them. Each input&rsquo;s credential is in the add-on&rsquo;s own <code>local/passwords.conf</code> and goes with it.</li>
+<li><strong>Single instance, an indexer you installed it on, or a Splunk Cloud search head that ran the inputs:</strong> remove the Data TA there too, after step 2.</li>
+</ul>
+</li>
+<li>
+<p><strong>Delete the indexes, if the data is not to be kept.</strong> To delete the data, remove the indexes where you created them (<a href="../../install-setup/install-ta/#1-create-the-indexes">Create the Indexes</a>): under <strong>Settings → Indexes</strong> on a standalone indexer or on Splunk Cloud; on an indexer cluster, with Splunk&rsquo;s procedure for removing an index from the cluster. Where the Data TA&rsquo;s own <code>indexes.conf</code> defined them and you removed it in step 4, their buckets are still on disk, in the directories that file gave them: stop Splunk, delete <code>$SPLUNK_DB/sap_logserv_logs</code> and <code>$SPLUNK_DB/logserv_ai_assistant_audit</code>, and start Splunk again.</p>
+</li>
+</ol>
+<p><br></p>
+<h2 id="at-a-glance"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> At a Glance<a class="headerlink" href="#at-a-glance" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Find your builds (<strong>About</strong> in the App; <a href="../capacity-planning/#version-check">Version Check</a> for the Data TA), then apply every work-list row at or above your build.</li>
+<li>No data re-ingest; <code>local/</code> and KV Store data are kept. Indexed events keep their sourcetype; some search-time fields change.</li>
+<li>Rebuild the Dashboard Data rows the work list names, after the upgrade, clear of the nightly retention window, with each row&rsquo;s own <strong>Backfill</strong>.</li>
+<li>With a Deployment Server, a later 0.1.2 Data TA build goes into <code>deployment-apps/</code> by hand.</li>
+<li>The published App is the full-LLM build: turn <strong>Templates-only mode</strong> on to keep a deployment restricted.</li>
+<li>On a search head without Enterprise Security, disable the App&rsquo;s ES searches.</li>
+</ul>
+<p><br></p>
+<h2 id="next-steps"><span class="twemoji cboxmove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="../verify-data/">Verify Your Data</a>: check that events arrive with their sourcetypes after the update.</li>
+<li><a href="../../logserv-app/dashboard-data/">Dashboard Data: Backfill and Freshness</a>: what each Dashboard Data row holds and how fresh it is.</li>
+<li><a href="../../overview/release-notes/">Release Notes: 0.1.2</a>: what each build changed.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../troubleshooting/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Troubleshooting">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Troubleshooting
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../logserv-app/dashboards/" class="md-footer__link md-footer__link--next" aria-label="Next: Dashboards Overview">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Dashboards Overview
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.instant.preview", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.path", "navigation.footer", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+        <script src="../../../js/limited-preview-qr.js"></script>
+      
+    
+  </body>
+</html>

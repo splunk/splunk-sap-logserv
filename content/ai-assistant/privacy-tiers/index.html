@@ -1,0 +1,4885 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/ai-assistant/privacy-tiers/">
+      
+      
+        <link rel="prev" href="../time-window-reasoning/">
+      
+      
+        <link rel="next" href="../owasp-llm-compliance/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Privacy Tiers - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#privacy-tiers" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Privacy Tiers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../install-setup/configure-filters/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure and Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/upgrading/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Upgrade
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../logserv-app/dashboards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dashboards
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../enterprise-security/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise Security Integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  AI Assistant
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../overview/release-notes/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer/testing-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/limited-preview-announcement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limited Preview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/demo-video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here: Deployment Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Plan
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    1. Plan
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Log Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/package-placement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where Each Package Goes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/splunk-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk Cloud Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/capacity-planning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Planning and First Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    2. Install the Data TA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/cloud-attribution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Cloud Attribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/decide-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decide Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/distribute-data-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribute the Data TA to Heavy Forwarders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Connect Your Cloud
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    3. Connect Your Cloud
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/choose-your-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Cloud and AWS Scenario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Verify Your Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Install the LogServ App
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    5. Install the LogServ App
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the App and Seed the Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure and Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure and Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring Filters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboard-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-s3-direct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS S3 Direct: Backfill and Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upgrade
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/applications/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applications
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Applications
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Network & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Process Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Trace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/integration/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Connector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web and API Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/security/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Perimeter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Stack Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change & Configuration Activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/platform/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux System & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cloud Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Doctor (Diagnostics)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Security Integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise Security Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIM Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Searches & RBA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset & Identity Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat Intelligence Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Behavioral & Anomaly Detections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Assistant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Set Up the AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../predefined-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predefined Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../drill-down-chips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drill-down Chips
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audit-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../templates-only-build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricting the LLM Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_8" id="__nav_7_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form LLM Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Free-form LLM Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../free-form-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../power-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../time-window-reasoning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-Window Reasoning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_9" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_7_9" id="__nav_7_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_7_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-three-tiers-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Three Tiers at a Glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#switching-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switching Tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-0-and-the-ollama-provider-do-not-select" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 0 and the Ollama Provider: Do Not Select
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-1-cloud-llm-count-timing-only-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1 — Cloud LLM, Count + Timing Only (default)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failed-tool-calls-every-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failed Tool Calls — Every Tier
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-2-cloud-llm-aggregated-metadata-admin-opt-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2 — Cloud LLM + Aggregated Metadata (admin opt-in)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tier 2 — Cloud LLM + Aggregated Metadata (admin opt-in)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#known-gaps-in-build-376" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known Limits of Tier 2
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-privacy-invariant-is-enforced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the Privacy Invariant Is Enforced
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP LLM Top 10 (2025) Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Architecture (SAIF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.1.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.5 and Earlier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Third-Party Software Licenses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clean Deployment Test (Lab)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-ta-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data TA Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App and AI Assistant Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/build-from-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Packages from Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-three-tiers-at-a-glance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Three Tiers at a Glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision Matrix
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#switching-tiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switching Tiers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-0-and-the-ollama-provider-do-not-select" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 0 and the Ollama Provider: Do Not Select
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-1-cloud-llm-count-timing-only-default" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1 — Cloud LLM, Count + Timing Only (default)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failed-tool-calls-every-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failed Tool Calls — Every Tier
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-2-cloud-llm-aggregated-metadata-admin-opt-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2 — Cloud LLM + Aggregated Metadata (admin opt-in)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tier 2 — Cloud LLM + Aggregated Metadata (admin opt-in)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#known-gaps-in-build-376" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known Limits of Tier 2
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-the-privacy-invariant-is-enforced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How the Privacy Invariant Is Enforced
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../overview/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    AI Assistant
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="./" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Security & Compliance
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="privacy-tiers">Privacy Tiers<a class="headerlink" href="#privacy-tiers" title="Permanent link">&para;</a></h1>
+<div class="admonition info">
+<p class="admonition-title">Applies once an LLM provider credential is configured</p>
+<p>The privacy tier governs what a vendor dispatch may carry, so it has something to govern only where that path is live. The released v0.1.2 App package is the <strong>full-LLM build</strong>, but it makes <strong>no vendor calls until an admin configures an <a href="../settings/#provider-credentials-tab">LLM provider credential</a></strong>, and no vendor dispatch where <strong>Templates-only mode</strong> is on or a compile-time templates-only build is installed (<a href="../templates-only-build/">Restricting the LLM Path</a>; in Templates-only mode, <strong>Model discovery</strong> can still make metadata-only model-listing calls). Once a credential exists, the tier selected in Settings → AI Assistant → General governs every vendor dispatch. The <code>Hidden&lt;T&gt;</code> / <code>Visible&lt;T&gt;</code> type-system enforcement is compile-time in every build: a tool result reaches an outbound vendor payload only through the active tier&rsquo;s summary, so no raw row and no unsummarized result is sent in any tier. What that summary may carry depends on the tier, as described below — in Tier 2 it includes aggregated values taken from the events.</p>
+</div>
+<p>The privacy tier controls what an external LLM vendor sees about your Splunk data. Two tiers work in this release, Tier 1 (the default) and Tier 2; Tier 0 is listed in the Settings page but does not work yet. An admin selects the tier in <a href="../settings/#feature">Settings → AI Assistant → General</a>. The active tier is enforced by the TypeScript type system at build time, not by runtime policy: every outbound vendor payload must pass through a single sanitize chokepoint, and the chokepoint&rsquo;s summarizer is what the tier setting controls. For the type-system mechanism, see <a href="../../developer/ai-assistant-internals/">LogServ App and AI Assistant Internals</a>.</p>
+<p>This page starts with the choice (the tiers, the decision matrix, and how to switch), then describes exactly what each tier sends.</p>
+<h2 id="the-three-tiers-at-a-glance"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> The Three Tiers at a Glance<a class="headerlink" href="#the-three-tiers-at-a-glance" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Vendor traffic?</th>
+<th>What the AI sees about each tool result</th>
+<th>Use case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tier 0</strong> (not available in this release)</td>
+<td>Planned: none, a local Ollama server. Today: whatever provider is selected</td>
+<td>Same as Tier 1 (count + timing only)</td>
+<td>Do not select it; see <a href="#tier-0-and-the-ollama-provider-do-not-select">Tier 0 and the Ollama Provider</a></td>
+</tr>
+<tr>
+<td><strong>Tier 1</strong> (default)</td>
+<td>Cloud LLM (Anthropic / OpenAI / Azure / Bedrock)</td>
+<td><code>Returned N rows in M ms.</code> — two numbers, a count and a timing. Nothing else.</td>
+<td>Most customers — strongest cloud-LLM privacy posture</td>
+</tr>
+<tr>
+<td><strong>Tier 2</strong> (admin opt-in)</td>
+<td>Same cloud LLM</td>
+<td>The <code>Returned N rows in M ms.</code> line (N is the number of result rows, 0 for an empty result) + per-column cardinality + top-N values + counts (categorical; filtered, 40 characters each; with PII redaction on, sent in clear only when the App can trace the column to a field that marks no identifier, otherwise as <code>&lt;redacted-…&gt;</code> tags) + min/max/avg/sum (numeric) + the time range as UTC timestamps the App formats. A column name is sent only when Splunk generates it, or when every word in it was written by the model in its own query or by the App&rsquo;s catalog search that ran; any other name appears as <code>col_N</code>. <strong>No raw rows.</strong></td>
+<td>Customers who want data-grounded narrative replies and have legal authority to expose aggregate metadata to the vendor</td>
+</tr>
+</tbody>
+</table>
+<p>The table describes successful calls. In every tier, a <strong>failed</strong> call reaches the vendor only as its HTTP status and a fixed error class, never as Splunk&rsquo;s error text. See <a href="#failed-tool-calls-every-tier">Failed Tool Calls</a>.</p>
+<h2 id="decision-matrix"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Decision Matrix<a class="headerlink" href="#decision-matrix" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Answer</th>
+<th>Recommended tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&ldquo;Is the AI vendor a third-party data processor?&rdquo;</td>
+<td>Yes; consult your DPA. Anthropic / OpenAI / Azure / Bedrock all publish their own privacy commitments, but they ARE data processors.</td>
+<td>Tier 1 if the vendor is approved as a processor; if not, configure no provider, or turn on <strong>Templates-only mode</strong> (<a href="../templates-only-build/">Restricting the LLM Path</a>)</td>
+</tr>
+<tr>
+<td>&ldquo;Can the customer&rsquo;s compliance team approve aggregate metadata exposure?&rdquo;</td>
+<td>Yes</td>
+<td>Tier 2</td>
+</tr>
+<tr>
+<td></td>
+<td>No</td>
+<td>Tier 1</td>
+</tr>
+<tr>
+<td>&ldquo;Does the customer have outbound internet to the LLM vendor&rsquo;s API?&rdquo;</td>
+<td>Yes</td>
+<td>Tier 1 or Tier 2</td>
+</tr>
+<tr>
+<td></td>
+<td>No (air-gapped)</td>
+<td>No tier: predefined prompts only, with <strong>Templates-only mode</strong> or a templates-only build (<a href="../templates-only-build/">Restricting the LLM Path</a>); Tier 0 is not available in this release</td>
+</tr>
+<tr>
+<td>&ldquo;Does the customer want narrative replies with concrete values, or shape-only?&rdquo;</td>
+<td>Concrete</td>
+<td>Tier 2 (with PII redaction on)</td>
+</tr>
+<tr>
+<td></td>
+<td>Shape-only</td>
+<td>Tier 1</td>
+</tr>
+<tr>
+<td>&ldquo;Does the customer want zero LLM dispatch (partner test, demo)?&rdquo;</td>
+<td>Zero</td>
+<td><strong>Templates-only mode</strong>, or a templates-only build where it must not be reversible (<a href="../templates-only-build/">Restricting the LLM Path</a>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="switching-tiers"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Switching Tiers<a class="headerlink" href="#switching-tiers" title="Permanent link">&para;</a></h2>
+<p>The tier is the <strong>Privacy Tier</strong> setting on <a href="../settings/#feature">Settings → AI Assistant → General</a>. Switching tiers takes effect on the <strong>next</strong> vendor call — in-flight calls complete with the previously active tier. Note the emitted <code>vendor_tier1</code> event does not carry the active tier: the tier in force at a given time is derivable only from the Settings history (<code>vendor_tier2_elevation</code> events) plus a non-zero <code>tier2RedactionsApplied</code>.</p>
+<p><strong>Elevating from Tier 1 → Tier 2:</strong></p>
+<ol>
+<li>Open Settings → AI Assistant → General.</li>
+<li>Under <strong>Privacy Tier</strong>, select Tier 2.</li>
+<li>Click <strong>Save Defaults</strong>. The save records a <code>vendor_tier2_elevation</code> audit event with the admin&rsquo;s identity and the time.</li>
+<li>Optionally turn <strong>Tier 2 PII column redaction</strong> off (default: on) or <strong>Tier 2 hostname redaction</strong> on (default: off, since host names are often not sensitive in SAP environments).</li>
+</ol>
+<p><strong>Lowering from Tier 2 → Tier 1:</strong></p>
+<ol>
+<li>Same path. A downgrade produces <strong>no audit event and no conf-change record</strong> — settings persist to the <code>logserv_ai_assistant_settings</code> KV Store collection, so only elevation to Tier 2 is audited (<code>vendor_tier2_elevation</code>).</li>
+<li>The next vendor call uses the lower tier.</li>
+</ol>
+<p><strong>No tier:</strong> to switch the LLM-driven path off entirely (predefined prompts only), turn on <strong>Templates-only mode</strong>, or install a templates-only build where that must not be reversible (<a href="../templates-only-build/">Restricting the LLM Path</a>). The tier setting is then moot, since no question reaches a vendor.</p>
+<h2 id="tier-0-and-the-ollama-provider-do-not-select"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Tier 0 and the Ollama Provider: Do Not Select<a class="headerlink" href="#tier-0-and-the-ollama-provider-do-not-select" title="Permanent link">&para;</a></h2>
+<p>Tier 0 and the <strong>Ollama (Tier 0 — local)</strong> provider are listed on the Settings page but are not implemented in this release. Selecting them does not keep data on the search head:</p>
+<ul>
+<li><strong>Privacy Tier = Tier 0</strong> summarizes exactly like Tier 1 (the Tier 1 primer, count and timing) and sends the call to whatever <strong>Active Provider</strong> is selected, a cloud vendor included.</li>
+<li><strong>Active Provider = Ollama</strong> runs the Mock provider: a typed question gets a canned reply, and no Ollama server is contacted. The <strong>Base URL</strong> on the Provider Credentials sub-tab is not used.</li>
+</ul>
+<p>The plan for Tier 0 is to route the LLM call to a locally hosted Ollama server instead of a cloud vendor, with the same count-and-timing summary as Tier 1 and an unchanged MCP search path. Until it ships, a deployment that must not send anything to an outside vendor uses <strong>Templates-only mode</strong> or a templates-only build (<a href="../templates-only-build/">Restricting the LLM Path</a>), or configures no provider.</p>
+<h2 id="tier-1-cloud-llm-count-timing-only-default"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Tier 1 — Cloud LLM, Count + Timing Only (default)<a class="headerlink" href="#tier-1-cloud-llm-count-timing-only-default" title="Permanent link">&para;</a></h2>
+<p><strong>What the LLM sees per tool result:</strong></p>
+<div class="highlight"><pre><span></span><code>&lt;TOOL_RESULT_DATA&gt;
+Returned 47 rows in 320ms.
+&lt;/TOOL_RESULT_DATA&gt;
+</code></pre></div>
+<p>That&rsquo;s the entire summary: two numbers. Nothing about the column names, the row contents, the time range, the distinct counts, or the actual values. The <code>&lt;TOOL_RESULT_DATA&gt;...&lt;/TOOL_RESULT_DATA&gt;</code> sentinel block is wrapped around every tool-result summary so the AI&rsquo;s primer can teach it that anything inside is data from the customer&rsquo;s environment, never instructions.</p>
+<ul>
+<li><strong>The count</strong> is the number of result rows whenever the App recognises rows in the MCP reply — the same rows Tier 2 counts, so a search that matched nothing reads <code>Returned 0 rows</code>. With the Splunk MCP Server that is the length of the result list in its reply. Only a reply in which the App finds no rows — plain text, for example — is counted another way: the number of items in its <code>content</code> list, or the total row count a server reports (<code>totalRowCount</code>).</li>
+<li><strong>The timing</strong> is the server&rsquo;s execution time when the reply carries one, otherwise the time the browser measured for the call.</li>
+</ul>
+<p><strong>What the AI does with this:</strong> the AI knows that the search ran, how many rows it returned and how long it took, but not what the rows hold. It writes structurally-aware narrative replies — <em>&ldquo;the failed-auth saved search completed in 320 ms; its results are in the tile on the right&rdquo;</em> — without making claims about specific users, IPs, or hosts.</p>
+<p><strong>Decision rule for picking Tier 1:</strong></p>
+<ul>
+<li>The customer&rsquo;s legal/security team is comfortable with the AI vendor seeing the natural-language question + tool definitions + summaries.</li>
+<li>The customer is <strong>not</strong> comfortable exposing aggregate column metadata (cardinality, top-N values, min/max) to the vendor.</li>
+<li>The customer values determinism: a Tier 1 reply mentions zero specific values, so audit reviewers can sanity-check the narrative against the rendered tile without needing to verify what the AI was told.</li>
+</ul>
+<p><strong>Limitations:</strong> the AI can&rsquo;t write <em>&ldquo;the top failing user was xcjadm with 42 attempts&rdquo;</em> — it doesn&rsquo;t have that data. The narrative is correspondingly less concrete; the user is expected to read the tile in the right pane for the actual values.</p>
+<p>Tier 1 limits how much the vendor can learn; it does not make that zero. For each call the vendor gets two numbers, a count and a timing, and for a failed call a fixed error class and the HTTP status (see <a href="#failed-tool-calls-every-tier">Failed Tool Calls</a>). A model that writes its own queries can make these depend on event data — the timing, whether a search fails and which class its error gets, and the row count — so a few bits per call can leak: up to about log2 of the largest row count the server returns through the count. The session tool-call cap (<code>tool_calls_per_session_cap</code>, default 100) limits the calls per chat session; clearing the chat (<strong>Clear All</strong> in the results pane) starts a new session and resets the count, and <code>0</code> turns the cap off. No error text is sent in any tier.</p>
+<h2 id="failed-tool-calls-every-tier"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Failed Tool Calls — Every Tier<a class="headerlink" href="#failed-tool-calls-every-tier" title="Permanent link">&para;</a></h2>
+<p>When a tool call fails, the AI vendor is told only that it failed, with the HTTP status and a fixed error class. It never gets Splunk&rsquo;s or the MCP server&rsquo;s error text. This is the same in Tier 0, 1 and 2:</p>
+<div class="highlight"><pre><span></span><code>&lt;TOOL_RESULT_DATA&gt;
+Tool error (HTTP 400, class=missing_lookup): the query names a lookup that does not exist here. The error text is shown to the user only.
+&lt;/TOOL_RESULT_DATA&gt;
+</code></pre></div>
+<ul>
+<li><strong>The status</strong> is included only when it is a whole number from 100 to 599. Otherwise the line reads <code>Tool error (class=…)</code>.</li>
+<li><strong>The class</strong> is one of <code>parse_error</code>, <code>unknown_command</code>, <code>missing_lookup</code>, <code>missing_saved_search</code>, <code>permission</code>, <code>timeout</code>, <code>rate_limited</code>, <code>not_found</code>, <code>server_error</code> or <code>other</code>. The browser picks it with fixed rules over the error message, or from the status when no rule matches. Each class has its own fixed hint, written by the App.</li>
+<li><strong>The error text itself</strong> is shown only in the result panel on the user&rsquo;s screen. It is not sent to the vendor, and it is not written to the audit index.</li>
+</ul>
+<p>The text is withheld because a Splunk error message repeats the search that failed, and a subsearch can put event data into that search. For example, <code>| inputlookup [search … | eval v=substr(_raw,1,80) | return $v]</code> can fail with an error that names the first 80 characters of an event as the missing lookup table.</p>
+<p><strong>Refusals the App makes itself</strong> are different, because their text is the App&rsquo;s own. These are calls the App stops before anything is sent: the SPL guard, the saved-search catalog check, the undeclared-tool check and the session tool-call cap. The vendor gets <code>Tool call refused by the App before it ran: &lt;reason&gt;</code>, so the model can rephrase:</p>
+<ul>
+<li>The reason is written by the App. It may quote the tool name or saved-search name the model itself sent, or the command, lookup or macro name of the model&rsquo;s query that the SPL guard refused.</li>
+<li>It is capped at 1,000 characters. Control characters other than tab and line breaks become spaces, and <code>&lt;TOOL_RESULT_DATA&gt;</code> tags are replaced with <code>&lt;filtered&gt;</code>.</li>
+<li>The App builds this text where it makes the refusal, never from a tool result. A server error that merely looks like a refusal is reduced to a class like any other error.</li>
+</ul>
+<h2 id="tier-2-cloud-llm-aggregated-metadata-admin-opt-in"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Tier 2 — Cloud LLM + Aggregated Metadata (admin opt-in)<a class="headerlink" href="#tier-2-cloud-llm-aggregated-metadata-admin-opt-in" title="Permanent link">&para;</a></h2>
+<p><strong>What the LLM sees per tool result:</strong></p>
+<p>For a <code>stats count by user, stack</code> result of 47 rows:</p>
+<div class="highlight"><pre><span></span><code>&lt;TOOL_RESULT_DATA&gt;
+Returned 47 rows in 320ms.
+Column "user" (distinct=8): &lt;redacted-f86a9fe&gt;=6, &lt;redacted-0e3cb9c&gt;=6, &lt;redacted-e849a33&gt;=6, &lt;redacted-ac446fb&gt;=6 (+4 more).
+Column "stack" (distinct=3): Windows=16, HANA=16, SAP=15.
+Column "count" (numeric, distinct=47): min=1 max=95 avg=47.11 sum=2,214.
+&lt;/TOOL_RESULT_DATA&gt;
+</code></pre></div>
+<p>The <code>user</code> column above shows the shipped default (<code>tier2_pii_redaction = true</code>): a column whose values come from an identifier field arrives as <code>&lt;redacted-…&gt;</code> tags, stable within the chat session. <code>stack</code> keeps its values because the query takes it from the events by its own name; had the query computed it with an <code>eval</code> — as the App&rsquo;s own cross-stack catalog search does — its values would arrive as tags too (see <em>Which values are sent</em> below). With <code>tier2_pii_redaction = false</code> the same line carries the raw values (<code>xcjadm=6, BKPADMIN=6, …</code>). The column names <code>user</code> and <code>stack</code> are sent because the query that produced the result wrote them (for a saved search, the App&rsquo;s catalog search does), and <code>count</code> because Splunk generates it. In Tier 2 the <code>Returned N rows</code> line counts the result rows the App finds in the reply; a search that matched nothing reads <code>Returned 0 rows in 210ms (no events matched the query in the selected time range).</code> and sends nothing else. A reply in which the App finds no rows at all — plain text, for example — is sent only as <code>Returned a result that is not in row form, in 210ms.</code>: no count, no column name and no value.</p>
+<p>For a <code>timechart span=1h count by host</code> result:</p>
+<div class="highlight"><pre><span></span><code>&lt;TOOL_RESULT_DATA&gt;
+Returned 3 rows in 210ms.
+Time range: 2026-10-01T00:00:00.000Z → 2026-10-01T02:00:00.000Z (UTC).
+Column names withheld: 2. Each such column is shown as col_N, N being its position among the result's columns that do not start with an underscore.
+Column col_1 (numeric, distinct=3): min=0 max=2 avg=1 sum=3.
+Column col_2 (numeric, distinct=3): min=0 max=4 avg=2 sum=6.
+&lt;/TOOL_RESULT_DATA&gt;
+</code></pre></div>
+<p>The column names of a timechart split by <code>host</code> are host names — values from the events that the query did not write — so they are shown as <code>col_N</code>, with PII redaction on or off and whatever the hostname setting. Had the query named the hosts itself (<code>host=sapdb01 OR host=sapapp01 | timechart span=1h count by host</code>), the names would be the model&rsquo;s own text and would be sent. The same holds when the cells hold text: for <code>timechart latest(action) by user</code> the user names are shown as <code>col_N</code> unless the query wrote them, and while redaction is on every value of a column shown as <code>col_N</code> arrives as a <code>&lt;redacted-…&gt;</code> tag, since nothing tells the AI what the column holds — and the text cells of a split-by column are redacted in any case (see <em>Which values are sent</em> below).</p>
+<p><strong>What a Tier 2 summary contains, and what it leaves out:</strong></p>
+<ul>
+<li><strong>No raw rows.</strong> The AI never gets a row: it cannot tell which user had how many failures on which stack, only the per-column distributions.</li>
+<li><strong>Values.</strong> Each categorical column sends its top-N values with their counts (top 10 by default; the AI&rsquo;s <code>top_n</code> tool argument can ask for up to 50). Each value passes the value filter — a value that starts with a role marker (<code>system:</code>, <code>assistant:</code>, …), contains a known prompt-injection phrase or contains a <code>&lt;TOOL_RESULT_DATA&gt;</code> tag becomes <code>&lt;filtered&gt;</code>, and control characters become spaces — then PII redaction (below), then a 40-character cap, within a 160-character line. Each numeric column sends min / max / avg / sum. Columns whose name starts with <code>_</code>, all-empty columns and single-valued categorical columns are left out.</li>
+<li>
+<p><strong>Column names.</strong> A name is sent only when one of these holds, and it passes the value filter unchanged:</p>
+<ul>
+<li>it is a name Splunk itself generates: <code>count</code>, <code>percent</code>, <code>total</code>, <code>Total</code>, <code>NULL</code>, <code>OTHER</code>, <code>column</code>, a bare statistics-function name (<code>sum</code>, <code>avg</code>, <code>mean</code>, <code>min</code>, <code>max</code>, <code>dc</code>, <code>distinct_count</code>, <code>values</code>, <code>earliest</code>, <code>latest</code>, <code>first</code>, <code>last</code>, <code>median</code>, <code>mode</code>, <code>stdev</code>, <code>range</code>, <code>rate</code>), or <code>fieldsummary</code>&rsquo;s <code>field</code>, <code>is_exact</code> and <code>numeric_count</code>; or</li>
+<li>every word in it was written by the model or the App. Each run of letters, digits and <code>_</code> in the name (<code>values(user)</code> is <code>values</code> and <code>user</code>; <code>ip-10-1-2-3</code> is <code>ip</code>, <code>10</code>, <code>1</code>, <code>2</code> and <code>3</code>) must appear as a whole word, in the same letter case, in the call&rsquo;s <em>author text</em>: the query the model wrote itself for <code>splunk_run_query</code>, or the SPL of the App&rsquo;s catalog search that produced the result for <code>splunk_run_saved_search</code>. Any word of that text counts, wherever it stands — a field name, an alias, a search term, a compared value, quoted text — because text the model or the App wrote tells the vendor nothing it does not already have. The name must also be at most 40 characters and have the shape of a field name (a letter or <code>_</code>, then letters, digits and <code>_ . : -</code>) or of one function call over one, <code>*</code> or nothing (<code>avg(duration)</code>, <code>sum(*)</code>) — or it must be a display alias that the author text writes in quotes right after <code>AS</code> (<code>rename sourcetype AS "Source Type"</code>, <code>count AS "Event Count"</code>): it starts with a letter or <code>_</code> and is made of letters, digits and <code>_ . : -</code>, in words separated by single spaces.</li>
+</ul>
+<p>Any other name is shown as <code>col_N</code> — N is the column&rsquo;s position among the result&rsquo;s columns that do not start with <code>_</code> — and is never sent, in full or in part; the summary says how many names were withheld. The rule is the same with PII redaction on or off. So <code>stats count as failures by host</code> keeps <code>failures</code> and <code>host</code>, <code>table _time host process message</code> keeps <code>host</code>, <code>process</code> and <code>message</code>, and a split-by value the query typed (<code>user=jsmith | timechart count by user</code>) keeps its name. <code>sum(jsmith)</code>, from <code>timechart count by user | stats sum(*)</code>, is shown as <code>col_N</code> — even when it is the only column — because the query wrote <code>sum</code> but not <code>jsmith</code>; it would be sent only if the query itself contained the word <code>jsmith</code>. A name is not sent because the query contains part of it: <code>username</code> is withheld when the query writes only <code>user</code>. A quoted alias is held to the same 40 characters and to the single-space shape: <code>"Source  Type"</code> (two spaces) or <code>"Events (%)"</code> is shown as <code>col_N</code>.</p>
+</li>
+<li>
+<p><strong>Which values are sent — fail closed.</strong> With PII redaction on, a text column&rsquo;s values are sent in clear only when the App can <em>trace</em> the column — when the author text defines it entirely through constructs the App reads in full — to fields that mark no identifier. The App reads each author text as Splunk runs it, command by command, and a column is traced through:</p>
+<ul>
+<li>the field itself, by its own name: a field of the events or of a lookup, a <code>by</code> or <code>over</code> field, a field of <code>top</code>, <code>rare</code> (with or without a positional limit, <code>top 10 uri</code>), <code>table</code> or <code>fields</code>;</li>
+<li>a statistics function over one field, nested or not, with or without <code>AS</code> (<code>latest(user)</code> → <code>user</code>, <code>values(src_ip) AS ips</code> → <code>src_ip</code>, <code>latest(values(user))</code> → <code>user</code>);</li>
+<li><code>&lt;field&gt; AS &lt;alias&gt;</code>, a <code>rename</code> without wildcards (<code>rename user AS u</code>, <code>rename sourcetype AS "Source Type"</code>), and <code>lookup … OUTPUT &lt;field&gt; [AS &lt;alias&gt;]</code>. A lookup output that echoes the field the lookup matched on is that event field (<code>lookup t w AS user OUTPUT w</code> is <code>user</code>); any other output also reads the event fields the lookup matched on, so a lookup keyed on an identifier is treated like that identifier (<code>lookup … ip AS src_ip OUTPUT hostname</code> is redacted). The curated metadata of the App&rsquo;s own threat-intel lookups — their category, source and date added — keeps its own trace; their free-text notes inherit the match like any other output;</li>
+<li><code>eval &lt;name&gt;=&lt;field&gt;</code>, when the expression is one bare field name or one field reference in single quotes (<code>eval w=user</code>, <code>eval w='Authentication.user'</code>). A single-quoted token is only ever a field reference: it cannot hold a <code>|</code>, a bracket, a double quote or a line break, so a stray apostrophe can no longer hide the commands after it (and the allow-list refuses such a query outright);</li>
+<li>a count: <code>count</code> or <code>c</code>, bare or as a call (<code>count(eval(action="failure"))</code>), the <code>count</code> and <code>percent</code> of <code>top</code> and <code>rare</code>, and <code>dc</code>, <code>distinct_count</code>, <code>estdc</code> or <code>estdc_error</code> over one field the App traces (<code>dc(user)</code>). Its values are counts, not identifiers. A distinct count of a field the query computes (<code>eval r=mvrange(0,len(user)) | stats dc(r)</code>) is not a count: it reads what that field reads.</li>
+</ul>
+<p>These steps chain as far as the query takes them, in the order Splunk runs them: <code>eval a=user | eval b=a | rename b AS c</code> leads <code>c</code> back to <code>user</code>. Every other construct leaves the column <strong>untraced</strong>, and with redaction on every value of an untraced text column arrives as a <code>&lt;redacted-…&gt;</code> tag, whatever it holds:</p>
+<ul>
+<li>any other <code>eval</code> expression — string concatenation with <code>.</code> (<code>eval w=user."@".domain</code>), any function (<code>lower(action)</code>, <code>case(…)</code>, <code>coalesce(…)</code>, <code>substr(_raw,1,200)</code>), even a literal (<code>eval x="a"</code>);</li>
+<li><code>fieldformat</code>, which only changes how a value is displayed: the column stays untraced and reads both its earlier definition and the format expression;</li>
+<li>the outputs of <code>rex</code> (named groups written <code>(?&lt;name&gt;…)</code>, <code>(?P&lt;name&gt;…)</code> or <code>(?'name'…)</code>), <code>spath</code>, <code>strcat</code>, <code>bin</code>, <code>convert</code> and <code>iplocation</code>, <code>transaction</code>&rsquo;s <code>duration</code> and the totals of <code>addtotals</code>; and a field <code>makemv</code> cuts into pieces — by a delimiter or a <code>tokenizer</code> pattern, which extracts like <code>rex</code> — reading the field and the words of the delimiter or the pattern;</li>
+<li>a wildcard <code>rename</code> or <code>AS</code> (<code>rename user* AS w*</code>, <code>stats values(*) AS *_x</code>) and a dynamic <code>eval</code> target (<code>eval {action}=…</code>);</li>
+<li>the cells of a <code>chart</code>, <code>timechart</code> or <code>xyseries</code> split-by column, and every column of <code>transpose</code>, <code>untable</code> and <code>fieldsummary</code>, which mix the values of many fields;</li>
+<li>a name defined in two different ways (for example once in the main search and once in a subsearch); a column that an <code>append</code>, <code>appendcols</code>, <code>join</code>, <code>union</code>, <code>multisearch</code>, <code>set</code> or <code>appendpipe</code> subsearch defines — a field it only passes through by its own name stays traced, and a subsearch that only filters (<code>index=x [search … | fields host]</code>) changes nothing; and a column the author text does not output;</li>
+<li>every column after a command the App does not read in full: <code>lookup</code> without <code>OUTPUT</code>, <code>inputlookup</code> after the first command, a macro used as a command (a macro at the start of the query is read as the search), an <code>eval</code> or <code>rename</code> it cannot split, or — in the App&rsquo;s own catalog SPL — any command it does not know. The first command inside <code>appendpipe […]</code> is always read as a command, never as a search, so an unknown one there makes the columns untraced too. A free-form query cannot use a command the App does not read: every command on the allow-list (see the <a href="../security-architecture/">Security Architecture</a>) is one the App reads in full.</li>
+</ul>
+<p>The limits on reading fail closed too: a text longer than 20,000 characters, more than 256 commands, subsearches nested more than 8 deep, or more than 12 wildcard definitions (wildcard renames and <code>AS</code>, dynamic <code>eval</code> targets — each one resolves through the ones before it) leave every column untraced. Stacked <code>appendpipe</code> groups are read in time proportional to their number, so they cannot freeze the browser tab either. A column traced to a count that holds text is redacted as well. So <code>stats count by action</code> sends the actions; <code>stats values(target_user) AS new_users</code> and <code>rename user AS u</code> are redacted as user names; and <code>eval stack=case(…)</code>, <code>rex "peer=(?&lt;peer&gt;\S+)"</code> and <code>eval w=action."-".status</code> are redacted although they hold no identifier. To keep values readable, aggregate the field by its own name. With PII redaction off, every column&rsquo;s values are sent, filtered and capped, traced or not.</p>
+</li>
+<li>
+<p><strong>Values of a column shown as <code>col_N</code>.</strong> While PII redaction is on, every value of a categorical (text) column whose name is shown as <code>col_N</code> is redacted as an identifier and sent as a <code>&lt;redacted-…&gt;</code> tag, whatever the column holds; the App cannot tell from a placeholder whether its values are user names. A column whose name is sent is redacted unless it is traced to fields that mark no identifier, as above.</p>
+</li>
+<li><strong>At most 30 columns</strong> are summarized; the rest are reported as <code>R more columns not summarized.</code>.</li>
+<li><strong>Numeric values withheld.</strong> With PII redaction on, a numeric column sends <code>values withheld</code> instead of its statistics, at any cardinality, when it is not a count and either its own name or a field its definition may read marks an identifier, or its values mix many fields (<code>transpose</code>, <code>untable</code>, <code>fieldsummary</code>). For a traced column those fields are its source fields; for an untraced one, every field its expression reads (<code>eval n=len(user) | stats avg(n) AS a</code> is withheld) — and after a command the App does not read in full, every word of the author text. A definition that reads more than 64 fields is taken to read every word of the author text, so that limit fails closed as well. The words of a <code>rex</code> pattern, of an <code>spath</code> path and of the quoted strings in an <code>eval</code> count as fields the column reads, so <code>rex "ssn=(?&lt;n&gt;\d{9})" | stats max(n) AS n</code> and <code>spath output=n path=user.id</code> are withheld; and a field set by <code>rex</code> or <code>spath</code> keeps its earlier value on the events where the pattern or the path does not match, so it reads both definitions. Every other numeric column keeps its statistics, untraced ones included (<code>rex "took (?&lt;ms&gt;\d+)" | stats avg(ms) AS a</code>), and so does a count (<code>dc(user) AS users</code>). A field marks an identifier when it matches a PII redaction pattern (below) or names an id: <code>id</code>, <code>uid</code>, <code>gid</code>, <code>guid</code>, <code>uuid</code>, <code>pid</code>, <code>ssn</code>, <code>iban</code>, <code>phone</code>, <code>msisdn</code>, <code>imsi</code>, <code>imei</code>, <code>acct</code> and account / card / employee / personnel numbers — as the whole name or its last part after <code>_</code>, <code>.</code>, <code>:</code> or <code>-</code> (<code>user_id</code>, <code>card_no</code>) — and camelCase names ending in <code>Id</code>, <code>ID</code>, <code>Sid</code>, <code>SID</code>, <code>Guid</code> or <code>GUID</code> (Windows <code>TargetUserSid</code>, <code>LogonGuid</code>). A column with a single distinct value also sends <code>values withheld</code>, whatever the redaction setting, when its name is withheld, or when it is not a count and marks an identifier or mixes many fields. A named single-value column such as <code>total_events</code> — usually the KPI the query asked for — still sends its value.</li>
+<li><strong>The time range.</strong> The <code>Time range:</code> line is sent only when every <code>_time</code> value is a timestamp: an epoch in seconds (a number or a string of digits, from 1970 up to 2100-01-01) or a strict ISO-8601 timestamp with a zone (<code>Z</code>, <code>+hh:mm</code> or <code>+hhmm</code>) on a real calendar date. The App then writes both ends itself, as ISO-8601 UTC timestamps, and the line says so: <code>Time range: 2026-10-01T00:00:00.000Z → 2026-10-01T02:00:00.000Z (UTC).</code> No time zone from the data is sent. If any value is not a timestamp, the line reads <code>Time range: not shown (the _time values are not all timestamps).</code> and no <code>_time</code> text is sent. The range is also sent only when the author text traces <code>_time</code> — every definition of it — to a time source field: <code>_time</code> itself, or the epochs <code>bucket_ts</code> and <code>day_ts</code> of the App&rsquo;s rollups (<code>timechart</code>, <code>bin _time</code>, <code>tstats … by _time</code>, <code>stats latest(_time) AS _time</code>, <code>eval _time=bucket_ts</code>, <code>rename bucket_ts AS _time</code>, <code>bin bucket_ts span=1d AS _time</code>). A <code>_time</code> the query computes from other fields (<code>eval _time=len(src_ip)*100000000</code>, <code>eval _time=strptime(…)</code>, or a <code>bin</code> / <code>bucket</code> of another field into <code>_time</code>: <code>bin n span=1 AS _time</code>) reads <code>Time range: not shown (the query computes _time from other fields).</code> A result without a <code>_time</code> column, such as a <code>stats by …</code> aggregate, has no time-range line.</li>
+<li><strong>What the AI is told about these shapes.</strong> The Tier 2 primer explains <code>col_N</code> and the withheld-names line, <code>&lt;redacted-…&gt;</code> tags, <code>values withheld</code>, <code>Returned a result that is not in row form</code> and <code>Time range: not shown</code>. It says that a tag is stable within the chat session only, and tells the model never to guess, recover or attribute what a placeholder or a tag stands for, to name a user, host, IP address or account only when that exact value appears in clear, and how to get readable values: re-query with <code>stats … by &lt;field&gt;</code>, aggregate a field by its own name rather than computing a new one, or write the values into its own query.</li>
+</ul>
+<p><strong>What the naming rule withholds:</strong> any name that neither Splunk, the model&rsquo;s query nor the App&rsquo;s catalog search wrote, and any name that does not have the shape — a name with spaces that the query does not quote right after <code>AS</code> (<code>eval "Source Type"=…</code>), an unaliased <code>count(eval(…))</code>, a nested call such as <code>upper95(prediction(count))</code>, a name over 40 characters. Besides split-by values, that includes fields a search returns without its text naming them — fields of raw events (<code>host</code>, <code>sourcetype</code> and the like, when the query does not write them), automatically extracted or <code>spath</code> fields, and the columns of an <code>inputlookup</code> that the search does not list. The AI can relate a placeholder to its own query&rsquo;s columns by position, but the primer tells it never to guess which value — which host, user or series — a <code>col_N</code> column stands for. A catalog trend split by a value is named only where its catalog search writes the value itself: the stacks of the cross-stack authentication-failure trend (<code>HANA</code>, <code>Windows</code>) are named, the host names of the noisy-hosts trend are not. The tiles in the results pane are not affected.</p>
+<p><strong>What Tier 2 still sends from the events.</strong> Tier 2 sends aggregated event values by design: the top-N values of every text column (with redaction on, of every traced column whose name is sent and whose fields mark no identifier), and the statistics of every numeric column that is not withheld — a column shown as <code>col_N</code> or untraced included. Redaction is decided by field names, so a value is sent as it is when its column is traced to a field named nothing like an identifier: an event field such as <code>message</code>, a lookup column that is not keyed on an identifier — or <code>_raw</code> itself, so a model can write <code>eval m=_raw</code> and receive up to 40 characters of an event. A number computed from event text is sent unless a field it reads marks an identifier. A name made only of words the model wrote is sent even if the model copied into its query a value it had seen; that text is the model&rsquo;s own. PII redaction is name-based hygiene for ordinary queries, not a content filter; where no event value may be sent, use Tier 1.</p>
+<p><strong>PII redaction</strong> (Tier 2 only, on by default): a field name marks an identifier in two ways.</p>
+<ul>
+<li><strong>The App&rsquo;s own fields, one by one.</strong> Every field name the App defines — its extractions, aliases and calculated fields, its rollup columns and the columns of its lookups, about 440 names — has a class in a table the build checks: an identifier (user names, statements that name users such as <code>sql_statement</code> and <code>command</code>, the HANA audit target <code>object</code>, <code>identity</code>, <code>info_sid</code>, <code>supplied_by</code>, <code>fetched_by</code>, the topology <code>canonical_value</code> and <code>label</code>, the compliance rollup&rsquo;s <code>operator</code> and the topology rollup&rsquo;s <code>error_detail</code>), an address (<code>src</code>, <code>dest</code>, <code>local_ip</code>, <code>peer_ip</code>, <code>icm_peer_ip</code>, <code>ssl_peer_ip</code>, <code>remote_address</code>, the lastlog <code>FROM</code>, <code>fw_dst</code>, the topology rollups&rsquo; <code>scope</code> and <code>spl_filter_clauses</code>, the HANA audit client host <code>src_host</code> and its extraction <code>audit_hostname</code>, the SAP Router target <code>saprouter_target_ip</code>, the gateway&rsquo;s <code>gw_remgw_target</code> and <code>gw_client_ip</code>, the RFC client&rsquo;s <code>gw_client_hostname</code>, …), a host name (<code>host</code>, <code>Computer</code>, <code>db_hostname</code>, <code>hana_host</code>, … — redacted only with the hostname opt-in), free text, or safe. The client host names <code>audit_hostname</code> and <code>gw_client_hostname</code> are classed as addresses, because a workstation&rsquo;s name can identify the person who uses it, so they are redacted by default, while a server&rsquo;s host name such as <code>db_hostname</code> is redacted only with the hostname opt-in. The <code>hostnames</code> column of the topology IP-enrichment lookup, which also holds client workstation names, stays a host name (see <a href="#known-gaps-in-build-376">Known Limits of Tier 2</a> below). The build fails if a new App field has no class, so no extraction ships unclassified, and it fails if a rollup column that a free-form query can read with <code>inputlookup</code> is classified weaker than the fields its rollup search writes into it directly; the check looks one step back, so a column filled through an intermediate field, such as <code>hostnames</code>, is not covered. The fields Splunk&rsquo;s automatic key-value extraction finds in the LogServ Linux events are classified too: pam&rsquo;s <code>rhost</code> (an address), <code>ruser</code>, <code>logname</code> and <code>euid</code>, and sudo&rsquo;s <code>PWD</code> and <code>COMMAND</code>.</li>
+<li><strong>Name patterns, for every name</strong> (the App&rsquo;s and any other) — ignoring letter case, as the whole name or after <code>_</code>, <code>.</code>, <code>:</code>, <code>-</code> or a space: <code>email</code> or <code>emails</code>; <code>user</code>, <code>username</code>, <code>user_name</code>, <code>users</code> or <code>usernames</code> (and <code>"User Name"</code>); <code>src</code>, <code>source</code>, <code>client</code>, <code>remote</code>, <code>dest</code>, <code>destination</code> or <code>dvc</code> followed by <code>ip</code> or <code>addr</code>, with or without <code>_</code>, singular or plural (<code>src_ip</code>, <code>client_ips</code>, <code>remote_addr</code>, <code>dvc_ip</code>); any <code>ip</code>, <code>addr</code> or <code>address</code> — a bare <code>ip</code> and every <code>*_ip</code>, <code>*_addr</code> and <code>*_address</code> (<code>peer_ip</code>, <code>local_ip</code>, <code>"Client IP"</code>); the CIM <code>src</code>, <code>dest</code>, <code>dst</code> and <code>dvc</code> themselves, singular or plural, alone or followed by <code>_host</code> (<code>src</code>, <code>dests</code>, <code>src_host</code>, <code>fw_src</code>, <code>fw_dst</code>) — the App&rsquo;s own field aliases put client IP addresses and host names into <code>src</code> and <code>dest</code>; <code>peer</code> or <code>peers</code>; <code>mac</code> or <code>mac_addr</code>; <code>account</code>, <code>account_name</code> or <code>"Account Name"</code>; and, with the hostname opt-in, <code>host</code>, <code>hostname</code>, <code>host_name</code>, <code>"Host Name"</code>, <code>hosts</code> or <code>hostnames</code>. So <code>src_user</code>, <code>new_users</code> and the dotted data-model and JSON names <code>Authentication.user</code>, <code>All_Traffic.src_ip</code>, <code>All_Traffic.dest</code> and <code>event.user</code> all match. A camelCase name ending in <code>User</code>, <code>UserName</code> or <code>Email</code>, optionally plural, matches too (Windows <code>TargetUserName</code>, <code>SubjectUserName</code>; letter case counts here), and so does one ending in <code>Address</code>, <code>IpAddress</code>, <code>IPAddress</code> or <code>MacAddress</code> (Windows <code>IpAddress</code>) and — with the hostname opt-in — in <code>WorkstationName</code>, <code>HostName</code>, <code>ComputerName</code> or <code>MachineName</code>. The table only ever adds to the patterns.</li>
+</ul>
+<p>A text column with such a field — or with an id-named one (above) — sends every value as a <code>&lt;redacted-XXXXXXX&gt;</code> tag, and a numeric one sends <code>values withheld</code>. These are not matched: <code>source</code>, <code>destination</code>, <code>src_port</code>, <code>dest_port</code>, <code>src_category</code>, <code>dvc_type</code>, <code>user_agent</code> and <code>sap_sid</code>; admins with strict postures should verify their own field names against the pattern list. The tag is the first 7 hex digits of a keyed hash (HMAC-SHA-256) of the value, under a random key the browser makes for each chat session and keeps in memory only; clearing the chat starts a new session with a new key, while closing and reopening the chat panel keeps the session and its key. So the same value gets the same tag within a chat session — the AI can still reason about cardinality and frequency — while tags of different sessions cannot be linked, and nobody without the key can recover a value by hashing candidates (every IPv4 address, short user names, SAP&rsquo;s standard users). Within a session the model can still compare tags, including tags of values it writes into its own query (see <a href="#known-gaps-in-build-376">Known Limits of Tier 2</a> below). While redaction is on it also redacts every value of a text column that is shown as <code>col_N</code> or is not traced to fields that mark no identifier (above). See <a href="../owasp-llm-compliance/">OWASP LLM Top 10 — LLM02</a>.</p>
+<p><strong>What the AI does with this:</strong> the AI can write data-grounded narrative replies — <em>&ldquo;8 distinct users across 3 stacks, with up to 95 failures for one user on one stack and 2,214 in total; the user/stack pairs split 16 Windows, 16 HANA, 15 SAP, so no single stack dominates&rdquo;</em>. The AI grounds its severity assessments in actual numbers instead of inferring from the shape of the result alone.</p>
+<p><strong>Decision rule for picking Tier 2:</strong></p>
+<ul>
+<li>The customer&rsquo;s legal/security team has reviewed and approved exposing aggregate metadata (column cardinalities, top-N value distributions) to the AI vendor.</li>
+<li>The customer wants narrative replies with concrete values, not just shape descriptions.</li>
+<li>PII concerns are mitigated by the fail-closed, field-name-based redaction (or the customer is comfortable with the redaction&rsquo;s coverage).</li>
+</ul>
+<p><strong>Audit trail:</strong> every free-form prompt that completes — whichever tier is active — records one <strong><code>vendor_tier1</code></strong> audit event (the <code>vendor_tier2</code> category is declared but never emitted) including:
+- Token counts (input + output)
+- USD cost estimate
+- Number of PII redactions applied (<code>tier2RedactionsApplied</code>): each redacted value (the values of a text column shown as <code>col_N</code> or untraced included) and each numeric column whose values are withheld under redaction — because a field it reads marks an identifier, or because it mixes many fields. A withheld column name is not counted. It is 0 in Tier 1, with redaction off, and in a Tier 2 prompt where nothing needed redacting
+- The user identity that triggered the call</p>
+<p>When elevating to Tier 2 in Settings (from Tier 0 or Tier 1), a <code>vendor_tier2_elevation</code> audit event captures the admin&rsquo;s identity and timestamp. See <a href="../audit-log/">Audit Log</a>.</p>
+<h3 id="known-gaps-in-build-376"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Known Limits of Tier 2<a class="headerlink" href="#known-gaps-in-build-376" title="Permanent link">&para;</a></h3>
+<p>Tier 2 sends aggregated event values by design, and the App&rsquo;s reading of a query is name-based hygiene, not a content filter. With PII redaction on, these cases can still carry an identifier or event text to the vendor; where any of them matters, use Tier 1. (The cases earlier builds listed as open are closed; the <a href="../../overview/release-notes/">release notes</a> record each change.)</p>
+<ul>
+<li><strong>Manufactured counts.</strong> A count still carries a few bits that a query computes: <code>stats count by &lt;a multivalue field computed from an identifier&gt;</code> followed by <code>stats count</code>, or the count of rows a filter on an identifier keeps. Counts are not traced to the fields that shaped them. This is documented rather than closed; where it matters, use Tier 1.</li>
+<li><strong>Fields named nothing like an identifier.</strong> A value is sent in clear when its column is traced to a field that neither the App&rsquo;s table nor the patterns mark — an event field such as <code>message</code>, a field another app extracts, a field Splunk&rsquo;s automatic key-value extraction finds under a name the App does not know, or <code>_raw</code> (up to 40 characters).</li>
+<li><strong>Workstation names in the topology IP enrichment.</strong> The <code>hostnames</code> column of <code>logserv_topology_ip_enrichment</code>, which a free-form query can read with <code>inputlookup</code>, holds the host names of client workstations (HANA clients and Windows <code>WorkstationName</code>). It is classed as a host name, so Tier 2 redacts it only with the hostname opt-in. Turn the opt-in on, or use Tier 1, where those names must not reach the vendor.</li>
+<li><strong>Text the model wrote.</strong> A column name or a value made only of words the model wrote in its query is sent, even if the model copied a value it had seen into the query.</li>
+<li><strong>Confirming a guess within a chat session.</strong> The model can test identifiers it guesses. A name made of its own words is sent, so a query that filters on guessed user names and splits by <code>user</code> (<code>user="alice" OR user="bob" … | timechart count by user</code>) returns, as column names, exactly the guesses that exist in the data. And a tag is the same for the same value within a chat session, so a column of values the model writes into its own query (<code>eval guess="jsmith"</code>) carries the same tags as the real values. The keyed tag stops anyone without the key from reversing tags offline; it does not stop the model from comparing tags online within the session. Where that matters, use Tier 1.</li>
+</ul>
+<h2 id="how-the-privacy-invariant-is-enforced"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> How the Privacy Invariant Is Enforced<a class="headerlink" href="#how-the-privacy-invariant-is-enforced" title="Permanent link">&para;</a></h2>
+<p>The privacy invariant — <em>no raw event and no unsummarized tool result leaves the customer&rsquo;s environment for the AI vendor</em> — is enforced mechanically at build time via TypeScript brand types. Tool-result values from the MCP server carry one type; outbound vendor messages carry a different type; the compiler refuses to assign one to the other. The only conversion path is the active tier&rsquo;s summarizer: in Tier 1 it produces two numbers, in Tier 2 the aggregated metadata described above, which includes values from the events. The type system guarantees that every result goes through a summarizer; the rules above decide what each summarizer may say. A type cannot tell an error message from data, so the summarizers do not pass error text on at all: a failed call&rsquo;s summary is one of a fixed set of App-written strings, chosen by its HTTP status and error class (see <a href="#failed-tool-calls-every-tier">Failed Tool Calls</a>).</p>
+<p>This is the primary defense against <a href="../owasp-llm-compliance/">LLM02 — Sensitive Information Disclosure</a>. For the brand-type mechanism, summarizer call sites, and the <code>&lt;TOOL_RESULT_DATA&gt;</code> sentinel pattern, see <a href="../../developer/ai-assistant-internals/">LogServ App and AI Assistant Internals</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../time-window-reasoning/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Time-Window Reasoning">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Time-Window Reasoning
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../owasp-llm-compliance/" class="md-footer__link md-footer__link--next" aria-label="Next: OWASP LLM Top 10 (2025) Compliance">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                OWASP LLM Top 10 (2025) Compliance
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.instant.preview", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.path", "navigation.footer", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+        <script src="../../../js/limited-preview-qr.js"></script>
+      
+    
+  </body>
+</html>
