@@ -77,10 +77,10 @@ iframe {
     mask-image: var(--md-admonition-icon--note);
 }
 
-/* QR code for the public Limited Preview page, under its entry in the left menu
- * (js/limited-preview-qr.js). Black on white with its quiet zone, so it scans on
- * the dark scheme too. Left out where the menu becomes a drawer (Material's
- * 76.234375em breakpoint). */
+/* QR code for the public Limited Preview page, at the end of the Home section in
+ * the left menu (js/limited-preview-qr.js). Black on white with its quiet zone,
+ * so it scans on the dark scheme too. Left out where the menu becomes a drawer
+ * (Material's 76.234375em breakpoint). */
 .lp-qr {
   margin: 0.6rem 0 0.4rem 0;
 }

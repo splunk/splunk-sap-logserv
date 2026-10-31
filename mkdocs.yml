@@ -91,12 +91,15 @@ plugins:
             filters: ["!^_"]
             show_source: true
   - autorefs
-  - print-site  # should be at the end
+  - print-site:  # should be at the end
+      exclude:
+        - content/overview/demo-video.md  # a video only: the print page could not play it
 
 nav:
 - Home:
     - 'index.md'
     - Limited Preview: 'content/overview/limited-preview-announcement.md'
+    - Demo Video: 'content/overview/demo-video.md'
 - Get Started:
     - 'Start Here: Deployment Roadmap': 'content/getting-started/roadmap.md'
     - '1. Plan':

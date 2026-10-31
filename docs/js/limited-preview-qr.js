@@ -1,6 +1,6 @@
-/* QR code for the public Limited Preview page, shown in the left menu under the
- * "Limited Preview" entry - the Home section's menu, on the Home page and the
- * Limited Preview page. The code is images/limited-preview-qr.svg (segno 1.6.6,
+/* QR code for the public Limited Preview page, shown in the left menu at the end
+ * of the Home section (after "Limited Preview" and "Demo Video"), on that
+ * section's pages. The code is images/limited-preview-qr.svg (segno 1.6.6,
  * error correction M); css/extra.css sizes it and leaves it out where the menu
  * becomes a drawer. */
 (function () {
@@ -21,12 +21,15 @@
       if (!url || url.hash || url.pathname !== target) {
         continue;
       }
+      // An entry of its own at the end of the section's list, so the entries
+      // after "Limited Preview" stay next to it.
       var item = links[i].closest(".md-nav__item");
-      if (!item || item.querySelector(".lp-qr")) {
+      var list = item && item.parentElement;
+      if (!list || list.querySelector(":scope > .lp-qr")) {
         continue;
       }
-      var box = document.createElement("div");
-      box.className = "lp-qr";
+      var box = document.createElement("li");
+      box.className = "md-nav__item lp-qr";
       var img = document.createElement("img");
       img.src = new URL(IMAGE, root).href;
       img.alt = "QR code for the Limited Preview page";
@@ -34,7 +37,7 @@
       caption.textContent = "Scan to open the Limited Preview page";
       box.appendChild(img);
       box.appendChild(caption);
-      item.appendChild(box);
+      list.appendChild(box);
     }
   }
 
