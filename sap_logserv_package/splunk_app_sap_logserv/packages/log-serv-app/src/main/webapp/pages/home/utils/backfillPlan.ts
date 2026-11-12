@@ -130,6 +130,10 @@ export const parseUnion = (spl: string): { arms: string[]; tail: string } => {
                     arms.push(s.slice(start, i).trim());
                     rest = i + 1;
                 }
+            } else if (ch === '|' && depth === 0) {
+                // The arms end at the first pipe outside them: a tail can hold brackets of
+                // its own (build 397's appendpipe), and those are not arms.
+                break;
             }
         }
     }
@@ -193,9 +197,16 @@ export const fillnullNamesFields = (cmd: string): boolean => {
     return names.length > 0 && names.every((t) => SIMPLE_FIELD.test(t));
 };
 
+/** Build 397: the tail of a rollup that gained `host` appends one zero row per `old_key`
+ *  after its rows. old_key names the row's metric, and an arm writes one metric, so that
+ *  appends the same rows per arm as over the union. No other appendpipe qualifies. */
+const isZeroRowAppend = (cmd: string): boolean =>
+    /^appendpipe\s*\[\s*where isnotnull\(old_row\) AND old_key!=_key\s*\|\s*dedup old_key\s*\|\s*eval _key=old_key,[^|\]]*\]$/i.test(cmd.trim());
+
 /** One command of a tail acts on one row at a time (see ROW_LOCAL_COMMANDS). */
 export const isRowLocal = (cmd: string): boolean => {
     const name = commandName(cmd);
+    if (isZeroRowAppend(cmd)) return true;
     return ROW_LOCAL_COMMANDS.has(name) && (name !== 'fillnull' || fillnullNamesFields(cmd));
 };
 

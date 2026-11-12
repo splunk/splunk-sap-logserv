@@ -88,7 +88,7 @@ PDF carries one de-duplicated section covering every rollup the dashboard's pane
 healthy panels included.
 
 In the drawer, each printed definition carries two corner actions: **copy to clipboard**
-(copies the definition verbatim) and **open in the Search app** in a new browser tab, scoped
+(copies the definition verbatim) and **open in Splunk's search page** in a new browser tab, scoped
 to the diagnosed time window. The opened search has the terminal `| outputlookup` write
 removed first, so running it cannot modify the summary collection — the drawer never offers
 a control that can change data.

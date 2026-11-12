@@ -109,13 +109,13 @@ For teams that run their operations in Splunk Observability Cloud, RISE takes th
 
 **Live SAP signals as metrics.** Every few minutes, the add-on on your Splunk search head counts what arrived from LogServ — event volume and freshness, HANA audit activity, Web Dispatcher traffic and errors, and more — and sends those counts to Observability Cloud as metrics you can filter by SAP system, host and cloud.
 
-**The LogServ App's pages, in Observability Cloud.** The SAP-aware views teams know from the Splunk for SAP LogServ App — environment health, HANA audit, Web Dispatcher, the SAP network and more — as Observability Cloud dashboards, next to everything else the team watches.
+**Dashboards out of the box.** A ready-made content pack brings the SAP-aware views teams know from the Splunk for SAP LogServ App into Observability Cloud as one dashboard group: 10 dashboards and 151 charts covering environment health, HANA audit, Web Dispatcher and ICM, SAP Router and gateway, the SAP network, authentication, DNS and proxy, and the data pipeline. They sit next to everything else the team watches, with nothing to build from scratch.
 
 **Logs searched in place.** Through Log Observer Connect, analysts search the LogServ data where it already lives in Splunk, with the App's SAP field extractions; the logs are not copied, and your Splunk permissions apply. Log Observer Connect is included in every Observability Cloud edition at no additional charge.
 
 **The SAP landscape on a map.** A live map of the SAP landscape in Observability Cloud — application servers, HANA databases, Web Dispatchers and their connections — drawn from the LogServ logs, with calls and errors per connection as charts.
 
-**SAP-aware detectors.** Ready-made detectors on the SAP health signals, such as a LogServ feed that stops, data that arrives late, or HANA audit failures above their usual level, so problems reach the right team quickly.
+**Metric alerts out of the box.** The content pack also includes 11 ready-made detectors on the add-on's metrics, such as a LogServ feed that stops, data that arrives late, HANA audit failures, Web Dispatcher 5xx errors, SAP Router errors and problems with the export itself, so issues reach the right team quickly. Each comes with a default threshold or time limit you can change.
 
 **One click back to the detail.** Links from Observability Cloud into the Splunk for SAP LogServ App, including the interactive Environment Topology view, for when someone needs the story behind a number.
 

@@ -37,6 +37,28 @@ The selected time range is held app-wide: it follows you when you move between d
 
 Every dashboard except Multi-Cloud Overview, Environment Topology, Diagnostics and Settings carries a **Cloud** filter (the button reads **Cloud: All**; options `All / aws / azure / gcp`) in its title row, to the left of the auto-refresh picker. Choosing a provider filters **every panel** on the dashboard to that cloud. The choice is **global and remembered per user in this browser**, so it carries across dashboard navigation and page reloads. Leave it on **All** to see the whole estate. Events with no cloud attribution are counted as `aws`, matching the Multi-Cloud Overview convention.
 
+### :material-lightning-bolt:{ .taiconcolor } SID and Host filters { #sid-and-host-filters }
+
+Most dashboards carry a **SID** filter and a **Host** filter in the title row, to the left of the **Cloud** filter. Pick a SAP system to limit the dashboard to the hosts that run it, then use **Host** to narrow further. Like the Cloud filter, the choice is **global and remembered per user in this browser**.
+
+- **What a SID includes.** Every host that runs the system: central services, application servers, and standby and disaster recovery hosts. If the system's database is a tenant in a HANA system, that HANA system's hosts are included too. The **Host** list shows each host's role, such as `ABAP_CS` or `HANA_MASTER_P`, or its instance directory, such as `D00`.
+- **How the hosts are found.** From what each host logs about itself: its files under `/usr/sap/<SID>/`, its HANA audit records, and SAP's monitoring lines in its syslog. A system a host only calls does not count. The list is built hourly from what hosts logged in the hour before, and covers hosts seen in the last 90 days. See [Dashboard Data](../dashboard-data.md#the-sid-and-host-list) for the search behind it.
+- **Which dashboards have them.**
+
+    | Dashboards | Filters |
+    |---|---|
+    | Environment Health, ABAP Network & Security, ABAP Operations, Work Process Performance, HANA Audit, HANA Trace, SAP Services, Web Dispatcher, Web and API Performance, Network Perimeter, Cross-Stack Authentication, Change & Configuration Activity, Linux, Windows | **SID** and **Host** |
+    | Host Details, Data Pipeline Overview | **SID**. Their own host picker works inside the selected system |
+    | SAP Router, Cloud Connector, DNS Analytics, Proxy | **Host** only, and each dashboard keeps its own selection: these hosts serve many systems and belong to no SID |
+    | Multi-Cloud Overview, Environment Topology, Diagnostics, Settings | Neither |
+
+- **What it costs.** A panel whose stored summary holds `host`, or `sap_sid` when you picked a whole system, answers as fast as usual. A panel whose summary holds neither reads raw events while a filter is on, so it takes longer: from a few seconds on a small system to half a minute or more on the largest, per panel. A shorter time range or a single host helps most.
+- **After an upgrade.** The summaries behind Environment Health, SAP Services, Cross-Stack Authentication, Change & Configuration Activity, Linux and Network Perimeter store `host` for the hours written since build 397. Over a time range that reaches back before your upgrade, those panels read raw events under a filter, until you **Backfill** their rows in [Dashboard Data](../dashboard-data.md#which-summaries-store-the-host). The numbers are right either way.
+- **What cannot be filtered.** A panel does not show unfiltered numbers while a filter is on: when you change the filter, panels clear until the filtered search answers. The trend lines under some KPI cards have no raw version, so they go blank (hover over one to see why). The beaconing panels keep no host at all, so they show nothing and say so. Clear the filter to see them.
+- **Clicking through to Splunk Search.** A panel's **Open in Search** action and a click on a KPI card or a table row that opens Splunk Search both carry the SID, Host and Cloud filters, so the search there covers the same hosts as the page you clicked on.
+- **A host that runs two systems** appears under both. With either one selected, a panel that filters by host shows everything on that host, the other system's events included.
+- **The Host filter on its own.** With no SID selected, **Host** lists every host with events in the time range, SAP hosts with their roles. A host with no events on the dashboard you are viewing leaves it empty, and the panels say a host filter is on.
+
 ### :material-lightning-bolt:{ .taiconcolor } Per-dashboard auto-refresh
 
 Each dashboard's title row carries a **Refresh** picker (Never / 30s / 1m / 5m / 15m / 30m / 1hr), to the right of the **Cloud** filter. The selection is per user and per dashboard: your choice on Environment Health doesn't carry over to HANA Audit. It persists across browser sessions in Splunk KV Store. The Diagnostics page has no auto-refresh picker; it re-runs its checks on demand.
@@ -56,7 +78,7 @@ Every chart and table panel header carries a small action toolbar plus a "&lt;1m
 | Action | What it does |
 |---|---|
 | **Diagnose** | Runs the Data Doctor's checks on this panel and opens the diagnosis drawer — explains why the panel is empty or partially blank ([Data Doctor](platform/diagnostics.md)). |
-| **Open in Search** | Opens Splunk's Search app in a new tab with the panel's dispatched query and the current time range pre-applied (the rollup read for a cached panel; the raw query at sub-hour ranges). |
+| **Open in Search** | Opens Splunk's search page in a new tab, inside the LogServ App, with the panel's dispatched query and the current time range pre-applied (the rollup read for a cached panel; the raw query at sub-hour ranges). It does not go through Splunk's Search app, so it works where that app is disabled. The search runs in the LogServ App's context, and a report or alert saved from that page is saved in the LogServ App: find it under **Settings > Searches, reports, and alerts**. Pages that the search page itself opens, such as Extract New Fields, Show Source or Pivot, still come from Splunk's Search app or another app that shares them. |
 | **Download (CSV)** | Exports the panel's current result set as CSV. |
 | **Inspect** | Opens Splunk's Job Inspector for the panel's last search — useful for diagnosing performance or verifying what ran. |
 | **Refresh** | Re-runs the panel's search immediately. |
@@ -128,8 +150,8 @@ Summary-backed charts never draw buckets finer than an hour, because the summari
 
 Table rows are the main drill-down surface; Environment Health additionally makes its KPI cards and chart panels clickable, and other dashboards wire panel-level drill-downs selectively. A pointer cursor and a hover highlight mark what you can click:
 
-- **Clicking a KPI** opens a contextual destination — typically the related drill-down dashboard with the current time range preserved, or Splunk's Search app with a pre-built SPL query for cross-cutting KPIs (e.g., the Environment Health "Total Errors" KPI runs a cross-cutting OR search spanning every error-bearing sourcetype across the estate).
-- **Clicking a table row** opens a filtered view — Host Details for `host` columns, the relevant specialist dashboard for `sourcetype` columns, or Splunk's Search app with the row's context spliced into a SPL filter.
+- **Clicking a KPI** opens a contextual destination — typically the related drill-down dashboard with the current time range preserved, or Splunk's search page (inside the LogServ App) with a pre-built SPL query for cross-cutting KPIs (e.g., the Environment Health "Total Errors" KPI runs a cross-cutting OR search spanning every error-bearing sourcetype across the estate).
+- **Clicking a table row** opens a filtered view — Host Details for `host` columns, the relevant specialist dashboard for `sourcetype` columns, or Splunk's search page with the row's context spliced into a SPL filter.
 - **Clicking a chart panel** — on dashboards that wire a panel-level drill-down, clicking anywhere in the panel (outside its toolbar) opens the related dashboard or search. Individual chart points are not separately clickable.
 - Every drill-down opens in a **new browser tab** with `noopener,noreferrer` security flags. Time-range query params (`?earliest=...&latest=...`) are preserved across the navigation, and the destination sets its time-range picker from them, so it loads at the source dashboard's window.
 

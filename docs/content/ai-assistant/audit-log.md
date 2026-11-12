@@ -53,7 +53,7 @@ The Audit Log tab in [Settings → AI Assistant](settings.md#audit-log-tab) prov
 
 The table renders 25 rows per page (`PAGE_SIZE = 25`); footer shows "Page X of Y" + Previous / Next buttons (only when total exceeds 25). Clicking a row's **+** button expands to show the full event JSON.
 
-**Splunk reserved-field gotcha:** the `category` field on these events is a Splunk reserved name. The viewer's SPL uses `| eval category=json_extract(_raw, "category")` after `spath` to retrieve the audit-event category from the raw JSON, because `spath` does NOT overwrite reserved fields. It does the same for `user` (`| eval user=json_extract(_raw, "user")`): when a search filters on `user` before `spath` — as the **User contains** filter does — Splunk extracts the field to apply the filter and `spath` adds the same value again, so the field comes back with two values. If you write your own searches against this index, replicate this pattern.
+**Two field gotchas:** `category` is a field Splunk sets itself, and `spath` does not overwrite it, so the viewer's SPL takes the audit event's category from the raw JSON with `| eval category=json_extract(_raw, "category")`. And Splunk extracts the JSON fields a search names by itself, so after `spath` each of those comes back with two values: the **User contains** filter names `user`, so the viewer takes `user` from the raw JSON too (`| eval user=json_extract(_raw, "user")`). In your own searches against this index, take each field you filter, count, sum or group by from `_raw` with `json_extract`, as the starter searches below do. After a bare `spath`, `stats` counts such fields more than once: on the reference system the cost search below, written with `spath`, reported 24 prompts and USD 7.80 where 12 and 1.95 were right (corrected in build 398).
 
 ## :material-circle-box:{ .taiconcolor } Tamper-Resistance Threat Model
 
@@ -118,7 +118,7 @@ The App writes audit events from the browser, as the signed-in user, through Spl
 - **Admins and power users are audited.**
 - **Users whose only role is `user` are not audited.** Splunk refuses each of their writes with HTTP 403 (seen on Splunk Enterprise 9.4.3, where a `power` user's write was accepted). The App drops the event and carries on: a refused audit write never blocks the AI Assistant.
 
-When a write fails, the AI Assistant panel shows a warning under the privacy banner, **Audit events are not being written**, with the HTTP status: for HTTP 403 it names the `edit_log_alert_event` and `edit_tcp` capabilities, says Splunk's default `user` role has neither, and tells the user to ask their Splunk admin (`edit_log_alert_event` is the narrower one to grant; see below); for HTTP 401, which usually means the Splunk Web session has ended, it asks for a reload first and names the capabilities as the cause if a reload does not help. The **Audit this session** list then notes that the events it shows from about that time on may not be in the index. The warning clears as soon as a write succeeds again. Writes can also fail for other reasons, such as an indexer outage; the warning gives the status for those too. A write Splunk accepts but cannot index (for example into an `audit_index_name` that names no index on the indexers) may raise no warning, so check that the index exists.
+When a write fails, the AI Assistant panel shows a warning under the privacy banner, **Audit events are not being written**, with the HTTP status: for HTTP 403 it names the `edit_log_alert_event` and `edit_tcp` capabilities, says Splunk's default `user` role has neither, and tells the user to ask their Splunk admin (`edit_log_alert_event` is the narrower one to grant; see below); for HTTP 401, which usually means the Splunk Web session has ended, it asks for a reload first and names the capabilities as the cause if a reload does not help. The **Audit this session** list then notes that the events it shows from about that time on may not be in the index. The warning clears as soon as a write succeeds again. Writes can also fail for other reasons, such as an indexer outage; the warning gives the status for those too. A write Splunk accepts but cannot index (for example into an `audit_index_name` that names no index on the indexers) may raise no warning, so check that the index exists. When a page closes, the events still waiting are sent in one request that the browser limits in size; if they do not fit, the oldest are left out. Since build 398, if the page is still open afterwards (one restored with the browser's Back button, or a close that was cancelled), the warning counts those as not written.
 
 The [HEC forwarder](#hec-forwarder) does not cover these users. It runs in the same browser tab and needs to read the forwarder's HEC token, which by default only admins can read.
 
@@ -164,7 +164,7 @@ srchIndexesAllowed = logserv_ai_assistant_audit
 
 ```spl
 `sap_logserv_audit_idx_macro` earliest=-15m
-| spath
+| eval user=json_extract(_raw, "user")
 | search user="<test user>"
 ```
 
@@ -172,17 +172,17 @@ This controls who can read the trail, not who can alter it; for that, see the [H
 
 ## :material-circle-box:{ .taiconcolor } Querying the Audit Index Directly
 
-You can query the audit index from any search bar — the in-app viewer is just a curated UX over the same SPL. The starter searches below use the `\`sap_logserv_audit_idx_macro\`` macro so they continue to work after a rename:
+You can query the audit index from any search bar — the in-app viewer is just a curated UX over the same SPL. The starter searches below use the `\`sap_logserv_audit_idx_macro\`` macro so they continue to work after a rename, and take each field from `_raw` with `json_extract` (see the field gotchas above):
 
 **Free-form vendor prompts in the last 7 days, with USD cost and Tier 2 redactions by user** *(only ever emitted once an LLM provider credential is configured)*:
 
 ```spl
 `sap_logserv_audit_idx_macro` earliest=-7d
-| spath
-| eval category=json_extract(_raw, "category")
+| eval category=json_extract(_raw, "category"), user=json_extract(_raw, "user")
 | where category="vendor_tier1"
-| eval t2=if(tonumber(tier2RedactionsApplied)>0, 1, 0)
-| stats sum(vendorCostEstimateUsd) as total_usd, count as prompts, sum(t2) as tier2_redacted_prompts, sum(tier2RedactionsApplied) as tier2_redactions by user
+| eval cost=tonumber(json_extract(_raw, "vendorCostEstimateUsd")), redactions=tonumber(json_extract(_raw, "tier2RedactionsApplied"))
+| eval t2=if(redactions>0, 1, 0)
+| stats sum(cost) as total_usd, count as prompts, sum(t2) as tier2_redacted_prompts, sum(redactions) as tier2_redactions by user
 | sort - total_usd
 ```
 
@@ -192,8 +192,7 @@ Every prompt, at any tier, is a `vendor_tier1` event, and the event does not say
 
 ```spl
 `sap_logserv_audit_idx_macro` earliest=-30d
-| spath
-| eval category=json_extract(_raw, "category")
+| eval category=json_extract(_raw, "category"), user=json_extract(_raw, "user"), operator=json_extract(_raw, "operator")
 | where category="security_blocked_spl"
 | stats count by user, operator
 | sort - count
@@ -203,8 +202,7 @@ Every prompt, at any tier, is a `vendor_tier1` event, and the event does not say
 
 ```spl
 `sap_logserv_audit_idx_macro` earliest=-30d
-| spath
-| eval category=json_extract(_raw, "category")
+| eval category=json_extract(_raw, "category"), operator=json_extract(_raw, "operator"), command=json_extract(_raw, "command")
 | where category="security_blocked_spl" AND isnotnull(command)
 | stats count by operator, command
 | sort - count
@@ -216,9 +214,9 @@ A steady `parser_unavailable` count (a query the user stopped is not counted) me
 
 ```spl
 `sap_logserv_audit_idx_macro` earliest=0
-| spath
 | eval category=json_extract(_raw, "category")
 | where category="vendor_tier2_elevation"
+| eval user=json_extract(_raw, "user"), previousTier=json_extract(_raw, "previousTier"), newTier=json_extract(_raw, "newTier")
 | table _time, user, previousTier, newTier
 ```
 
@@ -226,9 +224,9 @@ A steady `parser_unavailable` count (a query the user stopped is not counted) me
 
 ```spl
 `sap_logserv_audit_idx_macro` earliest=-7d
-| spath
 | eval category=json_extract(_raw, "category")
 | where category="audit_forwarder_failure"
+| eval reason=json_extract(_raw, "reason"), destinationUrl=json_extract(_raw, "destinationUrl")
 | stats count by reason, destinationUrl
 ```
 

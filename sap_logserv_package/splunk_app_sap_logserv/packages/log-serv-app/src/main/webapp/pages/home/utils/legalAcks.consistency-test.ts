@@ -41,7 +41,15 @@
  *     event records the answer given and is posted for either answer as soon as the answer is recorded, before
  *     the save a Yes goes on to, and it is built nowhere else (actuallySave takes no acceptance);
  *  L8 (build 392) each acknowledgement event has exactly its fields, is posted once, and its category appears
- *     once in the page; each answer is recorded once, awaited, in its own store, before its event.
+ *     once in the page; each answer is recorded once, awaited, in its own store, before its event. Since build
+ *     398 (the 392 audit's M1-M3): each handler posts once and changes nothing on its event after the literal,
+ *     the enablement event is posted right after its literal, the page has one enablement dialog tag and one of
+ *     each handler this reads, and the turn-off write's catch makes exactly its three calls;
+ *  L9 (build 398, the 386 audit) the wordings each version shipped, the SHA-256 of each, are listed both here and
+ *     in the stanza's comment in default/ai_assistant_acks.conf, and the two lists are equal, so a hash edited in
+ *     place in one of them fails. Version 1 of the forwarder-disabled text shipped two wordings (the index was
+ *     renamed in session 034 with no version bump); L4 is exact: one hash call and one render of the constant,
+ *     neither on a comment line.
  *  Since build 392 the busy, provider and event pins read the code with its comments removed (line and block
  *  comments, outside strings and template literals), so a commented-out copy satisfies none of them. L6 to L8 pin
  *  the code's shape, not its run-time behaviour.
@@ -88,9 +96,13 @@ const check = (label: string, ok: boolean, detail: string): void => {
 
 // Revision history per stanza: append a new entry (higher version, new hash) whenever a text changes, and raise the
 // stanza's optInVersion in default/ai_assistant_acks.conf to the same version.
-const HISTORY: { [stanza: string]: Array<{ version: number; sha256: string; note: string }> } = {
+// `earlier`: a wording that shipped under the same version before `sha256` replaced it (build 398).
+const HISTORY: { [stanza: string]: Array<{ version: number; sha256: string; note: string; earlier?: Array<{ sha256: string; note: string }> }> } = {
     'logserv-ai-assistant-tc': [
-        { version: 1, sha256: '53a68dbc4201a6915fe58240703203a41357a3295fd4f390169ae74deaf29254', note: 'build 99' },
+        { version: 1, sha256: '53a68dbc4201a6915fe58240703203a41357a3295fd4f390169ae74deaf29254',
+            note: 'session 034: the audit index renamed ai_assistant_audit, with no version bump',
+            earlier: [{ sha256: '010dde3ea4213ac73fbe44633f01fe97460af05025c4e24723e8fbd3c5b2d7ed',
+                note: 'build 99: named the index _ai_assistant_audit' }] },
         { version: 2, sha256: 'ade3a2d9bd54d6c695ac878129955aea7c47dcd54c941d91e66c8f50dc21052e',
             note: 'build 386: the audit index named logserv_ai_assistant_audit (or the one set in Settings)' },
     ],
@@ -123,6 +135,24 @@ const confVersion = (conf: string, stanza: string): number | null => {
     return found;
 };
 
+/** The `#   sha256 v<n> <hash>` comment lines of a stanza, in order (build 398). */
+const confHashes = (conf: string, stanza: string): string[] => {
+    let cur: string | null = null;
+    const out: string[] = [];
+    conf.split('\n').forEach((raw) => {
+        const line = raw.trim();
+        const h = /^\[([^\]]+)\]$/.exec(line);
+        if (h) {
+            cur = h[1];
+            return;
+        }
+        const m = /^#\s+sha256\s+(v\d+)\s+([0-9a-f]{64})\s*$/.exec(line);
+        if (m && cur === stanza) out.push(`${m[1]} ${m[2]}`);
+    });
+    return out;
+};
+const count = (s: string, re: RegExp): number => (s.match(re) || []).length;
+
 const conf = read(ACKS);
 const texts: { [stanza: string]: string } = {};
 TEXTS.forEach(({ stanza, file, constant }) => {
@@ -145,11 +175,22 @@ TEXTS.forEach(({ stanza, file, constant }) => {
     const versions = hist.map((h) => h.version);
     check(`L2 [${stanza}] revision versions rise strictly`,
         versions.every((x, i) => i === 0 || x > versions[i - 1]), JSON.stringify(versions));
-    check(`L2 [${stanza}] revision hashes are distinct`, new Set(hist.map((h) => h.sha256)).size === hist.length,
+    const allHashes = ([] as string[]).concat(...hist.map((h) => (h.earlier || []).map((e) => e.sha256).concat([h.sha256])));
+    check(`L2 [${stanza}] revision hashes are distinct`, new Set(allHashes).size === allHashes.length,
         'a repeated hash');
-    check(`L4 ${path.basename(file)} hashes and renders ${constant}`,
-        src.indexOf(`sha256Hex(${constant})`) !== -1 && new RegExp(`\\{${constant}\\}`).test(src),
+    // L4 (exact since build 398): one hash call and one render, neither on a comment line.
+    const onCode = (re: RegExp): number => src.split('\n').filter((l) => re.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l)
+        && l.indexOf('//') === -1).length;
+    check(`L4 ${path.basename(file)} hashes and renders ${constant}, once each`,
+        count(src, new RegExp(`sha256Hex\\(${constant}\\)`, 'g')) === 1 && onCode(new RegExp(`sha256Hex\\(${constant}\\)`)) === 1
+        && count(src, new RegExp(`\\{${constant}\\}`, 'g')) === 1 && onCode(new RegExp(`\\{${constant}\\}`)) === 1,
         'the hashed text and the shown text could differ');
+    // L9: the conf comment lists the same wordings (`#   sha256 v<version> <hash>`, in order).
+    const listed = confHashes(conf, stanza);
+    const expected = ([] as string[]).concat(...hist.map((h) => (h.earlier || []).map((e) => `v${h.version} ${e.sha256}`)
+        .concat([`v${h.version} ${h.sha256}`])));
+    check(`L9 [${stanza}] the conf comment lists the same wordings as the history`,
+        JSON.stringify(listed) === JSON.stringify(expected), `conf ${JSON.stringify(listed)} vs history ${JSON.stringify(expected)}`);
 });
 
 const fw = texts['logserv-ai-assistant-tc'] || '';
@@ -220,12 +261,19 @@ const codeOf = (src: string): string => {
     }
     return out;
 };
-const count = (s: string, re: RegExp): number => (s.match(re) || []).length;
-
 const en = texts['logserv-ai-assistant-enable-tc'] || '';
 check('L6 the enablement text says a No disables an AI Assistant that is already enabled',
     en.indexOf('if it is already enabled, be disabled') !== -1, 'the closing sentence no longer says so');
 const settingsSrc = read(SETTINGS);
+// Build 398 (the 392 audit's M1): each slice below starts at the first match in the raw file, so a commented-out copy
+// above the live code would be read instead. The page has exactly one of each.
+['const handleEnableChoice = async (', 'const handleForwarderChoice = async (', 'const handleRevert = (): void =>',
+    'const actuallySave = async (', 'const isEnableTcPending = (): boolean =>'].forEach((anchor) => {
+    check(`L8 the page has one \`${anchor}\``, settingsSrc.split(anchor).length - 1 === 1,
+        `${settingsSrc.split(anchor).length - 1} - a commented-out copy would be read instead of the code`);
+});
+check('L8 the page has one enablement dialog tag', count(settingsSrc, /<AiAssistantEnableAcceptanceModal\b/g) === 1,
+    `${count(settingsSrc, /<AiAssistantEnableAcceptanceModal\b/g)} - a commented-out copy above the live one would be read instead`);
 const hs = settingsSrc.indexOf('const handleEnableChoice = async (');
 const he = hs === -1 ? -1 : settingsSrc.indexOf('const handleForwarderChoice = async (', hs);
 const enableBody = hs === -1 || he === -1 ? '' : settingsSrc.slice(hs, he);
@@ -272,9 +320,12 @@ check('L6 a turn-off sets the page busy before it writes',
     /const off: AIConfigSettings = \{ \.\.\.saved, enabled: false \};\s*setBusy\(true\);\s*try \{\s*await writeAIConfig\(off\);/
         .test(enableCode),
     'setBusy(true) must come right before the turn-off write');
-check('L6 a failed turn-off releases the busy state before it returns, and sets nothing else',
-    count(writeCatch, /setBusy\(/g) === 1 && /\n\s*setBusy\(false\);\n/.test(writeCatch),
-    'the write catch must call setBusy(false), once and alone; without it the Save button stays at "Saving…"');
+check('L6 a failed turn-off releases the busy state, closes the dialog and shows the error, and does nothing else',
+    count(writeCatch, /setBusy\(/g) === 1 && /\n\s*setBusy\(false\);\n/.test(writeCatch)
+    && JSON.stringify(writeCatch.match(/\b(set[A-Z]\w*|on[A-Z]\w*|await|AuditWriter)\b/g) || [])
+        === JSON.stringify(['setBusy', 'setEnableModalOpen', 'setOpError']),
+    `the write catch must call setBusy(false), setEnableModalOpen(false) and setOpError(...) and nothing else (build 398); got ${
+        JSON.stringify(writeCatch.match(/\b(set[A-Z]\w*|on[A-Z]\w*|await|AuditWriter)\b/g) || [])}`);
 check('L6 a turn-off keeps the page busy until its No is recorded',
     iWr !== -1 && iAckC > iWr && enableCode.slice(iWr, iAckC).indexOf('setBusy(') === -1,
     'nothing may set or release the busy state between the turn-off write and the record');
@@ -339,6 +390,17 @@ const POSTED = /AuditWriter\.postOneOff\(acceptanceEvent\)/g;
 check('L8 each acknowledgement event is posted once',
     count(enableCode, POSTED) === 1 && count(forwarderCode, POSTED) === 1,
     `enablement ${count(enableCode, POSTED)}, forwarder ${count(forwarderCode, POSTED)}`);
+// Build 398 (the 392 audit's M2): no other post, and nothing changes the event between its literal and its post.
+check('L8 each handler posts nothing else',
+    count(enableCode, /postOneOff\(/g) === 1 && count(forwarderCode, /postOneOff\(/g) === 1,
+    `enablement ${count(enableCode, /postOneOff\(/g)}, forwarder ${count(forwarderCode, /postOneOff\(/g)} - a spread copy is a second post`);
+check('L8 neither handler changes its event after the literal',
+    [enableCode, forwarderCode].every((c) => !/\bacceptanceEvent\s*(\.|\[)/.test(c) && c.indexOf('Object.assign(') === -1
+        && c.indexOf('Object.defineProperty(') === -1),
+    'acceptanceEvent.x = ..., acceptanceEvent[...], Object.assign or Object.defineProperty is in a handler');
+check('L8 the enablement event is posted right after its literal',
+    /const acceptanceEvent: AiAssistantEnableAcceptanceEvent = \{\n[\s\S]*?\n\s*\};\n\s*void AuditWriter\.postOneOff\(acceptanceEvent\);/
+        .test(enableCode), 'a statement between the literal and its post');
 check('L8 each acknowledgement category appears once in the page',
     count(settingsSrc, /forwarder_disabled_acceptance/g) === 1
     && count(settingsSrc, /ai_assistant_enable_acceptance/g) === 1,

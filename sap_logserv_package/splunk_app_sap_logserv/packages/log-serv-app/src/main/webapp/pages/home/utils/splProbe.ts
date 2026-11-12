@@ -155,6 +155,9 @@ export interface SplProbe {
     cloudFilter?: CloudFilter;
     /** A host constraint found in the base/WHERE scope or a rollup `| search`. */
     hostFilter?: HostFilter;
+    /** Build 395 - the SIDs of the global SID filter, where it reached a rollup
+     *  as `| search (sap_sid="X" OR ...)`. */
+    sidFilter?: string[];
     /** Filters applied to rollup GRAIN dimensions (post-inputlookup
      *  `| search <dim>=…`), excluding the cloud and host splices. */
     grainFilters: string[];
@@ -376,6 +379,23 @@ const detectCloudFilter = (segments: string[], predicateScope: string): CloudFil
     const raw = predicateScope.match(/(^|[\s(])cloud_provider\s*=\s*"([^"]+)"/);
     if (raw) return { form: 'raw', provider: raw[2] };
     return undefined;
+};
+
+/**
+ * Detect the global SID filter's rollup splice (build 395): the whole `| search`
+ * body is a parenthesised OR of sap_sid terms, `queryFilters.sapSidTerm`. Exact on
+ * purpose, so a panel's own `| search sap_sid=...` stays a grain filter.
+ */
+const detectSidFilter = (body: string): string[] | undefined => {
+    if (!/^\(\s*sap_sid="[^"]*"(?:\s+OR\s+sap_sid="[^"]*")*\s*\)$/.test(body.trim())) return undefined;
+    const sids: string[] = [];
+    const re = /sap_sid="([^"]*)"/g;
+    let m = re.exec(body);
+    while (m) {
+        if (m[1].indexOf('*') === -1 && sids.indexOf(m[1]) === -1) sids.push(m[1]);
+        m = re.exec(body);
+    }
+    return sids;
 };
 
 /**
@@ -1168,6 +1188,11 @@ const analyze = (splRaw: string): SplProbe => {
             if (commandOf(t) !== 'search') continue;
             const body = t.replace(/^search\s+/i, '');
             if (/^cloud_provider\s*=/.test(body)) continue;
+            const sf = detectSidFilter(body);
+            if (sf) {
+                probe.sidFilter = sf;
+                continue;
+            }
             const hf = detectHostFilter(body, body);
             if (hf && !probe.hostFilter) {
                 probe.hostFilter = hf;

@@ -28,7 +28,7 @@ The screenshot at the top of this page shows this tab.
 - **Active Sourcetypes** -- Count of distinct sourcetypes seen in the time range
 - **Events / Day (Avg)** -- Mean daily event count over the selected range (days with zero events count in the denominator)
 - **Events Over Time by Host** -- Multi-line chart of per-host event volume; the bucket size adapts to the selected range and is printed in the panel subtitle alongside the host-selection summary
-- **Sourcetype Summary** -- Table of every sourcetype in range with event count, distinct host count, and last-seen time. Click a row to open the Search app pre-filtered to that sourcetype.
+- **Sourcetype Summary** -- Table of every sourcetype in range with event count, distinct host count, and last-seen time. Click a row to open Splunk's search page pre-filtered to that sourcetype.
 - **Host Latest Activity** -- Table showing each host's last event time, event count, and sourcetypes (click a row to drill down to Host Details)
 
 ### :material-circle-box:{ .taiconcolor } Sourcetype Mapping Tab

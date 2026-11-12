@@ -2,6 +2,7 @@ import { useSearch, UseSearchOptions, UseSearchResult } from './useSearch';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { shouldUseRawSource } from '../utils/hybridRouting';
 import { recordRawTwin } from '../utils/rawTwin';
+import { isFilterPending, isFilterUnavailable } from '../utils/queryFilters';
 
 /**
  * Hybrid rollup/raw read routing (session 085).
@@ -36,6 +37,13 @@ export const useRoutedQuery = (
     const { timeRange } = useTimeRange();
     const effEarliest = earliest ?? timeRange.earliest;
     const effLatest = latest ?? timeRange.latest;
+    // Build 395 - a rollup read that cannot honour the SID or Host filter takes
+    // the raw arm, which can: every raw read takes the host term.
+    if (isFilterUnavailable(cached)) return raw;
+    // Build 397 - the check that decides between the arms is still running. A range
+    // the raw arm serves anyway does not need its answer; `useSearch` waits on the
+    // marker otherwise.
+    if (isFilterPending(cached)) return shouldUseRawSource(effEarliest, effLatest) ? raw : cached;
     // §17.1 — the raw-twin channel for the diagnostic's check 21. Recording on
     // every evaluation is deliberate: the map re-inserts (refreshing eviction
     // order) and both arms here already carry the cloud splice, so the key is

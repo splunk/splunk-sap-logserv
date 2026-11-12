@@ -10,7 +10,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { useTimeRange } from '../state/TimeRangeProvider';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
 import { applySpanTokens, chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
@@ -77,7 +77,7 @@ const DP = `| inputlookup ${ROLL} where metric="dp" ${RANGE}`;
 const ICM = `| inputlookup ${ROLL} where metric="icm" ${RANGE}`;
 
 // Base queries with NO cloud-provider filter. The component wraps this in a
-// useMemo over mapCloudProviderQueries (session 082) so the global picker
+// useMemo over mapQueryFilters (session 082) so the global picker
 // filters every panel — cloud_provider is injected after the RANGE for rollup
 // reads and after the index macro for the RAW Recent Errors listing.
 const Q_BASE = {
@@ -196,11 +196,11 @@ const WorkProcessPerformance: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
 
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const sids = useFirstRowFieldHybrid(Q.kpiSids, QRAW.kpiSids, 'sids');
     const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
@@ -227,7 +227,7 @@ const WorkProcessPerformance: React.FC = () => {
         // Since Host Details accepts ?host= only (per session 027 plan), fall
         // through to splunk-search for SID-level investigation.
         const spl = `\`sap_logserv_idx_macro\` ${ST_WP} sap_sid="${splQuote(sid)}" | sort -_time | table _time host wp_function wp_category_name`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goRecentErrorRow = (row: Record<string, unknown>): void => {
         const host = String(row.host ?? '');
@@ -238,7 +238,7 @@ const WorkProcessPerformance: React.FC = () => {
         }
         if (!sid) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST_DP} sap_sid="${splQuote(sid)}" dp_severity="ERROR" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
 
     return (

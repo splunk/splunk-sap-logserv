@@ -1,4 +1,5 @@
 import { dashboards } from '../routes/dashboardRegistry';
+import { JOB_INSPECTOR_PATH, SEARCH_PAGE_PATH } from './searchPage';
 
 /**
  * Drilldown URL builders (build 157 / session 027 task 4).
@@ -10,23 +11,28 @@ import { dashboards } from '../routes/dashboardRegistry';
  *     `?host=<name>` so the page mounts pre-filtered to that host. The
  *     React HostDetails dashboard already reads `?host=` via
  *     `useSearchParams()`.
- *   - `buildSplunkSearchUrl(spl, earliest, latest)` → Splunk's stock Search
- *     app with the SPL pre-populated. Used for cross-cutting drills (e.g.,
- *     Environment Health's "Total Errors" KPI runs an 11-sourcetype OR
- *     across the whole estate; no single dashboard owns it).
+ *   - `buildSplunkSearchUrl(spl, earliest, latest)` → Splunk's search page,
+ *     opened inside this app, with the SPL pre-populated. Used for
+ *     cross-cutting drills (e.g., Environment Health's "Total Errors" KPI
+ *     runs an 11-sourcetype OR across the whole estate; no single dashboard
+ *     owns it).
  *
  * Time range preservation: every drilldown URL embeds `?earliest=` and
  * `?latest=` query params. When opened in a new tab, the React
  * `TimeRangeProvider` parses the hash query string on mount and hydrates
  * its initial state from those values (overriding the default
- * `-30d@d` / `now`). For Splunk's Search app, those names are the
+ * `-30d@d` / `now`). For Splunk's search page, those names are the
  * standard params Splunk's own Search UI uses.
  *
  * URL pattern for in-app dashboard (HashRouter):
  *   `/en-US/app/splunk_app_sap_logserv/home#<route>?earliest=...&latest=...`
  *
- * URL pattern for Splunk Search app:
- *   `/en-US/app/search/search?q=search%20<encoded-spl>&earliest=...&latest=...`
+ * URL pattern for Splunk's search page (build 399):
+ *   `/en-US/app/splunk_app_sap_logserv/search?q=search%20<encoded-spl>&earliest=...&latest=...`
+ *
+ * Build 399: the search page and the Job Inspector open in this app's own
+ * namespace, never in Splunk's `search` app (paths in ./searchPage.ts, which
+ * says why). Pinned by searchLinks.consistency-test.ts.
  *
  * `openInNewTab` is a small wrapper around `window.open(url, '_blank',
  * 'noopener,noreferrer')` so callers don't have to remember the security
@@ -83,7 +89,7 @@ export const buildHostDetailsUrl = (
     return withTimeRange(base, earliest, latest);
 };
 
-/** Build a Splunk Search app URL with the given SPL pre-populated. The
+/** Build a Splunk search-page URL with the given SPL pre-populated. The
  *  caller's SPL string is wrapped with a leading `search ` so it dispatches
  *  as a normal events search; if the SPL already has its own root command,
  *  that's typically harmless for `search` (it gets prepended verbatim). */
@@ -92,15 +98,15 @@ export const buildSplunkSearchUrl = (
     earliest?: string,
     latest?: string,
 ): string => {
-    // Splunk's Search app ignores duplicated `search` commands — `search search ...`
+    // Splunk's search page ignores duplicated `search` commands — `search search ...`
     // is normalized internally. We always prepend so callers can pass either a
     // bare expression or one starting with a generating command.
     const q = `search ${spl}`;
-    const base = `/en-US/app/search/search?q=${encodeURIComponent(q)}`;
+    const base = `${SEARCH_PAGE_PATH}?q=${encodeURIComponent(q)}`;
     return withTimeRange(base, earliest, latest);
 };
 
-/** Build a Splunk Search app URL for a panel's EXACT dispatched SPL (build 234,
+/** Build a Splunk search-page URL for a panel's EXACT dispatched SPL (build 234,
  *  panel toolbar "Open in Search"). Unlike buildSplunkSearchUrl this does NOT
  *  blindly prepend `search ` — a panel query may start with a generating
  *  command (`| tstats …`, `| inputlookup …`), where `search | tstats` is
@@ -113,15 +119,16 @@ export const buildOpenInSearchUrl = (
 ): string => {
     const trimmed = spl.trim();
     const q = /^(\||search\b)/i.test(trimmed) ? trimmed : `search ${trimmed}`;
-    const base = `/en-US/app/search/search?q=${encodeURIComponent(q)}`;
+    const base = `${SEARCH_PAGE_PATH}?q=${encodeURIComponent(q)}`;
     return withTimeRange(base, earliest, latest);
 };
 
 /** Build a Splunk Job Inspector URL for a dispatched search-job SID (build 234,
  *  panel toolbar "Inspect"). Opens Splunk's native job inspector (execution
- *  costs / search.log / per-command timing) in a new tab. */
+ *  costs / search.log / per-command timing) in a new tab, in this app's
+ *  namespace since build 399 (it was the `search` app's). */
 export const buildJobInspectorUrl = (sid: string): string =>
-    `/en-US/manager/search/job_inspector?sid=${encodeURIComponent(sid)}`;
+    `${JOB_INSPECTOR_PATH}?sid=${encodeURIComponent(sid)}`;
 
 /** Build a results-export URL for a dispatched SID (build 234, panel toolbar
  *  "Download"). Hits the REST results endpoint through Splunk Web's proxy;

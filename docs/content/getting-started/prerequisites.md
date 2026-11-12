@@ -36,9 +36,9 @@ From SAP LogServ support:
 
 In your own AWS account:
 
-- A **Secondary AWS account**, separate from the SAP ECS account, in which you can deploy CloudFormation stacks and create IAM users and roles. Deploy the stack in the Region of SAP's bucket and queue.
+- A **Secondary AWS account**, separate from the SAP ECS account, in which you can deploy CloudFormation stacks and create IAM roles, plus an IAM user unless Connect uses an [EC2 instance role](../install-setup/aws-remote-s3-connect-instance-role.md). Deploy the stack in the Region of SAP's bucket and queue.
 - **Filter and Copy:** an S3 bucket for the Lambda code, with a name of your own (bucket names are global), in the stack's Region.
-- **The IAM user's access key** that the setup guides create: plan how you will rotate it (Rotate the Access Key in the [Connect](../install-setup/aws-remote-s3-connect-guide.md#rotate-the-access-key), [Filter](../install-setup/aws-remote-s3-filter-guide.md#rotate-the-access-key) or [Copy](../install-setup/aws-remote-s3-copy-guide.md#rotate-the-access-key) guide).
+- **The IAM user's access key** that the setup guides create: plan how you will rotate it (Rotate the Access Key in the [Connect](../install-setup/aws-remote-s3-connect-guide.md#rotate-the-access-key), [Filter](../install-setup/aws-remote-s3-filter-guide.md#rotate-the-access-key) or [Copy](../install-setup/aws-remote-s3-copy-guide.md#rotate-the-access-key) guide). With an [EC2 instance role](../install-setup/aws-remote-s3-connect-instance-role.md) under Connect, there is no user and no key to rotate.
 
 #### :material-crop-square:{ .taiconcolor } SAP ECS on Azure { #sap-ecs-running-in-microsoft-azure }
 
@@ -87,13 +87,13 @@ See [Distribute the Data TA to Heavy Forwarders](../install-setup/distribute-dat
     - **Azure:** the LogServ Azure add-on; see [Install the Azure add-on](../install-setup/azure-setup.md#install-the-azure-add-on). Run one input for each queue: each input keeps its own record of what it has read, so a second input on the same queue can index a redelivered message twice.
     - **Google Cloud:** the LogServ GCP add-on; see the [GCP Setup Guide](../install-setup/gcp-setup.md). Run one input for each subscription, for the same reason.
 - **Network egress** (HTTPS, port 443):
-    - AWS: the AWS STS endpoint, and the SQS and S3 endpoints of the Region that holds SAP's queue and bucket.
+    - AWS: the AWS STS endpoint, and the SQS and S3 endpoints of the Region that holds SAP's queue and bucket. The Splunk Add-on for AWS calls STS with a stored key and with an instance role alike, so STS stays on this list.
     - Azure: `<account>.queue.core.windows.net`, and the blob endpoint each notification names, normally `<account>.blob.core.windows.net`.
     - Google Cloud: `oauth2.googleapis.com`, `pubsub.googleapis.com` and `storage.googleapis.com`.
 - **Outbound proxy:**
     - The Splunk Add-on for AWS has its own setting, on its **Configuration > Proxy** tab (checked in version 8.3.1).
     - The LogServ Azure and GCP add-ons have no proxy setting. They use Python's standard HTTP client, which takes its proxy from `HTTPS_PROXY` in splunkd's environment. This comes from reading their code and has not been tested in the lab.
-    - Whenever splunkd runs with `HTTP_PROXY` or `HTTPS_PROXY` set, also set `NO_PROXY=127.0.0.1,localhost` (plus the host name in `mgmtHostPort`, if it is not a loopback address). Otherwise calls to splunkd's own management port, with their session key, go to the proxy.
+    - Whenever splunkd runs with `HTTP_PROXY` or `HTTPS_PROXY` set, also set `NO_PROXY=127.0.0.1,localhost` (plus the host name in `mgmtHostPort`, if it is not a loopback address). Otherwise calls to splunkd's own management port, with their session key, go to the proxy. On a heavy forwarder that uses an AWS [EC2 instance role](../install-setup/aws-remote-s3-connect-instance-role.md), add `169.254.169.254` as well, whichever proxy variable is set, `ALL_PROXY` included, so that the add-on's calls to the instance metadata service do not go to the proxy either.
 - **The `admin_all_objects` capability**, on any platform, for creating, editing or deleting an Azure or GCP input, which includes entering a new SAS or key: the add-ons save the input through Splunk's REST interface as the signed-in user, and Splunk allows that write only with this capability. The **Create backfill** button of the AWS S3 Direct screen needs it too; without it the screen only generates the configuration for an administrator to apply. Find a role that holds it on each instance where you will do this.
 - **Capacity:** the Data TA's work per event decides how many heavy forwarders your volume needs; see [Capacity Planning and First Start](capacity-planning.md).
 

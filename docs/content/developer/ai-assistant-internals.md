@@ -376,7 +376,7 @@ All schemas live at `components/ai/audit/auditTypes.ts`.
 
 ### Splunk reserved-field gotcha
 
-The `category` field on these events is a Splunk reserved name: Splunk's automatic event classification fills it (with `unknown` for this sourcetype), and `spath` does NOT overwrite it. The viewer's SPL therefore runs `| eval category=json_extract(_raw, "category")` after `spath`. It re-derives `user` the same way, `| eval user=json_extract(_raw, "user")`: when the base search filters on `user`, Splunk extracts the field to apply the filter and `spath` adds the same value again, so without the `eval` the field has two values and a name shows twice. Replicate both in custom queries.
+The `category` field on these events is a Splunk reserved name: Splunk's automatic event classification fills it (with `unknown` for this sourcetype), and `spath` does NOT overwrite it. The viewer's SPL therefore runs `| eval category=json_extract(_raw, "category")` after `spath`. It re-derives `user` the same way, `| eval user=json_extract(_raw, "user")`: Splunk extracts on its own each JSON field a search names (the base search names `user` when it filters on it), and `spath` adds the same value again, so without the `eval` the field has two values and a name shows twice. In custom queries, take every field you filter, count, sum or group by with `json_extract` ([Audit Log](../ai-assistant/audit-log.md#querying-the-audit-index-directly)).
 
 ---
 
@@ -412,7 +412,7 @@ interface IntentMapPrompt {
 
 ### Splunk risky-command safeguard
 
-Splunk Web's Search app asks for confirmation before it runs a search that arrives in a link (a URL to `/app/search/search?q=...`, which is what the **↗ Run SPL** chips open) and contains a command Splunk marks as risky. Splunk's SPL-safeguards documentation for 9.4 lists `collect`, `delete`, `dump`, `map`, `mcollect`, `meventcollect`, `outputcsv`, `outputlookup`, `run`, `runshellscript`, `script`, `sendalert`, `sendemail` and `tscollect`. An app can mark further commands with `is_risky = true` in its `commands.conf`; the comments in `utils/splGuard.ts` record that the search app does this for `createrss`. The list can differ in another Splunk version and grow with the apps installed, so check it on the version you ship to.
+Splunk Web's search page asks for confirmation before it runs a search that arrives in a link (a URL to `/app/splunk_app_sap_logserv/search?q=...`, which is what the **↗ Run SPL** chips open) and contains a command Splunk marks as risky. Splunk's SPL-safeguards documentation for 9.4 lists `collect`, `delete`, `dump`, `map`, `mcollect`, `meventcollect`, `outputcsv`, `outputlookup`, `run`, `runshellscript`, `script`, `sendalert`, `sendemail` and `tscollect`. An app can mark further commands with `is_risky = true` in its `commands.conf`; the comments in `utils/splGuard.ts` record that the search app does this for `createrss`. The list can differ in another Splunk version and grow with the apps installed, so check it on the version you ship to.
 
 Scan all SPL — including `nextSteps.spl` deep-dive strings — for these commands before shipping. Every command named above is also in `FORBIDDEN_SPL_COMMANDS` in `utils/splGuard.ts`, so a scan against that list covers them. Rewrite `map`-style cross-row dispatches to first-class subsearch syntax: `[ search ... | top 1 X | fields X ]`.
 

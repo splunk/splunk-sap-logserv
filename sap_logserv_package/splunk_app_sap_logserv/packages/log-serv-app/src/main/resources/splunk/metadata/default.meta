@@ -65,6 +65,12 @@ export = system
 access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
+# SID and host list (build 395). Every user's SID and Host pickers read it; only
+# its scheduled searches and the Settings Backfill write it.
+[collections/logserv_sid_hosts]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
+export = system
+
 # IP-node enrichment (session 112 / build 329). Read by the topology view's
 # authenticated session at render time (hostname/user lines on IP partner
 # squares + Overview facts rows); written by the
@@ -282,3 +288,10 @@ export = system
 [collections/logserv_diag_platform_snapshot]
 access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
+
+# Build 399: the App's own search page, the target of every Open in Search link,
+# Splunk Search drilldown and AI Assistant "Run SPL" chip, so they work where the
+# Search app is disabled. It is Splunk's standard search view and is
+# not exported, so it changes nothing outside this app.
+[views/search]
+export = none

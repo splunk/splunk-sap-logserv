@@ -11,7 +11,10 @@
  * What it pins:
  *  - U1 / U2: with a user filter, the base search filters on user, and after
  *    spath `eval user=json_extract(_raw, "user")` replaces the field;
- *  - U3: the same re-derivation runs without the filter;
+ *  - U3: the same re-derivation runs without the filter; U3b: with no filter
+ *    the base search has no user clause;
+ *  (since build 398, U2 to U4 check that each re-derivation comes after the
+ *  LAST spath: a second spath would add the value again)
  *  - U4: category is still re-derived after spath, and the category filter
  *    still composes with the user filter;
  *  - U5: a double quote or backslash typed into the filter is escaped;
@@ -60,20 +63,20 @@ const CATEGORY_EVAL = 'eval category=json_extract(_raw, "category")';
 
 const withUser = stages(aq.buildSpl(filters({ userContains: 'admin' })));
 check('U1 the base search filters on user', withUser[0].indexOf('user="*admin*"') !== -1, withUser[0]);
-const spathAt = withUser.indexOf('spath');
-const userEvalAt = withUser.indexOf(USER_EVAL);
-check('U2 user is re-derived from _raw after spath (filter set)',
+const spathAt = withUser.lastIndexOf('spath');
+const userEvalAt = withUser.lastIndexOf(USER_EVAL);
+check('U2 user is re-derived from _raw after the last spath (filter set)',
     spathAt !== -1 && userEvalAt > spathAt, `stages: ${JSON.stringify(withUser)}`);
 
 const noFilter = stages(aq.buildSpl(filters({})));
-check('U3 user is re-derived from _raw after spath (no filter)',
-    noFilter.indexOf('spath') !== -1 && noFilter.indexOf(USER_EVAL) > noFilter.indexOf('spath'),
+check('U3 user is re-derived from _raw after the last spath (no filter)',
+    noFilter.lastIndexOf('spath') !== -1 && noFilter.lastIndexOf(USER_EVAL) > noFilter.lastIndexOf('spath'),
     `stages: ${JSON.stringify(noFilter)}`);
 check('U3b no filter puts no user clause in the base search', noFilter[0].indexOf('user=') === -1, noFilter[0]);
 
 const both = stages(aq.buildSpl(filters({ userContains: 'admin', categories: ['local_only', 'vendor_tier1'] })));
-check('U4 category is re-derived from _raw after spath',
-    both.indexOf(CATEGORY_EVAL) > both.indexOf('spath') && both.indexOf('spath') !== -1,
+check('U4 category is re-derived from _raw after the last spath',
+    both.lastIndexOf(CATEGORY_EVAL) > both.lastIndexOf('spath') && both.lastIndexOf('spath') !== -1,
     `stages: ${JSON.stringify(both)}`);
 check('U4b the category and user filters compose in the base search',
     both[0].indexOf('category IN ("local_only","vendor_tier1")') !== -1 && both[0].indexOf('user="*admin*"') !== -1,

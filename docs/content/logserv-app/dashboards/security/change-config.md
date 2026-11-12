@@ -66,7 +66,7 @@ Compliance conversations (SOX, PCI, internal change management) all require evid
 
     - **Summary-backed panels** — the KPIs, sparklines, activity chart, category donut and operator
       table read the `logserv_compliance_rollup` KV Store collection: metric `main` carries an hourly
-      grain over (change source, category, operator), and metrics `userchg`, `permgrant` and
+      grain over (change source, category, operator, host), and metrics `userchg`, `permgrant` and
       `password` pre-compute their KPIs' exact filters per hour. After-hours is **not stored**: the
       After-Hours KPI and sparkline derive it when you view the dashboard, from each hourly bucket, in
       your time zone — the same rule the raw After-Hours table applies to each event, so the two agree.

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useAIAssistantContext, DisplayMessage } from '../state/AIAssistantProvider';
+import { useOptionalTimeRange } from '../state/TimeRangeProvider';
 import {
     Message,
     markVisible,
@@ -35,6 +36,7 @@ import { analyzeUserPrompt } from '../utils/jailbreakPatterns';
 import { estimateTurnCostUsd } from '../utils/vendorCost';
 import { chatTagKey, rotateChatTagKey, redactValueIfPII, PiiRedactionOptions } from '../utils/piiRedaction';
 import { OPERATOR_PARSER_UNAVAILABLE } from '../utils/splGuard';
+import { SEARCH_PAGE_PATH } from '../utils/searchPage';
 import { ChartPalette } from '../styles/chartPalettes';
 import { TEMPLATES_ONLY } from '../buildFlags';
 import intentMap from '../../../../resources/splunk/default/data/mcp/logserv_intent_map.json';
@@ -423,22 +425,22 @@ const ALLOWED_SAVED_SEARCHES: ReadonlySet<string> = buildAllowedSavedSearches(
 );
 
 /**
- * Build a Splunk Search-app URL with the given SPL pre-populated and
+ * Build a Splunk search-page URL with the given SPL pre-populated and
  * the dispatch's earliestTime/latestTime applied. Opens in a new tab
  * via `target="_blank"` at the chat-render layer.
  *
- * URL pattern: /en-US/app/search/search?q=search%20<encoded_spl>&earliest=...&latest=...
+ * URL pattern: /en-US/app/splunk_app_sap_logserv/search?q=search%20<encoded_spl>&earliest=...&latest=...
  *
- * The "search" app is Splunk's universal search workspace, available
- * on every install — works regardless of whether the user is currently
- * inside the LogServ app or a different one. Build 141.
+ * Build 141 opened Splunk's `search` app here. Build 399 opens the search
+ * page inside this app instead (SEARCH_PAGE_PATH in utils/searchPage),
+ * because some sites disable the Search app and every link then failed.
  */
 const buildSplunkSearchUrl = (spl: string, earliest?: string, latest?: string): string => {
     const params = new URLSearchParams();
     params.set('q', `search ${spl}`);
     if (earliest) params.set('earliest', earliest);
     if (latest) params.set('latest', latest);
-    return `/en-US/app/search/search?${params.toString()}`;
+    return `${SEARCH_PAGE_PATH}?${params.toString()}`;
 };
 
 /**
@@ -1119,6 +1121,11 @@ const MAX_TOP_N = 50;
 export const useAIAssistant = (opts: UseAIAssistantOptions = {}): UseAIAssistantResult => {
     const ctx = useAIAssistantContext();
     const abortRef = useRef<AbortController | null>(null);
+    // Build 398 - the range selected at the top of the page, read when a tool call is made: an
+    // ad-hoc query the model sends with no time range runs over it (the tool loop below).
+    const pageTimeRange = useOptionalTimeRange()?.timeRange;
+    const pageTimeRangeRef = useRef(pageTimeRange);
+    pageTimeRangeRef.current = pageTimeRange;
     const mcpAvailable = opts.mcpAvailable !== false;
     const tier: 0 | 1 | 2 = opts.tier ?? 1;
     const rateLimitPerHour: number =
@@ -1607,10 +1614,23 @@ export const useAIAssistant = (opts: UseAIAssistantOptions = {}): UseAIAssistant
                                     : savedSearchName
                                         ? SAVED_SEARCH_SPL[savedSearchName]
                                         : undefined;
+                            // Build 398 - an ad-hoc query the model sent with no time range runs
+                            // over the range selected at the top of the page, as the tool's
+                            // description says: Splunk MCP Server 2.0.0 searches only the last 6
+                            // hours without one (1.x: 24). Only when the model gave neither time;
+                            // an earliest= inside the SPL still takes precedence in Splunk.
+                            const pageRange = pageTimeRangeRef.current;
+                            const defaultRange: { earliest: string; latest: string } | null =
+                                toolName === 'splunk_run_query'
+                                && typeof parsedArgs.earliest_time !== 'string'
+                                && typeof parsedArgs.latest_time !== 'string'
+                                && pageRange
+                                    ? { earliest: pageRange.earliest, latest: pageRange.latest }
+                                    : null;
                             const tileEarliest: string | undefined =
-                                typeof parsedArgs.earliest_time === 'string' ? parsedArgs.earliest_time : undefined;
+                                typeof parsedArgs.earliest_time === 'string' ? parsedArgs.earliest_time : defaultRange ? defaultRange.earliest : undefined;
                             const tileLatest: string | undefined =
-                                typeof parsedArgs.latest_time === 'string' ? parsedArgs.latest_time : undefined;
+                                typeof parsedArgs.latest_time === 'string' ? parsedArgs.latest_time : defaultRange ? defaultRange.latest : undefined;
                             const topN = clampTopN(parsedArgs.top_n);
                             // Strip the UI hints before passing to MCP so
                             // the saved-search dispatcher doesn't see
@@ -1618,6 +1638,10 @@ export const useAIAssistant = (opts: UseAIAssistantOptions = {}): UseAIAssistant
                             const mcpArgs: Record<string, unknown> = { ...parsedArgs };
                             delete mcpArgs.render_hint;
                             delete mcpArgs.top_n;
+                            if (defaultRange) {
+                                mcpArgs.earliest_time = defaultRange.earliest;
+                                mcpArgs.latest_time = defaultRange.latest;
+                            }
 
                             // UI: tool_call card (chat) — surfaces the
                             // SPL/args about to run. For saved searches we

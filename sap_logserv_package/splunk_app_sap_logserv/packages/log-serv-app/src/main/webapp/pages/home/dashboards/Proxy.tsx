@@ -8,7 +8,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -219,11 +219,11 @@ const Proxy: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters('proxy');
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 085/086); same cloud mapping
     // so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowField(Q.kpiTotal, 'count');
     const bandwidth = useFirstRowFieldHybrid(Q.kpiBandwidth, QRAW.kpiBandwidth, 'total');
     const denied = useFirstRowFieldHybrid(Q.kpiDenied, QRAW.kpiDenied, 'count');
@@ -248,7 +248,7 @@ const Proxy: React.FC = () => {
         const dom = String(row.Domain ?? '');
         if (!dom) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST} url_domain="${splQuote(dom)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goClientRow = (row: Record<string, unknown>): void => {
         const ip = String(row['Client IP'] ?? '');
@@ -257,7 +257,7 @@ const Proxy: React.FC = () => {
     };
 
     return (
-        <DashboardLayout
+        <DashboardLayout hostFilterService="proxy"
             category="PLATFORM"
             title="Proxy Analytics"
             subtitle="Squid proxy traffic — request volume, status codes, top domains, and bandwidth-by-domain trends"

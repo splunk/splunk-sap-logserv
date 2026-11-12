@@ -67,7 +67,7 @@ A free-form question adds the vendor loop around the same MCP dispatch:
 
 When a search fails, the vendor is told only the HTTP status and a fixed error class, never Splunk's error text; the full error shows in the tile. See [Privacy Tiers](privacy-tiers.md#failed-tool-calls-every-tier).
 
-Every saved-search dispatch produces a tool-result tile in the right pane (table / chart / KPI / pie based on the prompt's `renderHint`). Drill-down chips (`↗ <Dashboard name>`, `↗ Run SPL`) on each tile connect the conversation back into the dashboards or Splunk's Search app — see [Drill-down Chips](drill-down-chips.md).
+Every saved-search dispatch produces a tool-result tile in the right pane (table / chart / KPI / pie based on the prompt's `renderHint`). Drill-down chips (`↗ <Dashboard name>`, `↗ Run SPL`) on each tile connect the conversation back into the dashboards or Splunk's search page — see [Drill-down Chips](drill-down-chips.md).
 
 ## :material-circle-box:{ .taiconcolor } Key Capabilities
 
@@ -75,7 +75,7 @@ Every saved-search dispatch produces a tool-result tile in the right pane (table
 
 - **The predefined-prompt catalog** in three packs (SAP Basis / Security / Operations) plus a context-aware **Dashboard Focused** tab that shows the prompts relevant to the dashboard you have open. Many prompts read the same KV Store rollups the dashboards use, so they stay fast at any data volume. See [Predefined Prompts](predefined-prompts.md).
 - **Result tiles + guidance cards** — every dispatch renders the actual data (table / chart / KPI / pie) plus a static "How to read this result" interpretation and suggested next steps from the intent map.
-- **[Drill-down chips](drill-down-chips.md)** — a `↗ <Dashboard name>` chip per related dashboard, which opens that dashboard in a new tab at the App's default time range (Last 30 days), and `↗ Run SPL` on every tile, which opens the search in Splunk's Search app with the dispatch's exact time window.
+- **[Drill-down chips](drill-down-chips.md)** — a `↗ <Dashboard name>` chip per related dashboard, which opens that dashboard in a new tab at the App's default time range (Last 30 days), and `↗ Run SPL` on every tile, which opens the search on Splunk's search page, inside the LogServ App, with the dispatch's exact time window.
 - **[Audit log](audit-log.md)** — every predefined-prompt dispatch (and every admin acknowledgement) lands in a dedicated `logserv_ai_assistant_audit` index, with an in-app browser and an optional [HEC forwarder](audit-log.md#hec-forwarder) for tamper-evidence. Writing it needs Splunk's `edit_tcp` or `edit_log_alert_event` capability, which by default `admin` and `power` hold and `user` does not ([who can write audit events](audit-log.md#who-can-write-audit-events)).
 - **[Application Settings](settings.md)** — the admin page (General / Provider Credentials / Splunk MCP / Audit Log sub-tabs), including the MCP request timeout and the audit-forwarder configuration.
 

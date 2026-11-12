@@ -6,6 +6,7 @@ import {
     SEARCH_EDGE_ERRORS,
 } from '../topology/searches';
 import { sanitizeEdgeIds } from '../topology/edgeIds';
+import { edgeActivitySeries } from '../topology/types';
 import type { EdgeActivityPoint, TopologyEdge } from '../topology/types';
 
 /**
@@ -54,7 +55,7 @@ interface ErrorRow {
 }
 
 /** Re-exported from topology/types so existing importers keep working; the
- *  series itself now rides on TopologyEdge (build 321). */
+ *  series itself is built from TopologyEdge.activity (build 396). */
 export type { EdgeActivityPoint };
 
 export interface EdgeOperationRow {
@@ -177,7 +178,7 @@ export const useEdgeData = (edge: TopologyEdge | null, refreshNonce = 0): UseEdg
         /* Activity rides on the edge itself, so it is available even when the
          * SPL reads cannot run - it is derived from the very rows that
          * produced the edge's headline totals. */
-        const activity = Array.isArray(edge.activity) ? edge.activity : null;
+        const activity = edge.activity ? edgeActivitySeries(edge.activity) : null;
         if (!canQuery) {
             return {
                 ...EMPTY,

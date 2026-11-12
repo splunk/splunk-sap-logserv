@@ -254,8 +254,8 @@ const edge = (source: string, target: string, callCount: number, direction = 'cl
 
 /* p3 is fed BEFORE p2 deliberately. Array.prototype.sort is stable and the
  * Map preserves insertion order, so a fixture in already-correct order would
- * satisfy C8 with no tie-break at all. Group order derives from the KV fetch,
- * which issues no sort — and the wedge colour is assigned by index, so two
+ * satisfy C8 with no tie-break at all. Group order derives from the KV read,
+ * which sorts on bucket_ts only — and the wedge colour is assigned by index, so two
  * equal-count partners swapping re-colours the donut between refreshes. */
 const INCOMING = [edge('p1', SID_A, 100), edge('p3', SID_A, 50), edge('p2', SID_A, 50),
     edge(TENANT, SID_A, 9, 'bidi', 'hana_tenant')];

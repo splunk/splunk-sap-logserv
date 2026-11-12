@@ -138,10 +138,11 @@ export const buildSpl = (filters: AuditQueryFilters): string => {
     }
     // `spath` parses the JSON in `_raw` and projects every leaf field
     // into a column. Required because the audit sourcetype
-    // `logserv:ai_assistant:audit` doesn't have `KV_MODE=json` set in
-    // props.conf — without spath the search result only carries
-    // `_time` + `_raw` + Splunk metadata, leaving `category`, `user`,
-    // and the per-category fields invisible to the JSON renderer.
+    // `logserv:ai_assistant:audit` has no props.conf stanza: Splunk's
+    // automatic JSON extraction gives only the fields a search names, and
+    // the JSON renderer needs every field. A field the search names comes
+    // back from both, with two values (build 398, measured: see `user`
+    // below and the Audit Log docs page).
     //
     // The follow-up `eval category=json_extract(_raw,"category")` is a
     // workaround for a Splunk reserved-field collision: `category` is

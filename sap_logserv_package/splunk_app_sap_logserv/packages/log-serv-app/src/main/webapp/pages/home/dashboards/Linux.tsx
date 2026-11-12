@@ -9,7 +9,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -79,7 +79,7 @@ const PanelGrid3 = styled.div`
  * [logserv_linux_aggregate] (one-time [logserv_linux_backfill]). 0 RAW panels.
  *
  * 8 metrics (design adversarially reviewed pre-build; verdict: ship). `total`
- * (sourcetype, host) over ST_ALL — kpiTotal/kpiHosts + sparks + volumeByType
+ * (sourcetype, and host since build 397) over ST_ALL — kpiTotal + sparks + volumeByType
  * (fwTimeline read it via sourcetype="linux_secure" until build 374). `fw`
  * (fw_action/src/dst/dpt/proto/host over linux_secure, rex from _raw) — IDENTICAL
  * shape to the Network Perimeter `fw` metric; serves kpiFwDrops (fw_action=IN_DROP),
@@ -102,10 +102,10 @@ const PanelGrid3 = styled.div`
 const ROLL = 'logserv_linux_rollup';
 const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
 const TOTAL = `| inputlookup ${ROLL} where metric="total" ${RANGE}`;
-// hosts is a separate metric (grain host) from total (grain sourcetype): some
-// linux_messages_syslog events carry a multivalue host, so combining count-by-
-// sourcetype with dc(host) in one grain would inflate the count. dc(host) here
-// is mv-host-correct; the count field is unused.
+// hosts is a separate metric (grain host) from total (grain sourcetype, host): an
+// event with a multivalue host counts once per value in hosts, and dc(host) here
+// sees each. total keeps the first value, so its count stays the event count. The
+// count field of hosts is unused.
 const HOSTS = `| inputlookup ${ROLL} where metric="hosts" ${RANGE}`;
 const FW = `| inputlookup ${ROLL} where metric="fw" ${RANGE}`;
 const KERNEL = `| inputlookup ${ROLL} where metric="kernel" ${RANGE}`;
@@ -275,10 +275,10 @@ const Linux: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const fwDrops = useFirstRowFieldHybrid(Q.kpiFwDrops, QRAW.kpiFwDrops, 'count');
     const fwdDrops = useFirstRowFieldHybrid(Q.kpiFwdDrops, QRAW.kpiFwdDrops, 'count');
@@ -311,19 +311,19 @@ const Linux: React.FC = () => {
         const sid = String(row.sap_sid ?? '');
         if (!sid) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype="linux_messages_syslog" sap_sid="${splQuote(sid)}" | sort -_time | table _time host sap_app sap_inst`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goFwSrcRow = (row: Record<string, unknown>): void => {
         const ip = String(row.fw_src ?? '');
         if (!ip) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype="linux_secure" "SRC=${splQuote(ip)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goFwPortRow = (row: Record<string, unknown>): void => {
         const port = String(row.fw_dpt ?? '');
         if (!port) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype="linux_secure" "DPT=${splQuote(port)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goOomHostRow = (row: Record<string, unknown>): void => {
         const h = String(row.host ?? '');
@@ -334,7 +334,7 @@ const Linux: React.FC = () => {
         const p = String(row.oom_proc ?? '');
         if (!p) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype="linux_messages_syslog" "Killed process" "(${splQuote(p)})" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goLockupRow = (row: Record<string, unknown>): void => {
         const h = String(row.host ?? '');

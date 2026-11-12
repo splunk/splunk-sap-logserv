@@ -103,7 +103,7 @@ All four packages of this release, their AppInspect reports and a README with th
 | File | Package | Version | Build | md5 |
 |---|---|---|---|---|
 | `splunk_ta_sap_logserv-0.1.2.tar.gz` | Data TA (Splunk TA for SAP LogServ) | 0.1.2 | 1792598960 | `41a04986683c5d33014d8ab2fdb832f6` |
-| `splunk_app_sap_logserv-0.1.2.tar.gz` | LogServ App (Splunk App for SAP LogServ) | 0.1.2 | 394 | `1d82a2ac049391b2d7b2fb347d112649` |
+| `splunk_app_sap_logserv-0.1.2.tar.gz` | LogServ App (Splunk App for SAP LogServ) | 0.1.2 | 399 | `7a4d65e4fd37ad7b5d63dffb4ecd0c20` |
 | `splunk_ta_sap_logserv_azure-0.1.2.tar.gz` | LogServ Azure add-on (Splunk TA for SAP LogServ on Azure) | 0.1.2 | 1792558069 | `5a5b0cfcd5f77dfa1e22dcc3545c8306` |
 | `splunk_ta_sap_logserv_gcp-0.1.2.tar.gz` | LogServ GCP add-on (Splunk TA for SAP LogServ on GCP) | 0.1.2 | 1792558072 | `42713371e1ba1042b1149065cc1c59a9` |
 
@@ -134,7 +134,7 @@ Your Deployment Server, heavy forwarders and single instance run Splunk Enterpri
 On a Deployment Server this installs the Data TA in `etc/apps/` only. It is copied into `etc/deployment-apps/` for the forwarders when you first save its Configuration page there ([Distribute the Data TA](distribute-data-ta.md)).
 
 !!! note "If splunkd runs with a proxy variable, exempt its own management port"
-    The add-on's configuration pages (and the Azure and GCP add-ons' inputs) talk to the local splunkd management port, by default `127.0.0.1:8089`, through Splunk's Python HTTP client, which honours the `HTTP_PROXY` / `HTTPS_PROXY` environment variables. If the environment splunkd runs in sets either of them, for example in `splunk-launch.conf` or the systemd unit, also set `NO_PROXY=127.0.0.1,localhost` (plus the host name in `mgmtHostPort`, if it is not a loopback address). Otherwise those calls, with their session key, are sent to the proxy instead of to splunkd.
+    The add-on's configuration pages (and the Azure and GCP add-ons' inputs) talk to the local splunkd management port, by default `127.0.0.1:8089`, through Splunk's Python HTTP client, which honours the `HTTP_PROXY` / `HTTPS_PROXY` environment variables. If the environment splunkd runs in sets either of them, for example in `splunk-launch.conf` or the systemd unit, also set `NO_PROXY=127.0.0.1,localhost` (plus the host name in `mgmtHostPort`, if it is not a loopback address). Otherwise those calls, with their session key, are sent to the proxy instead of to splunkd. On a heavy forwarder that uses an AWS [EC2 instance role](aws-remote-s3-connect-instance-role.md), add `169.254.169.254` as well, whichever proxy variable is set, `ALL_PROXY` included, so that the Splunk Add-on for AWS's calls to the instance metadata service do not go to the proxy either.
 
 #### :material-crop-square:{ .taiconcolor } Splunk Cloud
 

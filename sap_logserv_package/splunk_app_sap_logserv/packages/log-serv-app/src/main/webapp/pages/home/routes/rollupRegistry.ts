@@ -70,7 +70,7 @@ export const single = (
  * Backfill stanzas that must NOT be chunked, and are run over a fixed recent
  * window instead of the operator's chosen one.
  *
- * Both write FLAT collections — no time dimension in the `_key` — so chunks
+ * All write FLAT collections — no time dimension in the `_key` — so chunks
  * would OVERWRITE each other rather than accumulate, and with three arms in
  * flight not even "last chunk wins" is deterministic:
  *
@@ -83,8 +83,10 @@ export const single = (
  *   logserv_topology_enrichment_backfill  _key = ip:evidence_source, aggregating
  *     count / values(enr_user) / min(_time) across the window — chunking would
  *     undercount events, drop users seen in earlier chunks and corrupt first_seen.
+ *   logserv_sid_hosts_backfill  _key = sid:host:role:tenant, storing max(_time):
+ *     an older chunk finishing last would move last_seen back (build 395).
  *
- * Pinning them to 30 days is not a compromise: both describe CURRENT state, not
+ * Pinning them to 30 days is not a compromise: all describe CURRENT state, not
  * history. Session 131. (Its second reason - over a year more IPs got reassigned
  * and failed the one-SID test `mvcount(sids)=1`, so a longer window resolved
  * FEWER partner nodes to SIDs - ended with build 379's most-recent-SID choice.)
@@ -98,6 +100,7 @@ export const single = (
 export const FIXED30_BACKFILL_STANZAS: ReadonlySet<string> = new Set([
     'logserv_topology_backfill_inventory',
     'logserv_topology_enrichment_backfill',
+    'logserv_sid_hosts_backfill',
 ]);
 
 export const ROLLUPS: RollupDef[] = [
@@ -143,6 +146,9 @@ export const ROLLUPS: RollupDef[] = [
     // history-gated. Backfill now uses the per-arm top-level dispatch (was the
     // old Topology tab's truncation-prone single-union saved-search dispatch);
     // the enrichment backfill is single-pipeline → parseUnion yields one arm.
+    // The SID and host list (build 395) sits here too: flat, single-pipeline, and
+    // the same kind of fact as the inventory. It feeds the SID and Host filters,
+    // and an hourly run refills it after a Clear.
     {
         key: 'topology_graph',
         label: 'Environment Topology (graph)',
@@ -151,6 +157,7 @@ export const ROLLUPS: RollupDef[] = [
             'logserv_topology_edges',
             'logserv_topology_inventory',
             'logserv_topology_ip_enrichment',
+            'logserv_sid_hosts',
         ],
         completenessCollections: ['logserv_topology_nodes', 'logserv_topology_edges'],
         aggregateSearches: [
@@ -158,17 +165,20 @@ export const ROLLUPS: RollupDef[] = [
             'logserv_topology_aggregate_edges',
             'logserv_topology_aggregate_inventory',
             'logserv_topology_enrichment_aggregate',
+            'logserv_sid_hosts_aggregate',
         ],
         backfillStanzas: [
             'logserv_topology_backfill_nodes',
             'logserv_topology_backfill_edges',
             'logserv_topology_backfill_inventory',
             'logserv_topology_enrichment_backfill',
+            'logserv_sid_hosts_backfill',
         ],
         retentionSearches: [
             'logserv_topology_retention',
             'logserv_topology_edges_retention',
             'logserv_topology_enrichment_retention',
+            'logserv_sid_hosts_retention',
         ],
         bucketField: 'bucket_ts',
     },
@@ -221,6 +231,21 @@ export const UPGRADE_NOTE_BACKFILL_ONLY: readonly string[] = ['compliance', 'xst
  * release notes, which deletes metric "wp" only).
  */
 export const UPGRADE_NOTE_TRACE_NAMES: readonly string[] = ['wp_perf'];
+/**
+ * Build 397: these rows store the host of each event. No rebuild is needed for the
+ * numbers: a filter stays away from rows without a host (utils/hostGate.ts), and when an
+ * hour is recounted each such row is overwritten with a zero row, so nothing counts
+ * twice. A Backfill, with or without a Clear first, lets the filters use the summaries
+ * over older hours too.
+ */
+export const UPGRADE_NOTE_HOST_GRAIN: readonly string[] = [
+    'compliance',
+    'sapservices',
+    'xstack_auth',
+    'linux',
+    'severity',
+    'perimeter',
+];
 
 /** Flattened views of the static registry (concat — Array.flat/flatMap need an
  *  ES2019 lib; this tsconfig targets earlier). */

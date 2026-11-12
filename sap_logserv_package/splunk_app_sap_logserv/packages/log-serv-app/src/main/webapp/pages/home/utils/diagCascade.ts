@@ -202,6 +202,7 @@ const notEvaluated = (id: string, headline: string, why: string): Verdict => ({
 
 /** Verdicts that assert or explain EMPTINESS — forbidden in partial mode. */
 export const EMPTINESS_VERDICT_IDS: readonly string[] = [
+    'filter-unavailable',
     'index-empty-in-window',
     'index-not-visible',
     'ingest-type-excluded',

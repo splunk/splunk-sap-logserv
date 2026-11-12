@@ -44,10 +44,13 @@
  * topologyEnrichment.consistency-test.ts loads the pure functions directly.
  */
 
+import { readAllKvRows } from '../utils/kvPagedRead';
+
 /** Raw KV row shape as returned by the collection endpoint. Multivalue
  *  fields round-trip as arrays when they held 2+ values and as plain
  *  strings when they held one (the session-110 `instances` behavior). */
 export interface IpEnrichmentRow {
+    _key?: string;
     ip?: unknown;
     evidence_source?: unknown;
     hostnames?: unknown;
@@ -288,21 +291,17 @@ export const groupUsersBySource = (
 };
 
 /* ------------------------------------------------------------------ */
-/* Fetch. Same REST shape as the other topology collection reads       */
-/* (useTopologyData fetchKvAllRows): the Splunk Web `__raw` proxy      */
+/* Fetch. Same REST read as the other topology collections             */
+/* (utils/kvPagedRead, build 396): the Splunk Web `__raw` proxy        */
 /* prefix is mandatory (session-035 sticky #3).                        */
 /* ------------------------------------------------------------------ */
 
 const APP_NAMESPACE = 'splunk_app_sap_logserv';
 export const ENRICHMENT_COLLECTION = 'logserv_topology_ip_enrichment';
 const KV_URL = `/en-US/splunkd/__raw/servicesNS/nobody/${APP_NAMESPACE}`
-    + `/storage/collections/data/${ENRICHMENT_COLLECTION}?limit=0&output_mode=json`;
+    + `/storage/collections/data/${ENRICHMENT_COLLECTION}`;
 
 export const fetchIpEnrichmentRows = async (): Promise<IpEnrichmentRow[]> => {
-    const res = await fetch(KV_URL, { credentials: 'same-origin' });
-    if (!res.ok) {
-        throw new Error(`IP enrichment fetch failed: ${res.status} ${res.statusText}`);
-    }
-    const rows = (await res.json()) as unknown;
-    return Array.isArray(rows) ? (rows as IpEnrichmentRow[]) : [];
+    const { rows } = await readAllKvRows<IpEnrichmentRow>(KV_URL);
+    return rows;
 };

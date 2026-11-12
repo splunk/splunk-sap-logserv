@@ -74,3 +74,7 @@ export const useTimeRange = (): TimeRangeContextValue => {
     }
     return ctx;
 };
+
+/** The range, or undefined outside a TimeRangeProvider (build 398): for code that can do without
+ *  one, such as the AI Assistant's tool loop. */
+export const useOptionalTimeRange = (): TimeRangeContextValue | undefined => useContext(TimeRangeContext);

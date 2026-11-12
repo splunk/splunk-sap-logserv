@@ -748,13 +748,15 @@ export const ALLOWED_SPL_LOOKUPS = [
 /**
  * The App's lookups an ad-hoc query may NOT name: the Data Doctor's own
  * collections (reports and platform snapshots, which hold raw samples and
- * user names) and the ES asset and identity feeds (identities; analytics
- * never needs them).
+ * user names), the ES asset and identity feeds (identities; analytics
+ * never needs them) and the SID and host list, which only the SID and Host
+ * filters read.
  */
 export const EXCLUDED_SPL_LOOKUPS = [
     'logserv_backfill_stage',
     'logserv_diag_platform_snapshot',
     'logserv_diag_reports',
+    'logserv_sid_hosts',
     'splunk_for_sap_logserv_assets',
     'splunk_for_sap_logserv_identities',
 ] as const;

@@ -1,0 +1,242 @@
+# Splunk for SAP LogServ - AWS Remote S3 Connect, EC2 instance role option
+#
+# Use this template instead of splunk-logserv-remote-s3-connect.yaml when the input runs on a
+# Heavy Forwarder you operate on EC2, that Heavy Forwarder has an EC2 instance role, and you may
+# not create IAM users. The IAM user template stays the path for inputs hosted on Splunk Cloud,
+# hosts not on EC2, and EC2 hosts with no role or no metadata access. The Filter and Copy
+# templates still create an IAM user; this template does not replace them.
+# Written for commercial AWS Regions. For GovCloud or China, check with Splunk first: Splunk's
+# release notes have listed the instance role as unsupported there.
+#
+# What this template creates:
+#   - The IAM Role splunk-logserv-ta-role, with an inline policy named splunk-logserv-ta-policy
+#     that reads SAP's SQS Queue and S3 Bucket and deletes each queue message once it is read.
+#     Its trust policy names your instance role.
+#   - Only if you fill in HeavyForwarderInstanceRoleName: an inline policy on that instance role
+#     that allows sts:AssumeRole on splunk-logserv-ta-role and nothing else.
+#
+# What this template does not create:
+#   - No IAM User and no access key.
+#   - No EC2 instance role and no instance profile. The instance role must exist before you
+#     deploy, because the trust policy of the new role names it.
+#   - No S3 Bucket and no SQS Queue. SAP owns those.
+#
+# The role name is fixed, so deploying needs the CAPABILITY_NAMED_IAM acknowledgement.
+#
+# After you deploy:
+#   - Give SAP LogServ Support the ARN in the stack output SplunkLogServRoleArn. The role name
+#     is the one in SAP's example policies, so those examples stay valid.
+#   - If you left HeavyForwarderInstanceRoleName blank, add sts:AssumeRole on that ARN to the
+#     instance role yourself, in the account that holds it. Grant nothing else on it. The grant
+#     is required when the instance role is in another account, and this stack cannot add it
+#     there. In this role's own account the trust policy alone already lets the instance role
+#     assume this role, so there the trust policy, not the grant, decides who can: to stop the
+#     instance role, remove it from the trust policy.
+#   - In the Splunk Add-on for AWS, the input uses the autodiscovered account, which is named
+#     after your instance role, plus this role in Assume Role. You enter no key.
+#
+# What SAP's account must allow (a read across two accounts needs an allow on both sides):
+#   - Its queue policy and bucket policy name the ARN in SplunkLogServRoleArn. SAP adds those
+#     statements to its existing policies; SAP's example policies show them.
+#   - The bucket's Object Ownership is Bucket owner enforced, so the bucket policy covers every
+#     object in the bucket.
+#   - The bucket uses SSE-S3 and the queue SSE-SQS or no encryption, or customer-managed KMS keys
+#     whose key policies name this role (see SapKmsKeyArns). AWS managed keys (aws/s3, aws/sqs)
+#     cannot be used across accounts.
+#   - Requester Pays is off on the bucket. The add-on does not send the requester-pays header
+#     (read in its code).
+#
+# Keeping the role:
+#   - Update splunk-logserv-ta-role in place. Do not delete it and create it again. AWS ties a
+#     role named in a policy to that role's internal ID, so a new role with the same name loses
+#     SAP's grant: SAP's policies then show an ID starting AROA where the ARN was, until SAP puts
+#     the ARN back in place of that ID and saves them.
+#   - Deleting this stack deletes the role, so the same applies to the stack.
+#   - Turn on termination protection for this stack. It is off by default.
+#   - If you replace the instance role, save this role's trust policy again in IAM, even if the
+#     new role has the same ARN, and put the new role's ARN in place of any ID starting AROA
+#     that it shows. A stack update with the same ARN may change nothing.
+#   - This template names one instance role. If your Heavy Forwarders use more than one, add the
+#     others to the trust policy by hand; a stack update that changes the trust policy removes
+#     them.
+#   - If this account already has the role from splunk-logserv-remote-s3-connect.yaml, a new
+#     stack cannot create it, because the name is taken. The update below ends the IAM user's
+#     access to the role. First disable the inputs that use the user's access key and delete
+#     that key: CloudFormation may not be able to delete a user that still has a key, and would
+#     leave the user in your account. Then update that stack with this template. The role keeps
+#     its name and ID, so SAP's grant keeps matching. Then point the inputs at the instance
+#     role's autodiscovered account.
+#   - If the role was not made by a stack, edit its trust policy and inline policy by hand to
+#     match this template, as in route 2 of the setup page, and do not delete it.
+#   - Never update a Filter or Copy stack with this template. Those stacks use the same role name,
+#     and the update would delete what else they create, such as their queues and Lambda function.
+#   - Neither of these two routes for an existing role has been run.
+#
+# What this does not change:
+#   - This option adds no isolation. Whatever can use the instance role can reach SAP's data
+#     through this role. Use that instance role only for your Heavy Forwarders.
+#
+# Status of this path: the add-on's code supports it (Splunk Add-on for AWS 8.3.1 was read). In
+# our lab from 2026-11-09 to 2026-11-11, with the Heavy Forwarder, this role, the queue and the
+# bucket in one AWS account and add-on 8.3.1, this template was deployed with CloudFormation and
+# updated twice through change sets. An SQS-Based S3 input on the instance role, with this role
+# in Assume Role, then ran for about 28 hours while the role held only this template's policy;
+# it is narrower than the list in Splunk's documentation for the SQS-Based S3 input. It read
+# 31,072 objects, 31,058 of them in three batches within about two hours, each object once and
+# every line in it into the index, with no AWS error, through the 25 credential changes the
+# input logged, one of them while it was reading. The input form saved such an input with the
+# queue URL typed in and no sqs:ListQueues on the role.
+# Not yet run in our lab: an input process running longer than the role's one-hour session
+# (every input process ended within the hour; the longest ran about 32 minutes), AWS S3 Direct
+# with an instance role, and this policy attached straight to the instance role with no Assume
+# Role.
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Creates the cross-account IAM Role for Splunk for SAP LogServ, trusted by the EC2 instance role of your Heavy Forwarders. Creates no IAM User and no access key.'
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: 'SAP ECS account (ask SAP LogServ Support)'
+        Parameters:
+          - CrossAccountSQSQueueArn
+          - CrossAccountS3Bucket
+          - SapKmsKeyArns
+      - Label:
+          default: 'Your Heavy Forwarder EC2 instance role'
+        Parameters:
+          - HeavyForwarderInstanceRoleArn
+          - HeavyForwarderInstanceRoleName
+
+Parameters:
+  CrossAccountSQSQueueArn:
+    Type: String
+    Description: "ARN of the SQS queue in the SAP ECS AWS account"
+    AllowedPattern: '^arn:aws[a-z-]*:sqs:[a-z0-9-]+:[0-9]{12}:[a-zA-Z0-9_-]{1,80}$'
+    ConstraintDescription: 'Must be a valid SQS ARN format (arn:aws:sqs:region:account-id:queue-name)'
+    MinLength: 20
+    MaxLength: 1024
+
+  CrossAccountS3Bucket:
+    Type: String
+    Description: "Name of the source S3 bucket in the SAP ECS AWS account"
+    AllowedPattern: '^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$'
+    ConstraintDescription: 'Must be a valid S3 bucket name (3-63 characters, lowercase letters, numbers, hyphens, and periods only)'
+    MinLength: 3
+    MaxLength: 63
+
+  SapKmsKeyArns:
+    Type: String
+    Description: "Optional. Comma-separated ARNs, with no spaces, of the customer-managed KMS keys that encrypt the SAP S3 bucket or SQS queue. Leave blank if SAP uses none. When filled in, the role gets kms:Decrypt on these keys only, and SAP must add the role to each key policy. AWS managed keys (aws/s3, aws/sqs) cannot be used across accounts."
+    Default: ""
+    AllowedPattern: '^$|^arn:aws[a-z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[a-zA-Z0-9-]+(,arn:aws[a-z-]*:kms:[a-z0-9-]+:[0-9]{12}:key/[a-zA-Z0-9-]+)*$'
+    ConstraintDescription: 'Must be blank, or KMS key ARNs (arn:aws:kms:region:account-id:key/key-id) separated by commas, with no spaces, no aliases and no wildcards'
+    MaxLength: 2048
+
+  HeavyForwarderInstanceRoleArn:
+    Type: String
+    Description: "ARN of the IAM role attached to your Heavy Forwarder EC2 instances. The role must already exist. Copy the ARN from the role's page in the IAM console: arn:aws:iam::account-id:role/role-name. An instance profile ARN or an assumed-role ARN is not accepted."
+    AllowedPattern: '^arn:aws[a-z-]*:iam::[0-9]{12}:role/[a-zA-Z0-9+=,.@_/-]+$'
+    ConstraintDescription: 'Must be an IAM role ARN (arn:aws:iam::account-id:role/role-name), not an instance profile ARN or an assumed-role ARN'
+    MinLength: 20
+    MaxLength: 2048
+
+  HeavyForwarderInstanceRoleName:
+    Type: String
+    Description: "Optional. Name of that same role, without any path. When filled in, this stack gives that role sts:AssumeRole on splunk-logserv-ta-role. Leave blank if the role is in another account or you prefer to add the grant by hand."
+    Default: ""
+    AllowedPattern: '^$|^[a-zA-Z0-9+=,.@_-]{1,64}$'
+    ConstraintDescription: 'Must be blank, or an IAM role name of up to 64 characters with no path'
+    MaxLength: 64
+
+Conditions:
+  AttachAssumeRoleGrant: !Not [!Equals [!Ref HeavyForwarderInstanceRoleName, ""]]
+  HasSapKmsKeys: !Not [!Equals [!Ref SapKmsKeyArns, ""]]
+
+Resources:
+  # The role splunk-logserv-ta-role. The logical ID and the role name match the IAM user template.
+  SplunkLogServRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: splunk-logserv-ta-role
+      Description: 'Reads the SAP LogServ queue and bucket and deletes queue messages once read, for Splunk for SAP LogServ. Trusted by the Heavy Forwarder EC2 instance role.'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # Trust the instance role only. There is no sts:ExternalId condition because the add-on
+          # sends none. Any session-name condition you add must allow splunk_ta_aws.
+          - Effect: Allow
+            Principal:
+              AWS: !Ref HeavyForwarderInstanceRoleArn
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: splunk-logserv-ta-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # SQS permissions for the cross-account queue
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:ChangeMessageVisibility
+                  - sqs:GetQueueAttributes
+                Resource: !Ref CrossAccountSQSQueueArn
+
+              # S3 permissions on the objects in the cross-account source bucket
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${CrossAccountS3Bucket}/*"
+
+              # S3 permission on the bucket itself. The SQS-Based S3 input does not use it.
+              # AWS S3 Direct, which loads history, does.
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${CrossAccountS3Bucket}"
+
+              # KMS Decrypt, only if SAP uses customer-managed keys, and only on those keys
+              - !If
+                - HasSapKmsKeys
+                - Effect: Allow
+                  Action:
+                    - kms:Decrypt
+                  Resource: !Split [",", !Ref SapKmsKeyArns]
+                - !Ref AWS::NoValue
+
+  # Inline policy on the Heavy Forwarder's instance role, so it can assume the role above.
+  # Created only when HeavyForwarderInstanceRoleName is filled in.
+  InstanceRoleAssumeRolePolicy:
+    Type: AWS::IAM::Policy
+    Condition: AttachAssumeRoleGrant
+    Properties:
+      PolicyName: splunk-logserv-sqs-based-input-assume-role-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'AllowAssumeRole'
+            Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: !GetAtt SplunkLogServRole.Arn
+      Roles:
+        - !Ref HeavyForwarderInstanceRoleName
+
+Outputs:
+
+  SplunkLogServRoleArn:
+    Description: Give this ARN to SAP LogServ Support for their SQS Queue and S3 Bucket policies. It is the ARN of the role splunk-logserv-ta-role, and it is also what you enter as the IAM Role in the Splunk Add-on for AWS.
+    Value: !GetAtt SplunkLogServRole.Arn
+
+  InstanceRoleGrant:
+    Description: Whether this stack gave your instance role sts:AssumeRole on the role above
+    Value: !If
+      - AttachAssumeRoleGrant
+      - !Sub "Attached by this stack to the role named ${HeavyForwarderInstanceRoleName}. It must be the role in the trust policy"
+      - Not attached. Add sts:AssumeRole on the role above to your instance role by hand
+
+  YourAccountId:
+    Description: Your AWS Account ID
+    Value: !Ref AWS::AccountId

@@ -4,6 +4,9 @@
 
 This guide connects the Splunk Add-on for AWS directly to the SQS Queue and S3 Bucket that SAP LogServ manages for you. It is the default AWS scenario; [Choose Your Cloud and AWS Scenario](choose-your-cloud.md) compares it with the other two.
 
+!!! tip "Your policy does not allow IAM users?"
+    This guide creates an IAM User with an access key. If your heavy forwarders run on EC2, their instance role can take the place of both: see [AWS Remote S3 Connect with an EC2 Instance Role](aws-remote-s3-connect-instance-role.md). Inputs hosted on Splunk Cloud, hosts not on EC2, and EC2 hosts with no role or no metadata access stay on this guide.
+
 The deployment diagram below shows two different AWS accounts.  For brevity and clarity, the AWS account at the top of the diagram will be referred to as the **_SAP ECS account_** and the second AWS account in the middle of the diagram will be referred to as the **_Secondary account_** from this point onward. 
 
 Your SAP ECS LogServ subscription for AWS (e.g. in your **_SAP ECS account_**) should have one S3 Bucket in that account where LogServ will store your LogServ logs.  It should also have one SQS Queue in your **_SAP ECS account_** that receives notifications when new logs are added to the S3 Bucket in that account.
@@ -223,7 +226,7 @@ The CloudFormation template creates the IAM User but no access key for it, so yo
 ??? indented-note "Example"
     ![image](../../images/aws-add-on-config-role-01.png "Role Navigation")
 
-6.<b class="taiconcolor">b</b> Choose and enter a descriptive name for the role in the **_Name_** field. Enter the IAM Role ARN in the **_IAM Role ARN_** field, then click the **_Add_** button. The ARN for the IAM Role should look like the one below but with your 12-digit AWS account Id of your **_Secondary account_**.
+6.<b class="taiconcolor">b</b> Choose and enter a descriptive name for the role in the **_Name_** field, using only letters, digits and underscores (the form refuses a hyphen), for example `splunk_logserv_ta_role`. Enter the IAM Role ARN in the **_IAM Role ARN_** field, then click the **_Add_** button. The ARN for the IAM Role should look like the one below but with your 12-digit AWS account Id of your **_Secondary account_**.
 
 - arn:aws:iam::**_secondary-account-id_**:role/splunk-logserv-ta-role
 

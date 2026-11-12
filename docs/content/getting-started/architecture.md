@@ -62,7 +62,7 @@ SAP writes your LogServ objects to an S3 bucket in the SAP ECS account, and the 
             account; cross-account for Connect and Filter)
 ```
 
-- **Connect** deploys only an IAM user and a cross-account IAM role in your account.
+- **Connect** deploys only a cross-account IAM role in your account, plus an IAM user unless heavy forwarders on EC2 use an [EC2 instance role](../install-setup/aws-remote-s3-connect-instance-role.md).
 - **Filter** also deploys a Lambda, a queue and a dead-letter queue; the objects are still downloaded from SAP's bucket.
 - **Copy** also deploys a Lambda, a bucket, a queue and a dead-letter queue.
 - Filter and Copy need an S3 bucket of your own for the Lambda code.

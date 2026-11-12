@@ -235,6 +235,28 @@ export interface EdgeActivityPoint {
     errorCount: number;
 }
 
+/** Build 396: an edge's activity as stored on the edge: only the hours it has rows in,
+ *  plus the x-axis every edge shares. A zero-filled series on every edge cost distinct
+ *  edges x hours in memory, far more than the rows themselves on a wide time range, and
+ *  only the selected edge ever reads one. */
+export interface EdgeActivity {
+    /** Every bucket any edge of the window spans, ascending; one array, shared. */
+    buckets: readonly number[];
+    /** bucket_ts -> this edge's totals for that hour. */
+    byBucket: ReadonlyMap<number, { count: number; errorCount: number }>;
+}
+
+export const NO_EDGE_ACTIVITY: EdgeActivity = { buckets: [], byBucket: new Map() };
+
+/** The series the Activity panel draws: one point per bucket, zero where the edge has
+ *  no rows. ActivityTrendChart positions bars by INDEX (x = i * barW), so a sparse
+ *  series would silently compress the timeline. */
+export const edgeActivitySeries = (activity: EdgeActivity): EdgeActivityPoint[] =>
+    activity.buckets.map((ts) => {
+        const b = activity.byBucket.get(ts);
+        return { time: ts, count: b ? b.count : 0, errorCount: b ? b.errorCount : 0 };
+    });
+
 export interface TopologyEdge {
     /** The key of the RENDERED edge — `edgeDisplayId(source, target, type)`
      *  over the RETARGETED endpoints (topology/edgeIds.ts). Stable across
@@ -255,9 +277,10 @@ export interface TopologyEdge {
      *  only compiler-enforced guarantee that a future construction site cannot
      *  repeat the build-240 regression of feeding the display id to SPL. */
     bucketIds: string[];
-    /** Build 321 — the per-hour activity series, summed in-memory across
-     *  `bucketIds` over exactly the window that produced `callCount`. */
-    activity: EdgeActivityPoint[];
+    /** Build 321 — the per-hour activity, summed in-memory across `bucketIds` over
+     *  exactly the window that produced `callCount`. Read it with
+     *  edgeActivitySeries (build 396). */
+    activity: EdgeActivity;
     /** Optional business-process tag for filtering. */
     process?: BusinessProcess;
     /** Session 035 / build 188 — preserves the canonical SPL-emitted edge

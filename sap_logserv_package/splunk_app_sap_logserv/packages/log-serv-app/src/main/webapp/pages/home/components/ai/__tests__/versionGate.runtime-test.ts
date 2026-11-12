@@ -41,6 +41,7 @@ const compareCases: CompareCase[] = [
     { a: '1.0.3-rc1', b: '1.0.3', expectSign: 0 },
     { a: '1.0.3-beta', b: '1.0.3-rc1', expectSign: 0 },
     { a: '1.0.3', b: '1.0.4-pre', expectSign: -1 },
+    { a: '1.0.3+b1', b: '1.0.3', expectSign: 0 },
 ];
 
 const meetsCases: MeetsCase[] = [
@@ -64,6 +65,17 @@ const meetsCases: MeetsCase[] = [
     { installed: '3', expect: false },
     { installed: '.3.0', expect: false },
     { installed: 'v1.0.3', expect: false }, // we don't strip leading 'v'
+    // Build 398: every part all digits ("2.0.x" and "3.0." used to pass), a "+build" suffix allowed:
+    { installed: '2.0.x', expect: false },
+    { installed: '3.0.', expect: false },
+    { installed: '1.0.x', expect: false },
+    { installed: '1..3', expect: false },
+    { installed: '1.0.3-', expect: false },
+    { installed: '1.0.3 ', expect: false },
+    { installed: ' 1.0.3', expect: false },
+    { installed: '1.0.3+build.5', expect: true },
+    { installed: '1.0.2+build.5', expect: false },
+    { installed: '1.0.3.1', expect: true },
     // Custom required:
     { installed: '1.5.0', required: '2.0.0', expect: false },
     { installed: '2.0.0', required: '2.0.0', expect: true },

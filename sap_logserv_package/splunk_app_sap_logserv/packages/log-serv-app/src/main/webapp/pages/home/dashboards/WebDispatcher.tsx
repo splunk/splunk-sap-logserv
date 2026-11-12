@@ -12,8 +12,9 @@ import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { shouldUseRawSource } from '../utils/hybridRouting';
+import { isFilterUnavailable } from '../utils/queryFilters';
 import { recordRawTwin } from '../utils/rawTwin';
-import { useCloudProvider, mapCloudProviderQueries, withCloudProvider } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { applySpanToken, applySpanTokens, chooseTimechartSpan, SPAN_TOKEN, spanSubtitle } from '../utils/timechartSpan';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
@@ -154,7 +155,7 @@ const buildTopUrisQuery = (filter: UriStatusFilter): string => {
  *  status range clause reuses URI_STATUS_FILTERS[filter].clause (the same
  *  status>=NNN status<MMM the rollup's status_group buckets were built from),
  *  reconciled to the cached read's exact columns. Both builders return an
- *  un-cloud-mapped query; the call site wraps them in withCloudProvider so the
+ *  un-cloud-mapped query; the call site wraps them in withQueryFilters so the
  *  global Cloud Provider filter applies (build 298 / task_1dae8924). */
 const buildTopUrisRawQuery = (filter: UriStatusFilter): string => {
     const clause = filter === 'all' ? '' : ` ${URI_STATUS_FILTERS[filter].clause}`;
@@ -226,10 +227,10 @@ const WebDispatcher: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const [uriStatusFilter, setUriStatusFilter] = useState<UriStatusFilter>('all');
     /* Resolved hex tokens — seriesColorsByField flows into
      * @splunk/visualizations (SVG fills), where logservTheme's var(--lsv-*)
@@ -251,20 +252,20 @@ const WebDispatcher: React.FC = () => {
     // hour's count into one 15-minute bin and filled the other three with 0.
     const trafficByStatusQuery = useMemo(
         () => {
-            const rawQ = applySpanToken(withCloudProvider(
+            const rawQ = applySpanToken(withQueryFilters(
                 `${WRAW} | eval status_group=case(tonumber(status)<300,"Success (2xx)",tonumber(status)<400,"Redirect (3xx)",tonumber(status)<500,"Client Error (4xx)",tonumber(status)>=500,"Server Error (5xx)",1==1,"Other") ` +
                     `| timechart span=${SPAN_TOKEN} count by status_group | fillnull value=0`,
-                provider,
+                filters,
             ), span);
-            const cachedQ = applySpanToken(withCloudProvider(
+            const cachedQ = applySpanToken(withQueryFilters(
                 `${WD_STATUS} | eval _time=bucket_ts ` +
                     `| timechart span=${SPAN_TOKEN} sum(count) by status_group | fillnull value=0`,
-                provider,
+                filters,
             ), span);
             recordRawTwin(cachedQ, rawQ); // §17.8a-17
-            return useRawSrc ? rawQ : cachedQ;
+            return useRawSrc || isFilterUnavailable(cachedQ) ? rawQ : cachedQ;
         },
-        [span, useRawSrc, provider],
+        [span, useRawSrc, filters],
     );
 
     // Response Time Trend — Avg + Max per bucket (build 232). Percentiles
@@ -274,22 +275,22 @@ const WebDispatcher: React.FC = () => {
     // Max=null) matches the cached arm byte-for-byte.
     const responseTimeTrendQuery = useMemo(
         () => {
-            const rawQ = applySpanToken(withCloudProvider(
+            const rawQ = applySpanToken(withQueryFilters(
                 `${WRAW} | eval response_time_ms=tonumber(total_us)/1000 ` +
                     `| timechart span=${SPAN_TOKEN} sum(response_time_ms) as s, count(response_time_ms) as c, max(response_time_ms) as "Max (ms)" ` +
                     `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
-                provider,
+                filters,
             ), span);
-            const cachedQ = applySpanToken(withCloudProvider(
+            const cachedQ = applySpanToken(withQueryFilters(
                 `${WD_CORE} | eval _time=bucket_ts ` +
                     `| timechart span=${SPAN_TOKEN} sum(sum_rt) as s, sum(cnt_rt) as c, max(max_rt) as "Max (ms)" ` +
                     `| eval "Avg (ms)" = if(c>0, round(s/c, 1), 0) | fields _time, "Avg (ms)", "Max (ms)"`,
-                provider,
+                filters,
             ), span);
             recordRawTwin(cachedQ, rawQ); // §17.8a-17
-            return useRawSrc ? rawQ : cachedQ;
+            return useRawSrc || isFilterUnavailable(cachedQ) ? rawQ : cachedQ;
         },
-        [span, useRawSrc, provider],
+        [span, useRawSrc, filters],
     );
 
     const requests = useFirstRowField(Q.kpiRequests, 'count');
@@ -299,8 +300,8 @@ const WebDispatcher: React.FC = () => {
     const slowestPages = useHybridSearch({ cached: Q.slowestPages, raw: QRAW.slowestPages });
     const topClients = useHybridSearch({ cached: Q.topClients, raw: QRAW.topClients });
     const topUris = useHybridSearch({
-        cached: withCloudProvider(buildTopUrisQuery(uriStatusFilter), provider),
-        raw: withCloudProvider(buildTopUrisRawQuery(uriStatusFilter), provider),
+        cached: withQueryFilters(buildTopUrisQuery(uriStatusFilter), filters),
+        raw: withQueryFilters(buildTopUrisRawQuery(uriStatusFilter), filters),
     });
     const recentErrors = useSearch({ query: Q.recentErrors });
     const slowestTraces = useHybridSearch<TraceRow>({ cached: Q.slowestTraces, raw: QRAW.slowestTraces });
@@ -318,14 +319,14 @@ const WebDispatcher: React.FC = () => {
         const uri = String(row.uri ?? '');
         if (!uri) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST} uri="${splQuote(uri)}" | eval response_time_ms=round(tonumber(total_us)/1000, 1) | table _time clientip status response_time_ms method | sort -response_time_ms`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [timeRange.earliest, timeRange.latest, filters]);
     const goTopClientsRow = useCallback((row: Record<string, unknown>) => {
         const ip = String(row.clientip ?? '');
         if (!ip) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST} clientip="${splQuote(ip)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [timeRange.earliest, timeRange.latest, filters]);
     const goTopUrisRow = useCallback((row: Record<string, unknown>) => {
         const uri = String(row.uri ?? '');
         if (!uri) return;
@@ -334,8 +335,8 @@ const WebDispatcher: React.FC = () => {
         const { clause } = URI_STATUS_FILTERS[uriStatusFilter];
         const filterPart = clause ? ` ${clause}` : '';
         const spl = `\`sap_logserv_idx_macro\` ${ST} uri="${splQuote(uri)}"${filterPart} | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [uriStatusFilter, timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [uriStatusFilter, timeRange.earliest, timeRange.latest, filters]);
     const goRecentErrorsRow = useCallback((row: Record<string, unknown>) => {
         const ip = String(row.clientip ?? '');
         const uri = String(row.uri ?? '');
@@ -343,18 +344,18 @@ const WebDispatcher: React.FC = () => {
         const ipClause = ip ? `clientip="${splQuote(ip)}" ` : '';
         const uriClause = uri ? `uri="${splQuote(uri)}" ` : '';
         const spl = `\`sap_logserv_idx_macro\` ${ST} ${ipClause}${uriClause}status>=400 | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [timeRange.earliest, timeRange.latest, filters]);
     const goSlowestTracesRow = useCallback((row: Record<string, unknown>) => {
         const uri = String(row.uri ?? '');
         if (!uri) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST} uri="${splQuote(uri)}" | sort - total_us | table _time uri status dt1_us dt2_us dt3_us dt4_us total_us`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [timeRange.earliest, timeRange.latest, filters]);
     const goMethodPie = useCallback(() => {
         const spl = `\`sap_logserv_idx_macro\` ${ST} | stats count by method | sort -count`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [timeRange.earliest, timeRange.latest, filters]);
 
     const errRateNum = parseFloat(String(errorRate.value ?? 0));
     const errRateTone = errRateNum >= 5 ? 'critical' : errRateNum >= 1 ? 'warning' : 'neutral';
@@ -468,7 +469,7 @@ const WebDispatcher: React.FC = () => {
                     search={slowestTraces}
                     onClick={() => {
                         const spl = `\`sap_logserv_idx_macro\` ${ST} | sort - total_us | table _time uri status method dt1_us dt2_us dt3_us dt4_us total_us | head 100`;
-                        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+                        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
                     }}
                     clickTitle="Open the slowest-traces SPL in Splunk Search"
                 >

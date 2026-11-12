@@ -20,6 +20,8 @@ import { splTypeToIntegrationType } from '../topology/edgeStyle';
 import { collectBucketIds, edgeDisplayId } from '../topology/edgeIds';
 import { buildNodeTraffic, buildEdgeAppServers } from '../topology/panelFacts';
 import type { EndpointAttribution, TrafficRow, TrafficEdgeGroup } from '../topology/panelFacts';
+import { commonCompleteFromTs, readAllKvRows, readKvBucketWindow } from '../utils/kvPagedRead';
+import type { KvBucketRead, KvBucketRow, KvRow } from '../utils/kvPagedRead';
 
 /**
  * useTopologyData — KV Store-backed composite hook (session 035 / build 188).
@@ -56,8 +58,11 @@ import type { EndpointAttribution, TrafficRow, TrafficEdgeGroup } from '../topol
  *
  * Failure modes:
  *   - KV Store empty (first install before backfill) → empty topology, isEmpty=true
- *   - KV Store stale (most-recent bucket > 6h old) → staleness.isStale=true
+ *   - KV Store stale (most-recent bucket > 6h old, on a window that runs up to
+ *     now) → staleness.isStale=true
  *   - REST 5xx / network error → errors[] populated, partial data may render
+ *   - More rows in the window than TOPOLOGY_READ_MAX_ROWS (build 396) → only the
+ *     newest rows are read, and completeFromTs says where the numbers start
  */
 
 interface NodeBucketRow {
@@ -121,7 +126,8 @@ export interface StaleNess {
     lastBucketTs: number;
     /** Hours since lastBucketTs. */
     ageHours: number;
-    /** True if ageHours > 6 (the default threshold). */
+    /** True if the window reaches now and its newest row is over 6 h older than the
+     *  window's end (build 396). */
     isStale: boolean;
 }
 
@@ -135,6 +141,14 @@ export interface UseTopologyDataResult {
     inventoryStatus: { totalEndpoints: number; resolved: number };
     staleness?: StaleNess;
     isEmpty: boolean;
+    /** Build 396: null when every row of the window was read. Otherwise the window
+     *  held more rows than the limit, and what this hook returns covers only this
+     *  bucket_ts and later: the rows before it are dropped from both collections, so
+     *  the graph states one period rather than mixing two. What the side panel takes
+     *  from this hook is cut with it; what it searches for itself (Top Programs, Errors,
+     *  the Hosts list and host count, Operations, the Performance distribution) still
+     *  covers the whole time range. */
+    completeFromTs: number | null;
     /* ---- Build 322 / session 108 — the right panel's attribution facts ----
      * Classification happens HERE, keyed by node id, because the sidebar has
      * no access to what makes the verdict honest and would inevitably
@@ -162,6 +176,12 @@ const APP = 'splunk_app_sap_logserv';
  * KV_BASE (build 120 / A.4). */
 const KV_BASE = `/en-US/splunkd/__raw/servicesNS/nobody/${APP}/storage/collections/data`;
 const STALENESS_THRESHOLD_HOURS = 6;
+/** Build 396: the most rows read from each of the node and edge collections for one
+ *  window, to keep a very large estate from running a browser tab out of memory: what
+ *  the hook holds grows with the rows it reads. The page says so when a window goes past
+ *  it (completeFromTs). The flat collections have no such limit: they hold one row per
+ *  endpoint, not one per endpoint per hour. */
+export const TOPOLOGY_READ_MAX_ROWS = 500000;
 
 /**
  * Resolve a Splunk relative-time spec to absolute epoch seconds.
@@ -214,42 +234,22 @@ export const resolveTimeSpec = (spec: string, now: number = Math.floor(Date.now(
     return base;
 };
 
-/**
- * Fetch all rows from a KV Store collection where bucket_ts is within the
- * given range. Returns the parsed JSON array directly. Throws on HTTP error
- * so the caller can populate the errors[] state.
- */
-const fetchKvBucketRows = async <T>(
-    collection: string,
-    earliest_ts: number,
-    latest_ts: number,
-): Promise<T[]> => {
-    const query = JSON.stringify({
-        bucket_ts: { $gte: earliest_ts, $lte: latest_ts },
-    });
-    /* limit=0 means "no limit" in Splunk's collection REST API. Default is
-     * 30,000 rows. For a 30-day window with ~50 nodes × 24 buckets/day = 36k
-     * node rows, the default limit is JUST over our worst case — explicitly
-     * set limit=0 so we don't truncate. */
-    const url = `${KV_BASE}/${collection}?query=${encodeURIComponent(query)}&limit=0&output_mode=json`;
-    const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) {
-        throw new Error(`KV Store fetch failed: ${res.status} ${res.statusText}`);
-    }
-    return res.json();
-};
+/** What one fetch of the window produced; the aggregation below reads it whole. */
+interface TopologyRead {
+    nodeRows: NodeBucketRow[];
+    edgeRows: EdgeBucketRow[];
+    inventoryRows: InventoryRow[];
+    completeFromTs: number | null;
+    /** The window's end, resolved when the fetch started. */
+    latestTs: number;
+}
 
-/**
- * Fetch all rows from a flat (non-bucketed) KV Store collection. Used for
- * the inventory collection which has no bucket_ts dimension.
- */
-const fetchKvAllRows = async <T>(collection: string): Promise<T[]> => {
-    const url = `${KV_BASE}/${collection}?limit=0&output_mode=json`;
-    const res = await fetch(url, { credentials: 'same-origin' });
-    if (!res.ok) {
-        throw new Error(`KV Store fetch failed: ${res.status} ${res.statusText}`);
-    }
-    return res.json();
+const EMPTY_READ: TopologyRead = {
+    nodeRows: [],
+    edgeRows: [],
+    inventoryRows: [],
+    completeFromTs: null,
+    latestTs: 0,
 };
 
 /* The SPL-emitted edge type -> IntegrationType map (splTypeToIntegrationType)
@@ -312,41 +312,50 @@ const computeHighTrafficNodeIds = (
     return new Set(sorted.slice(0, HIGH_TRAFFIC_TOP_N).map(([id]) => id));
 };
 
-export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
+export const useTopologyData = (
+    refreshNonce = 0,
+    maxRows = TOPOLOGY_READ_MAX_ROWS,
+): UseTopologyDataResult => {
     const { timeRange } = useTimeRange();
-    const [nodeRows, setNodeRows] = useState<NodeBucketRow[]>([]);
-    const [edgeRows, setEdgeRows] = useState<EdgeBucketRow[]>([]);
-    const [inventoryRows, setInventoryRows] = useState<InventoryRow[]>([]);
+    const [read, setRead] = useState<TopologyRead>(EMPTY_READ);
     const [loading, setLoading] = useState<boolean>(true);
     const [errors, setErrors] = useState<{ search: string; message: string }[]>([]);
 
     useEffect(() => {
         let cancelled = false;
+        const controller = new AbortController();
         setLoading(true);
         setErrors([]);
         const earliest_ts = resolveTimeSpec(timeRange.earliest);
         const latest_ts = resolveTimeSpec(timeRange.latest);
 
-        const fetchBucketed = async <T>(collection: string, label: string): Promise<T[]> => {
+        const report = (label: string, err: unknown): void => {
+            if (cancelled) return;
+            const message = err instanceof Error ? err.message : String(err);
+            setErrors((prev) => [...prev, { search: label, message }]);
+        };
+
+        const fetchBucketed = async <T extends KvBucketRow>(
+            collection: string,
+            label: string,
+        ): Promise<KvBucketRead<T>> => {
             try {
-                return await fetchKvBucketRows<T>(collection, earliest_ts, latest_ts);
+                return await readKvBucketWindow<T>(`${KV_BASE}/${collection}`, earliest_ts, latest_ts, {
+                    maxRows,
+                    signal: controller.signal,
+                });
             } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                if (!cancelled) {
-                    setErrors((prev) => [...prev, { search: label, message }]);
-                }
-                return [];
+                report(label, err);
+                return { rows: [], complete: true, completeFromTs: null };
             }
         };
 
-        const fetchFlat = async <T>(collection: string, label: string): Promise<T[]> => {
+        const fetchFlat = async <T extends KvRow>(collection: string, label: string): Promise<T[]> => {
             try {
-                return await fetchKvAllRows<T>(collection);
+                const flat = await readAllKvRows<T>(`${KV_BASE}/${collection}`, { signal: controller.signal });
+                return flat.rows;
             } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                if (!cancelled) {
-                    setErrors((prev) => [...prev, { search: label, message }]);
-                }
+                report(label, err);
                 return [];
             }
         };
@@ -358,18 +367,31 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
                 fetchFlat<InventoryRow>('logserv_topology_inventory', 'topology_inventory'),
             ]);
             if (cancelled) return;
-            setNodeRows(nodes);
-            setEdgeRows(edges);
-            setInventoryRows(inventory);
+            const completeFromTs = commonCompleteFromTs([nodes.completeFromTs, edges.completeFromTs]);
+            setRead({
+                nodeRows: completeFromTs === null
+                    ? nodes.rows
+                    : nodes.rows.filter((r) => r.bucket_ts >= completeFromTs),
+                edgeRows: completeFromTs === null
+                    ? edges.rows
+                    : edges.rows.filter((r) => r.bucket_ts >= completeFromTs),
+                inventoryRows: inventory,
+                completeFromTs,
+                latestTs: latest_ts,
+            });
             setLoading(false);
         })();
 
         return () => {
             cancelled = true;
+            controller.abort();
         };
-    }, [timeRange.earliest, timeRange.latest, refreshNonce]);
+    }, [timeRange.earliest, timeRange.latest, refreshNonce, maxRows]);
 
-    return useMemo<UseTopologyDataResult>(() => {
+    /* Build 396: `read` alone drives the aggregation, so the loading and error state
+     * flipping around a fetch does not run it again over a window's worth of rows. */
+    const data = useMemo(() => {
+        const { nodeRows, edgeRows, inventoryRows, latestTs } = read;
         // ---- Build inventory IP/host -> resolved-SID-node-id map ----
         // Two pieces are needed: (a) the canonical_value -> resolved_sid map
         // from the inventory collection, and (b) a resolved_sid -> node_id
@@ -548,10 +570,9 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             authSuccessTotal: number;
             authFailTotal: number;
         }>();
-        /* Every bucket the edge rows span, ascending — the x-axis the
-         * in-memory activity series is zero-filled against. ActivityTrendChart
-         * positions bars by INDEX (x = i * barW), so a sparse series would
-         * silently compress the timeline. */
+        /* Every bucket the edge rows span, ascending — the x-axis of the
+         * activity series. Build 396: each edge keeps only the hours it has rows
+         * in, and edgeActivitySeries zero-fills the selected edge's. */
         const allEdgeBuckets = Array.from(
             new Set(edgeRows.map((r) => r.bucket_ts)),
         ).sort((a, b) => a - b);
@@ -656,19 +677,12 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
                 callCount: agg.callCountTotal,
                 /* The stored ids the Edge Details tabs read. Sorted inside
                  * collectBucketIds — load-bearing: useSearch keys its dispatch
-                 * effect on the derived query STRING, and the KV fetch issues
-                 * no `sort` parameter, so row order is unspecified. */
+                 * effect on the derived query STRING, and the KV read sorts on
+                 * bucket_ts only, so row order within a bucket is unspecified. */
                 bucketIds: collectBucketIds(agg.rows),
-                /* Zero-filled against every bucket any edge spans, so the
-                 * Overview legend decomposes `callCount` exactly. */
-                activity: allEdgeBuckets.map((ts) => {
-                    const b = agg.activityByBucket.get(ts);
-                    return {
-                        time: ts,
-                        count: b ? b.count : 0,
-                        errorCount: b ? b.errorCount : 0,
-                    };
-                }),
+                /* Over every bucket any edge spans, so the Overview legend
+                 * decomposes `callCount` exactly. */
+                activity: { buckets: allEdgeBuckets, byBucket: agg.activityByBucket },
                 /* Build 325 (plan item E3) — RFC edges carry the per-app-
                  * server split of ALL member rows (grouped by the stored
                  * local_ip; pre-325 rows group under null). Sums to
@@ -928,14 +942,21 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
         const callsPerHour = sortedBuckets.slice(-24).map((ts) => callsByBucket.get(ts) ?? 0);
 
         // ---- Staleness check ----
+        // Build 396: the rows are read newest first, so the newest bucket is known
+        // even when a limit stopped the read. A window that ended more than the
+        // threshold ago says nothing about whether the aggregation still runs, so it
+        // is never stale; a nearer one is measured from its own end.
         let staleness: StaleNess | undefined;
         if (sortedBuckets.length > 0) {
+            const nowSec = Math.floor(Date.now() / 1000);
             const lastBucketTs = sortedBuckets[sortedBuckets.length - 1];
-            const ageHours = Math.max(0, (Math.floor(Date.now() / 1000) - lastBucketTs) / 3600);
+            const ageHours = Math.max(0, (nowSec - lastBucketTs) / 3600);
+            const windowReachesNow = nowSec - latestTs <= STALENESS_THRESHOLD_HOURS * 3600;
             staleness = {
                 lastBucketTs,
                 ageHours,
-                isStale: ageHours > STALENESS_THRESHOLD_HOURS,
+                isStale: windowReachesNow
+                    && (Math.min(nowSec, latestTs) - lastBucketTs) / 3600 > STALENESS_THRESHOLD_HOURS,
             };
         }
 
@@ -1014,14 +1035,18 @@ export const useTopologyData = (refreshNonce = 0): UseTopologyDataResult => {
             edges,
             activity,
             callsPerHour,
-            loading,
-            errors,
             inventoryStatus: { totalEndpoints, resolved },
             staleness,
             isEmpty,
+            completeFromTs: read.completeFromTs,
             endpointAttribution,
             inventoryOwnerByValue,
             hostTrafficByNode,
         };
-    }, [nodeRows, edgeRows, inventoryRows, loading, errors]);
+    }, [read]);
+
+    return useMemo<UseTopologyDataResult>(
+        () => ({ ...data, loading, errors }),
+        [data, loading, errors],
+    );
 };

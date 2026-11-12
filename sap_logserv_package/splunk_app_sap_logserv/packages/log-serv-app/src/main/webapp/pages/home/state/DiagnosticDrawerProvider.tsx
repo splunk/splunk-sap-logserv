@@ -494,11 +494,11 @@ const ProducerSplBlock: React.FC<{ spl: string; earliest: string; latest: string
                             openInNewTab(buildOpenInSearchUrl(openable, earliest, latest))
                         }
                         title={
-                            'Open in the Search app (new tab) over the diagnosed window — ' +
+                            'Open on the Splunk search page (new tab) over the diagnosed window — ' +
                             'the terminal | outputlookup write is removed so running it ' +
                             'cannot modify the summary'
                         }
-                        aria-label="Open this SPL in the Search app in a new tab"
+                        aria-label="Open this SPL on Splunk's search page in a new tab"
                     >
                         <SearchGlyph />
                     </MonoIconBtn>
@@ -643,6 +643,7 @@ const DrawerContents: React.FC<{ req: DiagnosticRequest; onClose: () => void }> 
                             : `host filter (${probe.hostFilter.hosts.length} host(s))`,
                     );
                 }
+                if (probe.sidFilter && probe.sidFilter.length > 0) excluded.push(`SID filter (${probe.sidFilter.join(', ')})`);
                 if (probe.cloudFilter) excluded.push(`cloud_provider=${probe.cloudFilter.provider}`);
                 if (probe.grainFilters.length > 0) excluded.push(probe.grainFilters.join(', '));
                 const sampleRunner = beginDiagnosis({ budgetMs: 20000, concurrency: 1 });

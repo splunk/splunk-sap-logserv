@@ -11,7 +11,7 @@ import TopologyBottomPanel from '../components/topology/TopologyBottomPanel';
 import LayoutNameModal from '../components/topology/LayoutNameModal';
 import ManageLayoutsModal from '../components/topology/ManageLayoutsModal';
 import { logservTheme } from '../styles/logservTheme';
-import { useTopologyData, resolveTimeSpec } from '../hooks/useTopologyData';
+import { TOPOLOGY_READ_MAX_ROWS, useTopologyData, resolveTimeSpec } from '../hooks/useTopologyData';
 import { useNodeData } from '../hooks/useNodeData';
 import { useEdgeData } from '../hooks/useEdgeData';
 import { useSearch } from '../hooks/useSearch';
@@ -232,7 +232,7 @@ const HDivider = styled.div`
     }
 `;
 
-const StatusBanner = styled.div<{ $kind: 'loading' | 'error' | 'empty' }>`
+const StatusBanner = styled.div<{ $kind: 'loading' | 'error' | 'empty' | 'warning' }>`
     background: ${(p) =>
         p.$kind === 'error'
             ? logservTheme.colors.tableHeaderBackground
@@ -240,13 +240,17 @@ const StatusBanner = styled.div<{ $kind: 'loading' | 'error' | 'empty' }>`
     color: ${(p) =>
         p.$kind === 'error'
             ? logservTheme.colors.red
-            : p.$kind === 'empty'
-              ? logservTheme.colors.textMuted
-              : logservTheme.colors.cyanLight};
+            : p.$kind === 'warning'
+              ? logservTheme.colors.orange
+              : p.$kind === 'empty'
+                ? logservTheme.colors.textMuted
+                : logservTheme.colors.cyanLight};
     border: 1px solid ${(p) =>
         p.$kind === 'error'
             ? logservTheme.colors.red
-            : logservTheme.colors.panelBorderWeak};
+            : p.$kind === 'warning'
+              ? logservTheme.colors.orange
+              : logservTheme.colors.panelBorderWeak};
     border-radius: ${logservTheme.radius.small};
     padding: 6px ${logservTheme.spacing.md};
     font-size: ${logservTheme.fontSize.small};
@@ -254,6 +258,11 @@ const StatusBanner = styled.div<{ $kind: 'loading' | 'error' | 'empty' }>`
     align-items: center;
     gap: ${logservTheme.spacing.sm};
 `;
+
+/** Build 396: an epoch as text for the read-limit notice. Stated in UTC because a
+ *  bucket starts on a UTC hour, and bucket_ts is what the page is reporting. */
+const utcMinute = (ts: number): string =>
+    `${new Date(ts * 1000).toISOString().slice(0, 16).replace('T', ' ')} UTC`;
 
 /* Build 166 / session 028 — the legacy 12 px cyan-arc spinner was
  * replaced with the shared `Spinner` component (Win11-style 8 orange
@@ -823,8 +832,11 @@ const IntegrationTopology: React.FC = () => {
         const resolvedPct = inv.totalEndpoints > 0
             ? Math.round((inv.resolved / inv.totalEndpoints) * 100)
             : 0;
-        return `${liveNodes.length} nodes · ${liveEdges.length} edges · ${totalCalls.toLocaleString()} calls + connections · ${resolvedPct}% endpoints resolved to SID`;
-    }, [topology.loading, liveNodes, liveEdges, totalCalls, topology.inventoryStatus]);
+        const stats = `${liveNodes.length} nodes · ${liveEdges.length} edges · ${totalCalls.toLocaleString()} calls + connections · ${resolvedPct}% endpoints resolved to SID`;
+        return topology.completeFromTs === null
+            ? stats
+            : `${stats} · from ${utcMinute(topology.completeFromTs)} only`;
+    }, [topology.loading, liveNodes, liveEdges, totalCalls, topology.inventoryStatus, topology.completeFromTs]);
 
     // ---- Selection handlers (build 202 / session 036 — enforce mutex
     //      between node + edge selection at the dashboard level so the
@@ -1251,6 +1263,19 @@ const IntegrationTopology: React.FC = () => {
                         {topology.staleness.ageHours.toFixed(1)} hours old (threshold: 6h).
                         The hourly aggregation saved searches may be disabled or failing.
                         Check Settings → AI Assistant → Topology and the Splunk Job Monitor.
+                    </StatusBanner>
+                )}
+                {topology.completeFromTs !== null && (
+                    <StatusBanner $kind="warning" role="status">
+                        This time range holds more topology data than this page reads at once
+                        ({TOPOLOGY_READ_MAX_ROWS.toLocaleString()} rows per collection). The graph, its
+                        counts and Live Activity, and what the side panel takes from them (an edge's
+                        Overview, Activity and Performance figures; a node's Overview totals and Calls by
+                        host), cover only {utcMinute(topology.completeFromTs)} onward, not the whole range.
+                        What the side panel searches for itself (Top Programs, Errors, the Hosts list and
+                        host count, Operations, the Performance distribution) reads the whole range, so
+                        those numbers can be larger. Choose a shorter time range to see one period
+                        everywhere.
                     </StatusBanner>
                 )}
 

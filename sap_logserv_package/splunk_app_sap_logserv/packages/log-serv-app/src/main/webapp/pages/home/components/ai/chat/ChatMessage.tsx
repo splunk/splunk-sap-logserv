@@ -468,7 +468,7 @@ function renderTextWithCitations(
                         href={entry.splUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        title="Open this SPL in Splunk's Search app (new tab)"
+                        title="Open this SPL on Splunk's search page (new tab)"
                     >
                         ↗ Run SPL
                     </DashboardChip>,

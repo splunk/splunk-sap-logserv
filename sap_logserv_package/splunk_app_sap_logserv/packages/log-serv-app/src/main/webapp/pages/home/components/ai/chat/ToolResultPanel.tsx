@@ -293,7 +293,7 @@ const ToolResultPanel: React.FC<ToolResultPanelProps> = ({
                     href={splUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title="Open this SPL in Splunk's Search app (new tab)"
+                    title="Open this SPL on Splunk's search page (new tab)"
                     aria-label="Open this SPL in Splunk Search"
                 >
                     <span aria-hidden>↗</span>

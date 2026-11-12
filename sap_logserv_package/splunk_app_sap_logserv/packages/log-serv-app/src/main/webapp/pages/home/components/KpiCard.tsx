@@ -9,6 +9,7 @@ import { useCloudProvider } from '../state/CloudProviderProvider';
 import { useDiagnosticDrawer } from '../state/DiagnosticDrawerProvider';
 import { rawTwinFor } from '../utils/rawTwin';
 import { isDiagnosisActive } from '../utils/diagProbe';
+import { isFilterPending, isFilterUnavailable } from '../utils/queryFilters';
 // styled-components needs to be imported above; SparklineSlot uses styled.div
 
 /**
@@ -273,7 +274,7 @@ const KpiCard: React.FC<KpiCardProps> = ({
 
     const drawer = useDiagnosticDrawer();
     const diagActive = useDiagnosisActive();
-    const canDiagnose = !!(search && search.spl);
+    const canDiagnose = !!(search && search.spl) && !isFilterUnavailable(search.spl) && !isFilterPending(search.spl);
     const openKpiDiagnosis = (): void => {
         if (!search || !search.spl) return;
         // §18.8a-24 — the imperative check is the guard.

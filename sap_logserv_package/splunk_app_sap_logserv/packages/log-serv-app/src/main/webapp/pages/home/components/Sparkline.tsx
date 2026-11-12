@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { isFilterUnavailable } from '../utils/queryFilters';
 import styled from 'styled-components';
 import { useSearch } from '../hooks/useSearch';
 import { logservTheme } from '../styles/logservTheme';
@@ -288,6 +289,14 @@ export const SparklineFromQuery: React.FC<SparklineFromQueryProps> = ({
     fill,
 }) => {
     const { results, error } = useSearch({ query });
+    // Build 395 - no raw version, so nothing the SID or Host filter can reach.
+    if (isFilterUnavailable(query)) {
+        return (
+            <div title="This trend cannot be filtered by SID or host." style={{ width: '100%' }}>
+                <Sparkline values={[]} width={width} height={height} color={color} fill={fill} />
+            </div>
+        );
+    }
     if (error || !results) {
         return <Sparkline values={[]} width={width} height={height} color={color} fill={fill} />;
     }

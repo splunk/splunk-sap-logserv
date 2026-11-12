@@ -58,13 +58,21 @@ export const meetsMinVersion = (
     installed: string,
     required: string = MIN_MCP_SERVER_VERSION,
 ): boolean => {
-    if (!installed || !installed.match(/^\d+\.\d+/)) return false;
+    if (!isWellFormedVersion(installed)) return false;
     return compareVersions(installed, required) >= 0;
 };
 
+/**
+ * Two or more parts of digits only, MAJOR.MINOR[.PATCH...], with an optional "-pre" or
+ * "+build" suffix (build 398). "2.0.x" and "3.0." used to pass, read as 2.0.0 and 3.0.0
+ * (the build-393 audit).
+ */
+const WELL_FORMED_VERSION = /^\d+(\.\d+)+(?:[-+][0-9A-Za-z.+-]+)?$/;
+export const isWellFormedVersion = (v: string): boolean => !!v && WELL_FORMED_VERSION.test(v);
+
 const parseSemver = (v: string): [number, number, number] => {
-    // Strip a `-prerelease` suffix.
-    const core = v.split('-')[0] ?? v;
+    // Strip a `-prerelease` or `+build` suffix.
+    const core = v.split(/[-+]/)[0] ?? v;
     const parts = core.split('.').map((n) => parseInt(n, 10));
     return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
 };

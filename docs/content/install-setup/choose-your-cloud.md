@@ -12,7 +12,7 @@ Both decisions apply only to what is indexed after you save them, so the first e
 
 !!! tip "Which setup guide?"
     1. **Choose the cloud first.** It is the cloud SAP runs your SAP ECS environment in: Amazon Web Services, Microsoft Azure or Google Cloud Platform. Azure and GCP each have one setup guide; AWS has three scenarios.
-    2. **On AWS, use [AWS Remote S3 Connect](aws-remote-s3-connect-guide.md) unless you have a reason not to.** It deploys only an IAM user and a role in your own account, and the Splunk Add-on for AWS reads SAP's queue and bucket directly. The Data TA's own filters work with it.
+    2. **On AWS, use [AWS Remote S3 Connect](aws-remote-s3-connect-guide.md) unless you have a reason not to.** It deploys only a role in your own account, plus an IAM user unless your heavy forwarders on EC2 use an [EC2 instance role](aws-remote-s3-connect-instance-role.md), and the Splunk Add-on for AWS reads SAP's queue and bucket directly. The Data TA's own filters work with it.
     3. **Choose [AWS Remote S3 Filter](aws-remote-s3-filter-guide.md)** when the load on your forwarders, or the backlog of notifications waiting in SAP's queue at the first start, needs cutting before it reaches Splunk. A Lambda in your account drops the notifications of the objects you do not want, so the forwarder never downloads them.
     4. **Choose [AWS Remote S3 Copy](aws-remote-s3-copy-guide.md) only if you want your own copy of new log files** in a bucket in your account. It copies the objects whose notifications are still waiting in SAP's queue when you activate its trigger, then every new object, so it cannot load history, and it stores gzipped files decompressed.
     5. **History comes from [AWS S3 Direct](aws-s3-direct.md) in every case.** No AWS scenario loads objects older than the notifications still waiting in SAP's queue when your input or Lambda first reads it (4 days by default, at most 14; SAP sets the retention). Load older days with AWS S3 Direct once the setup works.
@@ -52,7 +52,7 @@ The table below lists the AWS Resources required for each deployment scenario:
 | SQS Queue DLQ (**_Secondary account_**)    | ❌ Not Required         | ✅ Required               | ✅ Required           |
 | IAM Policy (**_Secondary account_**)       | ✅ Required             | ✅ Required               | ✅ Required           |
 | IAM Role (**_Secondary account_**)         | ✅ Required             | ✅ Required               | ✅ Required           |
-| IAM User (**_Secondary account_**)         | ✅ Required             | ✅ Required               | ✅ Required           |
+| IAM User (**_Secondary account_**)         | ✅ Required, unless heavy forwarders on EC2 use an [EC2 instance role](aws-remote-s3-connect-instance-role.md) | ✅ Required               | ✅ Required           |
 | Lambda Function (**_Secondary account_**)  | ❌ Not Required         | ✅ Required               | ✅ Required           |
 | Lambda Log Group (**_Secondary account_**) | ❌ Not Required         | ✅ Required               | ✅ Required           |
 
@@ -82,7 +82,7 @@ To load history in any scenario, use [AWS S3 Direct](aws-s3-direct.md).
 
 ### &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; :material-crop-square:{ .cboxmove } [AWS Remote S3 Connect Setup Guide](aws-remote-s3-connect-guide.md) 
 ??? indented-note "Note"
-    This deployment scenario uses an IAM User with a configured Access Key and a cross-account IAM Role to directly access LogServ resources in the AWS SAP ECS account where the LogServ logs reside without the need to copy logs to a secondary S3 bucket. It is the default AWS scenario.
+    This deployment scenario uses an IAM User with a configured Access Key and a cross-account IAM Role to directly access LogServ resources in the AWS SAP ECS account where the LogServ logs reside without the need to copy logs to a secondary S3 bucket. It is the default AWS scenario. A heavy forwarder on EC2 can use its [EC2 instance role](aws-remote-s3-connect-instance-role.md) in place of the IAM User and Access Key.
 
     - No S3 Bucket or SQS Queue in your **_Secondary account_**
     - The input reads SAP's SQS Queue and downloads from SAP's S3 Bucket

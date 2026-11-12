@@ -118,6 +118,7 @@ nav:
         - Choose Your Cloud and AWS Scenario: 'content/install-setup/choose-your-cloud.md'
         - AWS:
             - AWS Remote S3 Connect: 'content/install-setup/aws-remote-s3-connect-guide.md'
+            - AWS Remote S3 Connect with an EC2 Instance Role: 'content/install-setup/aws-remote-s3-connect-instance-role.md'
             - AWS Remote S3 Filter: 'content/install-setup/aws-remote-s3-filter-guide.md'
             - AWS Remote S3 Copy: 'content/install-setup/aws-remote-s3-copy-guide.md'
         - Azure Setup Guide: 'content/install-setup/azure-setup.md'

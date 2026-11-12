@@ -9,7 +9,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildDashboardUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -153,10 +153,10 @@ const AbapOperations: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const sids = useFirstRowFieldHybrid(Q.kpiSids, QRAW.kpiSids, 'sids');
     const wpErrors = useFirstRowFieldHybrid(Q.kpiWpErrors, QRAW.kpiWpErrors, 'count');
@@ -188,7 +188,7 @@ const AbapOperations: React.FC = () => {
         const sidClause = sid ? ` sap_sid="${splQuote(sid)}"` : '';
         const stClause = st ? ` sourcetype="${splQuote(st)}"` : '';
         const spl = `\`sap_logserv_idx_macro\`${stClause}${sidClause} | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
 
     return (

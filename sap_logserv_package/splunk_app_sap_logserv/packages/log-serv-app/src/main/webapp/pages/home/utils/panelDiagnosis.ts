@@ -44,6 +44,7 @@
 
 import { probeSpl, SplProbe } from './splProbe';
 import { estimateWindowSeconds } from './timechartSpan';
+import { isFilterUnavailable } from './queryFilters';
 
 /** How strongly the evidence supports a verdict. */
 export type Confidence =
@@ -272,6 +273,12 @@ const checkActiveFilters = (facts: PanelFacts, probe: SplProbe): Verdict | null 
         }
     }
 
+    const sf = probe.sidFilter;
+    if (sf && sf.length > 0) {
+        parts.push(`the SID filter is set to ${sf.join(', ')}`);
+        evidence.push(`SID filter: ${sf.join(', ')}`);
+    }
+
     const what =
         probe.sourcetypes.length > 0
             ? `no ${listSourcetypes(probe)} events`
@@ -308,6 +315,7 @@ const checkActiveFilters = (facts: PanelFacts, probe: SplProbe): Verdict | null 
                   : `${hf.hosts.length} hosts`,
         );
     }
+    if (sf && sf.length > 0) shortBits.push(`SID=${sf.join(', ')}`);
 
     return {
         id: 'active-filters',
@@ -331,6 +339,23 @@ const checkSearchError = (facts: PanelFacts): Verdict | null => {
         confidence: 'confirmed',
         owner: 'splunk-admin',
         evidence: [`Splunk returned: ${facts.errorMessage}`],
+    };
+};
+
+/** Build 395 - the query cannot honour the SID or Host filter, and the panel has
+ *  no raw version to fall back on (a KPI sparkline, the beaconing panels). It ran
+ *  nothing rather than show unfiltered numbers. Comes first: nothing else is true
+ *  of a search that never ran. */
+const checkFilterUnavailable = (facts: PanelFacts): Verdict | null => {
+    if (!isFilterUnavailable(facts.spl)) return null;
+    return {
+        id: 'filter-unavailable',
+        short: 'Not filterable',
+        headline: 'This panel cannot be filtered by SID or host, so it shows nothing while that filter is on.',
+        detail: 'Its stored summary has neither field over this time range, and it has no raw version. Clear the SID and Host filters to see it. If the summary was written before an upgrade added the host, a Backfill of its row in Settings > Dashboard Data can change this.',
+        confidence: 'expected',
+        owner: 'user',
+        evidence: ['A SID or Host filter is on, and this panel reads a stored summary that has neither host nor sap_sid over this time range.'],
     };
 };
 
@@ -462,6 +487,8 @@ export const evaluateGate0 = (
  */
 export const explainEmptyPanel = (facts: PanelFacts, mode: PanelMode = 'empty'): Verdict | null => {
     if (facts.loading) return null;
+    const unavailable = checkFilterUnavailable(facts);
+    if (unavailable) return unavailable;
     const probe = probeSpl(facts.spl);
 
     return (
@@ -484,6 +511,8 @@ export const explainEmptyPanel = (facts: PanelFacts, mode: PanelMode = 'empty'):
  *  hint, EmptyStateHint, the dashboard sweep) keeps today's behaviour BY
  *  CONSTRUCTION (§18.8a-18, review findings W-6/W-12). */
 export const allFreeVerdicts = (facts: PanelFacts, mode: PanelMode = 'empty'): Verdict[] => {
+    const unavailable = checkFilterUnavailable(facts);
+    if (unavailable) return [unavailable];
     const probe = probeSpl(facts.spl);
     return [
         checkSearchError(facts),

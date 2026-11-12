@@ -75,8 +75,8 @@ Dispatch ad-hoc SPL written by the AI. Used when no saved search fits the user's
 | Arg | Type | Description |
 |---|---|---|
 | `query` | string (required) | SPL string. Must start with the LogServ macro `\`sap_logserv_idx_macro\`` as its first term — or with `\| inputlookup` of one of the App's lookups, `\| tstats` with the macro right after `WHERE` or `\| makeresults` — and use only the allowed commands. The App enforces both (below). |
-| `earliest_time` | string (optional) | Passed to the MCP Server as given. When the AI omits it, the App adds no default: the window is whatever the Splunk MCP Server applies. (The tool description the AI sees says the user's selected time range is the default; it is not.) |
-| `latest_time` | string (optional) | Same as above. |
+| `earliest_time` | string (optional) | Passed to the MCP Server as given. When the AI gives neither time, the App sends the time range selected at the top of the page, as the tool description the AI sees says (since build 398; before, the window was whatever the Splunk MCP Server applied, which since its 2.0.0 is the last 6 hours). On a page without the picker, such as Settings, that is the range last selected, Last 30 days at first. An `earliest=` inside the SPL still takes precedence. Over a long range an ad-hoc query takes longer, and the MCP request timeouts still apply. |
+| `latest_time` | string (optional) | Passed as given; sent with `earliest_time` from the page's range when the AI gives neither. |
 | `render_hint` | string (optional) | One of `table` / `timechart` / `kpi` / `pie`. |
 | `top_n` | integer (optional, default 10, max 50) | Width of categorical aggregates the AI receives in a Tier 2 summary. |
 

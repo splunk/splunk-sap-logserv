@@ -1,6 +1,6 @@
 # Drill-down Chips
 
-Drill-down chips are clickable affordances that appear next to AI Assistant tool-result tiles (right pane) and inline citations in the chat narrative (left pane). They connect the AI Assistant's investigation flow back into the dashboards or Splunk's universal Search app. A `↗ Run SPL` chip opens the search at the dispatch's exact time range; a dashboard chip opens the dashboard in a new tab at the App's default time range (Last 30 days), not at the dispatch's window.
+Drill-down chips are clickable affordances that appear next to AI Assistant tool-result tiles (right pane) and inline citations in the chat narrative (left pane). They connect the AI Assistant's investigation flow back into the dashboards or Splunk's search page, which opens inside the LogServ App. A `↗ Run SPL` chip opens the search at the dispatch's exact time range; a dashboard chip opens the dashboard in a new tab at the App's default time range (Last 30 days), not at the dispatch's window.
 
 The tile chips and guidance-card chips need no LLM provider: every predefined-prompt tile carries them once the AI Assistant is turned on ([Set Up the AI Assistant](enable.md)). The chat-narrative *citation* chips accompany LLM-written narratives, so they appear only once an [LLM provider credential](settings.md#provider-credentials-tab) is configured.
 
@@ -16,7 +16,7 @@ The link carries no time range: the dashboard opens in a new tab at the App's de
 
 ### `↗ Run SPL`
 
-Opens Splunk's universal Search app in a new browser tab with the dispatched SPL pre-populated and the dispatch's exact earliest/latest pre-applied. The chip is hidden on synthetic blocked-SPL results so it doesn't help the user manually run a query that the [SPL static-analysis guard](free-form-prompts.md) just rejected.
+Opens Splunk's search page, inside the LogServ App, in a new browser tab with the dispatched SPL pre-populated and the dispatch's exact earliest/latest pre-applied. The chip is hidden on synthetic blocked-SPL results so it doesn't help the user manually run a query that the [SPL static-analysis guard](free-form-prompts.md) just rejected.
 
 For canned-prompt dispatches, the SPL is the prompt's catalog SPL string. For AI-driven saved-search calls, the SPL is resolved from the same catalog lookup. For AI-driven ad-hoc queries, the SPL is the AI's own query string.
 
@@ -45,7 +45,7 @@ Where:
 
 ## :material-circle-box:{ .taiconcolor } Time-Range Preservation
 
-The `↗ Run SPL` chip preserves the dispatch's **exact** time range — not the user's current global TimeRange picker. So a `-24h` verify-query opens the Search app at `-24h`; a `-30d` cumulative search opens at `-30d`. The `↗ Dashboard` chip opens the destination dashboard in a new tab at the App's default time range (Last 30 days), not at the dispatch's window.
+The `↗ Run SPL` chip preserves the dispatch's **exact** time range — not the user's current global TimeRange picker. So a `-24h` verify-query opens the search page at `-24h`; a `-30d` cumulative search opens at `-30d`. The `↗ Dashboard` chip opens the destination dashboard in a new tab at the App's default time range (Last 30 days), not at the dispatch's window.
 
 This matters because the user's TimeRange picker may have changed between when the AI dispatched the search and when the user clicks the drill-down. By embedding the dispatch's window in the URL, the destination reflects exactly what the AI saw.
 

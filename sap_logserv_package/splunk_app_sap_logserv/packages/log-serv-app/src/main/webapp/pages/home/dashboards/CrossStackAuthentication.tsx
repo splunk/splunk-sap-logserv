@@ -8,7 +8,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -197,10 +197,10 @@ const CrossStackAuthentication: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const sap = useFirstRowFieldHybrid(Q.kpiSap, QRAW.kpiSap, 'count');
     const hana = useFirstRowFieldHybrid(Q.kpiHana, QRAW.kpiHana, 'count');
@@ -228,13 +228,13 @@ const CrossStackAuthentication: React.FC = () => {
         const ip = String(row['Source IP'] ?? '');
         if (!ip) return;
         const spl = `\`sap_logserv_idx_macro\` ${ANY_AUTH_FAIL} | eval src=coalesce(remote_ip,client_ip,src_ip,IpAddress) | where src="${splQuote(ip)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goHanaUserRow = (row: Record<string, unknown>): void => {
         const user = String(row.User ?? '');
         if (!user) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit" action_category="Authentication" src_user="${splQuote(user)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goHostRow = (row: Record<string, unknown>): void => {
         const host = String(row.host ?? '');

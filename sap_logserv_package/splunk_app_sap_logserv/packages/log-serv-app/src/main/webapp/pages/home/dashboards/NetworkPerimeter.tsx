@@ -9,7 +9,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -101,7 +101,7 @@ const DNSTYPE = `| inputlookup ${ROLL} where metric="dnstype" ${RANGE}`;
 const DNSQ = `| inputlookup ${ROLL} where metric="dnsq" ${RANGE}`;
 const ACTIVITY = `| inputlookup ${ROLL} where metric="activity" ${RANGE}`;
 // Build 374: drops in transit (FWD_DROP) come from the Linux rollup's `kernel`
-// metric (kernel_event per hour and cloud_provider, no host), which this
+// metric (kernel_event per hour, host and cloud_provider), which this
 // collection lacks. The identical RANGE string keeps the cloud splice working;
 // the KPI reads 0 when the Linux rollup is turned off.
 const KERNEL = `| inputlookup logserv_linux_rollup where metric="kernel" ${RANGE}`;
@@ -179,7 +179,9 @@ const QRAW_BASE = {
     kpiProxy: `${RAW_SQUID} | stats count`,
     kpiDns: `${RAW_DNS} | stats count`,
     kpiDenied: `${RAW_SQUID} (status=403 OR vendor_action="TCP_DENIED") | stats count`,
-    kpiBw: `${RAW_SQUID} bytes_out=* | stats sum(bytes_out) as total_bytes | eval display = ${bytesFmt('total_bytes')} | table display`,
+    // Build 398: empty-safe like its rollup twin. With no event the search returned no row
+    // and the card a dash, where the rollup gives 0 B.
+    kpiBw: `${RAW_SQUID} bytes_out=* | stats count as n, sum(bytes_out) as total_bytes | fillnull value=0 total_bytes | eval display = ${bytesFmt('total_bytes')} | table display`,
     activity: `\`sap_logserv_idx_macro\` (sourcetype="linux_secure" OR (sourcetype="squid:access" source="*access.log*") OR (tag=dns message_type="Query")) | eval source_type = case(sourcetype="linux_secure" AND match(_raw, "IN_DROP"), "${FW_AT_HOST}", sourcetype="squid:access", "Proxy Requests", sourcetype="isc:bind:query", "DNS Queries", 1=1, "other") | where source_type != "other" | timechart span=__LSV_SPAN__ count by source_type | fillnull value=0`,
     blockedSrc: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | rex field=_raw "SRC=(?<fw_src>[^ ]+)" | rex field=_raw "DST=(?<fw_dst>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_src) | stats count as Drops, count(eval(fw_action="IN_DROP")) as AtHost, dc(fw_dst) as "Unique Targets", values(fw_proto) as Protocols by fw_src | eval InTransit=Drops-AtHost | sort -Drops | rename fw_src as "Source IP"`,
     blockedPort: `${RAW_LSEC} | rex field=_raw "(?<fw_action>IN_DROP|IN_ACCEPT)" | rex field=_raw "DPT=(?<fw_dpt>[^ ]+)" | rex field=_raw "PROTO=(?<fw_proto>[^ ]+)" | where isnotnull(fw_dpt) | stats count as Drops, count(eval(fw_action="IN_DROP")) as AtHost, dc(host) as Hosts by fw_dpt, fw_proto | eval InTransit=Drops-AtHost | sort -Drops | rename fw_dpt as "Dest Port", fw_proto as Protocol`,
@@ -255,10 +257,10 @@ const NetworkPerimeter: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const fw = useFirstRowFieldHybrid(Q.kpiFw, QRAW.kpiFw, 'count');
     const fwd = useFirstRowFieldHybrid(Q.kpiFwd, QRAW.kpiFwd, 'count'); // in transit (FWD_DROP)
     const proxy = useFirstRowFieldHybrid(Q.kpiProxy, QRAW.kpiProxy, 'count');
@@ -289,25 +291,25 @@ const NetworkPerimeter: React.FC = () => {
     /* Drilldowns (build 159 / session 027 task 6). */
     const goDeniedKpi = (): void => {
         const spl = '`sap_logserv_idx_macro` sourcetype=squid:access (status=403 OR vendor_action="TCP_DENIED") | sort -_time';
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goBlockedSrc = (row: Record<string, unknown>): void => {
         const ip = String(row['Source IP'] ?? '');
         if (!ip) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype=linux_secure "SRC=${splQuote(ip)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goOutDomain = (row: Record<string, unknown>): void => {
         const dom = String(row.Domain ?? '');
         if (!dom) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype=squid:access url_domain="${splQuote(dom)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goQueried = (row: Record<string, unknown>): void => {
         const dom = String(row.Domain ?? '');
         if (!dom) return;
         const spl = `\`sap_logserv_idx_macro\` tag=dns message_type="Query" query="${splQuote(dom)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goSuspicious = (row: Record<string, unknown>): void => {
         const host = String(row.Host ?? '');

@@ -154,19 +154,32 @@ const oldParseUnion = (spl: string): { arms: string[]; tail: string } => {
     return { arms, tail: s.slice(rest).trim() };
 };
 
+/* Build 397's tail holds one appendpipe, whose brackets the old parser would read as an arm. Only that
+ * step is masked for the comparison: every arm and the rest of the tail still answer to the old parser. */
+const ZERO_ROW_APPEND = /appendpipe \[where isnotnull\(old_row\) AND old_key!=_key[^\]]*\]/;
+const oldParseMasked = (spl: string): { arms: string[]; tail: string } => {
+    const m = ZERO_ROW_APPEND.exec(spl);
+    if (!m) return oldParseUnion(spl);
+    const r = oldParseUnion(spl.replace(ZERO_ROW_APPEND, '@@ZERO_ROWS@@'));
+    return { arms: r.arms, tail: r.tail.replace('@@ZERO_ROWS@@', m[0]) };
+};
+
 {
     const names = Object.keys(SS).filter((n) => searchOf(n) !== null);
     let unions = 0;
     names.forEach((n) => {
         const spl = searchOf(n) as string;
         const a = bp.parseUnion(spl);
-        const b = oldParseUnion(spl);
+        const b = oldParseMasked(spl);
         if (a.arms.length) unions += 1;
         eq(`A1 parseUnion unchanged on [${n}]`, a, b);
     });
     check('A2 the conf has union backfills to split', unions >= 25, `${unions} union stanzas`);
     const tricky = '| union [search x "a]b\\"c[" | eval y="\\\\"] [search z] | eval k=1';
     eq('A3 parseUnion: brackets inside quotes and an escaped backslash', bp.parseUnion(tricky), oldParseUnion(tricky));
+    eq('A3b parseUnion: brackets in the tail are not arms',
+        bp.parseUnion('| union [search a] [search b] | eval k=1 | appendpipe [where x | eval y=1] | outputlookup append=true z'),
+        { arms: ['search a', 'search b'], tail: '| eval k=1 | appendpipe [where x | eval y=1] | outputlookup append=true z' });
     eq('A4 splitCommands: pipes inside quotes and brackets are not command breaks',
         bp.splitCommands('| stats count by a | eval b="x|y" | append [search c | head 1] | fields a'),
         ['stats count by a', 'eval b="x|y"', 'append [search c | head 1]', 'fields a']);
@@ -1216,7 +1229,7 @@ const oldPlan = (loaded: Array<{ stanza: string; spl: string | null }>, wins: an
         if (!spl) return;
         const pinned = reg.FIXED30_BACKFILL_STANZAS.has(stanza);
         const w = pinned ? [fixed30] : wins;
-        const { arms: parsed, tail } = oldParseUnion(spl);
+        const { arms: parsed, tail } = oldParseMasked(spl);
         if (parsed.length === 0) arms.push({ spl, wins: w, chunk: !pinned });
         else parsed.forEach((a) => arms.push({ spl: `${a} ${tail}`, wins: w, chunk: !pinned }));
     });

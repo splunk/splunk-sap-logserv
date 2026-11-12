@@ -23,6 +23,12 @@
  *  K7 the refresh-interval clamp: ALLOWED_INTERVALS_MS equals the picker's options and collections.conf's
  *     documented set, and loadDashboardInterval returns only those values.
  *
+ * Build 398 (the 385 audit's limits): K4b and K4d read an indented dispatchAs line too; K5b also refuses a quoted
+ * method key, an assignment to `.method`, an XMLHttpRequest object and sendBeacon, and a `method: string` type
+ * annotation no longer reads as a variable method; K5k a reader has no '/*' inside a string, which the comment
+ * stripper would read past; K5j2 each AI module builds its KV URL from its own local COLLECTION constant and
+ * imports no collection name. What these still cannot see: a method or URL assembled at run time from parts.
+ *
  * Path overrides for mutation checks: KVACL_META, KVACL_SAVED (otherwise the shipped files).
  * Run standalone with: `yarn check:diagnostics`
  */
@@ -98,7 +104,7 @@ const meta = parseConf(read(META));
 const collNames = Object.keys(parseConf(read(COLLECTIONS)));
 
 /* ---- K1 one stanza per collection, none for an unknown one ---- */
-check('K1a collections.conf defines 40 collections', collNames.length === 40, String(collNames.length));
+check('K1a collections.conf defines 41 collections', collNames.length === 41, String(collNames.length));
 collNames.forEach((c) => {
     const s = meta[`collections/${c}`];
     check(`K1 [collections/${c}] has exactly one default.meta stanza`, !!s && s['__count'] === '1',
@@ -119,7 +125,7 @@ collNames.forEach((c) => {
     check(`K2 [collections/${c}] export = system`, s.export === 'system', String(s.export));
 });
 const closed = collNames.filter((c) => OPEN.indexOf(c) === -1);
-check('K2b 34 collections are closed (30 since build 384, the stage, the three AI ones)', closed.length === 34,
+check('K2b 35 collections are closed (30 since build 384, the stage, the three AI ones, the SID list of build 395)', closed.length === 35,
     String(closed.length));
 
 /* ---- K3 the defaults cannot reopen them ---- */
@@ -145,12 +151,12 @@ const saved: { name: string; body: string }[] = [];
     });
 }
 const writers = saved.filter((s) => /\boutputlookup\b/.test(s.body));
-check('K4a 91 saved searches write with outputlookup (30 aggregates, 30 retentions, 29 backfills, 2 ES feeds)',
-    writers.length === 91, String(writers.length));
+check('K4a 94 saved searches write with outputlookup (31 aggregates, 31 retentions, 30 backfills, 2 ES feeds)',
+    writers.length === 94, String(writers.length));
 writers.forEach((s) => {
     // Splunk keeps the LAST value of a repeated key, so the last dispatchAs line is the one that counts.
     // Build 385: every value counts, empty or several words included (`dispatchAs =`, `dispatchAs = owner # x`).
-    const da = (s.body.match(/^dispatchAs\s*=.*$/gm) || []).map((l) => l.replace(/^dispatchAs\s*=/, '').trim());
+    const da = (s.body.match(/^\s*dispatchAs\s*=.*$/gm) || []).map((l) => l.replace(/^\s*dispatchAs\s*=/, '').trim());
     check(`K4b [${s.name}] writes, so it sets dispatchAs = user (and no later line overrides it)`,
         da.length > 0 && da[da.length - 1] === 'user', JSON.stringify(da));
     const re = /\boutputlookup\s+(?:[a-z_]+=\S+\s+)*([A-Za-z0-9_.:-]+)/g;
@@ -164,7 +170,7 @@ writers.forEach((s) => {
             lk ? `collection = ${lk.collection}` : 'no lookup definition');
     }
 });
-const extra = saved.filter((s) => /^dispatchAs\s*=/m.test(s.body) && !/\boutputlookup\b/.test(s.body));
+const extra = saved.filter((s) => /^\s*dispatchAs\s*=/m.test(s.body) && !/\boutputlookup\b/.test(s.body));
 check('K4d no saved search that does not write sets dispatchAs', extra.length === 0, extra.map((s) => s.name).join(', '));
 
 /* ---- K5 the browser's KV writers ---- */
@@ -189,7 +195,7 @@ const OPEN_WRITERS: { [file: string]: string[] } = {
 };
 const ADMIN_WRITERS = ['components/RollupBackfillPanel.tsx', 'utils/aiConfigApi.ts', 'utils/telemetryConfApi.ts',
     'components/ai/modelDiscovery.ts'];
-const READERS = ['hooks/useTopologyData.ts', 'topology/enrichment.ts', 'utils/diagProbe.ts'];
+const READERS = ['hooks/useTopologyData.ts', 'topology/enrichment.ts', 'utils/diagProbe.ts', 'utils/hostGate.ts', 'utils/kvPagedRead.ts'];
 const kvFiles = listFiles(HOME).filter((p) => read(p).indexOf('storage/collections/data') !== -1).map(rel).sort();
 const declared = Object.keys(OPEN_WRITERS).concat(ADMIN_WRITERS, READERS).sort();
 check('K5a the files that use the KV data endpoint are exactly the declared writers and readers',
@@ -199,10 +205,18 @@ READERS.forEach((f) => {
     // Build 385: any letter case (fetch upper-cases the method), PUT / PATCH too, and no method held in a variable.
     const posts = (src.match(/method:\s*['"`]POST['"`]/gi) || []).length;
     const oneshot = (src.match(/url:\s*ONESHOT_URL,\s*init:\s*\{\s*method:\s*['"`]POST['"`]/gi) || []).length;
-    const varMethod = /\bmethod\s*:(?!\s*['"`])|[{,]\s*method\s*[,}]/.test(src);
+    // Build 398: a type annotation (`method: string`, `method?: string`) is not a variable method.
+    const varMethod = /\bmethod\s*:(?!\s*['"`])(?!\s*string\b)|[{,]\s*method\s*[,}]/.test(src);
+    const quotedKey = /['"`]method['"`]\s*:/i.test(src);
+    const assigned = /\.\s*method\s*=(?!=)/.test(src);
+    const otherChannel = /\bnew\s+XMLHttpRequest\b|\bsendBeacon\s*\(/.test(src);
     check(`K5b ${f} only reads KV (no DELETE / PUT / PATCH; any POST is a oneshot search; every method is a literal)`,
-        !/method:\s*['"`](DELETE|PUT|PATCH)['"`]/i.test(src) && posts === oneshot && !varMethod,
-        `${posts} POST, ${oneshot} oneshot, a variable method: ${varMethod}`);
+        !/method:\s*['"`](DELETE|PUT|PATCH)['"`]/i.test(src) && posts === oneshot && !varMethod && !quotedKey && !assigned && !otherChannel,
+        `${posts} POST, ${oneshot} oneshot, a variable method: ${varMethod}, a quoted method key: ${quotedKey}, `
+        + `an assignment to .method: ${assigned}, an XHR or sendBeacon: ${otherChannel}`);
+    // The comment stripper above removes from '/*' to the next '*/' even inside a string.
+    const raw = read(path.join(HOME, f));
+    check(`K5k ${f} has no '/*' inside a string`, !/['"`][^'"`\n]*\/\*/.test(raw), 'a string holds "/*"');
 });
 const collsIn = (src: string): string[] => collNames.filter((c) => new RegExp(`'${c}'`).test(src));
 Object.keys(OPEN_WRITERS).forEach((f) => {
@@ -231,6 +245,14 @@ Object.keys(OWN_AI).forEach((f) => {
     check(`K5j ${f} names exactly its own AI Assistant collection (${OWN_AI[f]}), in any quoting`,
         JSON.stringify(named) === JSON.stringify([OWN_AI[f]]) && AI.indexOf(OWN_AI[f]) !== -1,
         JSON.stringify(named));
+    // Build 398: a name imported as a constant would not show above, so the URL must use the module's own constant.
+    const src = code(f);
+    const urls = src.split('storage/collections/data/').length - 1;
+    const own = src.split('storage/collections/data/${COLLECTION}').length - 1;
+    check(`K5j2 ${f} builds its KV URL from its own COLLECTION constant, and imports none`,
+        src.split(`const COLLECTION = '${OWN_AI[f]}';`).length - 1 === 1 && urls > 0 && urls === own
+        && !/\bimport\b[^;]*\b[A-Za-z_]*(COLLECTION|Collection|COLL)\b[^;]*\bfrom\b/.test(src),
+        `${urls} KV URL(s), ${own} from COLLECTION`);
 });
 const importers = listFiles(HOME).filter((p) => /from '[^']*\/RollupBackfillPanel'/.test(read(p))).map(rel);
 check('K5f the backfill panel is imported only by the Settings page',
@@ -253,8 +275,8 @@ const regSet: { [c: string]: true } = {};
     collNames.filter((c) => new RegExp(`'${c}'`).test(registry)).forEach((c) => { regSet[c] = true; });
 }
 const regColls = Object.keys(regSet).sort();
-check('K5h the panel\'s targets (rollupRegistry collections: 24 rollups + 5 topology) are all closed',
-    regColls.length === 29 && regColls.every((c) => collNames.indexOf(c) !== -1 && OPEN.indexOf(c) === -1),
+check('K5h the panel\'s targets (rollupRegistry collections: 24 rollups + 5 topology + the SID list) are all closed',
+    regColls.length === 30 && regColls.every((c) => collNames.indexOf(c) !== -1 && OPEN.indexOf(c) === -1),
     JSON.stringify(regColls));
 const stageM = /export const STAGE_COLLECTION = '([a-z_]+)';/.exec(code('utils/backfillPlan.ts'));
 check('K5i the panel\'s stage collection is closed', !!stageM && closed.indexOf(stageM[1]) !== -1,

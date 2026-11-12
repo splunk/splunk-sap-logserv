@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import SearchJob from '@splunk/search-job';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useRefreshContext } from '../state/RefreshProvider';
 import { useGlobalRefresh } from '../state/GlobalRefreshProvider';
 import { useDiagnosticCollector, nextSearchInstanceId } from '../state/DiagnosticCollector';
+import { FilterKeyContext } from '../state/FilterKeyContext';
+import { isFilterPending, isFilterUnavailable, rowsAreStale, RowsFor } from '../utils/queryFilters';
+import { kvWindowNeedsClock, withKvWindow } from '../utils/kvWindow';
+import { onServerClockSettled, serverClockSettled, serverNowSec, startServerClock } from '../utils/serverClock';
 
 export interface UseSearchOptions {
     query: string;
@@ -95,6 +99,11 @@ export const useSearch = <TRow = Record<string, unknown>>({
     const instanceIdRef = useRef<string>('');
     if (!instanceIdRef.current) instanceIdRef.current = nextSearchInstanceId();
     const [results, setResults] = useState<TRow[] | null>(null);
+    // Build 395 - what `results` was fetched under. See rowsAreStale.
+    const filterKey = useContext(FilterKeyContext);
+    const filterKeyRef = useRef(filterKey);
+    filterKeyRef.current = filterKey;
+    const [rowsFor, setRowsFor] = useState<RowsFor | null>(null);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
     // Build 234 — panel-toolbar metadata.
@@ -113,8 +122,63 @@ export const useSearch = <TRow = Record<string, unknown>>({
     const effectiveRefreshNonce =
         (refreshNonce ?? 0) + contextNonce + localNonce + globalRefreshNonce;
 
+    // Build 398 - a rollup read that takes the time bound (utils/kvWindow.ts) waits for the
+    // server's clock, read once per page load: it answers, fails, or counts as no answer after
+    // SERVER_CLOCK_TIMEOUT_MS. Run before it, the job would read every stored row of its metric
+    // (the 397 audit's M5). Other queries never wait, and one that did not wait is not run
+    // again when the clock answers: this flag only changes for a query that waited.
+    const [, setClockTick] = useState(0);
+    const waitsForClock = !!enabled && !!query && !serverClockSettled() && kvWindowNeedsClock(query, effectiveEarliest);
+    useEffect(() => {
+        if (!waitsForClock) return undefined;
+        let live = true;
+        startServerClock();
+        onServerClockSettled(() => {
+            if (live) setClockTick((n) => n + 1);
+        });
+        return () => {
+            live = false;
+        };
+    }, [waitsForClock]);
+
     useEffect(() => {
         if (!enabled || !query) {
+            return undefined;
+        }
+
+        // Build 395 - this query cannot honour the SID or Host filter. There is
+        // nothing to dispatch: the panel is empty, its hint says why, and rows
+        // from before the filter do not stay on screen looking filtered.
+        const rowsKey: RowsFor = { query, filterKey: filterKeyRef.current };
+        if (isFilterUnavailable(query)) {
+            setResults([]);
+            setRowsFor(rowsKey);
+            setLoading(false);
+            setError(null);
+            setSid(undefined);
+            setDispatchedAt(undefined);
+            return undefined;
+        }
+        // Build 397 - the query is waiting on a check (see FILTER_PENDING_SPL). Rows
+        // from before must not stay on screen, and `loading` stays up until the
+        // rebuilt query takes over, so the panel never paints "No data" in between.
+        if (isFilterPending(query)) {
+            setResults(null);
+            setRowsFor(rowsKey);
+            setLoading(true);
+            setError(null);
+            setSid(undefined);
+            setDispatchedAt(undefined);
+            return undefined;
+        }
+        // Build 398 - waiting for the server's clock (waitsForClock above), the same way.
+        if (waitsForClock) {
+            setResults(null);
+            setRowsFor(rowsKey);
+            setLoading(true);
+            setError(null);
+            setSid(undefined);
+            setDispatchedAt(undefined);
             return undefined;
         }
 
@@ -125,7 +189,9 @@ export const useSearch = <TRow = Record<string, unknown>>({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const search = (SearchJob as any).create({
-            search: query,
+            // Build 397 - the job reads only the rollup rows near its time range. The
+            // panel's `spl`, and everything that reads it, keeps the query as written.
+            search: withKvWindow(query, effectiveEarliest, serverNowSec()),
             earliest_time: effectiveEarliest,
             latest_time: effectiveLatest,
         });
@@ -150,7 +216,10 @@ export const useSearch = <TRow = Record<string, unknown>>({
         const subscription = search.getResults({ count: effectiveCount }).subscribe({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             next: (data: any) => {
+                // In this order: rows with the old key read as stale for a moment,
+                // and the reverse would draw old rows as current.
                 setResults((data && data.results) || []);
+                setRowsFor(rowsKey);
                 setLoading(false);
             },
             error: (err: Error) => {
@@ -176,7 +245,7 @@ export const useSearch = <TRow = Record<string, unknown>>({
                 // ignore
             }
         };
-    }, [query, effectiveEarliest, effectiveLatest, enabled, count, effectiveRefreshNonce]);
+    }, [query, effectiveEarliest, effectiveLatest, enabled, count, effectiveRefreshNonce, waitsForClock]);
 
     // ----- diagnostic registration (session 093) ---------------------------
     // Declared AFTER the dispatch effect so it observes post-dispatch state on
@@ -192,9 +261,14 @@ export const useSearch = <TRow = Record<string, unknown>>({
     //     the provider), and the no-op default is a module constant.
     //  3. Writing to the registry re-renders NOTHING (it is a ref-backed Map),
     //     so this effect is free at page scale.
-    const rowCount = results ? results.length : null;
+    const stale = rowsAreStale(rowsFor, query, filterKey);
+    const shownResults = stale ? null : results;
+    const rowCount = shownResults ? shownResults.length : null;
     const errorMessage = error ? error.message || 'Search failed' : null;
-    const dispatched = !!enabled && !!query;
+    const dispatched = !!enabled && !!query && !isFilterUnavailable(query);
+    // The first render after a filter change has no rows and has not started loading
+    // yet: without this a panel paints "No data" for a frame.
+    const shownLoading = loading || (stale && dispatched && !error);
 
     useEffect(() => {
         const id = instanceIdRef.current;
@@ -206,7 +280,7 @@ export const useSearch = <TRow = Record<string, unknown>>({
             earliest: effectiveEarliest,
             latest: effectiveLatest,
             dispatched,
-            loading,
+            loading: shownLoading,
             errorMessage,
             rowCount,
         });
@@ -219,14 +293,14 @@ export const useSearch = <TRow = Record<string, unknown>>({
         effectiveEarliest,
         effectiveLatest,
         dispatched,
-        loading,
+        shownLoading,
         errorMessage,
         rowCount,
     ]);
 
     return {
-        results,
-        loading,
+        results: shownResults,
+        loading: shownLoading,
         error,
         sid,
         spl: query,

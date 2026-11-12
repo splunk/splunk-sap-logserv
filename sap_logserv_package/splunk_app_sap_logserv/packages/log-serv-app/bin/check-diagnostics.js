@@ -261,6 +261,14 @@ const TESTS = [
     // from _raw after spath, so the "User contains" filter no longer shows
     // each name twice.
     'auditQuery.consistency-test',
+    // Build 395 (session 163) - the global SID and Host filters: what each rollup
+    // metric stores, the query splice, the SID-to-host list, and that a panel
+    // never shows unfiltered numbers while a filter is on.
+    'queryFilters.consistency-test',
+    // Build 399 (session 164) - Open in Search, the Splunk Search drilldowns,
+    // the AI Assistant's Run SPL chips and Inspect open in this app's own
+    // namespace, not the Search app's, which some sites disable.
+    'searchLinks.consistency-test',
 ];
 
 let failed = false;
@@ -2995,6 +3003,8 @@ if (missing.length || extra.length) {
             } else if (!inQ && ch === ']') {
                 depth -= 1;
                 if (depth === 0) arms.push(s.slice(start, i).trim());
+            } else if (!inQ && ch === '|' && depth === 0) {
+                break;
             }
         }
         return arms;
@@ -4519,10 +4529,13 @@ const confLast = (body, key) => {
     // last_seen and its future clamp), 3b and 3f (the Data Doctor pair, from
     // diagPersistence.ts and the platform snapshot's own pins, row caps included).
     const SHAPE_EXEMPT_3X = ['logserv_topology_enrichment_retention', 'logserv_diag_reports_retention',
-        'logserv_diag_platform_retention'];
+        'logserv_diag_platform_retention', 'logserv_sid_hosts_retention'];
     // (h) ... and each of them line for line. The reports' cap is derived, as in 3b.
     const retMaxRows3x = loadTs(path.join(UTILS, 'diagPersistence')).RETENTION_MAX_ROWS;
     const SHAPE_EXEMPT_LINES_3X = {
+        logserv_sid_hosts_retention: '| inputlookup logserv_sid_hosts'
+            + ' | where last_seen >= relative_time(now(), "-365d") AND last_seen <= now() + 86400'
+            + ' | outputlookup override_if_empty=false logserv_sid_hosts | stats count',
         logserv_topology_enrichment_retention: '| inputlookup logserv_topology_ip_enrichment'
             + ' | where last_seen >= relative_time(now(), "-365d") AND last_seen <= now() + 86400'
             + ' | outputlookup override_if_empty=false logserv_topology_ip_enrichment | stats count',
@@ -4630,7 +4643,7 @@ const confLast = (body, key) => {
     // (f) coverage, independent of retentionSearches.
     const DIAG_COLL_3X = ['logserv_diag_reports', 'logserv_diag_platform_snapshot'];
     // Not in any completenessCollections, but trimmed by its last_seen.
-    const TIMED_EXTRA_3X = ['logserv_topology_ip_enrichment'];
+    const TIMED_EXTRA_3X = ['logserv_topology_ip_enrichment', 'logserv_sid_hosts'];
     // Overwritten whole by its own aggregate - no buckets to trim.
     const FLAT_3X = ['logserv_topology_inventory'];
     const rollups3x = registry3x.ROLLUPS || [];
@@ -5461,7 +5474,7 @@ const confLast = (body, key) => {
         'fieldsummary', 'addtotals', 'addcoltotals', 'makemv', 'nomv', 'mvcombine', 'append', 'appendcols',
         'join', 'appendpipe',
     ];
-    const EXCLUDED_3Z = ['logserv_backfill_stage', 'logserv_diag_platform_snapshot', 'logserv_diag_reports',
+    const EXCLUDED_3Z = ['logserv_backfill_stage', 'logserv_diag_platform_snapshot', 'logserv_diag_reports', 'logserv_sid_hosts',
         'splunk_for_sap_logserv_assets', 'splunk_for_sap_logserv_identities'];
     const PC_3Z = path.join(HOME_3Z, 'components', 'ai', 'splParserCheck.ts');
     if (guardMod && lexerMod3z && typeof guardMod.analyzeAdHocSpl === 'function') {
@@ -6830,12 +6843,14 @@ const confLast = (body, key) => {
     pIcm('(c) no icm_status_code', !/\bicm_status_code\b/.test(ssLive), 'a saved search reads icm_status_code');
     pIcm('(c) no icmstat', !/metric="icmstat"/.test(ssLive), 'a saved search writes or reads metric="icmstat"');
     const SEV_ARM = '[search `sap_logserv_idx_macro` sourcetype="sap:abap:icm" icm_severity=* | eval cloud_provider=coalesce(cloud_provider,"aws") | eval status_cat=icm_severity | bin _time span=1h | stats count by status_cat, _time, cloud_provider | rename _time as bucket_ts | eval metric="icmsev"]';
+    // Build 397: the severity rollup keeps the host of each ICM line; abapnet has not changed.
+    const SEV_ARM_HOST = '[search `sap_logserv_idx_macro` sourcetype="sap:abap:icm" icm_severity=* | eval cloud_provider=coalesce(cloud_provider,"aws") | eval status_cat=icm_severity | eval host=mvindex(host,0) | fillnull value="(none)" host | bin _time span=1h | stats count by status_cat, host, _time, cloud_provider | rename _time as bucket_ts | eval metric="icmsev"]';
     const CLIENT_ARM = '[search `sap_logserv_idx_macro` sourcetype="sap:abap:icm" sap_client=* | eval cloud_provider=coalesce(cloud_provider,"aws") | fillnull value="(none)" sap_sid | bin _time span=1h | stats count by sap_sid, sap_client, _time, cloud_provider | rename _time as bucket_ts | eval metric="icmclient"]';
     const ERR_PRED = '(sourcetype="sap:abap:icm" icm_is_error="true")';
     const count = (s, sub) => s.split(sub).length - 1;
     const sevAgg = keyIcm(ss.logserv_severity_aggregate, 'search') || '';
     const sevBf = keyIcm(ss.logserv_severity_backfill, 'search') || '';
-    pIcm('(c) severity icmsev', count(sevAgg, SEV_ARM) === 1, 'logserv_severity_aggregate must carry the icmsev arm once');
+    pIcm('(c) severity icmsev', count(sevAgg, SEV_ARM_HOST) === 1, 'logserv_severity_aggregate must carry the icmsev arm once');
     pIcm('(c) severity ICM errors', count(sevAgg, ERR_PRED) === 3,
         `toterr, trend and tophost count an ICM error as icm_is_error="true" (found ${count(sevAgg, ERR_PRED)})`);
     pIcm('(c) severity backfill = aggregate', sevAgg !== '' && sevBf === sevAgg,
@@ -7025,17 +7040,17 @@ const confLast = (body, key) => {
     ['DnsAnalytics.tsx', 'WebDispatcher.tsx'].forEach((f) => {
         pSp(`${f} clamps its rollup span`, !/span=\$\{span\}/.test(srcSp[f]) && (srcSp[f].match(/applySpanToken\(/g) || []).length >= 4,
             'the four span-parametrised charts must write span=${SPAN_TOKEN} and go through applySpanToken (rollup floor 1h)');
-        // Their arms build SPL in a useMemo, outside mapCloudProviderQueries: each
+        // Their arms build SPL in a useMemo, outside mapQueryFilters: each
         // must apply the Cloud picker itself and re-run on it. DNS Analytics' two
         // charts had ignored it.
         const depsSp = srcSp[f].match(/\[[^[\]\n]*\buseRawSrc\b[^[\]\n]*\]/g) || [];
-        pSp(`${f} follows the Cloud picker`, (srcSp[f].match(/applySpanToken\(withCloudProvider\(/g) || []).length === 4
-            && depsSp.length === 2 && depsSp.every((d) => /\bprovider\b/.test(d)),
-            'each arm of the two span-parametrised charts must be applySpanToken(withCloudProvider(<spl>, provider), span), with provider in both memo dependency lists');
+        pSp(`${f} follows the Cloud picker`, (srcSp[f].match(/applySpanToken\(withQueryFilters\(/g) || []).length === 4
+            && depsSp.length === 2 && depsSp.every((d) => /\bfilters\b/.test(d)),
+            'each arm of the two span-parametrised charts must be applySpanToken(withQueryFilters(<spl>, filters), span), with filters in both memo dependency lists');
     });
     pSp('DNS client list follows the Cloud picker',
-        /const clientListSearch = useHybridSearch<[^>]*>\(\{\s*cached: withCloudProvider\(`[^`]*`, provider\),\s*raw: withCloudProvider\(`[^`]*`, provider\),\s*\}\);/.test(srcSp['DnsAnalytics.tsx']),
-        'the Clients picker must list the clients of the selected cloud (cached and raw through withCloudProvider)');
+        /const clientListSearch = useHybridSearch<[^>]*>\(\{\s*cached: withQueryFilters\(`[^`]*`, filters\),\s*raw: withQueryFilters\(`[^`]*`, filters\),\s*\}\);/.test(srcSp['DnsAnalytics.tsx']),
+        'the Clients picker must list the clients of the selected cloud (cached and raw through withQueryFilters)');
     const tcs = fs.readFileSync(path.join(HOME_SP, 'utils/timechartSpan.ts'), 'utf8');
     pSp('helper reads the dispatched span', /export const spanSubtitle = \(lead: string, spl: string, tail\?: string\): string => \{\s*const s = timechartSpanOf\(spl\);/.test(tcs),
         'spanSubtitle must read the span from the query it is given (timechartSpanOf), never take a picked span');
@@ -7233,6 +7248,8 @@ const confLast = (body, key) => {
         'historyCheck.consistency-test',
         'splGuard.consistency-test',
         'auditWriteHealth.consistency-test',
+        'kvPagedRead.consistency-test',
+        'hostGrain.consistency-test',
     ];
     // Deliberately unwired, with the reason. Anything else on disk fails.
     const KNOWN_UNWIRED = [
@@ -7290,6 +7307,15 @@ const splGuardTest = loadTs(path.join(UTILS, 'splGuard.consistency-test'));
 // (the shipped one, which the macro reads and the Data TA defines).
 // Mutation-tested 41/41.
 const auditHealthTest = loadTs(path.join(UTILS, 'auditWriteHealth.consistency-test'));
+// `kvPagedRead.consistency-test` (build 396, session 163): reading a whole KV Store
+// query over REST. Splunk cuts one read at max_rows_per_query (50,000) without a word,
+// which cost Environment Topology its newest rows at wide time ranges.
+const kvPagedTest = loadTs(path.join(UTILS, 'kvPagedRead.consistency-test'));
+// `hostGrain.consistency-test` (build 397, session 163): `host` in the six slowest
+// rollups. No number on a page may change because of it: an event counts once, an old
+// row is zeroed when its hour is recounted, the time bound removes only what the range
+// removes, and a filter never meets a row with no `host`.
+const hostGrainTest = loadTs(path.join(UTILS, 'hostGrain.consistency-test'));
 // An async suite whose promise never settles lets Node run out of work and exit
 // 0 with neither OK nor FAILED printed - and `yarn build` carries on. A limiter
 // that leaks a slot fails exactly that way (session 144), so an event loop that
@@ -7334,6 +7360,35 @@ evTest
     })
     .then((auditHealthFailures) => {
         if (auditHealthFailures > 0) failed = true;
+        return kvPagedTest.run();
+    })
+    .then((kvPagedFailures) => {
+        if (kvPagedFailures > 0) failed = true;
+        return hostGrainTest.run();
+    })
+    .then((hostGrainFailures) => {
+        if (hostGrainFailures > 0) failed = true;
+        // The real Environment Topology hook under jsdom: its own process, because it
+        // installs DOM globals and a clock none of the suites above should see.
+        const hookRun = require('child_process').spawnSync(
+            process.execPath,
+            [path.join(__dirname, 'check-topology-hook.js')],
+            { stdio: 'inherit' },
+        );
+        if (hookRun.status !== 0) {
+            console.error(`check-diagnostics: check-topology-hook failed: status ${hookRun.status}, signal ${hookRun.signal}${hookRun.error ? `, ${hookRun.error.message}` : ''}`);
+            failed = true;
+        }
+        // Build 397: the real SID and Host filter provider and search hooks, the same way.
+        const gateRun = require('child_process').spawnSync(
+            process.execPath,
+            [path.join(__dirname, 'check-host-gate.js')],
+            { stdio: 'inherit' },
+        );
+        if (gateRun.status !== 0) {
+            console.error(`check-diagnostics: check-host-gate failed: status ${gateRun.status}, signal ${gateRun.signal}${gateRun.error ? `, ${gateRun.error.message}` : ''}`);
+            failed = true;
+        }
         asyncChainDone = true;
         if (failed) {
             console.error('\ncheck-diagnostics: FAILED');

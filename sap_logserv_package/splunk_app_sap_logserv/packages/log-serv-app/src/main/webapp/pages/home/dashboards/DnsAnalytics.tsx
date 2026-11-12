@@ -12,8 +12,9 @@ import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { shouldUseRawSource } from '../utils/hybridRouting';
+import { isFilterUnavailable } from '../utils/queryFilters';
 import { recordRawTwin } from '../utils/rawTwin';
-import { useCloudProvider, mapCloudProviderQueries, withCloudProvider } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { applySpanToken, chooseTimechartSpan, SPAN_TOKEN, spanSubtitle } from '../utils/timechartSpan';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
@@ -233,10 +234,10 @@ const RESOLVER_COLS: ColumnDef[] = [
 ];
 
 const DnsAnalytics: React.FC = () => {
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => mapCloudProviderQueries(Q_BASE, provider), [provider]);
+    const filters = useQueryFilters('dns');
+    const Q = React.useMemo(() => mapQueryFilters(Q_BASE, filters), [filters]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping.
-    const QRAW = React.useMemo(() => mapCloudProviderQueries(QRAW_BASE, provider), [provider]);
+    const QRAW = React.useMemo(() => mapQueryFilters(QRAW_BASE, filters), [filters]);
     const queries = useFirstRowFieldHybrid(Q.kpiQueries, QRAW.kpiQueries, 'count');
     const clients = useFirstRowFieldHybrid(Q.kpiClients, QRAW.kpiClients, 'clients');
     const beaconing = useFirstRowField(Q.kpiBeaconing, 'count');
@@ -263,19 +264,19 @@ const DnsAnalytics: React.FC = () => {
         const q = String(row.query ?? '');
         if (!q) return;
         const spl = `\`sap_logserv_idx_macro\` tag=dns message_type="Query" query="${splQuote(q)}" | timechart span=1h count`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goHostsToBeaconingRow = (row: Record<string, unknown>): void => {
         const q = String(row.query ?? '');
         if (!q) return;
         const spl = `\`sap_logserv_idx_macro\` tag=dns query="${splQuote(q)}" | stats count by src host | sort -count`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goTopDomainsRow = (row: Record<string, unknown>): void => {
         const q = String(row.Domain ?? '');
         if (!q) return;
         const spl = `\`sap_logserv_idx_macro\` tag=dns query="${splQuote(q)}" | timechart span=1h count`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goClientDiversityRow = (row: Record<string, unknown>): void => {
         const ip = String(row['Client IP'] ?? '');
@@ -310,12 +311,12 @@ const DnsAnalytics: React.FC = () => {
     // Client-IP options for the Multiselect — sorted by descending request
     // volume so the dropdown's first items are the busiest clients. Hybrid so a
     // sub-hour range populates the dropdown from the raw index, not the empty
-    // hourly buckets. Build 377: cloud-filtered (withCloudProvider), like the
+    // hourly buckets. Build 377: cloud-filtered (withQueryFilters), like the
     // two chart memos below and every other panel here - before, the dropdown
     // and both time charts ignored the global Cloud picker.
     const clientListSearch = useHybridSearch<{ src?: string; count?: string | number }>({
-        cached: withCloudProvider(`${MAIN} | search src!="(none)" | stats sum(count) as count by src | sort -count`, provider),
-        raw: withCloudProvider(`${DNS_RAW} | stats count by src | sort -count`, provider),
+        cached: withQueryFilters(`${MAIN} | search src!="(none)" | stats sum(count) as count by src | sort -count`, filters),
+        raw: withQueryFilters(`${DNS_RAW} | stats count by src | sort -count`, filters),
     });
     const clientOptions = useMemo<string[]>(() => {
         const rows = clientListSearch.results ?? [];
@@ -339,20 +340,20 @@ const DnsAnalytics: React.FC = () => {
         // Build 377: both arms go through applySpanToken, so the cached arm (hourly
         // rollup rows) never bins under 1h - at Last 24 hours it had drawn each
         // hour into one 15-minute bin and left three empty. Both arms also go
-        // through withCloudProvider (the global Cloud picker), as on Web Dispatcher.
-        const rawQ = applySpanToken(withCloudProvider(
+        // through withQueryFilters (the global Cloud picker), as on Web Dispatcher.
+        const rawQ = applySpanToken(withQueryFilters(
             `${DNS_RAW}${clientFilterClause} | eval cnt=1 ` +
             `| timechart span=${SPAN_TOKEN} limit=${limitVal} usenull=f useother=f sum(cnt) AS Requests by src`,
-            provider,
+            filters,
         ), span);
-        const cachedQ = applySpanToken(withCloudProvider(
+        const cachedQ = applySpanToken(withQueryFilters(
             `${MAIN}${clientFilterClause} | search src!="(none)" | eval _time=bucket_ts ` +
             `| timechart span=${SPAN_TOKEN} limit=${limitVal} usenull=f useother=f sum(count) AS Requests by src`,
-            provider,
+            filters,
         ), span);
         recordRawTwin(cachedQ, rawQ); // §17.8a-17 (grouped by src → real signal)
-        return useRawSrc ? rawQ : cachedQ;
-    }, [span, topN, selectedClients, useRawSrc, provider]);
+        return useRawSrc || isFilterUnavailable(cachedQ) ? rawQ : cachedQ;
+    }, [span, topN, selectedClients, useRawSrc, filters]);
 
     // The span printed is the dispatched one (spanSubtitle reads the query).
     const clientsChartSubtitle = useMemo<string>(() => {
@@ -368,26 +369,26 @@ const DnsAnalytics: React.FC = () => {
 
     const recordTypesQuery = useMemo(
         () => {
-            const rawQ = applySpanToken(withCloudProvider(
+            const rawQ = applySpanToken(withQueryFilters(
                 `${DNS_RAW} record_type=* | ${RECORD_TYPE_RELABEL} | eval cnt=1 `
                 + `| timechart span=${SPAN_TOKEN} usenull=f useother=f sum(cnt) BY record_type`,
-                provider,
+                filters,
             ), span);
-            const cachedQ = applySpanToken(withCloudProvider(
+            const cachedQ = applySpanToken(withQueryFilters(
                 `${RTYPE} | search record_type!="(none)" | ${RECORD_TYPE_RELABEL} | eval _time=bucket_ts `
                 + `| timechart span=${SPAN_TOKEN} usenull=f useother=f sum(count) BY record_type`,
-                provider,
+                filters,
             ), span);
             recordRawTwin(cachedQ, rawQ); // §17.8a-17
-            return useRawSrc ? rawQ : cachedQ;
+            return useRawSrc || isFilterUnavailable(cachedQ) ? rawQ : cachedQ;
         },
-        [span, useRawSrc, provider],
+        [span, useRawSrc, filters],
     );
 
     const beaconingTone = Number(beaconing.value ?? 0) > 0 ? 'warning' : 'neutral';
 
     return (
-        <DashboardLayout
+        <DashboardLayout hostFilterService="dns"
             category="PLATFORM"
             title="DNS Analytics"
             subtitle="BIND DNS query activity — top clients, record types, beaconing detection, and resolver health"

@@ -8,7 +8,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -210,10 +210,10 @@ const HanaTrace: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
     const components = useFirstRowFieldHybrid(Q.kpiComponents, QRAW.kpiComponents, 'components');
@@ -237,13 +237,13 @@ const HanaTrace: React.FC = () => {
         const c = String(row.Component ?? '');
         if (!c) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST} hana_trace_component="${splQuote(c)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goSourceFileRow = (row: Record<string, unknown>): void => {
         const file = String(row['Source File'] ?? '');
         if (!file) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST} hana_trace_source_file="${splQuote(file)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goErrorDetailRow = (row: Record<string, unknown>): void => {
         const sid = String(row.SID ?? '');
@@ -252,7 +252,7 @@ const HanaTrace: React.FC = () => {
         const sidClause = sid ? ` sap_sid="${splQuote(sid)}"` : '';
         const cClause = c ? ` hana_trace_component="${splQuote(c)}"` : '';
         const spl = `\`sap_logserv_idx_macro\` ${ST} hana_trace_severity IN ("error", "fatal")${sidClause}${cClause} | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
 
     return (

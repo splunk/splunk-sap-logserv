@@ -67,7 +67,7 @@ On each heavy forwarder (or the single instance) that runs an SQS-Based S3 input
 The line is per instance: the Deployment Server does not manage the Splunk Add-on for AWS, so it neither pushes nor removes it. Events the input read before the line was in place keep no `cloud_provider`; inside the LogServ App's dashboards they count as `aws` anyway ([Events without a stamp](#events-without-a-stamp)).
 
 !!! note "What has been tested"
-    In the lab, adding this line to existing SQS-Based S3 stanzas and restarting Splunkd worked: the events read afterwards carried a single `aws`. The full create, disable, edit, restart, enable sequence has not been run end to end on Splunk Add-on for AWS 8.3.1, and whether a later edit of the input in the add-on's form keeps a hand-added `_meta` line is not known. Check the stanza after any edit of the input, and check the result with the search in [Check the Result](#check-the-result).
+    In the lab, adding this line to existing SQS-Based S3 stanzas and restarting Splunkd worked: the events read afterwards carried a single `aws`. On a heavy forwarder with Splunk Add-on for AWS 8.3.1, writing the line to a new SQS-Based S3 input over REST, as in [Splunk Cloud Without a Heavy Forwarder](#splunk-cloud-without-a-heavy-forwarder), then disabling and enabling the input, with no restart, stamped `aws` on every event the input then read. The full create, disable, edit, restart, enable sequence of the file route has not been run end to end on 8.3.1, and whether a later edit of the input in the add-on's form keeps a hand-added `_meta` line is not known. Check the stanza after any edit of the input, and check the result with the search in [Check the Result](#check-the-result).
 
 <br>
 
@@ -105,7 +105,7 @@ curl -u <admin_user> \
   -d "_meta=cloud_provider::aws"
 ```
 
-Then disable the input and enable it again on the add-on's **Inputs** page, so it starts again from the stanza as written. The same `configs/conf-inputs` write stamps the AWS S3 Direct screen's Generic S3 inputs, and that has been checked on a heavy forwarder with Splunk Add-on for AWS 8.3.1; this route for an SQS-Based S3 input, and on Splunk Cloud, has not been tested. Without it, and with the dropdown at **Not set**, the SQS-Based S3 events carry no `cloud_provider`: the LogServ App's dashboards still count them as `aws`, but your own searches do not ([Events without a stamp](#events-without-a-stamp)). See [Splunk Cloud Considerations](../getting-started/splunk-cloud.md) for the capability.
+Then disable the input and enable it again on the add-on's **Inputs** page, so it starts again from the stanza as written. The same `configs/conf-inputs` write stamps the AWS S3 Direct screen's Generic S3 inputs, and that has been checked on a heavy forwarder with Splunk Add-on for AWS 8.3.1. On such a heavy forwarder this write, then a disable and enable, also stamped every event a new SQS-Based S3 input read, with no restart; on Splunk Cloud this route has not been run. Without it, and with the dropdown at **Not set**, the SQS-Based S3 events carry no `cloud_provider`: the LogServ App's dashboards still count them as `aws`, but your own searches do not ([Events without a stamp](#events-without-a-stamp)). See [Splunk Cloud Considerations](../getting-started/splunk-cloud.md) for the capability.
 
 <br>
 

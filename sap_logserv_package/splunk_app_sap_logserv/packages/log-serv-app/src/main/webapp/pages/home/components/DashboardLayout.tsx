@@ -4,8 +4,10 @@ import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
 import RefreshIntervalPicker from './RefreshIntervalPicker';
 import CloudProviderPicker from './CloudProviderPicker';
+import { GlobalHostPicker, ServiceHostPicker, SidPicker } from './SidHostPicker';
 import DocsHelpIcon from './DocsHelpIcon';
 import { RefreshProvider } from '../state/RefreshProvider';
+import { HostService } from '../state/SidHostFilterProvider';
 import { DiagnosticCollectorProvider } from '../state/DiagnosticCollector';
 import { dashboardIdFromPath } from '../state/dashboardRefreshPersistence';
 import { resolveDocsUrl } from '../utils/docsLinks';
@@ -40,6 +42,15 @@ interface DashboardLayoutProps {
      *  Topology (excluded from the arc), and the Settings page. Every other
      *  dashboard gets the CloudProviderPicker automatically. */
     noCloudFilter?: boolean;
+    /** Build 395 - this dashboard's hosts belong to no SID (SAP Router, Proxy, DNS,
+     *  Cloud Connector), so it takes a Host filter of its own instead of the SID
+     *  and Host pickers. Its queries must use `useQueryFilters` with the same
+     *  service. `noCloudFilter` pages take neither. */
+    hostFilterService?: HostService;
+    /** Build 395 - this dashboard has its own host picker (Host Details, Data
+     *  Pipeline Overview): it takes the SID picker, and its picker works inside
+     *  the selected SID. */
+    ownHostPicker?: boolean;
     /** Opt OUT of the per-dashboard auto-refresh interval picker (session
      *  096). Set on pages whose content is not driven by useSearch (the
      *  Diagnostics page drives the diagProbe runner) — the picker would tick
@@ -123,6 +134,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     subtitle,
     titleRowActions,
     noCloudFilter = false,
+    hostFilterService,
+    ownHostPicker = false,
     noRefreshPicker = false,
     children,
 }) => {
@@ -152,7 +165,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         </TitleAndSubtitle>
                     </TitleBlock>
                     <ActionsBlock>
+                        {!noCloudFilter && !hostFilterService && <SidPicker />}
                         {titleRowActions}
+                        {!noCloudFilter && !hostFilterService && !ownHostPicker && <GlobalHostPicker />}
+                        {!noCloudFilter && hostFilterService && <ServiceHostPicker service={hostFilterService} />}
                         {!noCloudFilter && <CloudProviderPicker />}
                         {!noRefreshPicker && <RefreshIntervalPicker />}
                         <DocsHelpIcon href={docsUrl} />

@@ -21,8 +21,8 @@ The DNS Analytics dashboard reads the BIND query log of your SAP landscape for s
 - **Query Type Distribution** -- Donut chart showing the breakdown of DNS record types. Codes are shown in expanded form (e.g. `A = IPv4 Address`, `TXT = Text Record`); any code not in the label map is displayed as-is
 - **DNS Resolvers** -- Table of the BIND resolvers (the DNS hosts processing queries), ranked by query count, with unique-domain and unique-client counts. The resolver is the `host` field (the BIND server that logged the query); `src` is the querying client and drives the Unique Clients KPI and the Clients by Domain Diversity table
 - **Requests by Record Type** -- Line chart trending DNS query types (A, AAAA, PTR, MX, etc.) over time
-- **Beaconing Activity** -- Sortable table of domains with low beacon variance and steady cadence, showing query count, average beacon interval (s), and interval variance. Click a row to open the search app with an hourly timechart of that domain
-- **Hosts to Beaconing Domains** -- Table of suspected beaconing domains with the number of distinct hosts that contacted each, alongside beacon interval and variance. Click a row for a per-source/per-resolver breakdown in the search app
+- **Beaconing Activity** -- Sortable table of domains with low beacon variance and steady cadence, showing query count, average beacon interval (s), and interval variance. Click a row to open Splunk's search page with an hourly timechart of that domain
+- **Hosts to Beaconing Domains** -- Table of suspected beaconing domains with the number of distinct hosts that contacted each, alongside beacon interval and variance. Click a row for a per-source/per-resolver breakdown on Splunk's search page
 - **Queried Domains** -- Table of the most looked-up domains with unique client counts
 - **Clients by Domain Diversity** -- Table ranking clients by number of unique domains queried, with queries-per-domain ratio for DGA detection
 

@@ -24,6 +24,7 @@
  */
 
 import { ProbeRunner, ProbeResult } from './diagProbe';
+import { isFilterPending, isFilterUnavailable } from './queryFilters';
 import {
     gatherPanelEvidence,
     PanelEvidence,
@@ -39,6 +40,8 @@ import { probeSpl, SplProbe } from './splProbe';
  *  is how a report row names a panel. Lives here, not in `diagReport`, so the
  *  report module can stay a pure downstream consumer (no value cycle). */
 export const describeSearch = (probe: SplProbe, spl: string): string => {
+    if (isFilterUnavailable(spl)) return 'Not run: cannot honour the SID or Host filter';
+    if (isFilterPending(spl)) return 'Waiting: checking whether its summary can take the SID or Host filter';
     if (probe.tier === 'cached' && probe.collection) {
         return probe.metric
             ? `Summarised read: ${probe.collection} (${probe.metric})`
@@ -73,6 +76,7 @@ export type PanelClassification =
     | 'error'
     | 'loading'
     | 'not-dispatched'
+    | 'not-filterable'
     | 'no-query';
 
 export interface SweepEntry {
@@ -99,6 +103,7 @@ export interface SweepResult {
 
 export const classifyRegistration = (reg: RegistrationLike): PanelClassification => {
     if (!reg.spl) return 'no-query';
+    if (isFilterUnavailable(reg.spl)) return 'not-filterable';
     if (!reg.dispatched) return 'not-dispatched';
     if (reg.loading) return 'loading';
     if (reg.errorMessage) return 'error';

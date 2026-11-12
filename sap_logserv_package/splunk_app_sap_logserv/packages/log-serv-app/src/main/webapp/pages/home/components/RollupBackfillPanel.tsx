@@ -11,6 +11,7 @@ import {
     UPGRADE_NOTE_CLEAR_THEN_BACKFILL,
     UPGRADE_NOTE_BACKFILL_ONLY,
     UPGRADE_NOTE_TRACE_NAMES,
+    UPGRADE_NOTE_HOST_GRAIN,
 } from '../routes/rollupRegistry';
 import {
     planRollupItems,
@@ -2066,6 +2067,24 @@ const RollupBackfillPanel: React.FC = () => {
                         index still holds; the release notes describe a narrower repair that removes
                         the trace-component rows only. Keep the rebuild clear of 00:34&ndash;00:58,
                         01:30&ndash;01:58 and 02:34&ndash;02:36 (search-head time).
+                    </FieldHint>
+                    {/* Build 397 - the host in six rollups. Optional, and it says so: the
+                      * numbers are right without it. Phrased by feature, no versions. */}
+                    <FieldHint style={{ marginTop: 8 }}>
+                        Upgrading note, optional: {upgradeRows(UPGRADE_NOTE_HOST_GRAIN)} now store
+                        the host of each event, so the SID and Host filters can use them. Hours from
+                        before the upgrade have no host. Their numbers are right, and while a filter
+                        is on, a panel whose time range reaches those hours reads raw events, which
+                        is slower. To let the filters use the summaries over those hours too,
+                        {' '}<strong>Backfill</strong> the row once with a window that covers them. No
+                        Clear is needed: a Backfill recounts each hour whose raw events your index still
+                        holds, and leaves a row of zeros in place of each old row, so nothing counts
+                        twice and older history stays. A <strong>Clear</strong> first leaves no such
+                        rows, but removes history your index no longer holds. On Host Details, Auth
+                        Failures no longer counts the SAP Host Agent&apos;s automated user check, and
+                        hours from before the upgrade keep the old count until that row is cleared and
+                        backfilled. Keep a rebuild clear of 00:34&ndash;00:58, 01:30&ndash;01:58 and
+                        02:34&ndash;02:36 (search-head time).
                     </FieldHint>
                 </div>
                 <ButtonRow>

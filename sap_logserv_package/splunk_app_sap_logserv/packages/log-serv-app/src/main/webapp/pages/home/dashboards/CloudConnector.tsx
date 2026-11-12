@@ -9,7 +9,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -182,10 +182,10 @@ const CloudConnector: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters('cloudconnector');
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const requests = useFirstRowField(Q.kpiRequests, 'count');
     const errorRate = useFirstRowFieldHybrid(Q.kpiErrorRate, QRAW.kpiErrorRate, 'pct');
     const audit = useFirstRowField(Q.kpiAudit, 'count');
@@ -209,27 +209,27 @@ const CloudConnector: React.FC = () => {
         const uri = String(row.URI ?? '');
         if (!uri) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST_HTTP} uri="${splQuote(uri)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goClientRow = (row: Record<string, unknown>): void => {
         const ip = String(row['Client IP'] ?? '');
         if (!ip) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST_HTTP} clientip="${splQuote(ip)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goMethodPie = (): void => {
         const spl = `\`sap_logserv_idx_macro\` ${ST_HTTP} method=* | stats count by method | sort -count`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goAuditRow = (row: Record<string, unknown>): void => {
         const t = String(row['Audit Type'] ?? '');
         if (!t) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST_AUDIT} scc_audit_type="${splQuote(t)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
 
     return (
-        <DashboardLayout
+        <DashboardLayout hostFilterService="cloudconnector"
             category="INTEGRATION"
             title="Cloud Connector"
             subtitle="SAP Cloud Connector tunnel activity — HTTP traffic, status codes, response times, and audit log"

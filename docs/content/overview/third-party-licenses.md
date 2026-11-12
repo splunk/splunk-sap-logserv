@@ -110,7 +110,9 @@ affects them as shipped:
   so an attacker would already need access to the host; if you bind the management port to a network address, the
   protection rests on that network.
 - **One needs an HTTPS proxy in splunkd's environment** - CVE-2026-97687. If splunkd's environment sets `HTTPS_PROXY`,
-  also set `NO_PROXY=127.0.0.1,localhost` (see [Installing the Data TA](../install-setup/install-ta.md)).
+  also set `NO_PROXY=127.0.0.1,localhost` (see [Installing the Data TA](../install-setup/install-ta.md)). A heavy
+  forwarder that uses an AWS [EC2 instance role](../install-setup/aws-remote-s3-connect-instance-role.md) should also
+  have `169.254.169.254` in that list.
 
 **Why the add-ons do not ship urllib3 2.x.** urllib3 2.x requires OpenSSL 1.1.1 or later, and the Python in Splunk
 Enterprise 9.4.3 is built with OpenSSL 1.0.2 (`OpenSSL 1.0.2zl-fips` on our test systems), so urllib3 2.x cannot load

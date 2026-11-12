@@ -20,6 +20,8 @@ import {
     mapCloudProviderQueries,
     withCloudProvider,
 } from '../state/CloudProviderProvider';
+import { FilterKeyContext } from '../state/FilterKeyContext';
+import { useOwnPicks, useSidHostDescriptions, useSidScope } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useThemeMode } from '../state/ThemeModeProvider';
 import { chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
@@ -345,8 +347,8 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, 
     const goSourcetypeRow = (row: Record<string, unknown>): void => {
         const st = String(row.sourcetype ?? '');
         if (!st) return;
-        const spl = `\`sap_logserv_idx_macro\` sourcetype="${splQuote(st)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        const spl = `\`sap_logserv_idx_macro\` ${HOST} sourcetype="${splQuote(st)}" | sort -_time`;
+        openInNewTab(buildSplunkSearchUrl(withCloudProvider(spl, provider), timeRange.earliest, timeRange.latest));
     };
     const goHostRow = (row: Record<string, unknown>): void => {
         const host = String(row.host ?? '');
@@ -547,6 +549,12 @@ const DataPipelineOverview: React.FC = () => {
     const [topN, setTopN] = useState<string>('all');
     const [selectedHosts, setSelectedHosts] = useState<string[]>([]);
 
+    // Build 395 - the selected SID limits this page: the picker offers that
+    // system's hosts and narrows within them.
+    const { scopeHosts } = useSidScope();
+    const describeSidHost = useSidHostDescriptions();
+    const { effectiveHosts, ownFilterKey } = useOwnPicks(selectedHosts, () => setSelectedHosts([]));
+
     // Host options for the Multiselect — sorted by descending event count
     // so the dropdown's first items are the busiest hosts (most useful).
     const hostListSearch = useSearch<{ host?: string; count?: string | number }>({
@@ -554,10 +562,11 @@ const DataPipelineOverview: React.FC = () => {
     });
     const hostOptions = useMemo<string[]>(() => {
         const rows = hostListSearch.results ?? [];
-        return rows
+        const names = rows
             .map((r) => (typeof r.host === 'string' ? r.host : ''))
             .filter((h): h is string => h.length > 0);
-    }, [hostListSearch.results]);
+        return scopeHosts.length > 0 ? names.filter((h) => scopeHosts.indexOf(h) !== -1) : names;
+    }, [hostListSearch.results, scopeHosts]);
 
     // Pre-resolve the Top-N host list for the tstats panels (build 198). When
     // no specific hosts are picked AND a numeric Top-N is selected, take the
@@ -566,10 +575,10 @@ const DataPipelineOverview: React.FC = () => {
     // isn't valid inside a tstats WHERE clause. Empty for the 'all' case (no
     // host constraint) and when specific hosts are picked (those win).
     const resolvedTopHosts = useMemo<string[]>(
-        () => (selectedHosts.length === 0 && topN !== 'all'
+        () => (effectiveHosts.length === 0 && topN !== 'all'
             ? hostOptions.slice(0, Number(topN))
             : []),
-        [selectedHosts, topN, hostOptions],
+        [effectiveHosts, topN, hostOptions],
     );
 
     const filterControls = (
@@ -592,7 +601,7 @@ const DataPipelineOverview: React.FC = () => {
                 style={{ minWidth: 220, maxWidth: 360 }}
             >
                 {hostOptions.map((h) => (
-                    <Multiselect.Option key={h} label={h} value={h} />
+                    <Multiselect.Option key={h} label={h} value={h} description={describeSidHost(h) || undefined} />
                 ))}
             </Multiselect>
             <Select
@@ -601,7 +610,7 @@ const DataPipelineOverview: React.FC = () => {
                 onChange={(_e, { value }) => {
                     if (typeof value === 'string') setTopN(value);
                 }}
-                disabled={selectedHosts.length > 0}
+                disabled={effectiveHosts.length > 0}
             >
                 {TOP_N_CHOICES.map((c) => (
                     <Select.Option key={c.value} value={c.value} label={c.label} />
@@ -614,9 +623,11 @@ const DataPipelineOverview: React.FC = () => {
         <DashboardLayout
             category="PLATFORM"
             title="Data Pipeline Overview"
+            ownHostPicker
             subtitle="End-to-end LogServ ingest health: events, hosts, sourcetypes, source-to-sourcetype linkage"
             titleRowActions={filterControls}
         >
+            <FilterKeyContext.Provider value={ownFilterKey}>
             <TabbedLayout
                 tabs={[
                     {
@@ -624,9 +635,9 @@ const DataPipelineOverview: React.FC = () => {
                         label: 'Overview',
                         content: (
                             <OverviewTab
-                                selectedHosts={selectedHosts}
+                                selectedHosts={effectiveHosts}
                                 topN={topN}
-                                totalHostCount={hostOptions.length}
+                                totalHostCount={scopeHosts.length > 0 ? scopeHosts.length : hostOptions.length}
                                 resolvedTopHosts={resolvedTopHosts}
                             />
                         ),
@@ -636,15 +647,16 @@ const DataPipelineOverview: React.FC = () => {
                         label: 'Sourcetype Mapping',
                         content: (
                             <LinkedGraphTab
-                                selectedHosts={selectedHosts}
+                                selectedHosts={effectiveHosts}
                                 topN={topN}
-                                totalHostCount={hostOptions.length}
+                                totalHostCount={scopeHosts.length > 0 ? scopeHosts.length : hostOptions.length}
                                 resolvedTopHosts={resolvedTopHosts}
                             />
                         ),
                     },
                 ]}
             />
+            </FilterKeyContext.Provider>
         </DashboardLayout>
     );
 };

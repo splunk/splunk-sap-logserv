@@ -644,19 +644,30 @@ export class AuditWriter {
      * other write's (it matters when the page was only hidden, or the
      * unload was cancelled, and the page is still in use). The HEC
      * forwarder is not called on unload.
+     *
+     * Build 398 (the 380 audit's M2): the events left out are reported
+     * too, as a write of their own that did not reach Splunk (status
+     * null), after the sent events' outcome, so a write that succeeded
+     * does not clear them.
      */
     private flushOnUnload(): void {
         if (this.buffer.length === 0) return;
         const batch = this.buffer;
         this.buffer = [];
         const { body, sent, dropped } = fitKeepaliveBatch(batch, KEEPALIVE_BODY_LIMIT_BYTES);
+        const reportLeftOut = (): void => {
+            if (dropped > 0) reportAuditWriteResult({ ok: false, status: null, when: Date.now(), events: dropped });
+        };
         if (dropped > 0) {
             // eslint-disable-next-line no-console
             console.error(
                 `[AuditWriter] unload flush: ${dropped} of ${batch.length} events dropped (over the ${KEEPALIVE_BODY_LIMIT_BYTES}-byte limit for a request sent as the page closes).`,
             );
         }
-        if (sent === 0) return;
+        if (sent === 0) {
+            reportLeftOut();
+            return;
+        }
         const endpoint = this.endpointOverride ?? buildAuditEndpoint();
         void postToLocalIndex(this.fetchImpl, endpoint, body, sent, true).then(({ result, error }) => {
             if (result.status === null) {
@@ -666,6 +677,7 @@ export class AuditWriter {
                 // eslint-disable-next-line no-console
                 console.error(`[AuditWriter] unload flush failed: HTTP ${result.status}. ${sent} events dropped.`);
             }
+            reportLeftOut();
         });
     }
 
@@ -702,8 +714,8 @@ export class AuditWriter {
      * outcome is reported to the write-health listeners, as a flush's is.
      *
      * `fetchImpl` is for tests; callers pass only the event. Where the event
- * goes - the local index, and the HEC forwarder when it is on - is read
- * when it is called (build 392).
+     * goes - the local index, and the HEC forwarder when it is on - is read
+     * when it is called (build 392).
      *
      * Added in build 83 for OWASP LLM02 Tier 2 elevation audit events.
      */

@@ -33,7 +33,7 @@ The Windows Events dashboard monitors Windows hosts in the SAP landscape, which 
 - **Active Hosts** -- Count of distinct Windows hosts reporting data
 - **Event Volume by Log** -- Trend over time by Windows log source (Application, Security, System, PowerShell)
 - **Severity Distribution Over Time** -- Column chart of events over time, one bar per severity in each time bucket
-- **Event Codes** -- Featured full-width table of the most frequent EventCodes with 7 enriched columns: Event Code, Description (signature), Source log, Severity, Events, Hosts (distinct count), Last Seen. Row drilldown opens the search app filtered by that event code.
+- **Event Codes** -- Featured full-width table of the most frequent EventCodes with 7 enriched columns: Event Code, Description (signature), Source log, Severity, Events, Hosts (distinct count), Last Seen. Row drilldown opens Splunk's search page filtered by that event code.
 - **Service Events** -- Table of Windows service start/stop activity with latest state
 - **PowerShell Activity** -- Column chart of PowerShell operational event volume over time
 

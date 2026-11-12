@@ -6,6 +6,7 @@ import { HashRouter } from 'react-router-dom';
 import { username as splunkUsername } from '@splunk/splunk-utils/config';
 import { TimeRangeProvider } from './state/TimeRangeProvider';
 import { CloudProviderProvider } from './state/CloudProviderProvider';
+import { SidHostFilterProvider } from './state/SidHostFilterProvider';
 import { ThemeModeProvider, SplunkThemeScope } from './state/ThemeModeProvider';
 import { AIAssistantProvider } from './state/AIAssistantProvider';
 import {
@@ -138,6 +139,7 @@ const App: React.FC = () => {
             <SplunkThemeScope>
                 <TimeRangeProvider>
                     <CloudProviderProvider>
+                    <SidHostFilterProvider>
                     <AIAssistantProvider
                         providerName={aiConfig.provider}
                         defaultModel={aiConfig.defaultModel}
@@ -160,6 +162,7 @@ const App: React.FC = () => {
                             />
                         </HashRouter>
                     </AIAssistantProvider>
+                    </SidHostFilterProvider>
                     </CloudProviderProvider>
                 </TimeRangeProvider>
             </SplunkThemeScope>

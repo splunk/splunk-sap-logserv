@@ -9,7 +9,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -272,10 +272,10 @@ const ChangeConfig: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 087); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const userChanges = useFirstRowFieldHybrid(Q.kpiUserChanges, QRAW.kpiUserChanges, 'count');
     const permGrants = useFirstRowFieldHybrid(Q.kpiPermGrants, QRAW.kpiPermGrants, 'count');
@@ -310,7 +310,7 @@ const ChangeConfig: React.FC = () => {
         const tgtClause = tgt ? ` target_user="${splQuote(tgt)}"` : '';
         if (!op && !tgt) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype="sap:hana:audit"${opClause}${tgtClause} | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goWinRow = (row: Record<string, unknown>): void => {
         const computer = String(row.Computer ?? '');
@@ -319,13 +319,13 @@ const ChangeConfig: React.FC = () => {
         const computerClause = computer ? `host="${splQuote(computer)}" ` : '';
         const ecClause = ec ? `EventCode=${ec} ` : '';
         const spl = `\`sap_logserv_idx_macro\` sourcetype="XmlWinEventLog" ${computerClause}${ecClause}| sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goLinuxRow = (row: Record<string, unknown>): void => {
         const host = String(row.Host ?? '');
         if (!host) return;
         const spl = `\`sap_logserv_idx_macro\` (sourcetype="linux_messages_syslog" OR sourcetype="linux_secure" OR sourcetype="linux:cron" OR sourcetype="linux:warn" OR sourcetype="linux:sudolog" OR sourcetype="linux:slapd" OR sourcetype="syslog") host="${splQuote(host)}" ("COMMAND=" OR useradd OR usermod OR userdel OR groupadd OR groupmod OR groupdel OR passwd) | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
 
     return (

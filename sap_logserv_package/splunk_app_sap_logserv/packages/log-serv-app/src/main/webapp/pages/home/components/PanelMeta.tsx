@@ -11,6 +11,7 @@ import {
 } from '../utils/drilldownUrls';
 import { useDiagnosticDrawer } from '../state/DiagnosticDrawerProvider';
 import { useCloudProvider } from '../state/CloudProviderProvider';
+import { isFilterPending, isFilterUnavailable } from '../utils/queryFilters';
 import { getActivePageSnapshot } from '../state/DiagnosticCollector';
 import { rawTwinFor } from '../utils/rawTwin';
 import { coverageFor } from '../utils/columnCoverage';
@@ -211,6 +212,9 @@ export const PanelActions: React.FC<PanelActionsProps> = ({ meta, title }) => {
     const { provider } = useCloudProvider();
     const diagActive = useDiagnosisActive();
     const { spl, sid, dispatchedAt, refresh } = meta;
+    // Build 395 - a panel the SID or Host filter cannot reach ran no search, so
+    // there is nothing to inspect, download or open.
+    if (isFilterUnavailable(spl) || isFilterPending(spl)) return null;
     const stamp = formatLastRun(dispatchedAt);
     const stop = (e: React.MouseEvent) => e.stopPropagation();
 

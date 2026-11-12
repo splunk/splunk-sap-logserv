@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
 import { useCloudProvider } from '../state/CloudProviderProvider';
+import { isFilterUnavailable } from '../utils/queryFilters';
 import { usePanelDiagnostic } from './PanelMeta';
 import { explainEmptyPanel } from '../utils/panelDiagnosis';
 import { useDiagnosticDrawer } from '../state/DiagnosticDrawerProvider';
@@ -127,7 +128,7 @@ const EmptyStateHint: React.FC<EmptyStateHintProps> = (props) => {
      * element there lifts every card in the row — and KpiCard has no
      * interactive-descendant guard, so a nested button would also fire the
      * card's own drilldown. */
-    const canDiagnose = !props.compact && !facts.loading && !!facts.spl;
+    const canDiagnose = !props.compact && !facts.loading && !!facts.spl && !isFilterUnavailable(facts.spl);
     if (!verdict && !canDiagnose) return null;
 
     const label = verdict ? 'Run full diagnosis' : 'Why is this empty?';

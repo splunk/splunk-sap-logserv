@@ -440,9 +440,14 @@ export const ROLLUP_SEARCHES_HEADING = 'Rollup-populating saved searches';
  *  `outputlookup` that is not the terminal command, or one closing inside a
  *  subsearch (no shipped aggregate has either shape; the build gate proves
  *  the strip against every registry aggregate's shipped `search=`). The
- *  caller hides the button: fail closed, never hand out an armed search. */
+ *  caller hides the button: fail closed, never hand out an armed search.
+ *
+ *  Build 397: a rollup that gained `host` appends, after its rows, a zero row for each
+ *  old row they replace. That exact step goes first: what is left writes the rows. */
+const ZERO_ROW_STEP = /\|\s*eval old_key = [^|\]]*\|\s*lookup [^|\]]*\|\s*appendpipe\s*\[\s*where isnotnull\(old_row\) AND old_key!=_key\s*\|\s*dedup old_key\s*\|\s*eval _key=old_key,[^|\]]*\]/i;
+
 export const producerSplForOpenInSearch = (spl: string): string | null => {
-    const trimmed = (spl || '').trim();
+    const trimmed = (spl || '').trim().replace(ZERO_ROW_STEP, '').trim();
     if (trimmed === '') return null;
     // Terminal clause only: nothing but the write's own args (never a `|`,
     // never a subsearch-closing `]`) may follow the last `| outputlookup`.
@@ -718,6 +723,7 @@ const CLASSIFICATION_LABEL: Record<string, string> = {
     error: 'Search failed',
     loading: 'Still loading',
     'not-dispatched': 'Not run (waiting on a selection)',
+    'not-filterable': 'Not run (cannot honour the SID or Host filter)',
     'no-query': 'No query',
 };
 
@@ -755,7 +761,7 @@ export const buildDashboardReportModel = (input: DashboardReportInput): DiagRepo
                             label: 'Outcome',
                             value:
                                 `${count('ok')} with data · ${count('empty')} empty · ` +
-                                `${count('error')} failed · ${count('not-dispatched') + count('no-query')} not run · ` +
+                                `${count('error')} failed · ${count('not-dispatched') + count('not-filterable') + count('no-query')} not run · ` +
                                 `${count('loading')} still loading`,
                         },
                         {

@@ -718,6 +718,33 @@ const codeOnly = (s: string): string => s
             && refusal.indexOf('errorMessage: toolVerdict.reason') !== -1,
             refusal.slice(0, 120));
     }
+    {
+        // Build 398: an ad-hoc query sent with no time range runs over the range selected at the
+        // top of the page (Splunk MCP Server 2.0.0 searches only the last 6 hours without one).
+        check('H18a the hook reads the page range, and works without a TimeRangeProvider',
+            count(hookCode, 'useOptionalTimeRange()') === 1 && hookCode.indexOf('useTimeRange(') === -1, String(count(hookCode, 'useOptionalTimeRange()')));
+        const iDef = hookCode.indexOf('const defaultRange: { earliest: string; latest: string } | null =');
+        const iEnd = iDef === -1 ? -1 : hookCode.indexOf(': null;', iDef);
+        const defBlock = iDef === -1 || iEnd === -1 ? '' : hookCode.slice(iDef, iEnd + 7);
+        check('H18b only for splunk_run_query, and only when the model gave neither time',
+            defBlock.indexOf("toolName === 'splunk_run_query'") !== -1
+            && defBlock.indexOf("typeof parsedArgs.earliest_time !== 'string'") !== -1
+            && defBlock.indexOf("typeof parsedArgs.latest_time !== 'string'") !== -1
+            && defBlock.indexOf('? { earliest: pageRange.earliest, latest: pageRange.latest }') !== -1, defBlock.slice(0, 240));
+        const iSet = hookCode.indexOf('if (defaultRange) {');
+        check('H18c both times go on the dispatched arguments, before the dispatch',
+            count(hookCode, 'if (defaultRange) {') === 1 && iSet !== -1 && iSet < iDispatch
+            && /^if \(defaultRange\) \{\s*mcpArgs\.earliest_time = defaultRange\.earliest;\s*mcpArgs\.latest_time = defaultRange\.latest;\s*\}/.test(hookCode.slice(iSet, iSet + 400)),
+            hookCode.slice(iSet, iSet + 160));
+        check('H18d the Run SPL chip shows the range that ran',
+            /tileEarliest: string \| undefined =\s*typeof parsedArgs\.earliest_time === 'string' \? parsedArgs\.earliest_time : defaultRange \? defaultRange\.earliest : undefined;/.test(hookCode)
+            && /tileLatest: string \| undefined =\s*typeof parsedArgs\.latest_time === 'string' \? parsedArgs\.latest_time : defaultRange \? defaultRange\.latest : undefined;/.test(hookCode),
+            'tileEarliest / tileLatest');
+        check('H18e dispatchTool forwards both times to splunk_run_query',
+            disp.indexOf("if (typeof args.earliest_time === 'string') out.earliest_time = args.earliest_time;") !== -1
+            && disp.indexOf("if (typeof args.latest_time === 'string') out.latest_time = args.latest_time;") !== -1,
+            'buildArgs');
+    }
 }
 
 /* ============================ I. splGuard macros and refusal text ============================ */

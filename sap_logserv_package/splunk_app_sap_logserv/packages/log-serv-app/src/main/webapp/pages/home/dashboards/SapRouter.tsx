@@ -9,7 +9,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -202,10 +202,10 @@ const SapRouter: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters('saprouter');
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const errors = useFirstRowFieldHybrid(Q.kpiErrors, QRAW.kpiErrors, 'count');
     const inval = useFirstRowFieldHybrid(Q.kpiInval, QRAW.kpiInval, 'count');
@@ -228,13 +228,13 @@ const SapRouter: React.FC = () => {
         const ip = String(row['Peer IP'] ?? '');
         if (!ip) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST} peer_ip="${splQuote(ip)}" | sort -_time | table _time action connection_id src_ip return_code`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goErrorFunctionRow = (row: Record<string, unknown>): void => {
         const fn = String(row.Function ?? '');
         if (!fn) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST} is_error="true" error_function="${splQuote(fn)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goConnLogRow = (row: Record<string, unknown>): void => {
         const peer = String(row['Peer IP'] ?? '');
@@ -243,11 +243,11 @@ const SapRouter: React.FC = () => {
         const peerClause = peer ? `peer_ip="${splQuote(peer)}" ` : '';
         const srcClause = src ? `src_ip="${splQuote(src)}" ` : '';
         const spl = `\`sap_logserv_idx_macro\` ${ST} ${peerClause}${srcClause}| sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
 
     return (
-        <DashboardLayout
+        <DashboardLayout hostFilterService="saprouter"
             category="INTEGRATION"
             title="SAP Router"
             subtitle="SAP Router connection activity, error analysis, and network boundary monitoring"

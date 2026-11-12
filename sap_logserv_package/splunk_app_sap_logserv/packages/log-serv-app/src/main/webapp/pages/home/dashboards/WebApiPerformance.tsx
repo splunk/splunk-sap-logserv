@@ -8,7 +8,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -194,10 +194,10 @@ const WebApiPerformance: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const errorRate = useFirstRowFieldHybrid(Q.kpiErrorRate, QRAW.kpiErrorRate, 'display');
     const avgRt = useFirstRowFieldHybrid(Q.kpiAvgRt, QRAW.kpiAvgRt, 'display');
@@ -222,23 +222,23 @@ const WebApiPerformance: React.FC = () => {
     /* Drilldowns (build 159 / session 027 task 6). */
     const goErrorRateKpi = (): void => {
         const spl = `\`sap_logserv_idx_macro\` ${ST_BOTH} status>=400 | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goAuthFailKpi = (): void => {
         const spl = '`sap_logserv_idx_macro` ((sourcetype="sap:webdispatcher:access" AND (status=401 OR status=403)) OR (sourcetype="sap:scc:http_access" AND (status=401 OR status=403 OR is_authenticated="false"))) | sort -_time';
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goSlowUriRow = (row: Record<string, unknown>): void => {
         const uri = String(row.URI ?? '');
         if (!uri) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST_BOTH} uri="${splQuote(uri)}" | sort -response_time_ms | table _time clientip method status response_time_ms uri`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goSlowClientRow = (row: Record<string, unknown>): void => {
         const ip = String(row['Client IP'] ?? '');
         if (!ip) return;
         const spl = `\`sap_logserv_idx_macro\` ${ST_BOTH} clientip="${splQuote(ip)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
     const goErr500Row = (row: Record<string, unknown>): void => {
         const ip = String(row['Client IP'] ?? '');
@@ -247,7 +247,7 @@ const WebApiPerformance: React.FC = () => {
         const ipClause = ip ? `clientip="${splQuote(ip)}" ` : '';
         const uriClause = uri ? `uri="${splQuote(uri)}" ` : '';
         const spl = `\`sap_logserv_idx_macro\` ${ST_BOTH} status>=500 ${ipClause}${uriClause}| sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
     };
 
     return (

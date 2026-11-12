@@ -8,7 +8,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import {
     buildDashboardUrl,
@@ -97,11 +97,14 @@ const Q_BASE = {
     // subsets). toterr's linux subset is IN_DROP only, the INPUT chain: drops in
     // transit (FWD_DROP, FORWARD chain) are not errors here. Linux and Network
     // Perimeter show both chains (utils/firewallChains.ts).
-    totalErrors: `${TOTERR} | stats sum(count) as count`,
-    hanaFailures: `${TOTERR} | search sourcetype="sap:hana:audit" | stats sum(count) as count`,
-    authFailures: `${AUTHFAIL} | stats sum(count) as count`,
-    firewallDrops: `${TOTERR} | search sourcetype="linux_secure" | stats sum(count) as count`,
-    webErrorRate: `${WEB} | stats sum(web_err) as errors, sum(web_total) as total | eval pct = if(total>0, round(errors/total*100, 1), 0) | table pct`,
+    // Build 398: the empty-safe idiom (ChangeConfig.tsx says how it works). Under a SID or
+    // Host filter whose hosts have none of these rows, a read returned no row and the card
+    // showed a dash, where the raw twin's `stats count` gives 0 (the 397 audit's M1).
+    totalErrors: `${TOTERR} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    hanaFailures: `${TOTERR} | search sourcetype="sap:hana:audit" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    authFailures: `${AUTHFAIL} | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    firewallDrops: `${TOTERR} | search sourcetype="linux_secure" | stats count as n, sum(count) as count | fillnull value=0 count | fields count`,
+    webErrorRate: `${WEB} | stats count as n, sum(web_err) as errors, sum(web_total) as total | fillnull value=0 errors total | eval pct = if(total>0, round(errors/total*100, 1), 0) | table pct`,
     // beaconing now reads the precomputed daily rollup (logserv_beaconing_rollup).
     // Build 377: one row per UTC day (the rollup holds one per day AND cloud, so
     // "All clouds" drew up to three points a day), each carrying its day_ts for
@@ -316,11 +319,11 @@ const EnvironmentHealth: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 085); same cloud-provider
     // mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const totalErrors = useFirstRowFieldHybrid(Q.totalErrors, QRAW.totalErrors, 'count');
     const hanaFailures = useFirstRowFieldHybrid(Q.hanaFailures, QRAW.hanaFailures, 'count');
     const authFailures = useFirstRowFieldHybrid(Q.authFailures, QRAW.authFailures, 'count');
@@ -359,8 +362,8 @@ const EnvironmentHealth: React.FC = () => {
         [timeRange.earliest, timeRange.latest],
     );
     const goToTotalErrorsSearch = useCallback(
-        () => openInNewTab(buildSplunkSearchUrl(TOTAL_ERRORS_DRILLDOWN_SPL, timeRange.earliest, timeRange.latest)),
-        [timeRange.earliest, timeRange.latest],
+        () => openInNewTab(buildSplunkSearchUrl(withQueryFilters(TOTAL_ERRORS_DRILLDOWN_SPL, filters), timeRange.earliest, timeRange.latest)),
+        [timeRange.earliest, timeRange.latest, filters],
     );
     const goToHostDetails = useCallback(
         (row: Record<string, unknown>) => {

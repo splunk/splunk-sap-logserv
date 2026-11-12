@@ -8,7 +8,7 @@ import { SparklineFromQuery } from '../components/Sparkline';
 import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
-import { useCloudProvider, mapCloudProviderQueries } from '../state/CloudProviderProvider';
+import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import {
     buildDashboardUrl,
@@ -244,10 +244,10 @@ const HanaAudit: React.FC = () => {
         () => chooseTimechartSpan(timeRange.earliest, timeRange.latest),
         [timeRange.earliest, timeRange.latest],
     );
-    const { provider } = useCloudProvider();
-    const Q = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(Q_BASE, provider), span), [provider, span]);
+    const filters = useQueryFilters();
+    const Q = React.useMemo(() => applySpanTokens(mapQueryFilters(Q_BASE, filters), span), [filters, span]);
     // RAW fallbacks for the sub-hour hybrid (session 086); same cloud mapping so both arms filter identically.
-    const QRAW = React.useMemo(() => applySpanTokens(mapCloudProviderQueries(QRAW_BASE, provider), span), [provider, span]);
+    const QRAW = React.useMemo(() => applySpanTokens(mapQueryFilters(QRAW_BASE, filters), span), [filters, span]);
     const total = useFirstRowFieldHybrid(Q.kpiTotal, QRAW.kpiTotal, 'count');
     const failures = useFirstRowFieldHybrid(Q.kpiFailures, QRAW.kpiFailures, 'count');
     const users = useFirstRowFieldHybrid(Q.kpiUsers, QRAW.kpiUsers, 'users');
@@ -291,24 +291,24 @@ const HanaAudit: React.FC = () => {
         const ip = String(row.client_ip ?? '');
         if (!ip) return;
         const spl = `\`sap_logserv_idx_macro\` sourcetype=sap:hana:audit client_ip="${splQuote(ip)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [timeRange.earliest, timeRange.latest, filters]);
     const goHighRiskRow = useCallback((row: Record<string, unknown>) => {
         const user = String(row.executing_user ?? '');
         const action = String(row.action_type ?? '');
         if (!user) return;
         const actionClause = action ? ` action_type="${splQuote(action)}"` : '';
         const spl = `\`sap_logserv_idx_macro\` sourcetype=sap:hana:audit is_critical=true executing_user="${splQuote(user)}"${actionClause} | sort -_time | table _time action_type risk_level status host src_host client_ip sql_statement`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [timeRange.earliest, timeRange.latest, filters]);
     const goAfterHoursRow = useCallback((row: Record<string, unknown>) => {
         const user = String(row.executing_user ?? '');
         const host = String(row.host ?? '');
         if (!user) return;
         const hostClause = host ? ` host="${splQuote(host)}"` : '';
         const spl = `\`sap_logserv_idx_macro\` sourcetype=sap:hana:audit executing_user="${splQuote(user)}"${hostClause} | sort -_time | table _time action_type status host src_host client_ip`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
-    }, [timeRange.earliest, timeRange.latest]);
+        openInNewTab(buildSplunkSearchUrl(withQueryFilters(spl, filters), timeRange.earliest, timeRange.latest));
+    }, [timeRange.earliest, timeRange.latest, filters]);
 
     return (
         <DashboardLayout

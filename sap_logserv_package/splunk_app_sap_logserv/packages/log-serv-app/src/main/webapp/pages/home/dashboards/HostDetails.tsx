@@ -20,6 +20,8 @@ import {
     mapCloudProviderQueries,
     withCloudProvider,
 } from '../state/CloudProviderProvider';
+import { FilterKeyContext } from '../state/FilterKeyContext';
+import { useOwnPicks, useSidHostDescriptions, useSidScope } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useThemeMode } from '../state/ThemeModeProvider';
 import { chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
@@ -225,6 +227,10 @@ const TOP_HOSTS_CHOICES: Array<{ value: string; label: string }> = [
 ];
 
 interface HostPickerProps {
+    /** Build 395 - a SID is selected, so the panels are limited to its hosts. */
+    topDisabled?: boolean;
+    /** Build 395 - a host's role, shown beside it. */
+    describe: (host: string) => string;
     selectedHosts: string[];
     onChange: (hosts: string[]) => void;
     topHosts: string;
@@ -236,11 +242,11 @@ interface HostPickerProps {
     hostsLoading: boolean;
 }
 
-const HostPicker: React.FC<HostPickerProps> = ({ selectedHosts, onChange, topHosts, onTopHostsChange, hosts, hostsLoading }) => {
+const HostPicker: React.FC<HostPickerProps> = ({ selectedHosts, onChange, topHosts, onTopHostsChange, hosts, hostsLoading, topDisabled, describe }) => {
     /* Top Hosts is disabled when ANY specific hosts are selected — the
      * explicit pick is always the more specific intent and the Top N
      * resolution would be ignored anyway (see combinedHostFilter). */
-    const topHostsDisabled = selectedHosts.length > 0;
+    const topHostsDisabled = selectedHosts.length > 0 || !!topDisabled;
 
     /* Multiselect placeholder — shown when no specific hosts are selected
      * (i.e. "All Hosts" intent). Matches DataPipelineOverview's
@@ -261,8 +267,8 @@ const HostPicker: React.FC<HostPickerProps> = ({ selectedHosts, onChange, topHos
                 onChange={(_e, { values }) => onChange(values.map((v) => String(v)))}
                 style={{ minWidth: 220, maxWidth: 360 }}
             >
-                {hosts.map((h) => (
-                    <Multiselect.Option key={h} label={h} value={h} />
+                {hosts.concat(selectedHosts.filter((h) => hosts.indexOf(h) === -1)).map((h) => (
+                    <Multiselect.Option key={h} label={h} value={h} description={describe(h) || undefined} />
                 ))}
             </Multiselect>
             <Select
@@ -503,7 +509,10 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
     const QRAW = useMemo(() => mapCloudProviderQueries({
         dataVolume: `${W} | eval bytes=len(_raw) | stats sum(bytes) AS total_bytes`,
         errorsCriticals: `${W} (severity=ERROR OR severity=CRITICAL OR "error" OR "critical") | stats count`,
-        authFailures: `${W} ("authentication failure" OR "Failed password" OR "FAILED LOGIN" OR EventCode=4625 OR status="UNSUCCESSFUL") | stats count`,
+        // Build 397 - what Cross-Stack Authentication counts, plus failed Linux logins.
+        // Not `sapuxuserchk`: the SAP Host Agent's automated user check logs a PAM
+        // "authentication failure" every few seconds, nearly 6x every other failure.
+        authFailures: `${W} ((sourcetype="sap:sapstartsrv" is_auth_event="true" auth_result="failure") OR (sourcetype="sap:hana:audit" action_category="Authentication" status!="SUCCESSFUL") OR (sourcetype="XmlWinEventLog" action="failure") OR ((sourcetype="linux_secure" OR sourcetype="linux_messages_syslog") ("authentication failure" OR "Failed password" OR "FAILED LOGIN") NOT sapuxuserchk)) | stats count`,
     }, provider), [W, provider]);
 
     const total = useFirstRowField(Q.totalEvents, 'count');
@@ -590,18 +599,13 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
      *   - 1 host selected → drilldown URL includes `?host=<that host>` so the
      *     destination dashboard pre-filters on it. Same UX as build 160.
      *   - 2+ or 0 selected → drilldown drops the host param entirely (no
-     *     destination dashboard supports a multi-host URL filter today). For
-     *     splunk-search drilldowns we still build a host clause that mirrors
-     *     the local selection so the resulting search is constrained the
-     *     same way the source dashboard was.
+     *     destination dashboard supports a multi-host URL filter today). A
+     *     splunk-search drilldown starts from W, the same host fragment the
+     *     tab's panels read (picked hosts or Top Hosts), so the search covers
+     *     the hosts the page shows.
      */
     const isSingleHost = hosts.length === 1;
     const isMultiHost = hosts.length > 1;
-    const splHostClause = (): string => {
-        if (hosts.length === 0) return '';
-        if (hosts.length === 1) return `host="${splQuote(hosts[0])}" `;
-        return `host IN (${hosts.map((h) => `"${splQuote(h)}"`).join(',')}) `;
-    };
     const goToFreshnessRow = (row: Record<string, unknown>): void => {
         const st = String(row.sourcetype ?? '');
         if (!st) return;
@@ -618,14 +622,14 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
         }
         // Unmapped sourcetype — fall through to a splunk-search filtered to
         // host(s) + sourcetype.
-        const spl = `\`sap_logserv_idx_macro\` ${splHostClause()}sourcetype="${splQuote(st)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        const spl = `${W} sourcetype="${splQuote(st)}" | sort -_time`;
+        openInNewTab(buildSplunkSearchUrl(withCloudProvider(spl, provider), timeRange.earliest, timeRange.latest));
     };
     const goToSourcesRow = (row: Record<string, unknown>): void => {
         const src = String(row.source ?? '');
         if (!src) return;
-        const spl = `\`sap_logserv_idx_macro\` ${splHostClause()}source="${splQuote(src)}" | sort -_time`;
-        openInNewTab(buildSplunkSearchUrl(spl, timeRange.earliest, timeRange.latest));
+        const spl = `${W} source="${splQuote(src)}" | sort -_time`;
+        openInNewTab(buildSplunkSearchUrl(withCloudProvider(spl, provider), timeRange.earliest, timeRange.latest));
     };
 
     // Avoid the unused-var warning when isMultiHost isn't directly read; it's
@@ -1073,9 +1077,13 @@ const HostDetails: React.FC = () => {
 
     // Resolve the initial selection: URL param takes priority, then
     // localStorage, then "All Hosts" (empty array).
+    const { sid: scopeSid, scopeHosts } = useSidScope();
+    const describeSidHost = useSidHostDescriptions();
     const [selectedHosts, setSelectedHosts] = useState<string[]>(() => {
         if (urlHosts.length > 0) return urlHosts;
-        return readStoredHosts();
+        // Build 395 - a stored pick outside the selected SID does not come along.
+        const stored = readStoredHosts();
+        return scopeHosts.length > 0 ? stored.filter((h) => scopeHosts.indexOf(h) !== -1) : stored;
     });
 
     // Top Hosts filter — restricts the data feeding the Event Count chart
@@ -1083,6 +1091,10 @@ const HostDetails: React.FC = () => {
     // hosts in the current time range. Default is "all" (no restriction).
     // The picker is disabled in the UI when ANY specific hosts are selected.
     const [topHosts, setTopHosts] = useState<string>('all');
+
+    // Build 395 - the selected SID limits this page: the picker offers that
+    // system's hosts and narrows within them.
+    const { effectiveHosts, pickedOutsideSid, ownFilterKey } = useOwnPicks(selectedHosts, () => setHosts([]));
 
     // Count-sorted host list — lifted out of HostPicker so the SAME ordering
     // drives both the Multiselect options AND the tstats Top-N resolution
@@ -1094,10 +1106,11 @@ const HostDetails: React.FC = () => {
     });
     const hostOptions = useMemo<string[]>(() => {
         if (!hostListSearch.results) return [];
-        return hostListSearch.results
+        const names = hostListSearch.results
             .map((r) => String((r as Record<string, unknown>).host ?? ''))
             .filter(Boolean);
-    }, [hostListSearch.results]);
+        return scopeHosts.length > 0 ? names.filter((h) => scopeHosts.indexOf(h) !== -1) : names;
+    }, [hostListSearch.results, scopeHosts]);
 
     // Pre-resolve the Top-N host slice for the tstats dialect. When the user
     // leaves the picker on "All Hosts" + a numeric Top-N, this slice of the
@@ -1158,17 +1171,21 @@ const HostDetails: React.FC = () => {
         setSearchParams(params, { replace: false });
     };
 
-    const subtitle =
-        selectedHosts.length === 0
+    const subtitle = pickedOutsideSid
+        ? `${selectedHosts.join(', ')} is not a host of ${scopeSid}. Clear the SID filter to see it.`
+        : scopeSid && selectedHosts.length === 0
+            ? `Drill-down across the ${scopeHosts.length} hosts of ${scopeSid} — inventory, activity, severity, authentication, role-specific analytics, and event distribution`
+            : effectiveHosts.length === 0
             ? 'Drill-down view across all hosts — inventory, activity, severity, authentication, role-specific analytics, and event distribution'
-            : selectedHosts.length === 1
-                ? `Per-host drill-down for ${selectedHosts[0]} — inventory, activity, severity, authentication, role-specific analytics, and event distribution`
-                : `Drill-down across ${selectedHosts.length} selected hosts — inventory, activity, severity, authentication, role-specific analytics, and event distribution`;
+            : effectiveHosts.length === 1
+                ? `Per-host drill-down for ${effectiveHosts[0]} — inventory, activity, severity, authentication, role-specific analytics, and event distribution`
+                : `Drill-down across ${effectiveHosts.length} selected hosts — inventory, activity, severity, authentication, role-specific analytics, and event distribution`;
 
     return (
         <DashboardLayout
             category="PLATFORM"
             title="Host Details"
+            ownHostPicker
             subtitle={subtitle}
             titleRowActions={
                 <HostPicker
@@ -1178,16 +1195,20 @@ const HostDetails: React.FC = () => {
                     onTopHostsChange={setTopHosts}
                     hosts={hostOptions}
                     hostsLoading={hostListSearch.loading}
+                    topDisabled={scopeHosts.length > 0}
+                    describe={describeSidHost}
                 />
             }
         >
-            <TabbedLayout
-                tabs={[
-                    { id: 'overview', label: 'Overview', content: <OverviewTab hosts={selectedHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
-                    { id: 'role-activity', label: 'Role Activity', content: <RoleActivityTab hosts={selectedHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
-                    { id: 'sourcetype-mapping', label: 'Sourcetype Mapping', content: <SourcetypeMappingTab hosts={selectedHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
-                ]}
-            />
+            <FilterKeyContext.Provider value={ownFilterKey}>
+                <TabbedLayout
+                    tabs={[
+                        { id: 'overview', label: 'Overview', content: <OverviewTab hosts={effectiveHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
+                        { id: 'role-activity', label: 'Role Activity', content: <RoleActivityTab hosts={effectiveHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
+                        { id: 'sourcetype-mapping', label: 'Sourcetype Mapping', content: <SourcetypeMappingTab hosts={effectiveHosts} topHosts={topHosts} resolvedTopHosts={resolvedTopHosts} /> },
+                    ]}
+                />
+            </FilterKeyContext.Provider>
         </DashboardLayout>
     );
 };

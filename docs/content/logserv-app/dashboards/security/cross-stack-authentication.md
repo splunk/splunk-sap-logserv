@@ -52,7 +52,7 @@ The title row carries the app-wide **Cloud Provider** picker (All / aws / azure 
 
 ??? info "Where the data comes from"
     - **Summary-backed panels** read the `logserv_xstack_auth_rollup` KV Store collection — metric
-      `fail` carries the cross-source authentication-failure grain over (layer, failed user) spanning
+      `fail` carries the cross-source authentication-failure grain over (layer, failed user, host) spanning
       `sap:sapstartsrv`, `sap:hana:audit` and `XmlWinEventLog`; metric `failip` the per-source-IP
       failure facts (layers hit, last seen); metric `hanauser` the full HANA authentication population
       (successes included) per user/action/status/risk level. Populated at minute :15 of every hour by

@@ -38,7 +38,7 @@ After the initial backfill, the hourly aggregation keeps each collection current
 **Environment Topology node counts and inventory.** Two of the Environment Topology (graph) collections combine the results of several searches: a node's event count is the sum over every log source that reports it, and an IP address or host is mapped to its most recent SAP system with its events counted over every source (of the systems seen in its most recent hour, the one with the most events; an exact tie keeps the previous mapping). For those two, each search writes its results into a scratch KV Store collection, `logserv_backfill_stage`, and once every search of a month (for the inventory, of its 30 days) has finished, one more search adds them up and writes the rows — but only after the page has counted every collected result back from the scratch collection, before and after. Keep the page open until the Environment Topology (graph) row has finished: a month whose searches did not all finish, or whose results did not all read back (KV Store still starting after a restart, for example), is discarded rather than written in part — the row reads **failed — re-run**, also when the panel stopped waiting for one of those searches — and the next backfill rebuilds it. The scratch rows are deleted once a month is written; rows a closed page or a failed month left behind are deleted by a later backfill after seven days.
 
 !!! warning "Keep long backfills clear of the nightly retention run"
-    Each rollup's `*_retention` search rewrites its whole collection once a night (00:34–00:58, 01:30–01:58 and 02:34–02:36 in the search head's time zone). Rows a backfill writes into a collection *while* that collection's retention is running can be lost. Start a long backfill so that it does not overlap that window — or re-run it afterwards, which restores anything lost (the backfill is idempotent).
+    Each rollup's `*_retention` search rewrites its whole collection once a night (00:34–00:58, 01:30–01:58 and 02:34–02:36 in the search head's time zone, and 02:00 for the SID and host list, which the next hourly runs repair). Rows a backfill writes into a collection *while* that collection's retention is running can be lost. Start a long backfill so that it does not overlap that window — or re-run it afterwards, which restores anything lost (the backfill is idempotent).
 
 !!! note "If you skip the backfill"
     You don't have to run it. Without a backfill, rolled-up panels simply start populating from the next hourly aggregation onward, filling in one hour at a time. The backfill is purely to make that history available immediately.
@@ -96,7 +96,7 @@ The rollups are keyed on whole-hour buckets, so a **sub-hour** time range — an
 The switch is based purely on the selected range's span (a 90-minute threshold), is transparent to the user, and applies across every rolled-up dashboard — including the two Sourcetype Mapping link graphs and the Host Details Role Activity tab. At 90 minutes and wider, a rolled-up chart never draws buckets finer than one hour, because the summaries are hourly; at *Last 24 hours* it draws hourly bars where a chart counted from the index draws 15-minute ones. Every time chart prints its bucket in its subtitle (see [Chart Time Buckets](dashboards/index.md#chart-time-buckets)). Because the sub-hour path runs the panel's actual raw query, it is **exact** — not an approximation of the cache. (The trade-off is only speed, not correctness: a sub-hour raw query is inexpensive because it scans a small window, while a multi-day raw scan is what the hourly cache exists to avoid.)
 
 !!! lightning "Investigating live activity"
-    Sub-hour ranges are already real-time (above), so you can simply narrow the time-range picker to see live activity on any rolled-up dashboard. For deeper ad-hoc investigation at any range, a panel's **Open in Search** toolbar action jumps into Splunk's Search app with the panel's actual query and your selected time range pre-applied — the rollup read for a cached panel at a wide range, the raw query at sub-hour ranges.
+    Sub-hour ranges are already real-time (above), so you can simply narrow the time-range picker to see live activity on any rolled-up dashboard. For deeper ad-hoc investigation at any range, a panel's **Open in Search** toolbar action opens Splunk's search page, inside the LogServ App, with the panel's actual query and your selected time range pre-applied — the rollup read for a cached panel at a wide range, the raw query at sub-hour ranges.
 
 ## :material-circle-box:{ .taiconcolor } How the dashboards source their data
 
@@ -117,20 +117,32 @@ Behind the rolled-up panels is a set of **KV-Store rollup collections** (`logser
 
 A daily retention search trims each collection to a rolling **365-day** window. It never empties a collection on an empty read (`override_if_empty=false`), so a KV Store that is still starting up after a Splunkd restart cannot wipe a rollup.
 
+#### :material-crop-square:{ .taiconcolor } Which summaries store the host { #which-summaries-store-the-host }
+
+The [SID and Host filters](dashboards/index.md#sid-and-host-filters) can only use a summary that stores `host`. Since build 397 these do, for every panel that reads them: *Change & Configuration Activity*, *SAP Services*, *Cross-Stack Authentication*, *Linux System & Security / Network Perimeter*, *Environment Health* and *Network Perimeter*. One event counts once, under the first host if it has more than one, and every panel adds the rows up again, so its numbers with no filter on are the same as before.
+
+- **Hours written before your upgrade have no host.** While a filter is on, a panel uses its summary only if its time range holds none of those rows. Otherwise it reads raw events, which is slower and gives the same numbers, and the trend lines under KPI cards, which have no raw version, stay blank for that range. With no filter on, nothing is different.
+- **An hour never counts twice.** Each hourly run rewrites the last two hours, so its first run after the upgrade meets hours that already hold rows. It writes one row per host, and overwrites each old row it replaces with a row of zeros (its `host` reads `(none)`, its counts 0). An old row whose values no longer occur in the recount keeps its count. A **Backfill** does the same, so Late-arriving data and other repairs keep working on those hours. There are two exceptions. A search that starts while KV Store is still warming up after a restart cannot see the old rows: restart outside the first half of the hour. And the rows of zeros are written last, so a recount cut short, by a restart or a KV Store failure, can leave an hour counted twice, though not short: **Backfill** that row over those hours again to correct it.
+- **Two cases a recount does not handle,** neither of which SAP LogServ data produces. An hour that holds events with an empty `host` and events with a host loses the empty-host count when it is recounted. And a `cloud_provider` value in capitals makes a recounted hour count twice: the add-ons and the Data TA write it in lowercase, so if you set it yourself with `_meta = cloud_provider::<value>`, use `aws`, `azure` or `gcp`.
+- **To use the summaries over older hours too,** **Backfill** each row once with a window that covers its history. No **Clear** is needed: a Backfill recounts each hour whose raw events your index still holds, and hours it no longer holds keep their rows, and their numbers. A Clear first leaves no rows of zeros behind, but removes that older history. An hour your index holds only part of takes the lower count, as a recount always has. Without a Backfill, a time range starts using the summaries about three days after it no longer reaches back before your upgrade (the check looks a little before the range), so *Last 7 days* takes about ten days, and the oldest rows age out after 365 days.
+- **What it costs.** These summaries now hold one row per host where they held one row per hour, so they grow with the number of hosts. On the reference system, with about 85 hosts and their history rebuilt with **Clear** then **Backfill**, the six went from about 1.5 million rows to about 2.2 million, and the slowest of their retention searches, Network Perimeter's, went from 121 to 172 seconds. A Backfill without Clear also leaves one row of zeros per old row, until retention removes it.
+- **Reads got cheaper.** These six are read with a lower time bound, so a panel loads only the rows near its time range rather than a year of them. The rows outside the range were always thrown away; now they are not loaded. Since build 398 ten more of the summaries the dashboards read are read the same way, the ones behind most panels of DNS Analytics, Proxy, SAP Router, Cloud Connector, Windows, Web and API Performance, Web Dispatcher, ABAP Network & Security, ABAP Operations, Work Process Performance, HANA Audit and HANA Trace. They gained no `host` in that build and only some of their metrics hold one, so under a filter a panel whose metric does not hold the host reads raw events. Still read in full: the summaries of Host Details, Multi-Cloud Overview and Data Pipeline Overview, the beaconing panels, Web Dispatcher's Slowest Request Traces and Environment Topology's detail tabs. The bound is worked out on the server's clock, so a panel that opens before the App has read it waits, at most 5 seconds, rather than load every row.
+
 ## :material-circle-box:{ .taiconcolor } Reference
 
 ### :material-circle-box:{ .taiconcolor } Scheduled-search schedule
 
-The app's scheduled searches are organized into three non-overlapping bands, plus one daily check, so that no two enabled scheduled searches ever fire in the same minute and the hourly aggregation never contends with the daily retention. This keeps the scheduler from bursting at high event volume.
+The app's scheduled searches are organized into non-overlapping bands, plus one daily check, so that no two enabled scheduled searches ever fire in the same minute and the hourly aggregation never contends with the daily retention. This keeps the scheduler from bursting at high event volume.
 
 | Band | When | What runs |
 |---|---|---|
 | **Hourly aggregates** | `:03`–`:28` every hour, one per minute | The always-on rollup-aggregate searches (`logserv_*_aggregate` / `logserv_topology_aggregate_*`), plus the Data Doctor's platform snapshot at `:02` |
-| **Daily retention + daily aggregates** | `00:30`–`00:58`, `01:30`–`01:58` and `02:32`–`02:36`, two minutes apart | Every rollup's retention trim, the two daily beaconing aggregates, the topology IP-enrichment aggregate, and the Data Doctor report/snapshot trims |
+| **SID and host list** | `:38` in hours 3-23 | `logserv_sid_hosts_aggregate`, the list behind the SID and Host filters |
+| **Daily retention + daily aggregates** | `00:30`–`00:58`, `01:30`–`01:58`, `02:00` and `02:32`–`02:36` | Every rollup's retention trim, the two daily beaconing aggregates, the topology IP-enrichment aggregate, and the Data Doctor report/snapshot trims |
 | **Enterprise Security** | `:00`–`:01`, `:29`, odd `:31`–`:59`, plus `:30` in hours `02`–`05` (the daily anomaly scans) | The `splunk_sap_logserv_es_*` searches (enabled by default) — see note below |
 | **Late-arriving data check** | `05:40` daily | `logserv_late_arrival_check` — a read-only `tstats` comparison of the index with the Multi-Cloud Overview rollup (about 5 s on the reference box); see [Late-arriving data](#late-arriving-data) |
 
-The per-search tables below give each search's **run time** as *typical / busy* — the average and worst single-run duration observed on the validation fleet (~10.7M events/day). Aggregate run times scale with the **per-hour event volume**; retention run times scale with the **collection size**. Run times are indicative, measured on a ~10.7M events/day validation instance. Every hourly aggregate completes well within its one-minute slot; the heaviest daily retention trims take about a minute and sit in the two-minutes-apart daily band.
+The per-search tables below give each search's **run time** as *typical / busy* — the average and worst single-run duration observed on the validation fleet (~10.7M events/day). Aggregate run times scale with the **per-hour event volume**; retention run times scale with the **collection size**. Run times are indicative, measured on a ~10.7M events/day validation instance. Every hourly aggregate completes well within its one-minute slot. The retention (*Trim*) rows below are one night's run times on the reference system, 2026-11-05, on build 397, not typical / busy figures: the heaviest took about four minutes, longer than the two minutes between searches, which is fine because each trims its own collection.
 
 #### :material-crop-square:{ .taiconcolor } Hourly aggregate band (`:03`–`:28`)
 
@@ -165,47 +177,50 @@ Each rollup aggregate dispatches the last two completed hours (`-2h@h`..`@h`) an
 | `:27` | `logserv_hostdetails_aggregate` | Host Details (Overview tab) | 2 / 7 s |
 | `:28` | `logserv_webdisp_slowtrace_aggregate` | Web Dispatcher · Slowest Request Traces | 1 / 3 s |
 
+#### :material-crop-square:{ .taiconcolor } The SID and host list (`:38`) { #the-sid-and-host-list }
+
+`logserv_sid_hosts_aggregate` fires at `:38` in hours 3-23, over the last completed hour, and upserts `logserv_sid_hosts`: which hosts run which SAP system, for the [SID and Host filters](dashboards/index.md#sid-and-host-filters). It runs in about a second on the reference box. It describes current state: a host that logged in a missed hour is picked up the next hour it logs, and a host that logs only between 23:00 and 02:00 on the server's clock is not listed. It has no row of its own on the Dashboard Data page: the Environment Topology (graph) row covers it. That row's Backfill adds hosts last seen in the past 30 days, and its Clear empties the list until the hourly search and a Backfill fill it again, so a SID you selected may reset to **All** in the meantime.
+
 #### :material-crop-square:{ .taiconcolor } Daily band (`00:30`–`02:36`)
 
-Retention trims and the daily aggregates run off-peak — 15 searches at `00:30`–`00:58`, 15 more at `01:30`–`01:58`, and 3 at `02:32`–`02:36`, all two minutes apart. Keeping them at minute `:30` or later guarantees they never collide with the hourly aggregate band (which fires at `:03`–`:28` of *every* hour); the two Data Doctor trims take the last two slots of hour `01`, `01:56` and `01:58`. Each retention search trims its collection to the rolling 365-day window and never empties it on an empty read (`override_if_empty=false`); the two beaconing aggregates (`00:30`, `00:32`) precompute the per-day DNS/perimeter beaconing statistics. (Retention run times scale with collection size, so the larger rollups — Environment Topology detail, Host Role Activity, DNS, Web & API, Network Perimeter — take longest; all are off-peak and collision-free.)
+Retention trims and the daily aggregates run off-peak — 15 searches at `00:30`–`00:58`, 15 more at `01:30`–`01:58`, one at `02:00`, and 3 at `02:32`–`02:36`, all two minutes apart. Keeping them at minute `:30` or later guarantees they never collide with the hourly aggregate band (which fires at `:03`–`:28` of *every* hour); the two Data Doctor trims take the last two slots of hour `01`, `01:56` and `01:58`. Each retention search trims its collection to the rolling 365-day window and never empties it on an empty read (`override_if_empty=false`); the two beaconing aggregates (`00:30`, `00:32`) precompute the per-day DNS/perimeter beaconing statistics. (Retention run times scale with collection size, so the larger rollups — Environment Topology detail, Host Role Activity, DNS, Web & API, Network Perimeter — take longest; all are off-peak and collision-free.)
 
 | Fires | Daily search | Action (dashboard) | Run time (typ. / busy) |
 |---|---|---|---|
 | `00:30` | `logserv_beaconing_aggregate` | Aggregate daily beaconing counts → Environment Health · DNS Analytics | 2 / 4 s |
 | `00:32` | `logserv_beaconing_detail_aggregate` | Aggregate daily beaconing gap-stats → DNS Analytics · Network Perimeter | 1 / 2 s |
-| `00:34` | `logserv_topology_retention` | Trim Environment Topology (graph — nodes) | about 22 s |
-| `00:36` | `logserv_wp_perf_retention` | Trim Work Process Performance | 10 / 14 s |
-| `00:38` | `logserv_severity_retention` | Trim Environment Health | 7 / 8 s |
-| `00:40` | `logserv_hana_retention` | Trim HANA Audit | 5 / 7 s |
-| `00:42` | `logserv_compliance_retention` | Trim Change & Configuration Activity | 2 / 2 s |
-| `00:44` | `logserv_saprouter_retention` | Trim SAP Router | 2 / 2 s |
-| `00:46` | `logserv_abapnet_retention` | Trim ABAP Network & Security | 4 / 5 s |
-| `00:48` | `logserv_xstack_auth_retention` | Trim Cross-Stack Authentication | 3 / 3 s |
-| `00:50` | `logserv_perimeter_retention` | Trim Network Perimeter | 28 / 31 s |
-| `00:52` | `logserv_linux_retention` | Trim Linux System & Security | 7 / 8 s |
-| `00:54` | `logserv_web_timing_retention` | Trim Web & API Performance | 25 / 36 s |
-| `00:56` | `logserv_hana_trace_retention` | Trim HANA Trace | 5 / 7 s |
-| `00:58` | `logserv_windows_retention` | Trim Windows | 4 / 5 s |
-| `01:30` | `logserv_sapservices_retention` | Trim SAP Services | 1 / 2 s |
-| `01:32` | `logserv_mc_retention` | Trim Multi-Cloud Overview | 13 / 15 s |
+| `00:34` | `logserv_topology_retention` | Trim Environment Topology (graph — nodes) | 28 s |
+| `00:36` | `logserv_wp_perf_retention` | Trim Work Process Performance | 38 s |
+| `00:38` | `logserv_severity_retention` | Trim Environment Health | 25 s |
+| `00:40` | `logserv_hana_retention` | Trim HANA Audit | 12 s |
+| `00:42` | `logserv_compliance_retention` | Trim Change & Configuration Activity | 8 s |
+| `00:44` | `logserv_saprouter_retention` | Trim SAP Router | 6 s |
+| `00:46` | `logserv_abapnet_retention` | Trim ABAP Network & Security | 16 s |
+| `00:48` | `logserv_xstack_auth_retention` | Trim Cross-Stack Authentication | 11 s |
+| `00:50` | `logserv_perimeter_retention` | Trim Network Perimeter | 172 s |
+| `00:52` | `logserv_linux_retention` | Trim Linux System & Security | 53 s |
+| `00:54` | `logserv_web_timing_retention` | Trim Web & API Performance | 95 s |
+| `00:56` | `logserv_hana_trace_retention` | Trim HANA Trace | 14 s |
+| `00:58` | `logserv_windows_retention` | Trim Windows | 14 s |
+| `01:30` | `logserv_sapservices_retention` | Trim SAP Services | 20 s |
+| `01:32` | `logserv_mc_retention` | Trim Multi-Cloud Overview | 31 s |
 | `01:34` | `logserv_beaconing_retention` | Trim beaconing counts | < 1 s |
-| `01:36` | `logserv_cloudconn_retention` | Trim Cloud Connector | 4 / 4 s |
-| `01:38` | `logserv_proxy_retention` | Trim Proxy | 4 / 5 s |
-| `01:40` | `logserv_dns_retention` | Trim DNS Analytics | 35 / 38 s |
-| `01:42` | `logserv_pipeline_retention` | Trim Data Pipeline Overview | 5 / 6 s |
-| `01:44` | `logserv_hostdetails_retention` | Trim Host Details | 8 / 8 s |
-| `01:46` | `logserv_webdisp_slowtrace_retention` | Trim Web Dispatcher · Slowest Traces | 2 / 2 s |
-| `01:48` | `logserv_beaconing_detail_retention` | Trim beaconing gap-stats | 1 / 1 s |
-| `01:50` | `logserv_topology_detail_retention` | Trim Environment Topology (detail tabs) | 63 / 69 s |
-| `01:52` | `logserv_stmap_retention` | Trim Sourcetype Mapping | 24 / 24 s |
-| `01:54` | `logserv_hostrole_retention` | Trim Host Role Activity | 38 / 38 s |
+| `01:36` | `logserv_cloudconn_retention` | Trim Cloud Connector | 12 s |
+| `01:38` | `logserv_proxy_retention` | Trim Proxy | 9 s |
+| `01:40` | `logserv_dns_retention` | Trim DNS Analytics | 140 s |
+| `01:42` | `logserv_pipeline_retention` | Trim Data Pipeline Overview | 18 s |
+| `01:44` | `logserv_hostdetails_retention` | Trim Host Details | 25 s |
+| `01:46` | `logserv_webdisp_slowtrace_retention` | Trim Web Dispatcher · Slowest Traces | 9 s |
+| `01:48` | `logserv_beaconing_detail_retention` | Trim beaconing gap-stats | 9 s |
+| `01:50` | `logserv_topology_detail_retention` | Trim Environment Topology (detail tabs) | 256 s |
+| `01:52` | `logserv_stmap_retention` | Trim Sourcetype Mapping | 79 s |
+| `01:54` | `logserv_hostrole_retention` | Trim Host Role Activity | 131 s |
 | `01:56` | `logserv_diag_reports_retention` | Trim the Data Doctor's saved diagnostic reports (365 d + row cap) | < 1 s |
-| `01:58` | `logserv_diag_platform_retention` | Trim the Data Doctor's platform snapshot (30 d) | < 1 s |
+| `01:58` | `logserv_diag_platform_retention` | Trim the Data Doctor's platform snapshot (30 d) | 6 s |
+| `02:00` | `logserv_sid_hosts_retention` | Trim the SID and host list behind the SID and Host filters (365 d on last-seen) | < 1 s |
 | `02:32` | `logserv_topology_enrichment_aggregate` | Recompute the topology IP-node hostname/user names (daily, last 30 d) | 5 / 8 s |
 | `02:34` | `logserv_topology_enrichment_retention` | Trim the topology IP-enrichment names (365 d on last-seen) | < 1 s |
-| `02:36` | `logserv_topology_edges_retention` | Trim Environment Topology (graph — edges) | about 8 s |
-
-The two Environment Topology (graph) trim times are single-night estimates, not typical / busy measurements like the other rows.
+| `02:36` | `logserv_topology_edges_retention` | Trim Environment Topology (graph — edges) | 18 s |
 
 #### :material-crop-square:{ .taiconcolor } Enterprise Security band (enabled by default)
 
@@ -239,7 +254,7 @@ How these scheduled searches behave depends on the search-head topology:
 
 - **Most panels are hourly-fresh; counts and per-event listings are real-time.** If a rolled-up trend looks an hour behind at a multi-day range, that's expected.
 - **Sub-hour time ranges (under 90 minutes) are real-time automatically** — a rolled-up panel routes a *Last 15 minutes*-style window to its raw query, so short ranges stay minute-accurate with no manual step.
-- **Scheduled searches are staggered into collision-free bands** — hourly aggregates at `:03`–`:28` (plus the platform snapshot at `:02`), daily retention + maintenance at `00:30`–`00:58`, `01:30`–`01:58` and `02:32`–`02:36`, the late-arriving data check at `05:40`, and the ES content (enabled by default) in the minutes those bands leave free — `:00`/`:01` for the feeds, `:29` and odd `:31`–`:59` for the hourly correlations, and `:30` at hours 02–05 for the daily anomaly searches — so no two enabled scheduled searches collide.
+- **Scheduled searches are staggered into collision-free bands** — hourly aggregates at `:03`–`:28` (plus the platform snapshot at `:02`), the SID and host list at `:38` in hours 3-23, daily retention + maintenance at `00:30`–`00:58`, `01:30`–`01:58`, `02:00` and `02:32`–`02:36`, the late-arriving data check at `05:40`, and the ES content (enabled by default) in the minutes those bands leave free — `:00`/`:01` for the feeds, `:29` and odd `:31`–`:59` for the hourly correlations, and `:30` at hours 02–05 for the daily anomaly searches — so no two enabled scheduled searches collide.
 - **After installing on an index that already holds history, run Settings → Dashboard Data → Run backfill once** — 30 days by default, or a longer window up to 365 days, or a custom range. It needs a role named `admin`, `sc_admin` or `sc_subadmin`.
 - **Late-arriving data is listed and rebuilt in Settings → Dashboard Data.** The hourly aggregation re-reads the hour before, which catches events up to about an hour late; the days holding anything later are listed under *Late-arriving data*, with a one-click backfill of exactly those days.
 - **No CIM acceleration is needed** for dashboard performance.

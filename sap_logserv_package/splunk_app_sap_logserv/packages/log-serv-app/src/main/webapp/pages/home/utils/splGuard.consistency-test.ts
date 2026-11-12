@@ -101,7 +101,7 @@ const P2_UNION_SHAPES = [
     `| union [search ${M} sourcetype=a | stats count by host] [search ${M} sourcetype=b | stats count by host] | stats sum(count) by host`,
 ];
 
-const EXCLUDED = ['logserv_backfill_stage', 'logserv_diag_platform_snapshot', 'logserv_diag_reports',
+const EXCLUDED = ['logserv_backfill_stage', 'logserv_diag_platform_snapshot', 'logserv_diag_reports', 'logserv_sid_hosts',
     'splunk_for_sap_logserv_assets', 'splunk_for_sap_logserv_identities'];
 
 /** Queries the allow-list must pass (beyond the catalog). */

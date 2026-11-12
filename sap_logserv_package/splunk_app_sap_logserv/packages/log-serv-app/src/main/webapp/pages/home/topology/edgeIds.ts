@@ -87,8 +87,8 @@ export interface EdgeIdBearingRow {
  * be rejected by the sanitizer, silently emptying all three tabs (that is
  * precisely the build-240 failure, so the gate mutation-tests this line).
  * Sorted because the derived SPL string is what `useSearch` keys its dispatch
- * on: the KV fetch issues no `sort` parameter, so row order is unspecified and
- * an unsorted array would churn re-dispatches across renders.
+ * on: the KV read sorts on bucket_ts only, so row order within a bucket is
+ * unspecified and an unsorted array would churn re-dispatches across renders.
  */
 export const collectBucketIds = (rows: readonly EdgeIdBearingRow[]): string[] => {
     const seen = new Set<string>();

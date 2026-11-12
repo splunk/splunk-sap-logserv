@@ -190,7 +190,7 @@ Nothing in the input caps the work for you. The input declares `max_items = 1000
 | Symptom | Cause | Fix |
 |---|---|---|
 | `AccessDenied` on the bucket dropdown in the UI | The dropdown calls `ListBuckets`, which needs the unscopable `s3:ListAllMyBuckets` | Use the AWS S3 Direct screen, or create the input over REST or `inputs.conf` — section 2a and [A4](#a4-run-once-backfill-procedure-by-hand) |
-| `AccessDenied` that looks like a bucket or prefix problem | `aws_iam_role` was left empty, so the input authenticated as the bare IAM user | Set `aws_iam_role` on the input ([A3](#a3-set-aws_iam_role-explicitly)) |
+| `AccessDenied` that looks like a bucket or prefix problem | `aws_iam_role` was left empty, so the input authenticated as the bare IAM user, or as the heavy forwarder's EC2 instance role | Set `aws_iam_role` on the input ([A3](#a3-set-aws_iam_role-explicitly)) |
 | `AccessDenied` during key discovery while `GetObject` works | `s3:ListBucket` missing — the SQS-based path never needed it | Add `s3:ListBucket` on the bucket ARN to the role's policy. For SAP's bucket, also ask SAP LogServ Support to allow it for your role in the bucket policy ([IAM Permissions](#iam-permissions)) |
 | The AWS S3 Direct screen shows **Apply this as an administrator** instead of creating inputs | Your account lacks `admin_all_objects`, a configuration read failed, or a Deployment Server manages the AWS add-on; the reason is shown on the screen | Sign in with an account that holds `admin_all_objects`, or hand the generated configuration to an administrator the same day. On Splunk Cloud, see [Capability-gated REST endpoints](../getting-started/splunk-cloud.md#capability-gated-rest-endpoints) |
 | A hand-made input runs but finds nothing | The scan window is bounding `LastModified`, not event time — and a **blank** `initial_scan_datetime` is not “no lower bound”, it is *now minus seven days* | Express the date range in `key_name` (and a `whitelist`), and set `initial_scan_datetime` to an explicit floor such as `2000-01-01T00:00:00Z` (**not** a 1970 date - Splunk's time parser rejects those, and the input then polls forever without fetching anything). Never leave it blank — [A1](#a1-the-prefix-selects-the-events-the-scan-window-does-not) |
@@ -275,6 +275,10 @@ There are two ways round it, and neither needs `s3:ListAllMyBuckets`:
 #### :material-crop-square:{ .taiconcolor } A3. Set `aws_iam_role` explicitly
 
 All three AWS topologies authenticate through a **cross-account IAM role**, and the Generic S3 input does not infer it. If you set only `aws_account` and leave `aws_iam_role` empty, the input authenticates as the bare IAM user — which holds essentially no S3 permissions — and returns an `AccessDenied` that reads exactly like a bucket or prefix problem. Always set both.
+
+**With an EC2 instance role.** Under [AWS Remote S3 Connect with an EC2 Instance Role](aws-remote-s3-connect-instance-role.md), `aws_account` is the autodiscovered account, named after the instance role, and `aws_iam_role` is the IAM Role you configured for `splunk-logserv-ta-role`. Going by the Data TA's code, the AWS S3 Direct screen's checks pass with a role selected, and it sends no key. Our lab has not run AWS S3 Direct with an instance role.
+
+**Without a role, the screen refuses an instance-role account as well.** Its message still speaks of the bare IAM user: it shows a hard error, offers no **Create** button and generates nothing. That includes the [alternative path](aws-remote-s3-connect-instance-role.md#alternative-attach-the-policy-directly-to-the-instance-role), where the instance role itself holds the policy. There, loading history needs a later Data TA build, or a stanza written by hand as in A4 with `aws_iam_role` left out. The add-on's code allows that stanza; it has not yet been run in our lab either.
 
 #### :material-crop-square:{ .taiconcolor } A4. Run-once backfill procedure by hand
 

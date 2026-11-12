@@ -6,7 +6,7 @@
 
 | Package | Splunk Web label | App ID | Current 0.1.2 build |
 |---|---|---|---|
-| LogServ App | Splunk App for SAP LogServ | `splunk_app_sap_logserv` | 394 |
+| LogServ App | Splunk App for SAP LogServ | `splunk_app_sap_logserv` | 399 |
 | Data TA | Splunk TA for SAP LogServ | `splunk_ta_sap_logserv` | 1792598960 |
 | LogServ Azure add-on | Splunk TA for SAP LogServ on Azure | `splunk_ta_sap_logserv_azure` | 1792558069 |
 | LogServ GCP add-on | Splunk TA for SAP LogServ on GCP | `splunk_ta_sap_logserv_gcp` | 1792558072 |
@@ -24,7 +24,7 @@ To read the installed build of each package, run this search in Splunk Web on th
 | table title version build
 ```
 
-Some builds were made only for testing and never released. From build 380 on, the entry of such a build is merged with the released build that carried its changes, as in *builds 387–388*. Earlier test builds of the App (361, 364, 372 and 374) keep their entries, each marked as not released. The App builds released since build 379 are 383, 385, 386, 388, 390, 392, 393 and 394.
+Some builds were made only for testing and never released. From build 380 on, the entry of such a build is merged with the released build that carried its changes, as in *builds 387–388*. Earlier test builds of the App (361, 364, 372 and 374) keep their entries, each marked as not released. The App builds released since build 379 are 383, 385, 386, 388, 390, 392, 393, 394, 395, 396, 397, 398 and 399.
 
 Each entry says what changed, who is affected and what an upgrade needs; [Upgrading to This Release](../getting-started/upgrading.md) lists every action by the build you are coming from. A statement that a later build changed carries *Superseded by build N*, and a statement found to be wrong carries a *Correction*.
 
@@ -48,6 +48,54 @@ Each entry says what changed, who is affected and what an upgrade needs; [Upgrad
 ## :material-circle-box:{ .taiconcolor } LogServ App (`splunk_app_sap_logserv`)
 
 Builds of the Splunk App for SAP LogServ, which runs on the search head.
+
+### :material-circle-box:{ .taiconcolor } Open in Search and Inspect work where Splunk's Search app is disabled (build 399) { #open-in-search-without-the-search-app-build-399 }
+
+- **Links to Splunk Search open inside the LogServ App.** A panel's **Open in Search**, a click on a KPI card or table row that opens Splunk Search, the Data Doctor's open-in-search action, the AI Assistant's **↗ Run SPL** chips and the next-step links on its guidance cards now open Splunk's search page at `/app/splunk_app_sap_logserv/search`, not the Search app's page at `/app/search/search`. Where the Search app is disabled, for example on a deployment that gives each department its own app, those links could not open. The App now ships its own copy of Splunk's standard search view and does not share it with other apps.
+- **Inspect opens Splunk's Job Inspector in the LogServ App** (`/manager/splunk_app_sap_logserv/job_inspector`), for the same reason.
+- **Same query, filters and time range.** The searches open with the same query, filters and time range as before. Above the search page Splunk shows the LogServ App's title and a link back to the App, not the Search app's menus.
+- **The search runs in the LogServ App's context.** Field extractions, tags and macros shared only within the Search app (Search & Reporting), or private to you there, do not apply on this page. A report or alert saved from it is saved in the LogServ App: find it under **Settings > Searches, reports, and alerts**.
+- **Pages that the search page itself opens still come from the Search app,** or from another app that shares them: for example Extract New Fields, Show Source, Pivot, and the page of a report or alert after you save it.
+
+**Who is affected:** anyone who opens Splunk Search from the App, and in particular deployments where the Search app is disabled. **What an upgrade needs:** nothing.
+
+### :material-circle-box:{ .taiconcolor } Twelve more dashboards read less, KPI cards show 0 under a filter, and the AI Assistant's queries use the page's time range (build 398) { #twelve-more-dashboards-read-less-build-398 }
+
+- **Most panels on twelve more dashboards read only the rows near their time range.** Ten more summaries, behind DNS Analytics, Proxy, SAP Router, Cloud Connector, Windows, Web and API Performance, Web Dispatcher, ABAP Network & Security, ABAP Operations, Work Process Performance, HANA Audit and HANA Trace, are now read the way build 397 reads the six it rebuilt. The numbers do not change. On the reference system a 30-day DNS read went from 8.9 seconds to 0.25 seconds, with the same answer. Under a SID or Host filter, a panel whose metric does not hold the host still reads raw events, as before. Still read in full: the summaries of Host Details, Multi-Cloud Overview and Data Pipeline Overview, the beaconing panels, Web Dispatcher's Slowest Request Traces and Environment Topology's detail tabs.
+- **A panel opened before the App has read the server's clock waits for it.** A panel that reads one of these summaries used to start at once, with no time bound, when the page opened before that read answered, and so loaded every stored row of its metric. It now waits for the read, at most 5 seconds, as a panel under a SID or Host filter already did; a panel that reads no such summary does not wait.
+- **KPI cards show 0, not a dash, under a filter.** Environment Health's Total Errors, HANA Failed Ops, Firewall Drops at Host, Auth Failures and Web Error Rate showed a dash when the selected SID or hosts had none of those events; they now show 0 (0.0% for the error rate), as other dashboards' cards do. So does Network Perimeter's Outbound Bandwidth card when it reads raw events.
+- **The AI Assistant's ad-hoc queries run over the time range selected at the top of the page** when the AI gives none. Splunk MCP Server 2.0.0 searches only the last 6 hours without one, while the tool's description told the AI that the selected range was the default. Over a long range such a query takes longer, and the MCP request timeouts still apply.
+- **The MCP Server version check refuses a version it cannot read,** such as `2.0.x` or `3.0.`, which it used to read as 2.0.0 and 3.0.0. The 1.0.3 minimum stays, with no upper bound.
+- **Audit events left out as a page closes are counted.** When the events waiting to be written do not fit in the request a closing page may send, the oldest are left out. If the page stays open (one restored with the browser's Back button, or a close that was cancelled), the **Audit events are not being written** warning now counts them; the write that sent the others used to clear it.
+
+**Who is affected:** anyone who reads those twelve dashboards, filters Environment Health, or uses the AI Assistant's free-form chat. **What an upgrade needs:** nothing.
+
+### :material-circle-box:{ .taiconcolor } Six more dashboards answer from their summaries under a filter and read less, and Host Details counts failures people cause (build 397) { #six-more-dashboards-answer-from-their-summaries-build-397 }
+
+- **Six more dashboards can use their summaries while a SID or Host filter is on.** The summaries behind Environment Health, SAP Services, Cross-Stack Authentication, Change & Configuration Activity, Linux and Network Perimeter now store the host of each event. These were the slowest pages under a filter, because their panels had to read raw events. With no filter on, the numbers do not change: every panel adds the rows up again.
+- **These dashboards read less, filter or no filter.** A panel used to load a whole year of its metric's rows and throw away those outside the range. It now asks only for rows near the range. On the reference system the largest metric went from 6.4 seconds to 0.1 seconds at Last 7 days, with the same rows.
+- **A rebuild is optional, and the numbers are right without one.** Rows written before this build have no host. While a filter is on, a panel uses its summary only if its time range holds none of those rows; otherwise it reads raw events as it did before, and the trend lines under KPI cards stay blank for that range. When the hourly search or a **Backfill** recounts an hour, it writes one row per host and overwrites each old row of that hour with a row of zeros, so no hour counts twice and Late-arriving data and other repairs keep working. The rows of zeros are written last, so a recount cut short by a restart or a KV Store failure can leave an hour counted twice, though not short: **Backfill** that row over those hours again.
+- **To use the summaries over older hours too,** click **Backfill** on these rows of **Settings → Dashboard Data**, with a window that covers their history: *Change & Configuration Activity*, *SAP Services*, *Cross-Stack Authentication*, *Linux System & Security / Network Perimeter*, *Environment Health* and *Network Perimeter*. No **Clear** is needed, and hours whose raw events your index no longer holds keep their rows. A Clear first leaves no rows of zeros behind, but removes that older history.
+- **More stored rows.** These summaries hold one row per host where they held one row per hour, so they grow with the number of hosts. On the reference system, with about 85 hosts and their history rebuilt with **Clear** then **Backfill**, the six went from about 1.5 million rows to about 2.2 million, and the slowest of their nightly retention searches, Network Perimeter's, went from 121 to 172 seconds. A Backfill without Clear also leaves one row of zeros per old row, until retention removes it.
+- **Host Details' Auth Failures now counts failed logins, not the SAP Host Agent checking its own user.** It counts what [Cross-Stack Authentication](../logserv-app/dashboards/security/cross-stack-authentication.md) counts for the host (sapstartsrv authentication failures, HANA Authentication failures, Windows failed logons) plus failed Linux logins. It no longer counts `sapuxuserchk`, whose PAM "authentication failure" lines every few seconds were nearly all of the old number, or HANA failures of actions other than logging in, and it now counts sapstartsrv failures, which the old search missed. On the reference system, over 90 days, the KPI went from 3,696,276 to 621,672. Hours written before this build keep the old count until the *Host Details* row is rebuilt with **Clear** then **Backfill**: unlike the six above, this row keeps its keys, so a Backfill alone would leave the old count in every hour with no failure left to count.
+
+**Who is affected:** anyone who filters those six dashboards or reads them over long time ranges, and anyone who reads Auth Failures on Host Details. **What an upgrade needs:** nothing for the numbers to be right; the rebuilds above are optional. Restart outside the first half of the hour (search-head time), when the hourly searches run: a search that starts while KV Store is still warming up may not see an hour's old rows.
+
+### :material-circle-box:{ .taiconcolor } Environment Topology reads all of its data, and clicks to Splunk Search carry the filters (build 396) { #environment-topology-reads-all-of-its-data-build-396 }
+
+- **Environment Topology no longer loses rows at wide time ranges.** One read of a KV Store collection returns at most 50,000 rows (`max_rows_per_query` in `limits.conf`), with no error and no warning, and the page read each collection once. Past that limit it counted only part of the range, and what it lost was the newest part. At **Last 90 days** on the reference system it saw 36% of its node events and 88% of its edge calls. It now reads each collection in pages until the server has no more rows, so nodes, edges and partner counts cover the whole range. A time range that fitted in one read shows the same numbers as before.
+- **The stale-data notice no longer fires on old rows the read happened to stop at.** The lost rows were the newest, so the page could warn that the data was stale while the hourly searches were running. The newest rows are now read first. A time range that ended more than six hours ago never shows the notice, because it says nothing about whether the searches still run, and a nearer one is measured from its own end.
+- **A limit that remains says so.** To protect the browser tab, the page reads at most 500,000 rows per collection for one time range. Past that, a notice and the line under the title say from when the numbers start. The graph, its counts and Live Activity, and what the side panel takes from them, cover that shorter period; what the side panel searches for itself reads the whole range.
+- **Clicks through to Splunk Search carry the filters.** A click on a KPI card or a table row that opens Splunk Search now keeps the **SID**, **Host** and **Cloud** filters, as a panel's **Open in Search** action already did.
+
+**Who is affected:** anyone who reads Environment Topology over a time range that holds more than 50,000 node or edge rows, and anyone who clicks through to Splunk Search with a filter on. **Nothing to rebuild:** no stored summary changes, and no Clear or Backfill is needed.
+
+### :material-circle-box:{ .taiconcolor } SID and Host filters on the dashboards (build 395) { #sid-and-host-filters-on-the-dashboards-build-395 }
+
+- **New: pick a SAP system, and a dashboard shows only the hosts that run it.** Most dashboards now carry a **SID** filter and a **Host** filter beside the **Cloud** filter. A SID takes all of the system's hosts, standby and disaster recovery hosts included, and the hosts of its HANA database. The **Host** list shows each host's role. See [SID and Host filters](../logserv-app/dashboards/index.md#sid-and-host-filters) for which dashboards have them.
+- **Which hosts run a system comes from what each host logs about itself:** its files under `/usr/sap/<SID>/`, its HANA audit records and SAP's monitoring lines. A system a host only calls does not count. A new hourly search, `logserv_sid_hosts_aggregate`, writes this to a new collection, `logserv_sid_hosts`, so the list fills the next time it runs after the upgrade (`:38` past the hour, from 03:00 to 23:59 on the server's clock).
+- **A panel does not show unfiltered numbers while a filter is on.** Panels clear when the filter changes, until the filtered search answers. A panel whose stored summary holds neither `host` nor `sap_sid` reads raw events while a filter is on, so it takes longer. One with no raw version shows nothing: the trend lines under some KPI cards go blank, and the beaconing panels say why.
+- **Nothing to rebuild.** No stored summary changes, and no Clear or Backfill is needed. The **Backfill** on the Environment Topology (graph) row in Settings → Dashboard Data now also adds hosts last seen in the past 30 days to this list.
 
 ### :material-circle-box:{ .taiconcolor } The Audit Log's user filter shows each name once (build 394) { #the-audit-logs-user-filter-shows-each-name-once-build-394 }
 
@@ -623,6 +671,14 @@ Both ingest add-ons now ship `THIRD-PARTY-NOTICES.md`, naming the nine Python pa
 ## :material-circle-box:{ .taiconcolor } AWS CloudFormation Templates (`aws_assets/`)
 
 Changes to the CloudFormation templates the AWS setup guides deploy.
+
+### :material-circle-box:{ .taiconcolor } AWS templates - a Connect template with no IAM user (2026-11-06, updated 2026-11-11)
+
+- **New template, `splunk-logserv-remote-s3-connect-instance-role.yaml`.** It creates `splunk-logserv-ta-role`, trusted by your heavy forwarders' EC2 instance role, and no IAM User or access key. See [AWS Remote S3 Connect with an EC2 Instance Role](../install-setup/aws-remote-s3-connect-instance-role.md). In our lab from 2026-11-09 to 2026-11-11, with the heavy forwarder, the role, the queue and the bucket in one AWS account and Splunk Add-on for AWS 8.3.1, the template was deployed and updated twice, and an SQS-Based S3 input on the instance role, with Assume Role into `splunk-logserv-ta-role`, ran for about 28 hours while the role held only the template's policy and read 31,072 objects (556,510 events), 31,058 of them in three batches within about two hours. Every object was read once and every line in it reached the index, through the 25 credential changes the input logged, one of them while it was reading. That policy is narrower than the list in Splunk's documentation for this input. The input form saved such an input with the queue URL typed in. Not yet run in our lab: an input process running longer than the role's one-hour session, AWS S3 Direct with an instance role, and the policy attached straight to the instance role.
+
+**Who is affected:** customers whose heavy forwarders run on EC2 and who may not create IAM users.
+
+**Upgrade action:** none. The standard template is unchanged.
 
 ### :material-circle-box:{ .taiconcolor } AWS templates - the Copy Lambda runs on Python 3.12, and the Lambda code bucket has no default (2026-10-23)
 

@@ -354,7 +354,14 @@ export const run = async (): Promise<number> => {
         await nextTick();
         const rBig = results[6] || {};
         check('D17 the fitted unload write reports the events it carried',
-            results.length === 7 && rBig.ok === true && rBig.events === fit.sent, JSON.stringify(results.slice(6)));
+            results.length === 8 && rBig.ok === true && rBig.events === fit.sent, JSON.stringify(results.slice(6)));
+        // Build 398 (the 380 audit's M2): the events left out are reported too, after the write's own outcome, as a
+        // write that did not reach Splunk, so the write that succeeded does not clear them.
+        const rLeft = results[7] || {};
+        check('D17b the events it left out are reported as not written, after it',
+            rLeft.ok === false && rLeft.status === null && rLeft.events === fit.dropped, JSON.stringify(rLeft));
+        eq('D17c so the warning counts them', aw.nextAuditWriteProblem(aw.nextAuditWriteProblem(null, rBig), rLeft),
+            { status: null, when: rLeft.when, dropped: fit.dropped });
 
         const callsHuge: Call[] = [];
         const wHuge = newWriter(fakeFetch(callsHuge, answer(200)));
@@ -364,6 +371,9 @@ export const run = async (): Promise<number> => {
         check('D18 one event over the limit sends nothing, and says so', callsHuge.length === 0
             && logged.some((l) => l.indexOf('[AuditWriter] unload flush: 1 of 1 events dropped') === 0),
             JSON.stringify({ calls: callsHuge.length, logged }));
+        const rHuge = results[8] || {};
+        check('D18b and reports it as not written (build 398)',
+            results.length === 9 && rHuge.ok === false && rHuge.status === null && rHuge.events === 1, JSON.stringify(results.slice(8)));
 
         /* ============================ F. one-off events (build 392) ============================ */
         // The Settings page posts an acknowledgement's event and then saves: each case changes the forwarder or
@@ -417,6 +427,38 @@ export const run = async (): Promise<number> => {
             eq('F4 a failed forward\'s record goes to the event\'s index, not the one renamed meanwhile',
                 [callsF4.map((c) => c.url), failRecord.category, failRecord.reason],
                 [[indexUrl(shipped), hecUrl, indexUrl(shipped)], 'audit_forwarder_failure', 'http_503']);
+
+            // Build 398 (the 392 audit's M5): the forwarder's URL moved while the local write is in flight.
+            const OTHER = 'https://other.example.invalid:8088';
+            aw.setAuditForwarderConfig(fwdOn);
+            aw.setLocalAuditIndex(shipped);
+            const callsF6: Call[] = [];
+            await aw.AuditWriter.postOneOff(ev(24), (url: string, init: any): Promise<any> => {
+                callsF6.push({ url, init });
+                if (callsF6.length === 1) {
+                    aw.setAuditForwarderConfig({ ...fwdOn, url: OTHER });
+                }
+                return Promise.resolve(url === hecUrl ? { ok: false, status: 503 } : { ok: true, status: 200 });
+            });
+            eq('F6 a forward goes to the URL in place when the event was posted, not the one set meanwhile',
+                callsF6.map((c) => c.url), [indexUrl(shipped), hecUrl, indexUrl(shipped)]);
+            const failF6 = callsF6[2] ? JSON.parse(callsF6[2].init.body) : {};
+            check('F7 its failure record names that URL',
+                typeof failF6.destinationUrl === 'string' && failF6.destinationUrl.indexOf('hec.example.invalid') !== -1
+                && failF6.destinationUrl.indexOf('other.example.invalid') === -1 && failF6.destinationUrl.indexOf('f-test-token') === -1,
+                JSON.stringify(failF6));
+
+            // A local write Splunk refuses does not stop the forward: the two are independent.
+            aw.setAuditForwarderConfig(fwdOn);
+            const callsF8: Call[] = [];
+            const before = results.length;
+            await aw.AuditWriter.postOneOff(ev(25), (url: string, init: any): Promise<any> => {
+                callsF8.push({ url, init });
+                return Promise.resolve(url === hecUrl ? { ok: true, status: 200 } : { ok: false, status: 403 });
+            });
+            eq('F8 a refused local write is reported, and the event is still forwarded',
+                [callsF8.map((c) => c.url), results.slice(before).map((r: any) => [r.ok, r.status, r.events])],
+                [[indexUrl(shipped), hecUrl], [[false, 403, 1]]]);
         } finally {
             aw.setAuditForwarderConfig(startCfg);
             aw.setLocalAuditIndex(shipped);

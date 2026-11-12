@@ -9,7 +9,7 @@ The Host Details dashboard is the forensic drill-down tool for investigating one
 ## :material-circle-box:{ .taiconcolor } Requires
 
 - **Sourcetypes:** any; the Overview and Sourcetype Mapping tabs read every event of the selected hosts. Each Role Activity panel needs its own sourcetype (listed with the panel below), and **Host Inventory** needs osquery facts in `linux_messages_syslog`.
-- **Search-head add-ons:** the Splunk Add-on for Microsoft Windows (742), for the Windows hosts' **Windows Event Codes** panel, their failed logons (EventCode 4625) in the **Auth Failures** KPI and their critical events (`severity=critical`) in the **Errors / Criticals** KPI. Without it those two KPIs undercount on Windows hosts; see [Windows Events](windows.md#requires).
+- **Search-head add-ons:** the Splunk Add-on for Microsoft Windows (742), for the Windows hosts' **Windows Event Codes** panel, their failed logons (`action="failure"`) in the **Auth Failures** KPI and their critical events (`severity=critical`) in the **Errors / Criticals** KPI. Without it those two KPIs undercount on Windows hosts; see [Windows Events](windows.md#requires).
 - **Dashboard Data rows** on **Settings → Dashboard Data**: *Host Details* (the Data Volume, Errors / Criticals and Auth Failures KPIs), *Host Role Activity (Host Details)* (the Role Activity tab) and *Sourcetype Mapping (Host Details / Data Pipeline)* (the Sourcetype Mapping tab). On a new install, **Run backfill** there seeds the last 30 days by default (60, 90, 180 or 365 days, or a custom range, are also offered); without a backfill the summary-backed panels fill one hour at a time. See [Backfilling on first install](../../dashboard-data.md#backfilling-on-first-install).
 
 ## :material-circle-box:{ .taiconcolor } Panels
@@ -32,10 +32,10 @@ This dashboard accepts `host` and global time-range query params from the URL, s
 
 The screenshot at the top of this page shows this tab.
 
-- **KPI row (5 values)** -- Total Events, Data Volume (auto-scaled B/KB/MB/GB), Active Sourcetypes, Errors / Criticals, and Auth Failures. The last two turn amber above zero and red above 100
+- **KPI row (5 values)** -- Total Events, Data Volume (auto-scaled B/KB/MB/GB), Active Sourcetypes, Errors / Criticals, and Auth Failures. Auth Failures counts what [Cross-Stack Authentication](../security/cross-stack-authentication.md) counts for the host (sapstartsrv authentication failures, HANA Authentication failures, Windows failed logons) plus failed Linux logins; it leaves out `sapuxuserchk`, the SAP Host Agent's automated check of its own user. The last two turn amber above zero and red above 100
 - **Event Count by Sourcetype** -- Multi-line chart of event volume per sourcetype for the selected scope; the time bucket adapts to the selected range (shown in the panel subtitle)
 - **Host Inventory** -- Table of hardware specs (CPU, cores, RAM), EC2 instance type, OS, region, and availability zone. Sourced from osquery data in `linux_messages_syslog`.
-- **Sources** -- Paginated table of the log sources contributing events for the selected scope, ranked by event count with percentage share. Click a row to open that source's events in the search app
+- **Sources** -- Paginated table of the log sources contributing events for the selected scope, ranked by event count with percentage share. Click a row to open that source's events on Splunk's search page
 - **Data Freshness** -- Per-sourcetype event count and last-seen timestamp, sorted newest-first; a sourcetype whose Last Seen has fallen behind the others is the collection gap. Click a row to open the specialist dashboard for that sourcetype.
 
 ### :material-circle-box:{ .taiconcolor } Role Activity Tab

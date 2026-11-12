@@ -668,12 +668,19 @@ export const probeKvStoreStatus = async (runner: ProbeRunner): Promise<ProbeResu
  * broader, which can turn a "source data is missing" verdict into a
  * "source data is present" one — i.e. it errs toward blaming the rollup rather
  * than the data, and the rollup is ours.
+ *
+ * An arm that is the index macro and nothing else reads every event, so it is the
+ * whole rollup's scope, whatever its siblings name (build 397: Host Details' volume
+ * arm, beside an Auth Failures arm that now names its sourcetypes). The result is then
+ * empty, as it is for an aggregate that names nothing at all, and every caller reads
+ * that as "all". An arm scoped by text, not by sourcetype, is not one of these.
  */
 export const extractAggregateScope = (
     spl: string,
 ): { sourcetypes: string[]; tags: string[] } => {
     const sourcetypes: string[] = [];
     const tags: string[] = [];
+    if (/\[\s*search\s+`sap_logserv_idx_macro`\s*\|/.test(spl)) return { sourcetypes, tags };
     const push = (arr: string[], v: string): void => {
         if (isSafeIdentifier(v) && arr.indexOf(v) === -1) arr.push(v);
     };

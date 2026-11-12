@@ -34,12 +34,17 @@
  * the oldest.
  */
 
+import { isFilterUnavailable } from './queryFilters';
+
 const MAX_TWINS = 400;
 
 const twins = new Map<string, string>();
 
 /** Record that `cached` has the byte-equal raw arm `raw`. */
 export const recordRawTwin = (cached: string, raw: string): void => {
+    // Build 395 - nothing to record: this query never runs, and every panel the
+    // SID or Host filter cannot reach shares it.
+    if (isFilterUnavailable(cached)) return;
     if (!cached || !raw || cached === raw) return;
     // Re-inserting moves the key to the newest position (delete-then-set), so
     // actively rendered panels can never be the ones evicted.
