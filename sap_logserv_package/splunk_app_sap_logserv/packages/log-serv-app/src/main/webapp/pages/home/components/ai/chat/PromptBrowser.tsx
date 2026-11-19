@@ -129,7 +129,8 @@ export interface PromptDescriptor {
     interpretation?: string;
     /** Optional ordered list of next-step suggestions. Each step is
      *  either a plain string (no link) OR a link object that opens
-     *  Splunk's search app in a new tab with a deep-dive SPL query.
+     *  Splunk's search page (in this app) in a new tab with a deep-dive
+     *  SPL query.
      *  Build 141 — link objects can carry either a `savedSearch` name
      *  (resolved at runtime to that prompt's SPL) or a custom `spl`
      *  string for ad-hoc deep dives. Time range from the dispatch is
@@ -138,7 +139,8 @@ export interface PromptDescriptor {
 }
 
 /** A nextStep can be plain prose (no action) OR a link entry that opens
- *  Splunk's search app with a deep-dive SPL query in a new tab. Build 141. */
+ *  Splunk's search page (in this app) with a deep-dive SPL query in a new
+ *  tab. Build 141. */
 export type NextStepEntry = string | NextStepLink;
 
 export interface NextStepLink {

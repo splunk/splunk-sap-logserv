@@ -214,8 +214,12 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
     return { value, loading, error, search };
 };
 
+// Build 400: `hostAlias` marks the Source IP column and the Suspicious Activity table's
+// Host column (the DNS / proxy client address). DataTable shows the name from
+// Settings > Host Names beside the raw value; sorting, row clicks and the searches
+// they open keep the raw value. Domains are not hosts and get no name.
 const BLOCKED_SRC_COLS: ColumnDef[] = [
-    { key: 'Source IP', label: 'Source IP' },
+    { key: 'Source IP', label: 'Source IP', hostAlias: true },
     { key: 'Drops', label: 'Total', align: 'right', render: (v) => formatInteger(v) },
     { key: 'AtHost', label: 'At Host', align: 'right', render: (v) => formatInteger(v) },
     { key: 'InTransit', label: 'In Transit / Other', align: 'right', render: (v) => formatInteger(v) },
@@ -244,7 +248,7 @@ const QUERIED_COLS: ColumnDef[] = [
     { key: '%MX', label: '%MX', align: 'right' },
 ];
 const SUSPICIOUS_COLS: ColumnDef[] = [
-    { key: 'Host', label: 'Host' },
+    { key: 'Host', label: 'Host', hostAlias: true },
     { key: 'Beaconing Domains', label: 'Beaconing Domains', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Beaconing Queries', label: 'Beaconing Queries', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Denied Proxy Requests', label: 'Denied Proxy Requests', align: 'right', render: (v) => formatInteger(v) },

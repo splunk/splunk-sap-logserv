@@ -93,6 +93,10 @@ const getElk = async (): Promise<ElkInstance> => {
  *     IP squares -> total ~159. Pad to 95 x 175 (static for ALL
  *     partners: enrichment arrives via context AFTER layout by design —
  *     the session-110 delivery rule — so sizing cannot be per-node).
+ *     Build 400: the customer's host name (Settings > Host Names) SHARES
+ *     the hostname line (it wins the line; the enrichment hostname moves
+ *     to the tooltip - topology/nodeAlias.ts partnerNameSlot), so a
+ *     square still has at most those two lines and the box is unchanged.
  *
  * Without this update ELK packed nodes by their UNDERSIZED bounding
  * boxes (50/60/70 wide), so the new larger rings overlapped neighbors

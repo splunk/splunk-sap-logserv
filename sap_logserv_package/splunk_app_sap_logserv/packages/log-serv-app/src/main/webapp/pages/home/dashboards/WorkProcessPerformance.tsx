@@ -173,12 +173,15 @@ const BY_SID_COLS: ColumnDef[] = [
     { key: 'Unique Functions', label: 'Unique Functions', align: 'right', render: (v) => formatInteger(v) },
     { key: 'WP Categories', label: 'WP Categories', align: 'right', render: (v) => formatInteger(v) },
 ];
+// Build 400: `hostAlias` marks the Host column. DataTable shows the name from
+// Settings > Host Names beside the raw value; sorting and the Host Details click keep
+// the raw value.
 const RECENT_ERR_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
     { key: 'SID', label: 'SID', width: '70px' },
     { key: 'Function', label: 'Function', width: '180px' },
     { key: 'Reason', label: 'Reason' },
-    { key: 'host', label: 'Host', width: '180px' },
+    { key: 'host', label: 'Host', width: '180px', hostAlias: true },
 ];
 
 // ICM RFC queue columns (build 186)

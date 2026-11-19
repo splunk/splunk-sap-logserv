@@ -43,7 +43,8 @@ interface ChatMessageProps {
      * pre-time at the AIAssistant.tsx layer using the dispatch's actual
      * earliest/latest, NOT the user's current TimeRange picker). When
      * present, the citation renders an "↗ Run SPL" chip after the
-     * dashboard chips, opening Splunk's Search app in a new tab.
+     * dashboard chips, opening Splunk's search page (in this app) in a
+     * new tab.
      */
     citationLookup?: Map<string, { toolUseId: string; splUrl?: string }>;
 }
@@ -459,8 +460,8 @@ function renderTextWithCitations(
             // for this displayName. Same visual idiom as DashboardChip
             // (cyan-light + dotted underline + ↗ glyph). The URL was
             // pre-built at the AIAssistant.tsx layer using the dispatch's
-            // exact earliest/latest, so the user lands in Splunk Search
-            // at the same time window the AI just queried.
+            // exact earliest/latest, so the user lands on Splunk's search
+            // page at the same time window the AI just queried.
             if (entry?.splUrl) {
                 nodes.push(
                     <DashboardChip
@@ -574,8 +575,9 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onJumpToResult, cita
                                         </li>
                                     );
                                 }
-                                // Link entry — open Splunk search app in a
-                                // new tab with the deep-dive SPL pre-loaded.
+                                // Link entry — open Splunk's search page (in
+                                // this app) in a new tab with the deep-dive SPL
+                                // pre-loaded.
                                 // Build 141. Citations skipped here (would
                                 // collide with the parent <a>).
                                 return (

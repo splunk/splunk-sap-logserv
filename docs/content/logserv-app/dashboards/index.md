@@ -56,6 +56,7 @@ Most dashboards carry a **SID** filter and a **Host** filter in the title row, t
 - **After an upgrade.** The summaries behind Environment Health, SAP Services, Cross-Stack Authentication, Change & Configuration Activity, Linux and Network Perimeter store `host` for the hours written since build 397. Over a time range that reaches back before your upgrade, those panels read raw events under a filter, until you **Backfill** their rows in [Dashboard Data](../dashboard-data.md#which-summaries-store-the-host). The numbers are right either way.
 - **What cannot be filtered.** A panel does not show unfiltered numbers while a filter is on: when you change the filter, panels clear until the filtered search answers. The trend lines under some KPI cards have no raw version, so they go blank (hover over one to see why). The beaconing panels keep no host at all, so they show nothing and say so. Clear the filter to see them.
 - **Clicking through to Splunk Search.** A panel's **Open in Search** action and a click on a KPI card or a table row that opens Splunk Search both carry the SID, Host and Cloud filters, so the search there covers the same hosts as the page you clicked on.
+- **Host names.** Where an admin has given hosts names on **Settings → Host Names** ([Host Names](../host-names.md)), a **Host** entry with a name shows it, with the host and its role on the line under it. Typing the name in the filter's search box finds the entry, and with one host picked the button shows its name. While names exist, the button's tooltip lists the picked hosts as the logs give them. The filter still narrows by the host that **wrote** each log, the event's `host` field, not by the hosts or addresses in a panel's columns: on ABAP Network & Security's Gateway Remote Hosts, picking a name shows the gateway events that machine logged, not the rows where it is the remote partner.
 - **A host that runs two systems** appears under both. With either one selected, a panel that filters by host shows everything on that host, the other system's events included.
 - **The Host filter on its own.** With no SID selected, **Host** lists every host with events in the time range, SAP hosts with their roles. A host with no events on the dashboard you are viewing leaves it empty, and the panels say a host filter is on.
 
@@ -85,9 +86,19 @@ Every chart and table panel header carries a small action toolbar plus a "&lt;1m
 
 KPI single-value cards show the loading spinner and a corner **Diagnose** button (revealed on hover or keyboard focus) but no full toolbar — they have no tabular result to export or inspect. While any panel's search is in flight it renders a dot-ring loading spinner with "Loading data…".
 
+### :material-lightning-bolt:{ .taiconcolor } Column Widths { #column-widths }
+
+Every table panel's columns can be resized:
+
+- **Drag** the right edge of a column heading. The edge can also be reached with **Tab** and moved with the **Left** and **Right** arrow keys, 10 pixels a press; a double-click on it fits the column to the rows on the page shown. A click on the heading itself still sorts.
+- **The table still fits its panel.** It never scrolls sideways, so the other columns give way to a column you widen, and when they can give no more the edge moves less than the pointer. A column cannot be made narrower than 40 pixels or than its content allows.
+- **The widths are remembered in your browser**, per Splunk user and per panel, and come back when you open the dashboard again. Nothing is stored on the search head, so another browser or another user sees the default widths. With the dashboard open in two tabs, each tab keeps its own widths and shows the other's changes when it next loads the dashboard. A private window, or a browser that blocks site storage, keeps them only until you leave the page. The AI Assistant's result tables keep their widths until they close.
+- **Reset column widths** appears in a panel's header, left of the toolbar, while a table in it has widths you dragged, and puts its columns back to their default widths.
+- The number of rows a page stays as it was; text that wraps in a narrower column makes its rows taller.
+
 ### :material-lightning-bolt:{ .taiconcolor } Dashboard Export (Actions Menu)
 
-The header's **Actions** menu includes **Download PNG** and **Download PDF**. Both captures use `html2canvas` to render the full dashboard DOM (including off-screen content), so the saved output always covers the entire dashboard length — not just what's visible in the viewport. Useful for sharing in slide decks, embedding in incident reports, or capturing a dashboard's state at a specific moment for compliance evidence. The same menu carries the two [Data Doctor](platform/diagnostics.md) reports — **Diagnose dashboard (PDF)** and **Environment report (PDF)**.
+The header's **Actions** menu includes **Download PNG** and **Download PDF**. Both captures use `html2canvas` to render the full dashboard DOM (including off-screen content), so the saved output always covers the entire dashboard length — not just what's visible in the viewport. Text the page cuts short with an ellipsis ends in one in the capture too, and numbers set with equal-width digits (KPI card values, the row counts under tables) are drawn without gaps between their parts, with the font's ordinary digit widths. The capture lays the page out on its own, so a text close to the edge of its space can be cut in the capture and whole on screen, or the other way round, and a text cut in both can be cut at a different point. Useful for sharing in slide decks, embedding in incident reports, or capturing a dashboard's state at a specific moment for compliance evidence. The same menu carries the two [Data Doctor](platform/diagnostics.md) reports — **Diagnose dashboard (PDF)** and **Environment report (PDF)**.
 
 ![The Actions menu](../../../images/app-header-actions.png)
 
@@ -112,7 +123,7 @@ All dashboards share a consistent framed-card visual language, built on Cisco's 
 - **Page background** with slightly lighter **panel cards** outlined by a muted border token — each visualization sits inside its own framed card with consistent spacing
 - **KPI typography** — large numeric headline with a small muted label; number color carries semantic meaning (white for neutral counts, red for errors/failures/denials, orange for warnings, teal for healthy/positive signals)
 - **Standard colors** — a single semantic red token is used across all error/failure signals so that "red means something went wrong" is unambiguous in both modes
-- **Tables** use a fixed header row with alternating row striping; clickable cells are highlighted in the accent color to indicate a drilldown affordance
+- **Tables** use a fixed header row with alternating row striping; clickable cells are highlighted in the accent color to indicate a drilldown affordance. Columns can be resized (see [Column Widths](#column-widths))
 - **Charts** strip non-essential ink (no axis titles, no data labels, no progress bars) so the data shape is what your eye lands on
 
 The implementation uses styled-components on top of `@splunk/react-ui` primitives.

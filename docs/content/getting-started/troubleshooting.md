@@ -13,7 +13,7 @@ This page lists common symptoms and the section that explains each one. If you a
 | Most Azure data stays under `sap_logserv_logs` | The Unix command output SAP delivers without folder fields stays there by design | [Data Delivered Without Folder Fields](supported-log-types.md#data-delivered-without-folder-fields); [Configuring Filters → Events Without Folder Fields](../install-setup/configure-filters.md#events-without-folder-fields) |
 | Events arrive hours or days late after the first start, and the forwarder is busy | SAP's queue backlog is draining | [First Start: The Queue Backlog](capacity-planning.md#first-start-the-queue-backlog); [Measure Your Own Heavy Forwarder](capacity-planning.md#measure-your-own-heavy-forwarder) |
 | An Azure or GCP event is indexed twice | More than one input reads the same queue or subscription | Multiple landscapes / fleets: [Azure](../install-setup/azure-setup.md#multiple-landscapes-fleets), [GCP](../install-setup/gcp-setup.md#multiple-landscapes-fleets) |
-| A search that uses `sap_logserv_idx_macro` fails on the search head (the macro cannot be found) | Neither the Data TA nor the LogServ App is on that search head yet | [Verify Your Data](verify-data.md) has the same checks with the index name |
+| A search that uses `sap_logserv_idx_macro` fails on the search head (the macro cannot be found) | Neither the Data TA nor the LogServ App is on that search head yet, or, with build 399 or earlier, the App's sharing is **This app only**, the Data TA is not on that search head and the search runs in another app: set the App's sharing to **All apps**, or upgrade ([App sharing](../logserv-app/installation.md#app-sharing)) | [Verify Your Data](verify-data.md) has the same checks with the index name |
 
 <br>
 

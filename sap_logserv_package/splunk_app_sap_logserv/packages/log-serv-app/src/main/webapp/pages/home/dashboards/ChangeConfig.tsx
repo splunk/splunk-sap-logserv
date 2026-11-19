@@ -230,8 +230,8 @@ const HANA_COLS: ColumnDef[] = [
     { key: 'Category', label: 'Category' },
     { key: 'Action', label: 'Action' },
     { key: 'Status', label: 'Status', width: '120px' },
-    { key: 'HANA Host', label: 'HANA Host', width: '160px' },
-    { key: 'Client Host', label: 'Client Host', width: '160px' },
+    { key: 'HANA Host', label: 'HANA Host', hostAlias: true, width: '160px' },
+    { key: 'Client Host', label: 'Client Host', hostAlias: true, width: '160px' },
 ];
 const WIN_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
@@ -239,14 +239,14 @@ const WIN_COLS: ColumnDef[] = [
     { key: 'Description', label: 'Description' },
     { key: 'Operator', label: 'Operator' },
     { key: 'Target', label: 'Target' },
-    { key: 'Computer', label: 'Computer', width: '160px' },
+    { key: 'Computer', label: 'Computer', hostAlias: true, width: '160px' },
 ];
 const LINUX_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
     { key: 'Operator', label: 'Operator' },
     { key: 'Type', label: 'Type', width: '110px' },
     { key: 'Command', label: 'Command' },
-    { key: 'Host', label: 'Host', width: '160px' },
+    { key: 'Host', label: 'Host', hostAlias: true, width: '160px' },
 ];
 const PRIV_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },

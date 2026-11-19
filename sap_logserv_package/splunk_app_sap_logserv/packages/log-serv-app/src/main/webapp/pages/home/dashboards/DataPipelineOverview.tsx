@@ -21,12 +21,14 @@ import {
     withCloudProvider,
 } from '../state/CloudProviderProvider';
 import { FilterKeyContext } from '../state/FilterKeyContext';
+import { useHostAlias } from '../state/HostAliasProvider';
 import { useOwnPicks, useSidHostDescriptions, useSidScope } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useThemeMode } from '../state/ThemeModeProvider';
 import { chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 import { shouldUseRawSource } from '../utils/hybridRouting';
 import { buildStmapRawQuery } from '../utils/stmapRaw';
+import { aliasHostColumn } from '../utils/hostAlias';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
 
@@ -217,7 +219,7 @@ const SOURCETYPE_COLS: ColumnDef[] = [
 ];
 
 const HOST_COLS: ColumnDef[] = [
-    { key: 'host', label: 'Host' },
+    { key: 'host', label: 'Host', hostAlias: true },
     { key: 'count', label: 'Events', align: 'right', render: (v) => formatInteger(v) },
     { key: 'sts', label: 'Sourcetypes', align: 'right', render: (v) => formatInteger(v) },
     { key: 'last_seen', label: 'Last Seen', width: '200px' },
@@ -375,6 +377,7 @@ const OverviewTab: React.FC<TabProps> = ({ selectedHosts, topN, totalHostCount, 
                         height={300}
                         chartType="line"
                         palette="categorical"
+                        aliasSeries
                     />
                 </FramedPanel>
             </FullWidthPanel>
@@ -420,6 +423,10 @@ const LINK_GRAPH_NODE_WIDTH_FALLBACK = 540;
 const LinkedGraphTab: React.FC<TabProps> = ({ selectedHosts, topN, resolvedTopHosts }) => {
     // Node-bar restyle is mode-resolved (build 281) — see LinkGraphContainer.
     const { mode } = useThemeMode();
+    // Build 400 - host nodes carry the customer's host names (utils/hostAlias.ts
+    // aliasHostColumn: names over the DISTINCT hosts, so two raw hosts never merge
+    // into one node; display only, the search and the host filter keep raw hosts).
+    const { displayNames } = useHostAlias();
     // Same dashboard-wide host filter as the Overview tab, in tstats-WHERE
     // dialect (the link graph is now a tstats query — build 198).
     const HOST = useMemo(
@@ -490,7 +497,7 @@ const LinkedGraphTab: React.FC<TabProps> = ({ selectedHosts, topN, resolvedTopHo
         if (!results || results.length === 0) return null;
         const sourcetypeCol = results.map((r) => String(r.sourcetype ?? ''));
         const sourceCol = results.map((r) => String(r.source ?? ''));
-        const hostCol = results.map((r) => String(r.host ?? ''));
+        const hostCol = aliasHostColumn(results.map((r) => String(r.host ?? '')), displayNames);
         return {
             primary: {
                 data: {
@@ -501,7 +508,7 @@ const LinkedGraphTab: React.FC<TabProps> = ({ selectedHosts, topN, resolvedTopHo
                 requestParams: { count: results.length, offset: 0 },
             },
         };
-    }, [results]);
+    }, [results, displayNames]);
 
     if (error) return <div style={{ padding: 32, color: logservTheme.colors.red }}>{error.message || 'Search failed'}</div>;
     if (loading && !dataSources) return <PanelLoading />;
@@ -553,6 +560,9 @@ const DataPipelineOverview: React.FC = () => {
     // system's hosts and narrows within them.
     const { scopeHosts } = useSidScope();
     const describeSidHost = useSidHostDescriptions();
+    // Build 400 - each host option reads "alias (raw host)" where Settings > Host
+    // Names gives one; the option's value (the pick, the SPL) stays the raw host.
+    const { label: aliasLabel } = useHostAlias();
     const { effectiveHosts, ownFilterKey } = useOwnPicks(selectedHosts, () => setSelectedHosts([]));
 
     // Host options for the Multiselect — sorted by descending event count
@@ -601,7 +611,7 @@ const DataPipelineOverview: React.FC = () => {
                 style={{ minWidth: 220, maxWidth: 360 }}
             >
                 {hostOptions.map((h) => (
-                    <Multiselect.Option key={h} label={h} value={h} description={describeSidHost(h) || undefined} />
+                    <Multiselect.Option key={h} label={aliasLabel(h)} value={h} description={describeSidHost(h) || undefined} />
                 ))}
             </Multiselect>
             <Select

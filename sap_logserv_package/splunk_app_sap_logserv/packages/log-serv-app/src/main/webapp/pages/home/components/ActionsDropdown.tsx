@@ -7,7 +7,13 @@ import { useTimeRange } from '../state/TimeRangeProvider';
 import { useCloudProvider } from '../state/CloudProviderProvider';
 import { getActivePageSnapshot } from '../state/DiagnosticCollector';
 import { triggerDownload } from '../utils/download';
-import { freezeAnimationsInClone, pauseLiveAnimationsAtStart } from '../utils/exportCapture';
+import {
+    ellipsizeCutTextInClone,
+    freezeAnimationsInClone,
+    normalizeNumericGlyphsInClone,
+    pauseLiveAnimationsAtStart,
+    replaceFormTextInClone,
+} from '../utils/exportCapture';
 import { beginDiagnosis, endDiagnosis } from '../utils/diagProbe';
 import { sweepDashboard, collectDashboardRollupSpl } from '../utils/diagSweep';
 import { gatherEnvironmentEvidence } from '../utils/diagEnvironment';
@@ -482,9 +488,18 @@ const captureDashboardCanvas = async (root: HTMLElement, bgColor: string): Promi
             scrollY: 0,
             // Build 368: every capture freezes the clone's animations, and the
             // topology svgs (when present) are swapped for their rasters.
+            // Build 402: then the clone's digits are laid out as the canvas
+            // draws them, and text the page cuts short gets a real ellipsis
+            // (utils/exportCapture says why); the numeric rule comes first so
+            // the ellipsis step measures the text the canvas will draw.
+            // Build 406: text boxes and textareas become text before the
+            // ellipsis step, so a long value is cut with an ellipsis too.
             onclone: (clonedDoc: Document) => {
                 freezeAnimationsInClone(clonedDoc);
                 if (svgRasters) applySvgRastersToClone(clonedDoc, svgRasters);
+                normalizeNumericGlyphsInClone(clonedDoc);
+                replaceFormTextInClone(clonedDoc);
+                ellipsizeCutTextInClone(clonedDoc);
             },
         });
         return canvas;

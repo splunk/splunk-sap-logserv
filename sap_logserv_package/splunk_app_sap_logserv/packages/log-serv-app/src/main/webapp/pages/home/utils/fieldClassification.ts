@@ -76,6 +76,13 @@
  * `db_hostname` (the HANA host the audit record names), `hana_host`,
  * `Computer`.
  *
+ * App build 400 adds the host name table (logserv_host_aliases): `alias` (the
+ * customer's name for a server, which can carry business meaning: a `host`),
+ * `match_value` (a host name or an IP address, like `gw_remote_host`: an
+ * `address`) and `updated_by` (a Splunk user: an `identifier`); `description`
+ * and `updated_at` had classes already. No search reads the table today; the
+ * classes keep a later use safe.
+ *
  * Pure: no imports - loadable by bin/check-diagnostics.js.
  */
 
@@ -92,6 +99,7 @@ export const FIELD_CLASSES: Readonly<Record<string, FieldClass>> = Object.freeze
     added_date: 'safe',
     admin_action: 'safe',
     admin_user: 'identifier',
+    alias: 'host',
     app: 'safe',
     app_build: 'safe',
     audit_category: 'safe',
@@ -325,6 +333,7 @@ export const FIELD_CLASSES: Readonly<Record<string, FieldClass>> = Object.freeze
     lsv_f8: 'identifier',
     lsv_part: 'safe',
     lsv_staged_at: 'safe',
+    match_value: 'address',
     max_dur: 'safe',
     max_mem: 'safe',
     max_rss: 'safe',
@@ -516,6 +525,7 @@ export const FIELD_CLASSES: Readonly<Record<string, FieldClass>> = Object.freeze
     txt_count: 'safe',
     type: 'safe',
     updated_at: 'safe',
+    updated_by: 'identifier',
     uptime_days: 'safe',
     uptime_hours: 'safe',
     uptime_total_secs: 'safe',

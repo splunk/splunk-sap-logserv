@@ -83,6 +83,8 @@ One row per logical rollup (each dashboard, plus **Environment Topology (graph)*
 
 **Clear all rollups** — a confirm-gated button that deletes every row from all rollup collections at once. Use sparingly (e.g. to wipe a contaminated dataset before re-running a backfill against a corrected schema). Every dashboard is empty until the hourly aggregation or a backfill repopulates it.
 
+The host names of **Settings → Host Names** are not dashboard data: neither a row's **Clear** nor **Clear all rollups** touches them, and no summary stores a name, so a name change needs no Backfill ([Host Names](host-names.md)).
+
 ## :material-circle-box:{ .taiconcolor } What "data freshness" means per panel
 
 - **`tstats` and raw panels are real-time** — they reflect events the instant they are indexed.

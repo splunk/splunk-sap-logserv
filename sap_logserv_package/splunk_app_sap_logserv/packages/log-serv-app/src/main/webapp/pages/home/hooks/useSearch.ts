@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import SearchJob from '@splunk/search-job';
+import { username as splunkUsername } from '@splunk/splunk-utils/config';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useRefreshContext } from '../state/RefreshProvider';
 import { useGlobalRefresh } from '../state/GlobalRefreshProvider';
@@ -8,6 +9,9 @@ import { FilterKeyContext } from '../state/FilterKeyContext';
 import { isFilterPending, isFilterUnavailable, rowsAreStale, RowsFor } from '../utils/queryFilters';
 import { kvWindowNeedsClock, withKvWindow } from '../utils/kvWindow';
 import { onServerClockSettled, serverClockSettled, serverNowSec, startServerClock } from '../utils/serverClock';
+
+/** The app every panel search runs in (build 403): this App, whatever its sharing. */
+const SEARCH_APP = 'splunk_app_sap_logserv';
 
 export interface UseSearchOptions {
     query: string;
@@ -188,13 +192,22 @@ export const useSearch = <TRow = Record<string, unknown>>({
         setDispatchedAt(Date.now());
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const search = (SearchJob as any).create({
-            // Build 397 - the job reads only the rollup rows near its time range. The
-            // panel's `spl`, and everything that reads it, keeps the query as written.
-            search: withKvWindow(query, effectiveEarliest, serverNowSec()),
-            earliest_time: effectiveEarliest,
-            latest_time: effectiveLatest,
-        });
+        const search = (SearchJob as any).create(
+            {
+                // Build 397 - the job reads only the rollup rows near its time range. The
+                // panel's `spl`, and everything that reads it, keeps the query as written.
+                search: withKvWindow(query, effectiveEarliest, serverNowSec()),
+                earliest_time: effectiveEarliest,
+                latest_time: effectiveLatest,
+            },
+            // Build 403 - dispatched in the LogServ App's namespace, as the signed-in user
+            // (servicesNS/<user>/splunk_app_sap_logserv/search/jobs). Through /services/ (builds
+            // up to 402) a job ran in the user's default app, which sees the App's macro, lookup
+            // definitions and field extractions only while the App is shared to all apps: with
+            // the App shared "App" only, its panels came back empty or 0 (a customer's report on
+            // build 399, reproduced on the reference system).
+            { app: SEARCH_APP, owner: splunkUsername || 'nobody' },
+        );
 
         // Resolve the dispatched job SID (async Observable) for the panel
         // toolbar's Inspect + Download actions. Best-effort: failures are

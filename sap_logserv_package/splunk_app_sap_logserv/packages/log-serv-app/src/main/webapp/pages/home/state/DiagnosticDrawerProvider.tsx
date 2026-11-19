@@ -447,14 +447,14 @@ const SearchGlyph: React.FC = () => (
  *    (a clipboard copy is inert). Brief checkmark feedback, per instance.
  *  - Open in Search — via `producerSplForOpenInSearch`, which removes the
  *    terminal `| outputlookup` write FIRST: opened verbatim, one Enter press
- *    in the Search app over an arbitrary window would upsert partial bucket
+ *    on Splunk's search page over an arbitrary window would upsert partial bucket
  *    rows over correct summary rows. This drawer is a no-destructive-controls
  *    surface (see the file header), so when the write cannot be removed with
  *    certainty the button is not rendered at all — fail closed.
  *
  * The diagnosed window rides along as `earliest`/`latest` so the opened
- * search is scoped to what was being diagnosed rather than the Search app's
- * default range.
+ * search is scoped to what was being diagnosed rather than the search
+ * page's default range.
  */
 const ProducerSplBlock: React.FC<{ spl: string; earliest: string; latest: string }> = ({
     spl,

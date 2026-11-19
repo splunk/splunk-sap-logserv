@@ -73,7 +73,8 @@ const ANY_AUTH_FAIL = '((sourcetype="sap:sapstartsrv" is_auth_event="true" auth_
  * range | <agg>`; addinfo carries the global TimeRange picker. Count KPIs use the
  * empty-safe idiom and timecharts append `| fillnull value=0` (rollup sum(count)
  * null-fills empty bins; raw count 0-fills). ANY_AUTH_FAIL is kept for the
- * Source-IPs row drilldown (a link out to the raw Search app).
+ * Source-IPs row drilldown (a link out to a raw search on Splunk's search
+ * page inside this App - build 399, see utils/searchPage.ts).
  */
 const ROLL = 'logserv_xstack_auth_rollup';
 const RANGE = '| addinfo | where bucket_ts>=info_min_time AND bucket_ts<info_max_time';
@@ -161,7 +162,7 @@ const TOP_USER_COLS: ColumnDef[] = [
     { key: 'Failures', label: 'Failures', align: 'right', render: (v) => formatInteger(v) },
 ];
 const SOURCE_IP_COLS: ColumnDef[] = [
-    { key: 'Source IP', label: 'Source IP' },
+    { key: 'Source IP', label: 'Source IP', hostAlias: true },
     { key: 'Failures', label: 'Failures', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Layers Hit', label: 'Layers Hit', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Layers', label: 'Layers' },
@@ -179,16 +180,16 @@ const WIN_EVENT_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
     { key: 'User', label: 'User' },
     { key: 'signature', label: 'Signature' },
-    { key: 'Source IP', label: 'Source IP', width: '140px' },
+    { key: 'Source IP', label: 'Source IP', hostAlias: true, width: '140px' },
     { key: 'Logon Type', label: 'Logon Type', width: '140px' },
-    { key: 'host', label: 'Host', width: '160px' },
+    { key: 'host', label: 'Host', hostAlias: true, width: '160px' },
 ];
 const SAP_AUTH_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
     { key: 'User', label: 'User' },
-    { key: 'Remote IP', label: 'Remote IP', width: '140px' },
+    { key: 'Remote IP', label: 'Remote IP', hostAlias: true, width: '140px' },
     { key: 'Source Location', label: 'Source Location' },
-    { key: 'host', label: 'Host', width: '160px' },
+    { key: 'host', label: 'Host', hostAlias: true, width: '160px' },
 ];
 
 const CrossStackAuthentication: React.FC = () => {

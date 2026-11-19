@@ -21,11 +21,13 @@ import {
     withCloudProvider,
 } from '../state/CloudProviderProvider';
 import { FilterKeyContext } from '../state/FilterKeyContext';
+import { HostAliasContextValue, useHostAlias } from '../state/HostAliasProvider';
 import { useOwnPicks, useSidHostDescriptions, useSidScope } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { useThemeMode } from '../state/ThemeModeProvider';
 import { chooseTimechartSpan, spanSubtitle } from '../utils/timechartSpan';
 import { buildStmapRawQuery } from '../utils/stmapRaw';
+import { aliasHostColumn } from '../utils/hostAlias';
 import { wpCategoryNameEval } from '../utils/wpCategory';
 import {
     buildDashboardUrl,
@@ -129,8 +131,11 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
     return { value, loading, error, search };
 };
 
-const colsForKey = (key: string, label: string): ColumnDef[] => [
-    { key, label },
+/** `hostAlias` (build 400): the first column holds a host value (a host name or
+ *  an IP address), shown with the customer's name for it (DataTable's
+ *  ColumnDef.hostAlias). Only the SAP Router Peers table passes it. */
+const colsForKey = (key: string, label: string, hostAlias?: boolean): ColumnDef[] => [
+    { key, label, hostAlias },
     { key: 'count', label: 'Count', align: 'right', render: (v) => formatInteger(v) },
     { key: 'percent', label: '%', align: 'right', render: (v) => (v ? `${parseFloat(String(v)).toFixed(1)}%` : '—') },
 ];
@@ -254,6 +259,10 @@ const HostPicker: React.FC<HostPickerProps> = ({ selectedHosts, onChange, topHos
      * read identically. */
     const emptyPlaceholder = hostsLoading ? 'Loading hosts…' : `Filter hosts (${hosts.length})`;
 
+    // Build 400 - each option reads "alias (raw host)" where Settings > Host Names
+    // gives one; the option's value (the pick, the URL, the SPL) stays the raw host.
+    const { label: aliasLabel } = useHostAlias();
+
     return (
         <PickerRow>
             <Multiselect
@@ -268,7 +277,7 @@ const HostPicker: React.FC<HostPickerProps> = ({ selectedHosts, onChange, topHos
                 style={{ minWidth: 220, maxWidth: 360 }}
             >
                 {hosts.concat(selectedHosts.filter((h) => hosts.indexOf(h) === -1)).map((h) => (
-                    <Multiselect.Option key={h} label={h} value={h} description={describe(h) || undefined} />
+                    <Multiselect.Option key={h} label={aliasLabel(h)} value={h} description={describe(h) || undefined} />
                 ))}
             </Multiselect>
             <Select
@@ -303,10 +312,12 @@ const hostFilter = (hosts: string[]): string => {
 };
 
 /** Human-readable label for the current host selection — used in panel
- *  subtitles, empty-state messages, and drilldown context. */
-const hostLabel = (hosts: string[]): string => {
+ *  subtitles, empty-state messages, and drilldown context. Build 400: one
+ *  picked host reads through `nameOf` (useHostAlias().label: "alias (raw host)"
+ *  where Settings > Host Names gives one, else the raw host). Display only. */
+const hostLabel = (hosts: string[], nameOf: HostAliasContextValue['label']): string => {
     if (hosts.length === 0) return 'all hosts';
-    if (hosts.length === 1) return hosts[0];
+    if (hosts.length === 1) return nameOf(hosts[0]);
     return `${hosts.length} hosts`;
 };
 
@@ -569,8 +580,11 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
             ),
         [W, span, provider],
     );
+    // Build 400 - a picked host is named with the customer's name for it in the
+    // subtitles and messages below (hostLabel); searches and URLs keep the raw host.
+    const { label: aliasLabel } = useHostAlias();
     // The chart's subtitle scope; spanSubtitle prints the dispatched span.
-    const sourceChartScope = hosts.length === 0 && topHosts !== 'all' ? `top ${topHosts} hosts` : hostLabel(hosts);
+    const sourceChartScope = hosts.length === 0 && topHosts !== 'all' ? `top ${topHosts} hosts` : hostLabel(hosts, aliasLabel);
 
     const formatBytes = (raw: unknown): string => {
         if (raw === null || typeof raw === 'undefined') return '—';
@@ -636,7 +650,7 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
     // declared above for readability and used by future drilldown handlers.
     void isMultiHost;
 
-    const empty = `No events for ${hostLabel(hosts)}.`;
+    const empty = `No events for ${hostLabel(hosts, aliasLabel)}.`;
 
     /* Host Inventory column set (build 160). Same shape as v0.0.4.2's
      * `viz_inventory` table: Host / CPU / Cores / RAM / Instance Type /
@@ -644,7 +658,7 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
      * inventory shape: long strings (CPU brand, OS name) get auto-width;
      * short categorical fields (Cores, RAM, Region) get fixed widths. */
     const HOST_INVENTORY_COLS: ColumnDef[] = [
-        { key: 'Host', label: 'Host', width: '180px' },
+        { key: 'Host', label: 'Host', hostAlias: true, width: '180px' },
         { key: 'CPU', label: 'CPU' },
         { key: 'Cores', label: 'Cores', align: 'right', width: '70px' },
         { key: 'RAM', label: 'RAM', width: '90px' },
@@ -718,7 +732,7 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
                 <FullWidthPanel>
                     <FramedPanel
                         title="Host Inventory"
-                        subtitle={`Hardware, OS, and cloud facts for ${hostLabel(hosts)} — sourced from osqueryd events`}
+                        subtitle={`Hardware, OS, and cloud facts for ${hostLabel(hosts, aliasLabel)} — sourced from osqueryd events`}
                         search={hostInventory}
                     >
                         {/* Footnote (build 164): rendered above the table so
@@ -747,7 +761,7 @@ const OverviewTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHost
                 </FullWidthPanel>
             )}
             <PanelGrid>
-                <FramedPanel search={topSources} title="Sources" subtitle={`Sources contributing events for ${hostLabel(hosts)}, ranked by event count`}>
+                <FramedPanel search={topSources} title="Sources" subtitle={`Sources contributing events for ${hostLabel(hosts, aliasLabel)}, ranked by event count`}>
                     <DataTable columns={colsForKey('source', 'Source')} rows={topSources.results} loading={topSources.loading} error={topSources.error} emptyMessage={empty} onRowClick={goToSourcesRow} />
                 </FramedPanel>
                 <FramedPanel search={dataFreshness} title="Data Freshness" subtitle="Per-sourcetype event count and last-seen timestamp — click a row to open the related specialist dashboard">
@@ -782,6 +796,8 @@ const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTop
     const HOST_TS = combinedHostFilterTstats(hosts, topHosts, resolvedTopHosts);
     const HF = HOST_TS ? ` | search ${HOST_TS}` : '';
     const { provider } = useCloudProvider();
+    // Build 400 - the picked host's name in the no-activity message (hostLabel).
+    const { label: aliasLabel } = useHostAlias();
     const roleRead = (metric: string, field: string): string =>
         withCloudProvider(
             `| inputlookup ${HR_ROLL} where metric="${metric}" ${ROLL_RANGE}${HF}`
@@ -857,7 +873,7 @@ const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTop
                     <DataTable columns={colsForKey('status', 'Status')} rows={webDisp.results} />
                 </ConditionalPanel>
                 <ConditionalPanel title="SAP Router Peers" subtitle="sap:saprouter" search={sapRouter}>
-                    <DataTable columns={colsForKey('peer_ip', 'Peer IP')} rows={sapRouter.results} />
+                    <DataTable columns={colsForKey('peer_ip', 'Peer IP', true)} rows={sapRouter.results} />
                 </ConditionalPanel>
                 <ConditionalPanel title="Windows Event Codes" subtitle="XmlWinEventLog" search={winEvents}>
                     <DataTable columns={colsForKey('EventCode', 'Event Code')} rows={winEvents.results} />
@@ -871,7 +887,7 @@ const RoleActivityTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTop
             </ReshuffleGrid>
             {allEmpty && (
                 <div style={{ padding: 32, color: logservTheme.colors.textMuted, textAlign: 'center', fontSize: logservTheme.fontSize.body }}>
-                    No role-specific activity for {hostLabel(hosts)} in this time range. Panels appear here only for roles the host is actively running.
+                    No role-specific activity for {hostLabel(hosts, aliasLabel)} in this time range. Panels appear here only for roles the host is actively running.
                 </div>
             )}
         </>
@@ -892,6 +908,11 @@ interface LinkGraphResult {
 const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolvedTopHosts: string[] }> = ({ hosts, topHosts, resolvedTopHosts }) => {
     // Node-bar restyle is mode-resolved (build 281) — see LinkGraphContainer.
     const { mode } = useThemeMode();
+    // Build 400 - host nodes carry the customer's host names (utils/hostAlias.ts
+    // aliasHostColumn: names over the DISTINCT hosts, so two raw hosts never merge
+    // into one node; display only, the search and the picker keep raw hosts), and
+    // the picked host's name shows in the subtitle and the empty message (hostLabel).
+    const { displayNames, label: aliasLabel } = useHostAlias();
     const HOST_TS = combinedHostFilterTstats(hosts, topHosts, resolvedTopHosts);
     const HF = HOST_TS ? ` | search ${HOST_TS}` : '';
     const { provider } = useCloudProvider();
@@ -961,7 +982,7 @@ const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolv
         if (!results || results.length === 0) return null;
         const sourcetypeCol = results.map((r) => String(r.sourcetype ?? ''));
         const sourceCol = results.map((r) => String(r.source ?? ''));
-        const hostCol = results.map((r) => String(r.host ?? ''));
+        const hostCol = aliasHostColumn(results.map((r) => String(r.host ?? '')), displayNames);
         return {
             primary: {
                 data: {
@@ -972,17 +993,17 @@ const SourcetypeMappingTab: React.FC<{ hosts: string[]; topHosts: string; resolv
                 requestParams: { count: results.length, offset: 0 },
             },
         };
-    }, [results]);
+    }, [results, displayNames]);
 
     if (error) return <div style={{ padding: 32, color: logservTheme.colors.red }}>{error.message || 'Search failed'}</div>;
     if (loading && !dataSources) return <PanelLoading />;
-    if (!dataSources) return <div style={{ padding: 32, color: logservTheme.colors.textMuted, textAlign: 'center' }}>No source/sourcetype data for {hostLabel(hosts)}.</div>;
+    if (!dataSources) return <div style={{ padding: 32, color: logservTheme.colors.textMuted, textAlign: 'center' }}>No source/sourcetype data for {hostLabel(hosts, aliasLabel)}.</div>;
 
     return (
         <FullWidthPanel>
             <FramedPanel
                 title="Source to sourcetype mapping"
-                subtitle={`sourcetype → source → host edges for ${hostLabel(hosts)}, deduped by host/source/sourcetype`}
+                subtitle={`sourcetype → source → host edges for ${hostLabel(hosts, aliasLabel)}, deduped by host/source/sourcetype`}
             >
                 <LinkGraphContainer ref={containerRef} $height={LINK_GRAPH_HEIGHT} $mode={mode}>
                     <LinkGraph
@@ -1171,14 +1192,17 @@ const HostDetails: React.FC = () => {
         setSearchParams(params, { replace: false });
     };
 
+    // Build 400 - the picked host(s) named with the customer's names ("alias (raw
+    // host)") in the page subtitle; the URL and the searches keep the raw host.
+    const { label: aliasLabel } = useHostAlias();
     const subtitle = pickedOutsideSid
-        ? `${selectedHosts.join(', ')} is not a host of ${scopeSid}. Clear the SID filter to see it.`
+        ? `${selectedHosts.map((h) => aliasLabel(h)).join(', ')} is not a host of ${scopeSid}. Clear the SID filter to see it.`
         : scopeSid && selectedHosts.length === 0
             ? `Drill-down across the ${scopeHosts.length} hosts of ${scopeSid} — inventory, activity, severity, authentication, role-specific analytics, and event distribution`
             : effectiveHosts.length === 0
             ? 'Drill-down view across all hosts — inventory, activity, severity, authentication, role-specific analytics, and event distribution'
             : effectiveHosts.length === 1
-                ? `Per-host drill-down for ${effectiveHosts[0]} — inventory, activity, severity, authentication, role-specific analytics, and event distribution`
+                ? `Per-host drill-down for ${aliasLabel(effectiveHosts[0])} — inventory, activity, severity, authentication, role-specific analytics, and event distribution`
                 : `Drill-down across ${effectiveHosts.length} selected hosts — inventory, activity, severity, authentication, role-specific analytics, and event distribution`;
 
     return (

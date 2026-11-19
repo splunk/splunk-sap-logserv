@@ -6,6 +6,8 @@ import { useThemeMode } from '../../state/ThemeModeProvider';
 import { darken } from '../../utils/colorMath';
 import { formatCallCount } from '../../topology/edgeStyle';
 import type { ActivityRow } from '../../topology/types';
+import { NO_HOST_ALIASES, type HostAliasResolver } from '../../topology/nodeAlias';
+import { AliasedHost, copyOnOneLine } from '../HostName';
 
 /**
  * Bottom panel — collapsible "Live Activity" drawer.
@@ -162,6 +164,13 @@ const SidPill = styled.span<{ $kind: 'focused' | 'secondary' }>`
     margin-right: 6px;
 `;
 
+/* Build 400 - the customer's name for a Source host (Settings > Host Names),
+ * before the pill that keeps the raw value. */
+const SourceAlias = styled.span`
+    color: ${logservTheme.colors.textActive};
+    margin-right: 6px;
+`;
+
 const ChartCaption = styled.div`
     color: ${logservTheme.colors.textMuted};
     font-size: 10px;
@@ -191,7 +200,17 @@ interface TopologyBottomPanelProps {
     /** Open/closed state controlled by parent so the toolbar can also collapse it. */
     open: boolean;
     onToggleOpen: () => void;
+    /** Build 400 - the labels that only host-labelled nodes carry
+     *  (topology/nodeAlias.ts hostLabelSet). A row's Source or Remote partner
+     *  gets the customer's name only when its value is in this set, so a SID,
+     *  a tenant or a label a SID shares never gets one. Omitted: none. */
+    hostLabels?: ReadonlySet<string>;
+    /** Build 400 - the customer's host names (Settings > Host Names), display
+     *  only: shown next to the raw value. Omitted: none. */
+    resolveHostAlias?: HostAliasResolver;
 }
+
+const NO_HOST_LABELS: ReadonlySet<string> = new Set<string>();
 
 const directionGlyph = (d: ActivityRow['direction']): string =>
     d === 'client' ? 'client →' : 'server ←';
@@ -241,6 +260,8 @@ const TopologyBottomPanel: React.FC<TopologyBottomPanelProps> = ({
     rangeLabel,
     open,
     onToggleOpen,
+    hostLabels = NO_HOST_LABELS,
+    resolveHostAlias = NO_HOST_ALIASES,
 }) => {
     const [refresh, setRefresh] = useState<string>('15s');
     const totalCalls = rows.reduce((s, r) => s + r.callCount, 0);
@@ -291,18 +312,29 @@ const TopologyBottomPanel: React.FC<TopologyBottomPanelProps> = ({
                                 </tr>
                             </thead>
                             <tbody>
-                                {rows.map((r) => (
-                                    <tr key={r.id}>
-                                        <td>
-                                            <SidPill $kind={focusedSidIds.has(r.sourceSid) ? 'focused' : 'secondary'}>
-                                                {r.sourceSid}
-                                            </SidPill>
-                                        </td>
-                                        <td className="dir">{directionGlyph(r.direction)}</td>
-                                        <td>{r.partner}</td>
-                                        <td className="r">{r.callCount.toLocaleString()}</td>
-                                    </tr>
-                                ))}
+                                {rows.map((r) => {
+                                    /* Build 400 - names on screen only; the pill and the
+                                     * partner cell keep the raw value next to them. */
+                                    const sourceAlias = hostLabels.has(r.sourceSid) ? resolveHostAlias(r.sourceSid) : null;
+                                    const partnerAlias = hostLabels.has(r.partner) ? resolveHostAlias(r.partner) : null;
+                                    return (
+                                        <tr key={r.id}>
+                                            <td>
+                                                {sourceAlias !== null && <SourceAlias>{sourceAlias}</SourceAlias>}
+                                                <SidPill $kind={focusedSidIds.has(r.sourceSid) ? 'focused' : 'secondary'}>
+                                                    {r.sourceSid}
+                                                </SidPill>
+                                            </td>
+                                            <td className="dir">{directionGlyph(r.direction)}</td>
+                                            <td onCopy={partnerAlias !== null ? copyOnOneLine : undefined}>
+                                                {partnerAlias !== null
+                                                    ? <AliasedHost alias={partnerAlias} raw={r.partner} />
+                                                    : r.partner}
+                                            </td>
+                                            <td className="r">{r.callCount.toLocaleString()}</td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </Table>
                     </TableScroll>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { HostService, useSidHostFilter } from '../state/SidHostFilterProvider';
+import { HostAliasContextValue, useHostAlias } from '../state/HostAliasProvider';
 import { SidHost, describeHost, findSid } from '../utils/sidHostMap';
 import { logservTheme } from '../styles/logservTheme';
 
@@ -14,6 +15,14 @@ import { logservTheme } from '../styles/logservTheme';
  *  - GlobalHostPicker: narrows to hosts of that system, each shown with its role.
  *    With no SID selected it lists every SAP host.
  *  - ServiceHostPicker: the Host filter of a dashboard whose hosts belong to no SID.
+ *
+ * Host names (Settings > Host Names, build 400) show in the two Host filters
+ * only, and only on screen: an entry with a name shows it first, with the raw
+ * host and its role under it, the menu's search box also finds the name, and the
+ * button reads the name when one host is picked. A tick, the stored selection
+ * and the search term keep the raw host. SIDs never get a name. While names
+ * exist the button's tooltip also lists the picked hosts as the data has them;
+ * with no names every text here reads exactly as it did before.
  */
 
 const RAW_NOTE =
@@ -149,6 +158,38 @@ const Detail = styled.span`
     text-overflow: ellipsis;
     white-space: nowrap;
     text-align: right;
+`;
+
+/* A Host filter entry with a host name: the name on the first line, the raw
+   host and its role on the line under it, each cut with an ellipsis. */
+const Stack = styled.span`
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+`;
+
+const AliasName = styled(Name)`
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+const SubLine = styled.span`
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    margin-top: 2px;
+    color: ${logservTheme.colors.textMuted};
+`;
+
+const RawHost = styled.span`
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 `;
 
 const Note = styled.div`
@@ -296,7 +337,6 @@ export const SidPicker: React.FC = () => {
 };
 
 interface HostMenuProps {
-    label: string;
     options: SidHost[];
     picked: string[];
     onChange: (hosts: string[]) => void;
@@ -306,12 +346,34 @@ interface HostMenuProps {
     onOpen?: () => void;
 }
 
-const HostMenu: React.FC<HostMenuProps> = ({ label, options, picked, onChange, allLabel, emptyText, title, onOpen }) => {
+/** The button's text: the host's name when exactly one host with a name is picked. */
+const hostButtonLabel = (picked: string[], resolve: HostAliasContextValue['resolve']): string => {
+    if (picked.length === 0) {
+        return 'All';
+    }
+    if (picked.length === 1) {
+        return resolve(picked[0]) ?? picked[0];
+    }
+    return plural(picked.length, 'host');
+};
+
+const TITLE_HOSTS_MAX = 10;
+
+/** The picked hosts as the data has them, for the button's tooltip while names
+ *  exist (the button itself may then read a host name). */
+const pickedHostList = (picked: string[]): string => {
+    const head = picked.slice(0, TITLE_HOSTS_MAX).join(', ');
+    return picked.length > TITLE_HOSTS_MAX ? `${head} and ${picked.length - TITLE_HOSTS_MAX} more` : head;
+};
+
+const HostMenu: React.FC<HostMenuProps> = ({ options, picked, onChange, allLabel, emptyText, title, onOpen }) => {
     const { open, setOpen, filter, setFilter, wrapperRef } = useDropdown();
+    const { resolve, label: aliasLabel, hasAliases } = useHostAlias();
+    const label = hostButtonLabel(picked, resolve);
 
     const shown = useMemo(
-        () => options.filter((h) => matches(filter, h.host, describeHost(h))),
-        [options, filter],
+        () => options.filter((h) => matches(filter, h.host, describeHost(h), resolve(h.host) ?? '')),
+        [options, filter, resolve],
     );
 
     const toggle = (host: string) => () => {
@@ -330,7 +392,7 @@ const HostMenu: React.FC<HostMenuProps> = ({ label, options, picked, onChange, a
                 $filtered={picked.length > 0}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                aria-label={`Host filter: ${label}`}
+                aria-label={`Host filter: ${picked.length === 1 ? aliasLabel(picked[0]) : label}`}
                 title={title}
             >
                 <ButtonText>{`Host: ${label}`}</ButtonText>
@@ -338,7 +400,7 @@ const HostMenu: React.FC<HostMenuProps> = ({ label, options, picked, onChange, a
             </PickerButton>
             {open && (
                 <Menu role="menu">
-                    {options.length > 8 && (
+                    {(options.length > 8 || hasAliases) && (
                         <FilterInput
                             autoFocus
                             placeholder="Filter hosts"
@@ -363,6 +425,7 @@ const HostMenu: React.FC<HostMenuProps> = ({ label, options, picked, onChange, a
                         {shown.map((h) => {
                             const selected = picked.indexOf(h.host) !== -1;
                             const detail = describeHost(h);
+                            const alias = resolve(h.host);
                             return (
                                 <MenuItem
                                     key={h.host}
@@ -373,8 +436,20 @@ const HostMenu: React.FC<HostMenuProps> = ({ label, options, picked, onChange, a
                                     onClick={toggle(h.host)}
                                 >
                                     <Tick aria-hidden>{selected ? '✓' : ''}</Tick>
-                                    <Name>{h.host}</Name>
-                                    {detail && <Detail title={detail}>{detail}</Detail>}
+                                    {alias === null ? (
+                                        <>
+                                            <Name>{h.host}</Name>
+                                            {detail && <Detail title={detail}>{detail}</Detail>}
+                                        </>
+                                    ) : (
+                                        <Stack>
+                                            <AliasName title={alias}>{alias}</AliasName>
+                                            <SubLine>
+                                                <RawHost title={h.host}>{h.host}</RawHost>
+                                                {detail && <Detail title={detail}>{detail}</Detail>}
+                                            </SubLine>
+                                        </Stack>
+                                    )}
                                 </MenuItem>
                             );
                         })}
@@ -387,14 +462,9 @@ const HostMenu: React.FC<HostMenuProps> = ({ label, options, picked, onChange, a
     );
 };
 
-const hostButtonLabel = (picked: string[]): string => {
-    if (picked.length === 0) return 'All';
-    if (picked.length === 1) return picked[0];
-    return plural(picked.length, 'host');
-};
-
 export const GlobalHostPicker: React.FC = () => {
     const { map, mapLoading, allHostNames, allHostsLoading, requestAllHosts, selection, setHosts } = useSidHostFilter();
+    const { hasAliases } = useHostAlias();
     const entry = findSid(map, selection.sid);
     // With a SID selected: its hosts and no others, from what the selection stored
     // if the list cannot be read right now. With none: SAP hosts with their roles, and
@@ -414,10 +484,11 @@ export const GlobalHostPicker: React.FC = () => {
         const all = base.concat(extra);
         return selection.sid ? all : all.sort((a, b) => (a.host < b.host ? -1 : 1));
     }, [entry, map.hosts, allHostNames, selection.sid, selection.scopeHosts, selection.hosts]);
+    // The raw hosts in the tooltip only while names exist; with none it reads as it always has.
+    const hostList = hasAliases ? ` (${pickedHostList(selection.hosts)})` : '';
 
     return (
         <HostMenu
-            label={hostButtonLabel(selection.hosts)}
             options={options}
             picked={selection.hosts}
             onChange={setHosts}
@@ -426,7 +497,7 @@ export const GlobalHostPicker: React.FC = () => {
             emptyText={mapLoading || allHostsLoading ? 'Loading hosts…' : 'No hosts in this time range.'}
             title={
                 selection.hosts.length > 0
-                    ? `Filtering to ${plural(selection.hosts.length, 'host')} — click to change`
+                    ? `Filtering to ${plural(selection.hosts.length, 'host')}${hostList} — click to change`
                     : 'Host: showing all hosts — click to filter'
             }
         />
@@ -436,6 +507,7 @@ export const GlobalHostPicker: React.FC = () => {
 export const ServiceHostPicker: React.FC<{ service: HostService }> = ({ service }) => {
     const { serviceHosts, setServiceHosts, serviceHostOptions, serviceHostsLoading, setActiveService } =
         useSidHostFilter();
+    const { hasAliases } = useHostAlias();
     const picked = serviceHosts[service] ?? [];
 
     useEffect(() => {
@@ -449,10 +521,11 @@ export const ServiceHostPicker: React.FC<{ service: HostService }> = ({ service 
         // `picked` is rebuilt from the stored list; its contents are what matter.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [serviceHostOptions, picked.join('|')]);
+    // The raw hosts in the tooltip only while names exist; with none it reads as it always has.
+    const hostList = hasAliases ? ` (${pickedHostList(picked)})` : '';
 
     return (
         <HostMenu
-            label={hostButtonLabel(picked)}
             options={options}
             picked={picked}
             onChange={(hosts) => setServiceHosts(service, hosts)}
@@ -460,7 +533,7 @@ export const ServiceHostPicker: React.FC<{ service: HostService }> = ({ service 
             emptyText={serviceHostsLoading ? 'Loading hosts…' : 'No hosts in this time range.'}
             title={
                 picked.length > 0
-                    ? `Filtering this dashboard to ${plural(picked.length, 'host')} — click to change`
+                    ? `Filtering this dashboard to ${plural(picked.length, 'host')}${hostList} — click to change`
                     : 'Host: showing all hosts — click to filter'
             }
         />

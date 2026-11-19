@@ -201,8 +201,11 @@ const SLOWEST_PAGE_COLS: ColumnDef[] = [
     { key: 'avg_response', label: 'Avg Response (ms)', align: 'right' },
     { key: 'requests', label: 'Requests', align: 'right', render: (v) => formatInteger(v) },
 ];
+// Build 400: `hostAlias` marks the two Client IP columns. DataTable shows the name from
+// Settings > Host Names beside the raw value; sorting, row clicks and the searches
+// they open keep the raw value.
 const TOP_CLIENT_COLS: ColumnDef[] = [
-    { key: 'clientip', label: 'Client IP' },
+    { key: 'clientip', label: 'Client IP', hostAlias: true },
     { key: 'requests', label: 'Requests', align: 'right', render: (v) => formatInteger(v) },
     { key: 'unique_pages', label: 'Unique Pages', align: 'right', render: (v) => formatInteger(v) },
     { key: 'avg_response_ms', label: 'Avg Response (ms)', align: 'right' },
@@ -214,7 +217,7 @@ const TOP_URIS_COLS: ColumnDef[] = [
 ];
 const RECENT_ERROR_COLS: ColumnDef[] = [
     { key: '_time', label: 'Time', width: '160px', render: (v) => v ? new Date(String(v)).toLocaleString('en-US', { hour12: false }) : '' },
-    { key: 'clientip', label: 'Client IP', width: '140px' },
+    { key: 'clientip', label: 'Client IP', width: '140px', hostAlias: true },
     { key: 'method', label: 'Method', width: '90px' },
     { key: 'uri', label: 'URI' },
     { key: 'status', label: 'Status', width: '80px', align: 'right' },

@@ -6,7 +6,7 @@
 
 | Package | Splunk Web label | App ID | Current 0.1.2 build |
 |---|---|---|---|
-| LogServ App | Splunk App for SAP LogServ | `splunk_app_sap_logserv` | 399 |
+| LogServ App | Splunk App for SAP LogServ | `splunk_app_sap_logserv` | 406 |
 | Data TA | Splunk TA for SAP LogServ | `splunk_ta_sap_logserv` | 1792598960 |
 | LogServ Azure add-on | Splunk TA for SAP LogServ on Azure | `splunk_ta_sap_logserv_azure` | 1792558069 |
 | LogServ GCP add-on | Splunk TA for SAP LogServ on GCP | `splunk_ta_sap_logserv_gcp` | 1792558072 |
@@ -24,7 +24,7 @@ To read the installed build of each package, run this search in Splunk Web on th
 | table title version build
 ```
 
-Some builds were made only for testing and never released. From build 380 on, the entry of such a build is merged with the released build that carried its changes, as in *builds 387–388*. Earlier test builds of the App (361, 364, 372 and 374) keep their entries, each marked as not released. The App builds released since build 379 are 383, 385, 386, 388, 390, 392, 393, 394, 395, 396, 397, 398 and 399.
+Some builds were made only for testing and never released. From build 380 on, the entry of such a build is merged with the released build that carried its changes, as in *builds 387–388*. Earlier test builds of the App (361, 364, 372 and 374) keep their entries, each marked as not released. The App builds released since build 379 are 383, 385, 386, 388, 390, 392, 393, 394, 395, 396, 397, 398, 399, 405 and 406 (build 404 was not published; build 405 is the same App).
 
 Each entry says what changed, who is affected and what an upgrade needs; [Upgrading to This Release](../getting-started/upgrading.md) lists every action by the build you are coming from. A statement that a later build changed carries *Superseded by build N*, and a statement found to be wrong carries a *Correction*.
 
@@ -48,6 +48,62 @@ Each entry says what changed, who is affected and what an upgrade needs; [Upgrad
 ## :material-circle-box:{ .taiconcolor } LogServ App (`splunk_app_sap_logserv`)
 
 Builds of the Splunk App for SAP LogServ, which runs on the search head.
+
+### :material-circle-box:{ .taiconcolor } Smoother column resizing, and text boxes in page exports (build 406) { #column-resizing-and-export-text-build-406 }
+
+- **A drag after a column was dragged too far follows the pointer.** When a column had been dragged far past what its panel allows, in a table where other columns have widths too, a drag back to the left moved its edge by a small part of the pointer's movement. The first step of such a drag now sets every column that has a width to the width it is drawn at, and the edge then moves with the pointer. Those columns count as resized afterwards; **Reset column widths** puts them all back.
+- **A narrow column no longer jumps when you start to drag it.** A column drawn narrower than 40 px jumped out to 40 px on the first pixel of a drag or the first arrow key. It now starts from where it is drawn: it can be widened, and narrowed back to where it started.
+- **A key pressed during a drag does not disturb it.**
+- **A table beside the one you resize keeps its number of rows.** Narrowing a column wraps its rows and makes the panel taller, and a table in the panel beside it then took on extra rows, which stayed after **Reset column widths**. No table changes its rows per page after a column width change.
+- **Reset column widths by keyboard keeps the focus in the panel** when its table shows no rows.
+- **Page exports draw what is typed in a box as text.** In **Download PNG** and **Download PDF**, a multi-line box keeps its lines; before, they ran together on one line and were cut off at the edge of the box, as in the paste box under **Settings → Host Names**. A value too long for its text box ends in an ellipsis, and an empty box shows its hint text in the hint colour. Password boxes, checkboxes and drop-down lists are drawn as before.
+
+Two limits remain: a drag to the right in a table that is already as wide as its panel moves the edge by less than the pointer, and a right-button press during a drag ends the drag.
+
+**Who is affected:** anyone who resizes table columns or downloads a page with text boxes on it. **What an upgrade needs:** nothing. Column widths saved by build 405 are kept.
+
+### :material-circle-box:{ .taiconcolor } Build 405: build 404 under a new build number { #build-405 }
+
+Build 405 is the published form of build 404: the same App with a new build number and nothing else changed. Build 404 was not published, so the three entries below, written for builds 400 to 404, are what build 405 brings to an installation on build 399 or earlier.
+
+**Who is affected:** nobody beyond the entries below. **What an upgrade needs:** nothing.
+
+### :material-circle-box:{ .taiconcolor } Resizable table columns, remembered in your browser (build 404) { #resizable-table-columns-build-404 }
+
+- **Drag a column's edge to resize it.** In every table panel, drag the right edge of a column heading to make the column wider or narrower. The edge can also be reached with **Tab** and moved with the **Left** and **Right** arrow keys, 10 pixels a press, and a double-click on it fits the column to the rows on the page shown. A click on a heading still sorts; dragging its edge does not.
+- **The table still fits its panel.** A table never scrolls sideways: the other columns give way to a column you widen, and when they can give no more, the edge moves less than the pointer. A column cannot be made narrower than 40 pixels or than its content allows.
+- **Remembered in your browser.** On a dashboard, the widths you drag are kept in this browser for your Splunk user, for each panel, and come back when you open the dashboard again. They are not stored on the search head: another browser, or another user, sees the default widths, and a private window or a browser that blocks site storage keeps them only until you leave the page. With the dashboard open in two tabs, each tab keeps its own widths, and a tab shows the other's changes when it next loads the dashboard. The AI Assistant's result tables keep their widths until they close.
+- **Reset per panel.** While a table in a panel has widths you dragged, the panel's header shows a **Reset column widths** button, left of the toolbar, which puts the columns back to their default widths.
+- **Rows per page do not change.** A table keeps the number of rows a page it had before the resize; text that wraps in a narrower column makes its rows taller.
+
+**Who is affected:** everyone who reads the tables. **What an upgrade needs:** nothing. The widths are kept in the browser's local storage for the Splunk Web host, one entry per Splunk user (`logserv.tableColumnWidths.v1.<user>`); clearing that site's data in the browser removes them.
+
+### :material-circle-box:{ .taiconcolor } The App works when its sharing is This app only (builds 403–404) { #dashboards-work-with-app-only-sharing-build-404 }
+
+- **Every dashboard search runs in the LogServ App.** A panel's search now runs in the App's own namespace, as the signed-in user. Before, it ran in the user's default app (often Launcher or Search & Reporting), which sees the App's index macro, its lookup definitions and its field extractions only while the App is shared with all apps. With the App's sharing set to **This app only**, most panels came back empty and KPI cards showed 0.
+- **The App's search-time knowledge stays shared with all apps.** Its macros, eventtypes, tags, field extractions and aliases, lookups, indexed-field declarations and Enterprise Security correlation-search entries now carry their own `export = system` in the App's `metadata/default.meta`, so they stay shared when the App's sharing is **This app only**. Enterprise Security and the CIM data models, the AI Assistant's free-form questions (which the Splunk MCP Server runs in the user's default app) and searches in other apps keep working; the App's views, navigation, saved searches and settings stay inside the App. On the reference system, with **This app only**, searches from another app and a free-form AI Assistant question were run and returned rows. Enterprise Security and the CIM data models read the App's knowledge the same way, but were not run with **This app only** there (Enterprise Security is not installed on that system). Measured on the reference system with build 402 and **This app only**: from the user's default app the index macro could not be found, and the App's field extractions and lookups returned 0 rows ([App sharing](../logserv-app/installation.md#app-sharing)).
+- **The live panels use the App's copy of the index macro.** On a search head that has both the App and the Data TA, the panels used the Data TA's copy of `sap_logserv_idx_macro` up to build 399; they now use the App's. If you changed only one copy, make the two match ([Renaming an Index](../install-setup/install-ta.md#renaming-an-index)).
+
+<a id="dashboards-work-with-app-only-sharing-build-403"></a>Build 403 was not released; its changes reached customers in build 404.
+
+**Who is affected:** anyone who sets the App's sharing to **This app only**. **What an upgrade needs:** nothing. If the App's sharing is already **This app only**, note what changes: its field extractions, lookups, eventtypes, tags and macros, including those on Splunk's own `syslog`, `linux_messages_syslog`, `lastlog` and `who` sourcetypes and the absorbed `isc:bind:*` and `squid:access` parsing, now apply in every app, as in a default install; only the App's views, navigation, saved searches and settings stay inside it. To confine one of them, change that object's own permissions.
+
+### :material-circle-box:{ .taiconcolor } Host Names: your own names for hosts on the dashboards, and clearer page exports (builds 400–404) { #host-names-build-404 }
+
+- **New: Settings → Host Names.** An admin maps host values from the logs (a full host name, a short name or an IP address) to names of their own, and the dashboards show each name for the host value: next to it in tables and host lists, above it in the **Host** filter's entries, alone on the per-host charts, the two Sourcetype Mapping graphs and the **Host** filter button with one host picked. Names are added, edited and deleted on the new tab, after **Dashboard Data**, or imported and exported as a CSV file with the header `host,alias,description`. Import merges: it adds rows and changes names, never deletes a row, and any error in the file blocks the whole import. See [Host Names](../logserv-app/host-names.md).
+- **Matching ignores letter case and a trailing dot.** An entry for a short name also covers that name's full names; an IP address, IPv4 or IPv6, matches only itself. There are no wildcards or address ranges, and a short value that two entries could name differently gets no name.
+- **Name first, then the host value, cut at the end.** A table cell with a name shows the name, then the host value in a muted color, on one line. When the column is too narrow for both, the line is cut at its end with one ellipsis: the host value gives way first, and the name is cut only when it no longer fits with the ellipsis after it. A host value longer than about 30 characters is cut even in a wide column. Hover over the cell to read both in full.
+- **Where the names show:** host, IP and client columns in tables on 17 dashboards, the **Host** filter (typing a name finds its host) and the other host lists, the per-host charts and the two Sourcetype Mapping graphs, Linux's **Top Drop Source** card, Host Details' texts, and the Environment Topology, though never in a node's label. SIDs and HANA tenants never get a name.
+- **Display only.** Searches, filters, sorting, clicks, **Open in Search**, **Inspect** and a panel's CSV download keep the host values from the logs, and the **Host** filter still narrows by the host that wrote each event. No summary stores a name, so a name change needs no Clear or Backfill. The AI Assistant and the Data Doctor show host values only, and no name reaches an AI vendor. In Tier 2, a column named like an alias (`alias`, `host_alias`, `friendly_name` and the like) is redacted with host names when **Tier 2 hostname redaction** is on.
+- **Who can edit:** roles named `admin`, `sc_admin` or `sc_subadmin`. Every role can read the list, descriptions included, so a description must not hold personal data.
+- **The list is read again before each write.** Right before **Add**, **Save changes**, **Import** or **Delete**, the tab reads the list again. If another admin has changed it in the meantime, so that the write would now do something other than the tab said, or the row has changed or is gone, the tab writes nothing: it shows the list as it is now and says what changed.
+- **Rows written outside the App.** When rows written through the KV Store REST API give one host different names, none is stored under the key the host value gives, and the latest of them, which carry the same time of change (or none), give different names, the list marks them, and the dashboards use none of them: the host shows no name unless another entry covers it, such as a short-name entry for a full name. Where rows of one host tie, the tab chooses among them the same way whatever order Splunk returns the rows in, so reading the list again does not stop a save when nothing has changed, and **Export CSV** writes the same file each time.
+- **One new KV Store collection,** `logserv_host_aliases`, which starts empty. It is not dashboard data: Clear and **Clear all rollups** in **Settings → Dashboard Data** never touch it.
+- **Page exports end cut-short text with an ellipsis and draw numbers without gaps.** In **Download PNG** and **Download PDF** from the **Actions** menu, text that the page cuts short with an ellipsis now ends in one in the export too. Before, exports drew such text cut off with no ellipsis, for example a long URI in Web Dispatcher's **Slowest Request Traces**. A name and host value cut short in a narrow column are cut the same way in the export: the host value first, then the name, with the ellipsis at the end. Numbers set with equal-width digits, such as KPI card values, the row counts under tables and the times in the Host Names list, are drawn without gaps between their parts, with the font's ordinary digit widths. The export lays the page out on its own, so a text close to the edge of its space can be cut in the export and whole on screen, or the other way round, and a text cut in both can be cut at a different point. The page on screen does not change.
+
+<a id="host-names-build-403"></a><a id="host-names-build-402"></a><a id="host-names-build-401"></a><a id="host-names-build-400"></a>Builds 400, 401, 402 and 403 were not released; their changes reached customers in build 404.
+
+**Who is affected:** anyone who wants recognizable names for hosts on the dashboards, and anyone who saves a page with **Download PNG** or **Download PDF**. **What an upgrade needs:** nothing; there is nothing to rebuild. After a rollback to build 399 or earlier the dashboards show host values only; to remove the names, delete them before the rollback ([Rollback](../getting-started/upgrading.md#rollback)).
 
 ### :material-circle-box:{ .taiconcolor } Open in Search and Inspect work where Splunk's Search app is disabled (build 399) { #open-in-search-without-the-search-app-build-399 }
 

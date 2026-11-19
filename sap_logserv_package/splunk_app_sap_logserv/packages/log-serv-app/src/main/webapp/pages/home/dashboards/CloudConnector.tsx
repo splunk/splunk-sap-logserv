@@ -165,7 +165,7 @@ const TOP_URI_COLS: ColumnDef[] = [
     { key: 'Total Bytes', label: 'Total Bytes', align: 'right', render: (v) => formatInteger(v) },
 ];
 const TOP_CLIENT_COLS: ColumnDef[] = [
-    { key: 'Client IP', label: 'Client IP' },
+    { key: 'Client IP', label: 'Client IP', hostAlias: true },
     { key: 'Requests', label: 'Requests', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Total Bytes', label: 'Total Bytes', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Unique URIs', label: 'Unique URIs', align: 'right', render: (v) => formatInteger(v) },

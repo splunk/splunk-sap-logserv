@@ -40,6 +40,13 @@ const STATIC_PATH_DOCS: Record<string, string> = {
  */
 export const DOCS_AI_ASSISTANT_OVERVIEW = `${DOCS_ROOT}/content/ai-assistant/overview/`;
 
+/**
+ * The Settings page's Host Names tab (build 400: the customer's own names for
+ * hosts). The tab is not a route of its own, so its help icon and link use
+ * this constant rather than resolveDocsUrl().
+ */
+export const DOCS_HOST_NAMES = `${DOCS_ROOT}/content/logserv-app/host-names/`;
+
 const buildDocsUrl = (info: DashboardInfo): string => {
     const { category, slug } = info;
     if (category === 'home') {
@@ -59,7 +66,11 @@ const buildDocsUrl = (info: DashboardInfo): string => {
  */
 export const resolveDocsUrl = (pathname: string): string | null => {
     const info = dashboards.find((d) => d.path === pathname);
-    if (info) return buildDocsUrl(info);
-    if (pathname in STATIC_PATH_DOCS) return STATIC_PATH_DOCS[pathname];
+    if (info) {
+        return buildDocsUrl(info);
+    }
+    if (pathname in STATIC_PATH_DOCS) {
+        return STATIC_PATH_DOCS[pathname];
+    }
     return null;
 };

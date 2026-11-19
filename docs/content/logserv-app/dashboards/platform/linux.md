@@ -22,7 +22,7 @@ The Linux dashboard provides OS-level visibility for the hosts running SAP appli
 - **Total Events** -- Aggregate event count across all Linux sourcetypes
 - **Firewall Drops at Host** -- Count of kernel firewall drops of packets addressed to the host itself: `IN_DROP` lines, from the INPUT chain
 - **Firewall Drops in Transit** -- Count of kernel firewall drops of packets the host was routing on to another system: `FWD_DROP` lines, from the FORWARD chain. Only hosts that forward traffic, such as VPN or IPsec gateways, log these. A packet passes through one chain or the other, never both, so the two KPIs add up without double counting
-- **Top Drop Source** -- Single-value panel showing the source IP that appears in the most firewall log lines, in the format `<IP> (<count>)`. The count covers drops at the host and in transit together, plus any other firewall line that names that source; it is the top row of the **Blocked Sources** table below, which has the full ranking — click any row there to open that source IP's firewall log
+- **Top Drop Source** -- Single-value panel showing the source IP that appears in the most firewall log lines, in the format `<IP> (<count>)`. The count covers drops at the host and in transit together, plus any other firewall line that names that source; it is the top row of the **Blocked Sources** table below, which has the full ranking — click any row there to open that source IP's firewall log. When that IP address has a name in [Host Names](../../host-names.md), the card shows `<name> (<count>)` on one line, with the IP address on the line under it. A name too long for the card is cut with an ellipsis while the count stays visible; hover over the value to read `<name> - <IP> (<count>)` in full.
 - **Active Hosts** -- Count of distinct Linux hosts reporting data.
 - **Event Volume by Sourcetype** -- Trend over time across `linux_messages_syslog` plus the dedicated Linux sourcetypes (`linux:cron`, `linux:warn`, `linux:sudolog`, `linux:slapd`) and `linux_secure`. Events indexed under the older `syslog` sourcetype are counted too, so older data still shows.
 - **SAP Application Activity** -- Horizontal bar chart of the top 15 `sap_app` / `sap_sid` combinations by event volume (the combination label sits on the y-axis so long application names stay readable)
@@ -35,8 +35,10 @@ The Linux dashboard provides OS-level visibility for the hosts running SAP appli
     *The two Blocked tables count every firewall event carrying a source IP / destination port. At Host is the `IN_DROP` events among them; In Transit / Other is the rest: nearly all `FWD_DROP`, plus any other firewall line logged with a source or port. ICMP carries no destination port, so ICMP drops appear in Blocked Sources but not in Blocked Destination Ports.*
 - **OOM Kills by Host** -- Kernel OOM-killer events per host, with the max process RSS/VM observed
 - **OOM Kills by Victim Process** -- Process names targeted by the OOM killer
-- **CPU Soft Lockups** -- Kernel soft-lockup events per host and CPU, with max/total stall duration
-- **TCP Out-of-Memory Timeline** -- Kernel TCP memory-pressure events over time
+- **CPU Soft-Lockups** -- Kernel soft-lockup events per host and CPU, with max/total stall duration
+- **TCP Memory Pressure Over Time** -- Kernel TCP memory-pressure events over time, one line per host
+
+The **Source IP** column of **Blocked Sources**, the **Host** columns of **OOM Kills by Host** and **CPU Soft-Lockups**, and the lines of **TCP Memory Pressure Over Time** show the names an admin gave hosts in [Host Names](../../host-names.md). The chart's **OTHER** line, which Splunk adds for the hosts it does not draw one by one, keeps that label. Clicks and searches keep the values from the logs.
 
 ## :material-lightning-bolt:{ .taiconcolor } What to Look For
 
@@ -45,7 +47,7 @@ The Linux dashboard provides OS-level visibility for the hosts running SAP appli
 - **Drops in transit** -- Only a host that routes traffic onward, such as a VPN or IPsec gateway, logs `FWD_DROP`. On a gateway, drops in transit are traffic its forwarding policy does not allow, often a monitoring or discovery job pinging or probing the systems behind it, and they can outnumber the drops at the host many times over. Find the source in the Blocked Sources table and the job that owns it, then either allow that traffic or stop the job. Drops in transit on a host that is not meant to route at all mean IP forwarding is switched on there (container runtimes and Kubernetes nodes do this) and deserve a look.
 - **New blocked source IPs** -- Unfamiliar source IPs appearing in the Blocked Sources table should be investigated, especially if they target SAP service ports (3200-3299 for dialog, 8000-8099 for HTTP, 30015 for HANA).
 - **SAP application distribution changes** -- If the SAP Application Activity chart shows a previously active SID or application going silent, it may indicate a process crash or configuration issue.
-- **OOM kills and soft lockups** -- The OOM Kills panels and CPU Soft Lockups table are the crash-adjacent signals on this dashboard: a process repeatedly targeted by the OOM killer, or recurring soft lockups on one host, may affect SAP system stability.
+- **OOM kills and soft lockups** -- The OOM Kills panels and CPU Soft-Lockups table are the crash-adjacent signals on this dashboard: a process repeatedly targeted by the OOM killer, or recurring soft lockups on one host, may affect SAP system stability.
 - **Port targeting patterns** -- The Blocked Destination Ports table reveals which services attackers are targeting. Ports associated with SAP services warrant immediate attention.
 
 ## :material-circle-box:{ .taiconcolor } Related Dashboards

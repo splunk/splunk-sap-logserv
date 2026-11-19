@@ -14,6 +14,8 @@ import PanelLoading from './PanelLoading';
 import EmptyStateHint from './EmptyStateHint';
 import { usePanelMetaReporter } from './PanelMeta';
 import { useRequestPanelFill } from './FramedPanel';
+import { useHostAlias } from '../state/HostAliasProvider';
+import { rowsToColumnar, shownSeriesNames, withShownNames } from '../utils/aliasSeries';
 
 /**
  * TimeSeriesChart — wraps @splunk/visualizations/Column with our SearchJob
@@ -50,6 +52,16 @@ interface TimeSeriesChartProps {
      *  density still fits the canvas — if you have >300 points, use a wider
      *  bin via `chooseTimechartSpan` from utils/timechartSpan.ts. */
     chartType?: 'column' | 'line' | 'area' | 'bar';
+    /** Build 400: the series are host values (a timechart BY host or client IP). Each
+     *  series is shown under the customer's name for it from Settings > Host Names
+     *  (useHostAlias().displayNames: two values that share a name get their short
+     *  form or raw value after it, so series never merge), before colours and legend
+     *  entries are assigned; seriesColorsByField keys by raw value keep working.
+     *  Splunk's own OTHER and NULL series are not hosts and keep those names. The
+     *  naming step is utils/aliasSeries.ts shownSeriesNames. Display only: the
+     *  search and its results keep the raw values. Off (the default): the chart
+     *  is exactly as without the prop. */
+    aliasSeries?: boolean;
 }
 
 /* Build 371 — the chart fills its panel. Inside a FramedPanel (which the chart
@@ -99,21 +111,6 @@ const ErrorLine = styled(StatusLine)`
     color: ${logservTheme.colors.red};
 `;
 
-const rowsToColumnar = (
-    rows: Array<Record<string, unknown>>,
-    fieldNames: string[]
-): { fields: { name: string }[]; columns: (string | number | null)[][] } => {
-    const fields = fieldNames.map((name) => ({ name }));
-    const columns = fieldNames.map((name) =>
-        rows.map((row) => {
-            const v = row[name];
-            if (v === null || typeof v === 'undefined') return null;
-            return v as string | number;
-        })
-    );
-    return { fields, columns };
-};
-
 const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     query,
     valueFields,
@@ -123,7 +120,12 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     seriesColors: seriesColorsProp,
     seriesColorsByField: seriesColorsByFieldProp,
     chartType = 'column',
+    aliasSeries = false,
 }) => {
+    // Build 400: with aliasSeries the series are named through the host name table;
+    // without it seriesNamer is null and the memo below builds exactly what it did.
+    const { displayNames } = useHostAlias();
+    const seriesNamer = aliasSeries ? displayNames : null;
     const {
         results,
         loading,
@@ -193,7 +195,15 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         const valueKeys = valueFields ?? fieldOrder.filter((k) => k !== '_time' && !k.startsWith('_'));
         const fieldNames = hasTime ? ['_time', ...valueKeys] : valueKeys;
 
-        const data = rowsToColumnar(allRows, fieldNames);
+        // Build 400 (aliasSeries): the names shown for the value fields
+        // (utils/aliasSeries.ts: no shown name starts with '_', the names stay
+        // unique, OTHER / NULL keep theirs; otherwise every series keeps its raw
+        // name). Without seriesNamer: shownKeys is valueKeys, shownByRaw null.
+        const { shownKeys, shownByRaw } = shownSeriesNames(valueKeys, seriesNamer);
+
+        const data = seriesNamer
+            ? rowsToColumnar(allRows, fieldNames, hasTime ? ['_time', ...shownKeys] : shownKeys)
+            : rowsToColumnar(allRows, fieldNames);
         return {
             sources: {
                 primary: {
@@ -209,11 +219,15 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
              * second source of truth that drifts the first time the field
              * detection above changes. */
             seriesCount: valueKeys.length,
+            /* Build 400 (aliasSeries): raw value -> shown name, for the colour map
+             * below; null without aliasSeries. */
+            shownByRaw,
         };
-    }, [results, valueFields]);
+    }, [results, valueFields, seriesNamer]);
 
     const dataSources = chartData ? chartData.sources : null;
     const seriesCount = chartData ? chartData.seriesCount : 0;
+    const shownByRaw = chartData ? chartData.shownByRaw : null;
 
     if (error) {
         return (
@@ -265,6 +279,8 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
     const finalFieldColors = seriesColorsByFieldProp
         ? { ...(paletteFieldColors ?? {}), ...seriesColorsByFieldProp }
         : paletteFieldColors;
+    const shownFieldColors =
+        shownByRaw && finalFieldColors ? withShownNames(finalFieldColors, shownByRaw) : finalFieldColors;
 
     const options = {
         backgroundColor: 'transparent',
@@ -282,7 +298,7 @@ const TimeSeriesChart: React.FC<TimeSeriesChartProps> = ({
         legendTruncation: 'ellipsisMiddle',
         ...(yLabel ? { yAxisTitleText: yLabel } : {}),
         ...(finalSeriesColors ? { seriesColors: finalSeriesColors } : {}),
-        ...(finalFieldColors ? { seriesColorsByField: finalFieldColors } : {}),
+        ...(shownFieldColors ? { seriesColorsByField: shownFieldColors } : {}),
     };
 
     const Viz =

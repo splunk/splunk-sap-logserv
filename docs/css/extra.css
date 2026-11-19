@@ -103,3 +103,13 @@ iframe {
     display: none;
   }
 }
+
+/* Left menu: show the EC2 instance role page and its reference page as sub-items of
+   "AWS Remote S3 Connect". A link to the page being viewed has no file name in its href,
+   so the two items are matched twice: by their own links, and as the two items that
+   follow the Connect guide's link. */
+.md-nav--primary .md-nav__item:has(> .md-nav__link[href*="aws-remote-s3-connect-instance-role"]),
+.md-nav--primary .md-nav__item:has(> .md-nav__link[href$="aws-remote-s3-connect-guide/"]) + .md-nav__item,
+.md-nav--primary .md-nav__item:has(> .md-nav__link[href$="aws-remote-s3-connect-guide/"]) + .md-nav__item + .md-nav__item {
+  padding-left: 0.8rem;
+}

@@ -186,14 +186,18 @@ const TOP_DOM_COLS: ColumnDef[] = [
     { key: 'Total Bytes', label: 'Total Bytes', align: 'right', render: (v) => formatBytes(v) },
     { key: 'Unique Clients', label: 'Unique Clients', align: 'right', render: (v) => formatInteger(v) },
 ];
+// Build 400: `hostAlias` marks the two Client IP columns. DataTable shows the name from
+// Settings > Host Names beside the raw value; sorting and the Host Details click keep
+// the raw value. Domains and Slowest Destinations' Destination (a URL or an IP,
+// coalesce(url, dest_ip)) are not flagged.
 const TOP_CLIENT_COLS: ColumnDef[] = [
-    { key: 'Client IP', label: 'Client IP' },
+    { key: 'Client IP', label: 'Client IP', hostAlias: true },
     { key: 'Requests', label: 'Requests', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Total Bytes', label: 'Total Bytes', align: 'right', render: (v) => formatBytes(v) },
     { key: 'Unique Domains', label: 'Unique Domains', align: 'right', render: (v) => formatInteger(v) },
 ];
 const CLIENT_DIVERSITY_COLS: ColumnDef[] = [
-    { key: 'Client IP', label: 'Client IP' },
+    { key: 'Client IP', label: 'Client IP', hostAlias: true },
     { key: 'Unique Domains', label: 'Unique Domains', align: 'right', render: (v) => formatInteger(v) },
 ];
 const CACHE_COLS: ColumnDef[] = [

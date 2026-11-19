@@ -170,8 +170,11 @@ const TLS_CIPHER_COLS: ColumnDef[] = [
     { key: 'Cipher Suite', label: 'Cipher Suite' },
     { key: 'count', label: 'Count', align: 'right', render: (v) => formatInteger(v) },
 ];
+// Build 400: `hostAlias` marks the Host and Client IP columns. DataTable shows the name
+// from Settings > Host Names beside the raw value; sorting, row clicks and the
+// searches they open keep the raw value.
 const SLOW_CLIENT_COLS: ColumnDef[] = [
-    { key: 'Client IP', label: 'Client IP' },
+    { key: 'Client IP', label: 'Client IP', hostAlias: true },
     { key: 'Events', label: 'Events', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Avg (ms)', label: 'Avg (ms)', align: 'right' },
     { key: 'Max (ms)', label: 'Max (ms)', align: 'right' },
@@ -180,8 +183,8 @@ const SLOW_CLIENT_COLS: ColumnDef[] = [
 const ERR500_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
     { key: 'Source', label: 'Source', width: '90px' },
-    { key: 'Host', label: 'Host', width: '160px' },
-    { key: 'Client IP', label: 'Client IP', width: '120px' },
+    { key: 'Host', label: 'Host', width: '160px', hostAlias: true },
+    { key: 'Client IP', label: 'Client IP', width: '120px', hostAlias: true },
     { key: 'Method', label: 'Method', width: '80px' },
     { key: 'URI', label: 'URI' },
     { key: 'Status', label: 'Status', width: '70px' },

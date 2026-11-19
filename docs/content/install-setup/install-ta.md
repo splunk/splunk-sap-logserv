@@ -103,7 +103,7 @@ All four packages of this release, their AppInspect reports and a README with th
 | File | Package | Version | Build | md5 |
 |---|---|---|---|---|
 | `splunk_ta_sap_logserv-0.1.2.tar.gz` | Data TA (Splunk TA for SAP LogServ) | 0.1.2 | 1792598960 | `41a04986683c5d33014d8ab2fdb832f6` |
-| `splunk_app_sap_logserv-0.1.2.tar.gz` | LogServ App (Splunk App for SAP LogServ) | 0.1.2 | 399 | `7a4d65e4fd37ad7b5d63dffb4ecd0c20` |
+| `splunk_app_sap_logserv-0.1.2.tar.gz` | LogServ App (Splunk App for SAP LogServ) | 0.1.2 | 406 | `2e085ca756d433ce23ef5d4d79159b77` |
 | `splunk_ta_sap_logserv_azure-0.1.2.tar.gz` | LogServ Azure add-on (Splunk TA for SAP LogServ on Azure) | 0.1.2 | 1792558069 | `5a5b0cfcd5f77dfa1e22dcc3545c8306` |
 | `splunk_ta_sap_logserv_gcp-0.1.2.tar.gz` | LogServ GCP add-on (Splunk TA for SAP LogServ on GCP) | 0.1.2 | 1792558072 | `42713371e1ba1042b1149065cc1c59a9` |
 
@@ -187,7 +187,7 @@ A rename touches three places: the indexer tier, every ingest input (normally on
 
 1. **Pick a new name** (for example `myorg_sap_logs`).
 2. **Create the index on the indexer tier** under that name, with the methods in [Creating the indexes on a separate indexer tier](#creating-the-indexes-on-a-separate-indexer-tier) (on a single instance: **Settings → Indexes → New Index**, or a stanza in the Data TA's `local/indexes.conf`). On Splunk Cloud, use **Settings → Indexes** or ACS: a `local/indexes.conf` does not reach the Cloud indexers. See the Splunk docs for <a href="https://help.splunk.com/en/splunk-cloud-platform/administer/admin-manual/9.3.2411/manage-your-indexes-and-data-in-splunk-cloud-platform/manage-splunk-cloud-platform-indexes" target="_blank">Splunk Cloud</a> or <a href="https://docs.splunk.com/Documentation/Splunk/9.4.2/Indexer/Setupmultipleindexes#Create_events_indexes" target="_blank">Splunk Enterprise</a>.
-3. **Update the macro in every app on the search head that ships it.** Open **Settings → Advanced search → Search macros**, set **App** to **All**, and filter on `sap_logserv_idx_macro`. Edit the row whose app is `splunk_app_sap_logserv` and change the definition from `index="sap_logserv_logs"` to `index="myorg_sap_logs"`. Where the Data TA is also installed on this search head (a single instance, or a search head that runs the inputs), edit the row whose app is `splunk_ta_sap_logserv` too. Each edit is saved in that app's `local/macros.conf`. Both are needed: the scheduled rollups and the **Settings → Dashboard Data** backfill run in the LogServ App and use its copy, while the live dashboard panels run in each user's default app, where Splunk ranks the Data TA's copy above the App's (other apps are ranked in reverse alphabetical order). Check the result:
+3. **Update the macro in every app on the search head that ships it.** Open **Settings → Advanced search → Search macros**, set **App** to **All**, and filter on `sap_logserv_idx_macro`. Edit the row whose app is `splunk_app_sap_logserv` and change the definition from `index="sap_logserv_logs"` to `index="myorg_sap_logs"`. Where the Data TA is also installed on this search head (a single instance, or a search head that runs the inputs), edit the row whose app is `splunk_ta_sap_logserv` too. Each edit is saved in that app's `local/macros.conf`. Both are needed: from build 404 the live dashboard panels, the scheduled rollups and the **Settings → Dashboard Data** backfill all run in the LogServ App and use its copy, while searches in other apps, such as Search & Reporting, run in the user's default app, where Splunk ranks the Data TA's copy above the App's (other apps are ranked in reverse alphabetical order). Up to build 399 the live panels ran there too. Check the result:
 
     ```spl
     | rest /servicesNS/-/-/configs/conf-macros splunk_server=local
@@ -231,7 +231,7 @@ We strongly recommend against installing the Data TA, the LogServ Azure add-on o
 
 ### :material-circle-box:{ .taiconcolor } Macros and the Deployment Server { #6-macros-and-deployment-server }
 
-When the Deployment Server pushes the Data TA to the heavy forwarders, its `macros.conf` travels with it, but heavy forwarders run no user searches, so a macro there has no effect. Macros matter on the search tier. Where the Data TA is also installed on a search head (a single instance, or a search head that runs the inputs), its copy of `sap_logserv_idx_macro` is the one the live dashboard panels use, ranked above the LogServ App's copy; see step 3 of [To Rename the SAP Data Index](#to-rename-the-sap-data-index).
+When the Deployment Server pushes the Data TA to the heavy forwarders, its `macros.conf` travels with it, but heavy forwarders run no user searches, so a macro there has no effect. Macros matter on the search tier. Where the Data TA is also installed on a search head (a single instance, or a search head that runs the inputs), its copy of `sap_logserv_idx_macro` is the one searches in other apps use, ranked above the LogServ App's copy (from build 404 the live dashboard panels run in the LogServ App and use the App's copy; up to build 399 they used the Data TA's); see step 3 of [To Rename the SAP Data Index](#to-rename-the-sap-data-index).
 
 What this means in practice:
 

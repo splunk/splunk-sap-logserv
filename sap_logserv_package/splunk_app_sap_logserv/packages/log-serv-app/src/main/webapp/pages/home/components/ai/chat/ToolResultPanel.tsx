@@ -77,7 +77,8 @@ interface ToolResultPanelProps {
     dashboard?: string | string[];
     /** Optional SPL string for the "↗ Run SPL" drill-down chip in
      *  the actions slot. When set, the panel renders a chip that opens
-     *  Splunk's Search app in a new tab with this SPL pre-populated and
+     *  Splunk's search page (in this app) in a new tab with this SPL
+     *  pre-populated and
      *  the dispatch's earliest/latest tokens pre-applied. Omitted on
      *  synthetic blocked-SPL results so the chip doesn't help the user
      *  manually run a security-blocked query. Build 172. */

@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { logservTheme } from '../styles/logservTheme';
 import { PanelMeta, PanelMetaContext, PanelDiagnosticContext, PanelActions } from './PanelMeta';
 import { textFromNode } from '../utils/reactText';
+import { TableWidthReset, TableWidthResetContext } from '../state/ColumnWidthsState';
 
 /**
  * FramedPanel — the v0.0.4.2 "framed dark cards" container.
@@ -181,6 +182,52 @@ const HeaderRight = styled.div`
     justify-content: flex-end;
 `;
 
+/* Build 404 — "Reset column widths", shown while a table in the panel has
+ * dragged widths. Drawn like the PanelActions toolbar icons beside it. */
+const ResetWidthsBtn = styled.button`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: ${logservTheme.radius.small};
+    color: ${logservTheme.colors.textMuted};
+    cursor: pointer;
+    transition: color 100ms ease-out, background-color 100ms ease-out;
+
+    &:hover {
+        color: ${logservTheme.colors.cyanLight};
+        background: ${logservTheme.colors.hoverBackground};
+    }
+    &:focus-visible {
+        outline: 2px solid ${logservTheme.colors.focusRing};
+        outline-offset: 1px;
+    }
+    svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+`;
+
+/** Two column edges with a double arrow between them. */
+const ResetWidthsIcon = () => (
+    <svg viewBox="0 0 16 16" aria-hidden>
+        <line x1="2" y1="3" x2="2" y2="13" />
+        <line x1="14" y1="3" x2="14" y2="13" />
+        <line x1="5" y1="8" x2="11" y2="8" />
+        <polyline points="7,6 5,8 7,10" />
+        <polyline points="9,6 11,8 9,10" />
+    </svg>
+);
+
 interface FramedPanelProps {
     title?: ReactNode;
     subtitle?: ReactNode;
@@ -236,6 +283,26 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
      * callback, so the chart's effect runs once. */
     const [chartFill, setChartFill] = useState<boolean>(false);
     const requestFill = useCallback(() => setChartFill(true), []);
+    /* Build 404 — the tables inside with dragged column widths (DataTable
+     * registers its reset while it has any). Stable setter, and no state
+     * change when nothing changed, so a table's effect cannot loop. */
+    const [widthResets, setWidthResets] = useState<ReadonlyArray<{ token: object; reset: () => void }>>([]);
+    const tableWidthReset = useMemo<TableWidthReset>(
+        () => ({
+            set: (token, reset) =>
+                setWidthResets((prev) => {
+                    const entry = prev.find((e) => e.token === token);
+                    if (reset === null) {
+                        return entry ? prev.filter((e) => e.token !== token) : prev;
+                    }
+                    if (entry && entry.reset === reset) {
+                        return prev;
+                    }
+                    return [...prev.filter((e) => e.token !== token), { token, reset }];
+                }),
+        }),
+        [],
+    );
     /* Build 253 — pointer travel between pointerdown and click. A drag inside
      * the panel (chart zoom selection, text selection) ends with a browser-
      * synthesized click on the common ancestor of the down/up targets — this
@@ -267,10 +334,45 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [search, titleText],
     );
+    const widthResetButton =
+        widthResets.length > 0 ? (
+            <ResetWidthsBtn
+                type="button"
+                title="Reset column widths"
+                aria-label="Reset column widths"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    // The button goes away with the widths. After Enter or Space
+                    // (detail 0; a mouse click has 1 or more), keep keyboard focus
+                    // in the panel on its table's first resize handle, which only
+                    // acts on the arrow keys; a mouse click moves no focus.
+                    const btn = e.currentTarget;
+                    const byKeyboard = e.detail === 0 && document.activeElement === btn;
+                    const panel = btn.closest('section');
+                    widthResets.forEach((entry) => entry.reset());
+                    if (byKeyboard && panel) {
+                        const handle = panel.querySelector<HTMLElement>('[data-test="resize"]');
+                        if (handle) {
+                            handle.focus();
+                        } else {
+                            // Build 406: no table drawn (no rows, or loading): the panel
+                            // itself takes the focus, so it does not fall to the page body.
+                            if (!panel.hasAttribute('tabindex')) {
+                                panel.setAttribute('tabindex', '-1');
+                            }
+                            panel.focus({ preventScroll: true });
+                        }
+                    }
+                }}
+            >
+                <ResetWidthsIcon />
+            </ResetWidthsBtn>
+        ) : null;
     const headerRight =
-        actions || showToolbar ? (
+        actions || showToolbar || widthResetButton ? (
             <HeaderRight>
                 {actions}
+                {widthResetButton}
                 {showToolbar && meta && <PanelActions meta={meta} title={typeof title === 'string' ? title : undefined} />}
             </HeaderRight>
         ) : null;
@@ -294,6 +396,7 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
                 source here, and a panel without one correctly says nothing. */}
             <PanelDiagnosticContext.Provider value={diagnosticValue}>
             <PanelFillContext.Provider value={requestFill}>
+            <TableWidthResetContext.Provider value={tableWidthReset}>
             <Root
                 $compact={compact}
                 $clickable={isClickable}
@@ -381,6 +484,7 @@ const FramedPanel: React.FC<FramedPanelProps> = ({
                 )}
                 <Body $fill={fillHeight || chartFill}>{children}</Body>
             </Root>
+            </TableWidthResetContext.Provider>
             </PanelFillContext.Provider>
             </PanelDiagnosticContext.Provider>
         </PanelMetaContext.Provider>

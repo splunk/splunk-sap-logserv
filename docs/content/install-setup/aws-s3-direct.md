@@ -278,7 +278,7 @@ All three AWS topologies authenticate through a **cross-account IAM role**, and 
 
 **With an EC2 instance role.** Under [AWS Remote S3 Connect with an EC2 Instance Role](aws-remote-s3-connect-instance-role.md), `aws_account` is the autodiscovered account, named after the instance role, and `aws_iam_role` is the IAM Role you configured for `splunk-logserv-ta-role`. Going by the Data TA's code, the AWS S3 Direct screen's checks pass with a role selected, and it sends no key. Our lab has not run AWS S3 Direct with an instance role.
 
-**Without a role, the screen refuses an instance-role account as well.** Its message still speaks of the bare IAM user: it shows a hard error, offers no **Create** button and generates nothing. That includes the [alternative path](aws-remote-s3-connect-instance-role.md#alternative-attach-the-policy-directly-to-the-instance-role), where the instance role itself holds the policy. There, loading history needs a later Data TA build, or a stanza written by hand as in A4 with `aws_iam_role` left out. The add-on's code allows that stanza; it has not yet been run in our lab either.
+**Without a role, the screen refuses an instance-role account as well.** Its message still speaks of the bare IAM user: it shows a hard error, offers no **Create** button and generates nothing. Select the IAM Role you configured for `splunk-logserv-ta-role`.
 
 #### :material-crop-square:{ .taiconcolor } A4. Run-once backfill procedure by hand
 

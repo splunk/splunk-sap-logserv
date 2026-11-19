@@ -38,6 +38,8 @@ import type {
 } from '../../topology/panelFacts';
 import { enrichmentSourceLabel, groupUsersBySource } from '../../topology/enrichment';
 import type { IpEnrichmentEntry } from '../../topology/enrichment';
+import { NO_HOST_ALIASES, nodeAlias, type HostAliasResolver } from '../../topology/nodeAlias';
+import { formatAliasLabel } from '../../utils/hostAlias';
 
 /**
  * Right sidebar — selected-node details.
@@ -85,6 +87,21 @@ const SidBadge = styled.div<{ $kind: TopologyNode['kind'] }>`
     font-weight: ${logservTheme.fontWeight.bold};
     font-size: ${logservTheme.fontSize.large};
     letter-spacing: 0.5px;
+
+    /* Build 400 - a partner with a name from Settings > Host Names: the name,
+     * then the raw label on its own line, smaller and lighter on the same fill. */
+    .badgeName {
+        display: block;
+        overflow-wrap: anywhere;
+    }
+    .badgeRaw {
+        display: block;
+        font-size: ${logservTheme.fontSize.small};
+        font-weight: ${logservTheme.fontWeight.normal};
+        letter-spacing: 0;
+        opacity: 0.85;
+        overflow-wrap: anywhere;
+    }
 `;
 
 const KindChip = styled.span<{ $kind: TopologyNode['kind'] }>`
@@ -258,6 +275,34 @@ const TableScroll = styled.div`
     margin-top: ${logservTheme.spacing.sm};
 `;
 
+/* Build 400 - a host value with its name from Settings > Host Names, in this
+ * pane, which wraps long names rather than cutting them (see DataTable above):
+ * the name, then the raw value on the line under it in the muted colour. */
+const PaneName = styled.span`
+    display: block;
+    overflow-wrap: anywhere;
+`;
+
+const PaneRaw = styled.span`
+    display: block;
+    color: ${logservTheme.colors.textMuted};
+    font-weight: ${logservTheme.fontWeight.normal};
+    font-size: ${logservTheme.fontSize.small};
+    overflow-wrap: anywhere;
+`;
+
+/** A host value as the pane shows it: with a name, the name and then the raw
+ *  value under it; with none, the raw value alone, exactly as before. Display
+ *  only: keys, lookups and searches keep the raw value. */
+const PaneHost: React.FC<{ raw: string; alias: string | null }> = ({ raw, alias }) => (
+    alias === null ? raw : (
+        <>
+            <PaneName>{alias}</PaneName>
+            <PaneRaw>{raw}</PaneRaw>
+        </>
+    )
+);
+
 /**
  * Compact relative-time formatter. Returns strings like "2m ago", "3h ago",
  * "5d ago", "—" if the epoch is 0/falsy. Uses now() at call time so values
@@ -380,6 +425,10 @@ const HourlyChart: React.FC<{ data: number[]; color: string }> = ({ data, color 
 interface DonutDatum {
     id: string;
     code: string;
+    /** Build 400 - the customer's name for the partner's host (Settings > Host
+     *  Names), shown before `code` in the legend and the hover text; absent or
+     *  null for a SID, a tenant, a host with no name, and the Operations donut. */
+    alias?: string | null;
     calls: number;
     color: string;
     /** What `calls` counts (build 378), in the wedge hover text and under the
@@ -407,7 +456,8 @@ interface DonutDatum {
 const wedgeTooltip = (d: DonutDatum, total: number): string => {
     const pct = total > 0 ? (d.calls / total) * 100 : 0;
     const shown = pct > 0 && pct < 0.1 ? '<0.1' : pct.toFixed(1);
-    return `${d.code} — ${d.calls.toLocaleString()} ${d.unit ?? 'calls'} (${shown}% of ${total.toLocaleString()})`;
+    const who = d.alias ? formatAliasLabel(d.alias, d.code) : d.code;
+    return `${who} — ${d.calls.toLocaleString()} ${d.unit ?? 'calls'} (${shown}% of ${total.toLocaleString()})`;
 };
 
 /**
@@ -616,7 +666,7 @@ const PartnerDonutBlock: React.FC<{
                             return (
                                 <li key={d.id} title={tip}>
                                     <span className="swatch" style={{ background: d.color }} />
-                                    <span className="code">{d.code}</span>
+                                    <span className="code"><PaneHost raw={d.code} alias={d.alias ?? null} /></span>
                                     <span className="count">{formatCallCount(d.calls)}</span>
                                 </li>
                             );
@@ -819,6 +869,13 @@ interface TopologyRightSidebarProps {
      *  IP-labeled partner squares. Latest-known semantics — NOT bound to
      *  the time picker; the "Names as of" line carries the honesty. */
     ipEnrichment?: ReadonlyMap<string, IpEnrichmentEntry>;
+    /** Build 400 - the customer's host names (Settings > Host Names): the
+     *  resolve function of state/HostAliasProvider. Display only: shown next to
+     *  the raw value of a partner's label (never a SID or tenant: see
+     *  topology/nodeAlias.ts), a Hosts / Calls by host row and an app-server
+     *  address; every key, lookup and search keeps the raw value. Omitted:
+     *  no names. */
+    resolveHostAlias?: HostAliasResolver;
     /** Build 322 — the selected node's traffic rows, accounting for 100% of
      *  its calls. Pass a stable array (a `?? []` in JSX would hand this a new
      *  identity every render and invalidate the memo below). */
@@ -989,6 +1046,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
     nodeHostTotal,
     nodeHostCount,
     ipEnrichment,
+    resolveHostAlias = NO_HOST_ALIASES,
     nodeTraffic,
     endpointAttribution,
     hostOwnerByValue,
@@ -1046,6 +1104,19 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
         (id: string): string => labelById.get(id) ?? id,
         [labelById],
     );
+    /** Build 400 - node id -> the customer's name for its host, for the nodes
+     *  whose label is a host value (topology/nodeAlias.ts). Keyed by id, like
+     *  labelById: an endpoint id with no node, a SID or a tenant gets none. */
+    const aliasById = React.useMemo(() => {
+        const map = new Map<string, string>();
+        (edgeNodes ?? []).forEach((n) => {
+            const alias = nodeAlias(n, resolveHostAlias);
+            if (alias !== null) {
+                map.set(n.id, alias);
+            }
+        });
+        return map;
+    }, [edgeNodes, resolveHostAlias]);
 
     /**
      * Partners split by GRAPH ROLE (build 322, replacing the build-205
@@ -1091,13 +1162,15 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                 return {
                     id: p.id,
                     code: dup && att?.kind ? `${labels[i]} (${att.kind})` : labels[i],
+                    /* Build 400 - by id, so a name can never cross to another row. */
+                    alias: aliasById.get(p.id) ?? null,
                     calls: p.calls,
                     color: partnerColorAt(PARTNER_PALETTE, i, mode),
                     unit,
                 };
             });
         },
-        [labelForEndpoint, endpointAttribution, PARTNER_PALETTE, mode],
+        [labelForEndpoint, endpointAttribution, aliasById, PARTNER_PALETTE, mode],
     );
 
     /* Build 380 — what each direction's donut counts, from its edge types:
@@ -1157,12 +1230,16 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                     <EndpointRow>
                         <EndpointCard>
                             <span className="epLabel">Source</span>
-                            <span className="epValue">{sourceLabel}</span>
+                            <span className="epValue">
+                                <PaneHost raw={sourceLabel} alias={aliasById.get(selectedEdge.source) ?? null} />
+                            </span>
                         </EndpointCard>
                         <EndpointArrow aria-hidden>→</EndpointArrow>
                         <EndpointCard>
                             <span className="epLabel">Target</span>
-                            <span className="epValue">{targetLabel}</span>
+                            <span className="epValue">
+                                <PaneHost raw={targetLabel} alias={aliasById.get(selectedEdge.target) ?? null} />
+                            </span>
                         </EndpointCard>
                     </EndpointRow>
                     <NodeIdRow>
@@ -1262,7 +1339,11 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                                     return (
                                                         <tr key={a.localIp ?? '(not recorded)'}>
                                                             <td className="primary">
-                                                                <div>{a.localIp ?? '(not recorded)'}</div>
+                                                                <div>
+                                                                    {a.localIp !== null
+                                                                        ? <PaneHost raw={a.localIp} alias={resolveHostAlias(a.localIp)} />
+                                                                        : '(not recorded)'}
+                                                                </div>
                                                                 {owner && <div className="secondary">{owner}</div>}
                                                             </td>
                                                             <td className="num">{a.calls.toLocaleString()}</td>
@@ -1587,12 +1668,23 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
         ? nodeHostTotal
         : hostsShown;
     const hostsTruncated = hostsTotal > hostsShown;
+    /* Build 400 - the customer's name for the selected node's host (Settings >
+     * Host Names), for a partner whose label is a host value only. The label,
+     * and every read scoped by it, stays raw. */
+    const selectedAlias = nodeAlias(selectedNode, resolveHostAlias);
 
     return (
         <Stack>
             <FramedPanel title="Details" actions={collapseAction}>
                 <NodeIdRow>
-                    <SidBadge $kind={selectedNode.kind}>{selectedNode.label}</SidBadge>
+                    <SidBadge $kind={selectedNode.kind} title={selectedAlias !== null ? selectedNode.label : undefined}>
+                        {selectedAlias !== null ? (
+                            <>
+                                <span className="badgeName">{selectedAlias}</span>
+                                <span className="badgeRaw">{selectedNode.label}</span>
+                            </>
+                        ) : selectedNode.label}
+                    </SidBadge>
                     <KindChip $kind={selectedNode.kind}>
                         {selectedNode.kind === 'sid_focused' ? 'SID (HIGH TRAFFIC)' : selectedNode.kind === 'sid_secondary' ? 'SID' : 'PARTNER'}
                     </KindChip>
@@ -1625,7 +1717,20 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                   * users are source-labeled and ALL listed (decision
                                   * 1/2); "Names as of" carries the latest-known
                                   * honesty (decision 4 — this data is deliberately
-                                  * NOT bound to the time picker). */}
+                                  * NOT bound to the time picker). Build 400 - the
+                                  * Name row comes first: the customer's name for
+                                  * the node, with where it comes from, so it cannot
+                                  * be mistaken for the evidence-derived Hostname
+                                  * below it, which gets no name of its own
+                                  * (topology/nodeAlias.ts). The source reads "Host
+                                  * Names", not a Settings path: every role sees
+                                  * this row, and only admins can open Settings. */}
+                                {selectedAlias !== null && (
+                                    <tr>
+                                        <td className="k">Name</td>
+                                        <td className="v">{`${selectedAlias} (from Host Names)`}</td>
+                                    </tr>
+                                )}
                                 {selectedIpEnrichment?.hostname && (
                                     <tr>
                                         <td className="k">Hostname</td>
@@ -2023,7 +2128,7 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                                 return (
                                                     <tr key={h.host}>
                                                         <td className="primary">
-                                                            <div>{h.host}</div>
+                                                            <div><PaneHost raw={h.host} alias={resolveHostAlias(h.host)} /></div>
                                                             {/* Build 325 (plan item D2) — the SAP instance numbers
                                                               * recorded on this host's events, from the rollup's new
                                                               * `instances` measure. Absent (no clause) when the rows
@@ -2086,7 +2191,11 @@ const TopologyRightSidebar: React.FC<TopologyRightSidebarProps> = ({
                                             {trafficRows.map((t) => (
                                                 <tr key={`${t.scope}-${t.key}-${t.flow}`}>
                                                     <td className="primary">
-                                                        <div>{t.scope === 'host' ? t.key : edgeTypeLabel(t.key)}</div>
+                                                        <div>
+                                                            {t.scope === 'host'
+                                                                ? <PaneHost raw={t.key} alias={resolveHostAlias(t.key)} />
+                                                                : edgeTypeLabel(t.key)}
+                                                        </div>
                                                         <div className="secondary">
                                                             {t.scope === 'host'
                                                                 ? t.flow

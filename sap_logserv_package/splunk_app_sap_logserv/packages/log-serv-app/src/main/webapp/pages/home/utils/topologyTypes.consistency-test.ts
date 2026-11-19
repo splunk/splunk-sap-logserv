@@ -32,6 +32,18 @@
  *    clause field and node tag the topology saved searches emit as a literal
  *    is one the UI knows (a conf arm adding a type the UI cannot draw fails
  *    here, not on a customer's canvas).
+ *  - T13    The customer's host names (Settings > Host Names, build 400) on the
+ *    topology: only a partner whose label is a host value gets a name (never a
+ *    SID or a HANA tenant, which a short host entry would otherwise match), the
+ *    name shares the partner square's one line with the IP enrichment hostname
+ *    (the name wins, the hostname moves to the tooltip, so the 95 x 175 layout
+ *    box holds), the screen-reader name of the square and of the database disc
+ *    is "name (raw label)" (the raw label alone with no name; the tenant disc
+ *    keeps the raw label), the right pane's facts row reads "Name" with
+ *    "<name> (from Host Names)" and never a Settings path (every role sees
+ *    it), Live Activity's partner cell takes HostName's copy handler only when
+ *    it shows a name, and the wiring keeps every label, key, layout input and
+ *    search raw (topology/nodeAlias.ts).
  *
  * Run standalone with: `yarn check:diagnostics`
  */
@@ -542,6 +554,169 @@ check('T8 the earlier tags still render as before',
     console.log(`topologyTypes.consistency-test: conf emits types [${Array.from(types).sort().join(', ')}], kinds [${
         Array.from(new Set(Array.from(kinds).concat(Array.from(nodeKinds)))).sort().join(', ')}], tags [${
         Array.from(tags).sort().join(', ')}]`);
+}
+
+// =============================================================================
+// T13 - host names on the topology (build 400, Settings > Host Names)
+// =============================================================================
+{
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    // eslint-disable-next-line global-require, no-undef -- a standalone script, as the requires above
+    const na = require('../topology/nodeAlias') as any;
+    // eslint-disable-next-line global-require, no-undef -- a standalone script, as the requires above
+    const ha = require('../utils/hostAlias') as any;
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    const index = ha.buildAliasIndex([
+        { _key: 'xcp', match_value: 'xcp', alias: 'Virtual XCP' },
+        { _key: 'app01', match_value: 'app01', alias: 'Payroll' },
+        { _key: '192.0.2.10', match_value: '192.0.2.10', alias: 'Payroll NIC' },
+        { _key: 'router01.example.com', match_value: 'router01.example.com', alias: 'Edge router' },
+    ]);
+    const resolve = (raw: unknown): string | null => ha.resolveAlias(index, raw);
+    const node = (label: string, kind: string, tag: string): { label: string; kind: string; tag: string } =>
+        ({ label, kind, tag });
+
+    // The premise: the table WOULD name a SID-shaped value, so the node rule is what keeps SIDs out.
+    check('T13 premise: a short host entry matches a SID-shaped label', resolve('XCP') === 'Virtual XCP',
+        String(resolve('XCP')));
+    check('T13 a SID node gets no name',
+        na.nodeAlias(node('XCP', 'sid_focused', 'ECC'), resolve) === null
+        && na.nodeAlias(node('XCP', 'sid_secondary', 'HANA'), resolve) === null,
+        'a SID circle would show a host name');
+    check('T13 a HANA tenant circle gets no name', na.nodeAlias(node('XCP', 'partner', 'TENANT'), resolve) === null,
+        'a tenant label is a SID');
+    check('T13 a partner whose label is a host value gets its name',
+        na.nodeAlias(node('192.0.2.10', 'partner', 'EXT'), resolve) === 'Payroll NIC'
+        && na.nodeAlias(node('app01.example.com', 'partner', 'EXT'), resolve) === 'Payroll'
+        && na.nodeAlias(node('router01.example.com', 'partner', 'ROUTER'), resolve) === 'Edge router'
+        && na.nodeAlias(node('APP01', 'partner', 'HANA'), resolve) === 'Payroll',
+        'IP, FQDN under a short entry, SAP Router host, database partner');
+    check('T13 an address with no entry of its own gets none',
+        na.nodeAlias(node('192.0.2.11', 'partner', 'EXT'), resolve) === null,
+        String(na.nodeAlias(node('192.0.2.11', 'partner', 'EXT'), resolve)));
+    check('T13 no node, or no names, gives none',
+        na.nodeAlias(null, resolve) === null && na.nodeAlias(undefined, resolve) === null
+        && na.nodeAlias(node('app01', 'partner', 'EXT'), na.NO_HOST_ALIASES) === null
+        && na.NO_HOST_ALIASES('app01') === null,
+        'the default resolver must answer null');
+    check('T13 isHostLabelNode: partners other than tenants only',
+        na.isHostLabelNode(node('a', 'partner', 'EXT')) && na.isHostLabelNode(node('a', 'partner', 'ROUTER'))
+        && na.isHostLabelNode(node('a', 'partner', 'ORACLE'))
+        && !na.isHostLabelNode(node('a', 'partner', 'TENANT')) && !na.isHostLabelNode(node('a', 'sid_focused', 'ECC'))
+        && !na.isHostLabelNode(node('a', 'sid_secondary', 'ABAP')) && !na.isHostLabelNode(null),
+        'kind / tag rule');
+    {
+        const set: ReadonlySet<string> = na.hostLabelSet([
+            node('192.0.2.10', 'partner', 'EXT'),
+            node('XCP', 'sid_focused', 'ECC'),
+            node('XCQ', 'partner', 'TENANT'),
+            node('shared', 'partner', 'EXT'),
+            node('shared', 'sid_secondary', 'ABAP'),
+            node('router01', 'partner', 'ROUTER'),
+        ]);
+        check('T13 hostLabelSet: host labels only, minus any label a SID or tenant also carries',
+            eq(Array.from(set).sort(), ['192.0.2.10', 'router01']), JSON.stringify(Array.from(set)));
+    }
+    {
+        const both = na.partnerNameSlot('Payroll', 'app01');
+        const nameOnly = na.partnerNameSlot('Payroll', null);
+        const hostOnly = na.partnerNameSlot(null, 'app01');
+        const neither = na.partnerNameSlot(null, undefined);
+        check('T13 the name wins the shared line and the enrichment hostname moves to the tooltip',
+            eq(both, { line: { text: 'Payroll', isAlias: true }, tooltipHostname: 'app01' }), JSON.stringify(both));
+        check('T13 a name with no enrichment hostname',
+            eq(nameOnly, { line: { text: 'Payroll', isAlias: true }, tooltipHostname: null }), JSON.stringify(nameOnly));
+        check('T13 no name: the enrichment hostname keeps its line, the tooltip gets no row',
+            eq(hostOnly, { line: { text: 'app01', isAlias: false }, tooltipHostname: null }), JSON.stringify(hostOnly));
+        check('T13 neither: no line', eq(neither, { line: null, tooltipHostname: null }), JSON.stringify(neither));
+        check('T13 an empty name or hostname counts as none',
+            eq(na.partnerNameSlot('', ''), { line: null, tooltipHostname: null }),
+            JSON.stringify(na.partnerNameSlot('', '')));
+    }
+
+    // The wiring, read from the source with comments stripped (they name these literals too).
+    const code = (rel: string): string => read(rel)
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+    const pn = code('components/topology/nodeTypes/PartnerNode.tsx');
+    check('T13 PartnerNode reads the names from NodeAliasContext and shares the line',
+        /const resolveNodeAlias = useContext\(NodeAliasContext\);/.test(pn)
+        && /const alias = isTenant \? null : resolveNodeAlias\(d\.label\);/.test(pn)
+        && /const nameSlot = partnerNameSlot\(alias, enrichEntry\?\.hostname\);/.test(pn),
+        'the square must take its name from context, skip tenants and share the hostname line');
+    check('T13 PartnerNode draws one line under the label, never the enrichment hostname on its own',
+        (pn.match(/className="enrichHost"/g) || []).length === 1
+        && /\{nameSlot\.line\.text\}/.test(pn)
+        && !/\{enrichEntry!?\??\.hostname\}/.test(pn),
+        'a second line would outgrow the 95 x 175 layout box');
+    check('T13 PartnerNode keeps the label raw and passes the name only to the tooltip and the screen-reader name',
+        pn.indexOf('<div className="label">{d.label}</div>') !== -1
+        && /name=\{d\.label\}\s*alias=\{alias\}\s*hostname=\{nameSlot\.tooltipHostname\}/.test(pn)
+        && (pn.match(/aria-label=\{d\.label\}/g) || []).length === 1
+        && (pn.match(/aria-label=\{ariaName\}/g) || []).length === 2
+        && /const ariaName = formatAliasLabel\(alias, d\.label\);/.test(pn)
+        && pn.indexOf('Settings > Host Names') === -1,
+        'the label drives refineTag, the read scopes and the enrichment key; the tenant disc keeps the raw label,'
+        + ' the square and the database disc read "name (raw)" (the raw label with no name), and no on-screen text'
+        + ' names the Settings path (non-admins see it)');
+    const tt = code('components/topology/nodeTypes/NodeTooltip.tsx');
+    check('T13 NodeTooltip shows the name, then the raw name, and the displaced hostname',
+        /\{alias\}\s*<span className="tt-raw">\{name\}<\/span>/.test(tt)
+        && /\{hostname && \(/.test(tt) && /\$wideLabels=\{!!hostname\}/.test(tt),
+        'the Name row must keep the raw value next to the name');
+    const integ = code('dashboards/IntegrationTopology.tsx');
+    check('T13 IntegrationTopology delivers the names by context and props only',
+        integ.indexOf('<NodeAliasContext.Provider value={resolveHostAlias}>') !== -1
+        && (integ.match(/resolveHostAlias=\{resolveHostAlias\}/g) || []).length === 2
+        && integ.indexOf('hostLabels={hostLabels}') !== -1
+        && /const hostLabels = useMemo\(\(\) => hostLabelSet\(liveNodes\), \[liveNodes\]\);/.test(integ),
+        'the graph (context), the right pane and Live Activity (props)');
+    {
+        const live = /const liveNodes = useMemo\(\(\) => \{([\s\S]*?)\n {4}\}, \[topology\.nodes, topology\.edges\]\);/
+            .exec(integ);
+        check('T13 the names never enter the layout-feeding node array',
+            !!live && !/alias|hostLabel/i.test(live[1]),
+            live ? 'liveNodes mentions a name' : 'the liveNodes memo could not be found');
+    }
+    const NAME_RE = /nodeAlias|NodeAliasContext|hostAlias|HostAlias|useHostAlias/;
+    const untouched = ['hooks/useTopologyData.ts', 'hooks/useNodeData.ts', 'hooks/useEdgeData.ts',
+        'topology/searches.ts', 'topology/persistence.ts', 'topology/layout.ts', 'topology/layoutLayered.ts',
+        'topology/layoutMrtree.ts', 'topology/enrichment.ts', 'components/topology/TopologyGraph.tsx']
+        .filter((f) => NAME_RE.test(code(f)));
+    check('T13 no read, search, saved layout, layout engine or the graph knows the names', untouched.length === 0,
+        untouched.join(', '));
+    const side = code('components/topology/TopologyRightSidebar.tsx');
+    const sideCalls = side.match(/resolveHostAlias\(/g) || [];
+    const sideShown = side.match(/alias=\{resolveHostAlias\(/g) || [];
+    check('T13 the right pane only DISPLAYS a name it resolves',
+        sideCalls.length === 3 && sideShown.length === sideCalls.length
+        && /nodeAlias\(n, resolveHostAlias\)/.test(side) && /nodeAlias\(selectedNode, resolveHostAlias\)/.test(side)
+        && side.indexOf('<tr key={h.host}>') !== -1
+        && /classifyHostOwnership\(h\.host, hostOwnerByValue \?\? \{\}\)/.test(side)
+        && /classifyHostOwnership\(a\.localIp, hostOwnerByValue \?\? \{\}\)/.test(side),
+        `resolveHostAlias( x${sideCalls.length}, as alias={...} x${sideShown.length}; keys and ownership must stay raw`);
+    check('T13 the right pane names the row "Name" and its source "Host Names", never a Settings path (every role'
+        + ' sees it); the raw value under a name is the small font, not 10px',
+        side.indexOf('<td className="k">Name</td>') !== -1
+        && /<td className="v">\{`\$\{selectedAlias\} \(from Host Names\)`\}<\/td>/.test(side)
+        && side.indexOf('Settings > Host Names') === -1
+        && side.indexOf('>Alias<') === -1
+        && /const PaneRaw = styled\.span`[^`]*font-size: \$\{logservTheme\.fontSize\.small\};/.test(side),
+        'the facts row reads Name, then the name and "(from Host Names)"; PaneRaw takes the small font size');
+    const bottom = code('components/topology/TopologyBottomPanel.tsx');
+    check('T13 Live Activity names only labels of host nodes, next to the raw value',
+        /hostLabels\.has\(r\.sourceSid\) \? resolveHostAlias\(r\.sourceSid\) : null/.test(bottom)
+        && /hostLabels\.has\(r\.partner\) \? resolveHostAlias\(r\.partner\) : null/.test(bottom)
+        && (bottom.match(/resolveHostAlias\(/g) || []).length === 2
+        && /<AliasedHost alias=\{partnerAlias\} raw=\{r\.partner\} \/>/.test(bottom)
+        && /\{r\.sourceSid\}\s*<\/SidPill>/.test(bottom)
+        && bottom.indexOf('focusedSidIds.has(r.sourceSid)') !== -1,
+        'a SID row would get a host name, or the raw value would be replaced');
+    check('T13 Live Activity\'s partner cell takes the name line\'s copy handler only when it shows a name',
+        /<td onCopy=\{partnerAlias !== null \? copyOnOneLine : undefined\}>\s*\{partnerAlias !== null\s*\? <AliasedHost alias=\{partnerAlias\} raw=\{r\.partner\} \/>\s*: r\.partner\}\s*<\/td>/
+            .test(bottom) && (bottom.match(/onCopy=/g) || []).length === 1
+        && /import \{ AliasedHost, copyOnOneLine \} from '\.\.\/HostName';/.test(bottom),
+        '<td onCopy={partnerAlias !== null ? copyOnOneLine : undefined}> around the AliasedHost, imported from ../HostName');
 }
 
 /* ===================================================================== */

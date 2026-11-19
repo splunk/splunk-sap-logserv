@@ -269,6 +269,29 @@ const TESTS = [
     // the AI Assistant's Run SPL chips and Inspect open in this app's own
     // namespace, not the Search app's, which some sites disable.
     'searchLinks.consistency-test',
+    // Build 400 - host names (Settings > Host Names): the match rules (an IP only
+    // exactly, a short name covering its FQDNs, an ambiguous short name getting
+    // none), sanitize-on-read, the CSV import and export, the names chart series
+    // and graph nodes get, the editor's decisions (utils/hostAliasEditor.ts,
+    // loaded by the test through loadTs like utils/hostAlias.ts: what Import and
+    // Save write, capacity over the stored rows) and the provider / DataTable
+    // wiring. The KV side is in kvAcl.consistency-test (K1a, K2b, K5k-K5p), and the
+    // KV client itself (utils/hostAliasApi.ts) in the async hostAliasApi.consistency-test below.
+    'hostAlias.consistency-test',
+    // Build 402 - Download PNG / PDF: the page copy html2canvas draws lays its
+    // digits out as the canvas draws them, and text the page cuts short gets a
+    // real ellipsis (utils/exportCapture.ts); the onclone wiring and the
+    // one-line clamps.
+    'exportCapture.consistency-test',
+    // Build 403 - every panel search runs in the LogServ App's namespace, so the
+    // App's macro, lookup definitions and field extractions resolve whatever the
+    // App's sharing; nothing starts a search under /services.
+    'searchNamespace.consistency-test',
+    // Build 404 - resizable table columns: the widths each browser remembers per
+    // dashboard panel (utils/columnWidths.ts: validated reads, caps, merged
+    // writes), the DataTable / FramedPanel / DashboardLayout wiring and the
+    // unique panel titles the remembered widths are keyed by.
+    'columnWidths.consistency-test',
 ];
 
 let failed = false;
@@ -7174,7 +7197,7 @@ const confLast = (body, key) => {
         'the panel grouped by host must say it is the HANA host');
     p3h('HanaAudit no plain Host label', !/label: 'Host'/.test(ha),
         'a HANA audit host column must say whether it is the HANA host or the client host');
-    // The two drilldowns' Search-app tables show the client host too.
+    // The two drilldown searches' tables show the client host too.
     p3h('HanaAudit drilldowns show the client host',
         (ha.match(/\| table _time action_type[^`]*\bhost src_host client_ip\b[^`]*`;/g) || []).length === 2,
         'goHighRiskRow and goAfterHoursRow must table host src_host client_ip');
@@ -7250,6 +7273,7 @@ const confLast = (body, key) => {
         'auditWriteHealth.consistency-test',
         'kvPagedRead.consistency-test',
         'hostGrain.consistency-test',
+        'hostAliasApi.consistency-test',
     ];
     // Deliberately unwired, with the reason. Anything else on disk fails.
     const KNOWN_UNWIRED = [
@@ -7316,6 +7340,11 @@ const kvPagedTest = loadTs(path.join(UTILS, 'kvPagedRead.consistency-test'));
 // row is zeroed when its hour is recounted, the time bound removes only what the range
 // removes, and a filter never meets a row with no `host`.
 const hostGrainTest = loadTs(path.join(UTILS, 'hostGrain.consistency-test'));
+// `hostAliasApi.consistency-test` (build 400): the host name table's KV client through a fake
+// fetch - batch_save in chunks of 1000 (Splunk refuses a larger one whole), a chunk counted only
+// when the answer lists one key per row, Splunk's own error text, and a delete that refuses a key
+// which could address the whole collection before any request.
+const hostAliasApiTest = loadTs(path.join(UTILS, 'hostAliasApi.consistency-test'));
 // An async suite whose promise never settles lets Node run out of work and exit
 // 0 with neither OK nor FAILED printed - and `yarn build` carries on. A limiter
 // that leaks a slot fails exactly that way (session 144), so an event loop that
@@ -7368,6 +7397,12 @@ evTest
     })
     .then((hostGrainFailures) => {
         if (hostGrainFailures > 0) failed = true;
+        return hostAliasApiTest.run();
+    })
+    .then((hostAliasApiFailures) => {
+        if (hostAliasApiFailures > 0) {
+            failed = true;
+        }
         // The real Environment Topology hook under jsdom: its own process, because it
         // installs DOM globals and a clock none of the suites above should see.
         const hookRun = require('child_process').spawnSync(

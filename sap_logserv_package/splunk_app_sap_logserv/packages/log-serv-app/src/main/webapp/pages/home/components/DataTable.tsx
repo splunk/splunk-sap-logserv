@@ -1,11 +1,21 @@
-import React, { ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
 import Table from '@splunk/react-ui/Table';
 import { logservTheme } from '../styles/logservTheme';
 import PanelLoading from './PanelLoading';
 import EmptyStateHint from './EmptyStateHint';
 import { usePanelDiagnostic } from './PanelMeta';
+import { AliasedHost, copyOnOneLine } from './HostName';
+import { useHostAlias } from '../state/HostAliasProvider';
 import { computeColumnCoverage, recordColumnCoverage } from '../utils/columnCoverage';
+import { clampWidth, hintPx, panelIdFor, pickWidths, resizeFloor, sameWidths, withOwnWidth } from '../utils/columnWidths';
+import {
+    DashboardIdContext,
+    TableWidthResetContext,
+    columnWidthsJustChanged,
+    noteColumnWidthChange,
+    sharedColumnWidthStore,
+} from '../state/ColumnWidthsState';
 
 /**
  * DataTable — wraps @splunk/react-ui/Table with our zebra + cyan-accent
@@ -20,19 +30,69 @@ import { computeColumnCoverage, recordColumnCoverage } from '../utils/columnCove
  * row count. Pagination only renders if the row count exceeds `pageSize`.
  * Pass `paginationDisabled` to render every row (e.g., for short tables that
  * don't benefit from paging).
+ *
+ * Resizable columns (build 404): drag the edge of a column heading (or focus
+ * it and press the arrow keys; a double-click fits the column to the rows on
+ * the page). On a dashboard the widths are remembered in this browser for
+ * that panel (utils/columnWidths.ts); the panel header then shows a "Reset
+ * column widths" button (FramedPanel). The table keeps the automatic layout
+ * it had before: a column never dragged keeps its width hint or its content
+ * width, and the table never scrolls sideways, so a dragged column gives way
+ * when the panel is too narrow for it.
  */
+
+/* Build 404 — the table stays on the automatic layout it had before. Every
+ * HeadCell carries a width once columns are resizable, and the library then
+ * puts the table on a fixed layout of width 0 (each column exactly its width,
+ * scrolling sideways when they add up to more than the panel); this inline
+ * style (Table's public tableStyle prop) puts back the automatic layout at the
+ * panel's full width. Measured in Edge at 357 / 600 / 900 / 1300 px: an
+ * undragged table's columns are the same widths as in build 403. */
+const AUTO_TABLE_LAYOUT: React.CSSProperties = { tableLayout: 'auto', width: '100%', minWidth: '100%' };
+
+/** A column drawn more than this many pixels narrower than its width starts a drag from where it is drawn. */
+const DRAWN_NARROWER_PX = 1;
+
+/** Build 406: with other columns holding widths too, a column drawn at less than this share of its width is
+ *  taken as squeezed, and a drag on it first sets every such column to the width it is drawn at. */
+const OVERSUBSCRIBED_RATIO = 0.75;
+
+/** What a drag or an arrow key noted when it started on a resize handle. */
+interface ResizeStart {
+    /** The column's key. */
+    col: string;
+    /** Taken off every width the library asks for (how much narrower than its width the column was drawn). */
+    shift: number;
+    /** The narrowest width this drag gives the column (utils/columnWidths.ts resizeFloor). */
+    floor: number;
+    /** Other columns to set to their drawn widths with the first step, or null. */
+    others: { [key: string]: number } | null;
+}
 
 export interface ColumnDef<TRow = Record<string, unknown>> {
     key: string;
     label: ReactNode;
     /** Optional custom cell renderer. Receives the raw value and the full row. */
     render?: (value: unknown, row: TRow) => ReactNode;
-    /** Width hint (e.g., "120px" or "20%"). */
+    /** Width hint in pixels (e.g., "120px"). Since build 404 a column the user
+     *  has dragged takes its dragged width instead, and a hint that is not in
+     *  px (none in the App) counts as no hint. */
     width?: string;
     /** Right-align numeric columns. */
     align?: 'left' | 'right' | 'center';
     /** Disable sort on this column. Defaults to true (sortable). */
     sortable?: boolean;
+    /** Build 400: the column holds a host value (a host name, a short name or an IP
+     *  address). Where Settings > Host Names gives it a name, the cell shows the name,
+     *  then the raw value muted, on one line, with "name - raw value" as the tooltip;
+     *  with no name it shows exactly what it shows without the flag. Default cells only: a
+     *  column with `render` ignores the flag, and its render function alone decides what
+     *  the cell shows (no column in this build renders a name that way). Sorting, row
+     *  clicks (onRowClick gets the raw row) and the click-through searches keep the raw
+     *  value. Write it AFTER `label`, as in
+     *  `{ key: 'host', label: 'Host', hostAlias: true }`: bin/check-diagnostics.js reads
+     *  column definitions as `{ key: '...', label: '...'` with nothing between. */
+    hostAlias?: boolean;
 }
 
 interface DataTableProps<TRow> {
@@ -317,6 +377,8 @@ function DataTable<TRow extends Record<string, unknown>>({
     const [sortKey, setSortKey] = useState<string | null>(initialSortKey ?? null);
     const [sortDir, setSortDir] = useState<SortDir>(initialSortKey ? initialSortDir : 'none');
     const [page, setPage] = useState<number>(0);
+    // Build 400: the customer's host names, for the columns flagged hostAlias.
+    const { resolve: resolveHostAlias } = useHostAlias();
 
     /* §18.8a-2 — publish the values-free column-coverage summary. This is the
      * ONLY place that has both the rendered rows and the authoritative
@@ -336,6 +398,202 @@ function DataTable<TRow extends Record<string, unknown>>({
             ),
         );
     }, [diagSpl, rows, columns]);
+
+    /* Build 404 — the widths the user dragged. A table on a dashboard panel
+     * with a title keeps them in this browser (the shared store, keyed by the
+     * dashboard and the panel title); any other table (the AI Assistant's
+     * results) keeps them in memory until it unmounts. Only the widths of the
+     * columns the table has now are read. */
+    const dashboardId = useContext(DashboardIdContext);
+    const panelId = panelIdFor(dashboardId, diagCtx?.title);
+    const columnKeySig = columns.map((c) => c.key).join('\n');
+    const columnKeys = useMemo(() => (columnKeySig === '' ? [] : columnKeySig.split('\n')), [columnKeySig]);
+    const widthStore = sharedColumnWidthStore();
+    const [storedWidths, setStoredWidths] = useState<{ [col: string]: number }>(() =>
+        widthStore.get(panelId, columnKeys),
+    );
+    const [memWidths, setMemWidths] = useState<{ [col: string]: number }>({});
+    useEffect(() => {
+        const sync = (): void => {
+            const next = widthStore.get(panelId, columnKeys);
+            setStoredWidths((prev) => (sameWidths(prev, next) ? prev : next));
+        };
+        sync();
+        return widthStore.subscribe(sync);
+    }, [widthStore, panelId, columnKeys]);
+    const widths = panelId !== null ? storedWidths : pickWidths(memWidths, columnKeys);
+    /* The library starts a drag or an arrow-key step from a column's width
+     * prop, but on the automatic layout a column can be drawn narrower than
+     * that (dragged past what the panel allows, a narrower window than when it
+     * was dragged, a px hint in a narrow panel), and the edge would then not
+     * move for the first part of the drag. So when a drag or an arrow key
+     * starts on a resize handle, note how much narrower the column is drawn,
+     * and take that off every width the drag asks for. A double-click (fit to
+     * content) asks for an absolute width and is taken as it is.
+     *
+     * Build 406: (1) a mouse drag is noted once, at its start: a key or another
+     * mouse button pressed while it runs changes nothing; (2) a column drawn
+     * narrower than WIDTH_MIN keeps its drawn width as its floor for that drag
+     * (resizeFloor), so its edge does not jump out on the first pixel; (3) when
+     * other columns have widths too and the table is drawn well under what the
+     * widths ask for, the drag first sets every such column to the width it is
+     * drawn at, then moves its own from there. */
+    const resizeStartRef = useRef<ResizeStart | null>(null);
+    const mouseDragRef = useRef<boolean>(false);
+    const endMouseDragRef = useRef<(() => void) | null>(null);
+    useEffect(
+        () => () => {
+            if (endMouseDragRef.current) {
+                endMouseDragRef.current();
+            }
+        },
+        [],
+    );
+    const noteResizeStart = (e: React.SyntheticEvent): void => {
+        if (mouseDragRef.current) {
+            return; // a mouse drag is running: it keeps the start it noted
+        }
+        const native = e.nativeEvent as MouseEvent & KeyboardEvent;
+        const byMouse = e.type === 'mousedown';
+        if (byMouse ? native.button !== 0 : native.key !== 'ArrowLeft' && native.key !== 'ArrowRight') {
+            return; // not a press the library resizes on
+        }
+        resizeStartRef.current = null;
+        const target = e.target as Element | null;
+        const handle = target && typeof target.closest === 'function' ? target.closest('[data-test="resize"]') : null;
+        const th = handle ? handle.closest('th') : null;
+        if (!th || !th.parentElement) {
+            return;
+        }
+        const ths = Array.prototype.slice.call(th.parentElement.children) as Element[];
+        const col = columns[ths.indexOf(th)];
+        if (!col) {
+            return;
+        }
+        const propOf = (c: ColumnDef<TRow>): number | undefined =>
+            Object.prototype.hasOwnProperty.call(widths, c.key) ? widths[c.key] : hintPx(c.width);
+        const drawn = th.getBoundingClientRect().width;
+        const start: ResizeStart = { col: col.key, shift: 0, floor: resizeFloor(drawn), others: null };
+        resizeStartRef.current = start;
+        if (byMouse) {
+            mouseDragRef.current = true;
+            const end = (): void => {
+                mouseDragRef.current = false;
+                endMouseDragRef.current = null;
+                document.removeEventListener('mouseup', end, true);
+                window.removeEventListener('blur', end);
+            };
+            endMouseDragRef.current = end;
+            document.addEventListener('mouseup', end, true);
+            window.addEventListener('blur', end);
+        }
+        const prop = propOf(col);
+        if (prop === undefined) {
+            return; // an 'auto' width: the library starts from the drawn width itself
+        }
+        const narrower = prop - drawn;
+        if (narrower <= DRAWN_NARROWER_PX) {
+            return;
+        }
+        // The shift alone is exact only when no other column has a width: the
+        // column then gets whatever room is left, whatever its own width.
+        const othersAuto = columns.every((c) => c === col || propOf(c) === undefined);
+        if (othersAuto) {
+            start.shift = narrower;
+            return;
+        }
+        // Other columns have widths too, and the browser shares the shortfall
+        // among them all. While the columns are drawn close to their widths the
+        // library's width is right as it is (measured in Edge: the edge follows
+        // from the first pixel). Drawn well under them (one column dragged far
+        // past what the panel allows), a step of the pointer moved the edge by
+        // a small fraction of it. Then every column with a width is set to the
+        // width it is drawn at, and this one moves from there.
+        if (drawn >= prop * OVERSUBSCRIBED_RATIO) {
+            return;
+        }
+        const others: { [key: string]: number } = Object.create(null);
+        columns.forEach((c, i) => {
+            const p = propOf(c);
+            const el = ths[i];
+            if (c === col || p === undefined || !el) {
+                return;
+            }
+            const w = el.getBoundingClientRect().width;
+            if (Math.abs(p - w) > DRAWN_NARROWER_PX) {
+                const v = clampWidth(w, resizeFloor(w));
+                if (v !== null) {
+                    others[c.key] = v;
+                }
+            }
+        });
+        start.shift = narrower;
+        start.others = others;
+    };
+    const handleResizeColumn = useCallback(
+        (event: unknown, data: { columnId?: string; width: number }) => {
+            const col = data.columnId;
+            if (!col || columnKeys.indexOf(col) === -1) {
+                return;
+            }
+            const fit = !!event && (event as { type?: string }).type === 'dblclick';
+            const noted = resizeStartRef.current;
+            const start = !fit && noted && noted.col === col ? noted : null;
+            const width = clampWidth(data.width - (start ? start.shift : 0), start ? start.floor : undefined);
+            if (width === null) {
+                return;
+            }
+            // The other columns go to their drawn widths once, with the first step.
+            const next: { [key: string]: number } = Object.create(null);
+            if (start && start.others) {
+                const others = start.others;
+                Object.keys(others).forEach((k) => {
+                    if (columnKeys.indexOf(k) !== -1) {
+                        next[k] = others[k];
+                    }
+                });
+                start.others = null;
+            }
+            next[col] = width;
+            noteColumnWidthChange();
+            if (panelId !== null) {
+                widthStore.setMany(panelId, next, columnKeys);
+            } else {
+                setMemWidths((prev) => {
+                    let out = prev;
+                    Object.keys(next).forEach((k) => {
+                        if (out[k] !== next[k]) {
+                            out = withOwnWidth(out, k, next[k]);
+                        }
+                    });
+                    return out;
+                });
+            }
+        },
+        [widthStore, panelId, columnKeys],
+    );
+    const resetWidths = useCallback(() => {
+        noteColumnWidthChange();
+        if (panelId !== null) {
+            widthStore.reset(panelId);
+        }
+        setMemWidths({});
+    }, [widthStore, panelId]);
+    // Build 404: one DOM id per heading, unique on the page (the library would
+    // otherwise use the bare column key, repeated across tables).
+    const headIdBase = useId();
+    // Tell the enclosing FramedPanel whether to show its reset button for this table.
+    const customized = Object.keys(widths).length > 0;
+    const widthReset = useContext(TableWidthResetContext);
+    const resetTokenRef = useRef<object>({});
+    useEffect(() => {
+        if (!widthReset) {
+            return undefined;
+        }
+        const token = resetTokenRef.current;
+        widthReset.set(token, customized ? resetWidths : null);
+        return () => widthReset.set(token, null);
+    }, [widthReset, customized, resetWidths]);
 
     // Auto-fit page size: computed from parent FramedPanel's available height.
     // Only used when `pageSize` prop is omitted — explicit prop wins.
@@ -389,6 +647,13 @@ function DataTable<TRow extends Record<string, unknown>>({
             if (dataRows.length === 0) return;
 
             const panelHeight = panelRoot.clientHeight;
+
+            // Build 406: a height change that follows a column width change (in this
+            // table or in any other: a narrower column wraps its rows and makes
+            // the whole grid row taller) never changes a page size already measured.
+            if (lastMeasuredPanelHeightRef.current > 0 && columnWidthsJustChanged()) {
+                return;
+            }
 
             // Skip re-measure if we already have a value and the panel
             // hasn't grown/shrunk meaningfully. Without this, the
@@ -538,6 +803,34 @@ function DataTable<TRow extends Record<string, unknown>>({
         if (!hasData) hadDataRef.current = false;
     }, [rows, pageSizeProp, paginationDisabled]);
 
+    // Build 404: a width change does not re-measure the auto-fit page size. A
+    // re-measure after each resize ratcheted two tables in one grid row taller
+    // with every drag and Reset (measured in Edge), and never gave fewer rows:
+    // the page size stays as measured above, as in build 403. Build 406: nor
+    // does the panel-height observer above, for a height a width change caused.
+
+    // Build 404: the library names each resize handle "Resize " plus the
+    // heading's children, which here are an element ("Resize [object Object]").
+    // Name it after the column instead. Runs after every render; an unchanged
+    // label is left alone.
+    useLayoutEffect(() => {
+        const wrapper = wrapperRef.current;
+        if (!wrapper) {
+            return;
+        }
+        wrapper.querySelectorAll('thead th').forEach((th, i) => {
+            const handle = th.querySelector('[data-test="resize"]');
+            const col = columns[i];
+            if (!handle || !col) {
+                return;
+            }
+            const label = `Resize ${typeof col.label === 'string' ? col.label : col.key}`;
+            if (handle.getAttribute('aria-label') !== label) {
+                handle.setAttribute('aria-label', label);
+            }
+        });
+    });
+
     const pageSize = typeof pageSizeProp === 'number' ? pageSizeProp : autoPageSize;
 
     const handleSort = (key: string) => {
@@ -633,19 +926,36 @@ function DataTable<TRow extends Record<string, unknown>>({
     const endIdx = Math.min(startIdx + pageSize, totalRows);
 
     return (
-        <Wrapper $zebra={zebra} $clickableRows={!!onRowClick} ref={wrapperRef}>
-            <Table headType="fixed" stripeRows={false}>
+        <Wrapper
+            $zebra={zebra}
+            $clickableRows={!!onRowClick}
+            ref={wrapperRef}
+            onMouseDownCapture={noteResizeStart}
+            onKeyDownCapture={noteResizeStart}
+        >
+            <Table
+                headType="fixed"
+                stripeRows={false}
+                onRequestResizeColumn={handleResizeColumn}
+                tableStyle={AUTO_TABLE_LAYOUT}
+            >
                 <Table.Head>
-                    {columns.map((col) => {
+                    {columns.map((col, colIndex) => {
                         const isSortable = col.sortable !== false;
                         const isActive = sortKey === col.key && sortDir !== 'none';
                         const dir: SortDir = isActive ? sortDir : 'none';
                         const indicator = dir === 'asc' ? '▲' : dir === 'desc' ? '▼' : '▴▾';
 
+                        // Build 404: every heading has a width, which the
+                        // library needs before a drag can start: the dragged
+                        // width, else the px hint, else 'auto' (content width).
+                        // The library's width replaces any style width.
                         return (
                             <Table.HeadCell
                                 key={col.key}
-                                style={col.width ? { width: col.width } : undefined}
+                                id={`${headIdBase}-h${colIndex}`}
+                                columnId={col.key}
+                                width={widths[col.key] ?? hintPx(col.width) ?? 'auto'}
                             >
                                 {isSortable ? (
                                     <SortableHeader
@@ -682,14 +992,27 @@ function DataTable<TRow extends Record<string, unknown>>({
                         >
                             {columns.map((col) => {
                                 const raw = row[col.key];
-                                const content = col.render
+                                const alias = col.hostAlias && !col.render ? resolveHostAlias(raw) : null;
+                                let content: ReactNode = col.render
                                     ? col.render(raw, row)
                                     : raw === null || typeof raw === 'undefined'
                                     ? ''
                                     : String(raw);
+                                // Build 400: a name only for a flagged default cell whose value has one
+                                // (resolveHostAlias gives null for null / undefined / non-host values).
+                                // The line is cut at its right end: the raw value gives way before the name.
+                                if (alias !== null) {
+                                    content = <AliasedHost alias={alias} raw={String(raw)} />;
+                                }
                                 return (
                                     <Table.Cell
                                         key={col.key}
+                                        // Build 400: "name - raw value" over the whole cell, its padding too (a
+                                        // narrow column may cut the raw value to nothing on screen, and the name
+                                        // too when the column is narrower than the name), and the line's
+                                        // copy handler on the cell as well (HostName.tsx copyOnOneLine).
+                                        title={alias !== null ? `${alias} - ${String(raw)}` : undefined}
+                                        onCopy={alias !== null ? copyOnOneLine : undefined}
                                         style={
                                             col.align === 'right'
                                                 ? { textAlign: 'right' }

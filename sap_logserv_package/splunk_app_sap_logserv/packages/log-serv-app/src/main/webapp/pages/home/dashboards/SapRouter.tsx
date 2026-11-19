@@ -176,7 +176,7 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
 };
 
 const TOP_PEERS_COLS: ColumnDef[] = [
-    { key: 'Peer IP', label: 'Peer IP' },
+    { key: 'Peer IP', label: 'Peer IP', hostAlias: true },
     { key: 'Connections', label: 'Connections', align: 'right', render: (v) => formatInteger(v) },
 ];
 const ERROR_DETAIL_COLS: ColumnDef[] = [
@@ -190,8 +190,8 @@ const CONN_LOG_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
     { key: 'action', label: 'Action', width: '120px' },
     { key: 'Conn ID', label: 'Conn ID', width: '90px' },
-    { key: 'Peer IP', label: 'Peer IP', width: '140px' },
-    { key: 'Source IP', label: 'Source IP', width: '140px' },
+    { key: 'Peer IP', label: 'Peer IP', hostAlias: true, width: '140px' },
+    { key: 'Source IP', label: 'Source IP', hostAlias: true, width: '140px' },
     { key: 'Source Port', label: 'Source Port', width: '100px' },
     { key: 'Error', label: 'Error', width: '70px' },
 ];

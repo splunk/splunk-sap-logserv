@@ -13,6 +13,7 @@ import {
     SHELL_BACKDROP_LIGHT,
 } from '../styles/magneticTokens';
 import { GlobalRefreshProvider } from '../state/GlobalRefreshProvider';
+import { HostAliasProvider } from '../state/HostAliasProvider';
 import { DiagnosticDrawerProvider } from '../state/DiagnosticDrawerProvider';
 import { AIAssistant, SidePanel } from './ai/chat';
 
@@ -287,6 +288,11 @@ const AppShell: React.FC<AppShellProps> = ({
     return (
         <Page>
             <GlobalRefreshProvider>
+            {/* Build 400 - the customer's host names (Settings > Host Names), shown
+                beside raw host values. Inside GlobalRefreshProvider so the nav-bar
+                Refresh reloads them; the dashboards, pickers and Settings render
+                below it. Display only: no search uses them. */}
+            <HostAliasProvider>
             {/* Session 095 — one app-level diagnosis drawer, portaled to
                 document.body. Mounted here so every panel on every route can
                 open it, and so only ONE can ever be open: the failure this
@@ -407,6 +413,7 @@ const AppShell: React.FC<AppShellProps> = ({
                 </Main>
             </ShellBody>
             </DiagnosticDrawerProvider>
+            </HostAliasProvider>
             </GlobalRefreshProvider>
         </Page>
     );

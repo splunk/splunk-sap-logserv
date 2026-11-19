@@ -3,6 +3,45 @@ owner = nobody
 access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 
+# Build 403: the App's search-time knowledge stays shared with all apps even when
+# an admin sets the App's own sharing to "This app only" (Manage Apps > Permissions,
+# which writes [] export = none to the App's local.meta; a type stanza here is more
+# specific, so it wins). Other apps read these: Enterprise Security and the CIM
+# data models (eventtypes, tags, field extractions and aliases, lookups, indexed
+# field declarations), the Splunk MCP Server, which runs the AI Assistant's
+# free-form questions in the user's default app (the index macros), and searches
+# in other apps. Only export is set: who may read or write them still follows the
+# App's access. Views, navigation, saved searches and the App's settings keep
+# following the App's sharing (the dashboards dispatch inside the App since build
+# 403); each KV collection is exported by its own stanza below. correlationsearches
+# is exported for Enterprise Security's Content Management, as in a default install. Measured on the reference system with build 402 under
+# "This app only": the macro could not be found, the HANA audit field extraction,
+# the KV and CSV lookups returned 0 rows, and the App's eventtypes and tags were
+# gone, from the user's default app.
+[macros]
+export = system
+
+[eventtypes]
+export = system
+
+[tags]
+export = system
+
+[props]
+export = system
+
+[transforms]
+export = system
+
+[lookups]
+export = system
+
+[fields]
+export = system
+
+[correlationsearches]
+export = system
+
 # Build 384: every KV collection below is written by the admin tier only (admin,
 # sc_admin, sc_subadmin), except six that ordinary users write by design: the four
 # per-user preference collections (topology layouts, layout defaults, active mode,
@@ -68,6 +107,13 @@ export = system
 # SID and host list (build 395). Every user's SID and Host pickers read it; only
 # its scheduled searches and the Settings Backfill write it.
 [collections/logserv_sid_hosts]
+access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
+export = system
+
+# Host names (build 400), Settings > Host Names. Every role reads it (the
+# dashboards show the names); only the admin tier writes it, as for the SID list.
+# No saved search writes it.
+[collections/logserv_host_aliases]
 access = read : [ * ], write : [ admin, sc_admin, sc_subadmin ]
 export = system
 

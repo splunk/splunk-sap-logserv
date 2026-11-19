@@ -204,9 +204,17 @@ const PII_PATTERNS_DEFAULT: ReadonlyArray<RegExp> = [
     /(?:^|[a-z0-9])(?:Ip|IP|Mac|MAC)?Address(?:es)?$/,
 ];
 
+/* Build 400: a host's alias or friendly name (Settings > Host Names) is a name the
+ * customer chose for a server and can say what it is for ("Payroll-PRD"), so it is
+ * redacted with host names: `alias`, `aliases`, `host_alias`, `Host Alias`,
+ * `gw_remote_alias`, `friendly_name`, `Friendly Name` and camelCase `hostAlias`,
+ * `hostFriendlyName`. No App search returns one today. */
 const PII_PATTERNS_HOSTNAMES: ReadonlyArray<RegExp> = [
     /(?:^|[_.:\s-])host(?:[_\s]?name)?s?$/i,
     /(?:^|[a-z0-9])(?:Workstation|Host|Computer|Machine)Names?$/,
+    /(?:^|[_.:\s-])(?:host[_\s]?)?alias(?:es)?$/i,
+    /(?:^|[_.:\s-])friendly[_\s]?names?$/i,
+    /[a-z0-9](?:Alias(?:es)?|FriendlyNames?)$/,
 ];
 
 /**

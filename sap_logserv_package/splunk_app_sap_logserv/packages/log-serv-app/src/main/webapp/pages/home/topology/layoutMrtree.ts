@@ -81,7 +81,8 @@ const sizeForNode = (n: TopologyNode): { width: number; height: number } => {
     if (n.kind === 'sid_secondary') return { width: 145, height: 175 };
     if (n.tag === 'TENANT') return { width: 145, height: 175 };
     /* Build 329 — height 145 -> 175 for the enrichment lines under IP
-     * squares (lockstep with layoutLayered.ts). */
+     * squares (lockstep with layoutLayered.ts). Build 400: the customer's
+     * host name shares the hostname line, so no third line and no change. */
     return { width: 95, height: 175 };
 };
 

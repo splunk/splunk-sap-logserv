@@ -10,6 +10,7 @@ import { RefreshProvider } from '../state/RefreshProvider';
 import { HostService } from '../state/SidHostFilterProvider';
 import { DiagnosticCollectorProvider } from '../state/DiagnosticCollector';
 import { dashboardIdFromPath } from '../state/dashboardRefreshPersistence';
+import { DashboardIdContext } from '../state/ColumnWidthsState';
 import { resolveDocsUrl } from '../utils/docsLinks';
 
 /**
@@ -174,7 +175,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                         <DocsHelpIcon href={docsUrl} />
                     </ActionsBlock>
                 </TitleRow>
-                {children}
+                {/* Build 404 - which dashboard a table is on, for the column
+                    widths it remembers per panel (DataTable). */}
+                <DashboardIdContext.Provider value={dashboardId}>{children}</DashboardIdContext.Provider>
             </RefreshProvider>
             </DiagnosticCollectorProvider>
         </Wrapper>

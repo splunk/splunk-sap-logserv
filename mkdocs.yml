@@ -118,7 +118,8 @@ nav:
         - Choose Your Cloud and AWS Scenario: 'content/install-setup/choose-your-cloud.md'
         - AWS:
             - AWS Remote S3 Connect: 'content/install-setup/aws-remote-s3-connect-guide.md'
-            - AWS Remote S3 Connect with an EC2 Instance Role: 'content/install-setup/aws-remote-s3-connect-instance-role.md'
+            - Connect with EC2 Instance Role: 'content/install-setup/aws-remote-s3-connect-instance-role.md'
+            - EC2 Instance Role Reference: 'content/install-setup/aws-remote-s3-connect-instance-role-reference.md'
             - AWS Remote S3 Filter: 'content/install-setup/aws-remote-s3-filter-guide.md'
             - AWS Remote S3 Copy: 'content/install-setup/aws-remote-s3-copy-guide.md'
         - Azure Setup Guide: 'content/install-setup/azure-setup.md'
@@ -131,6 +132,7 @@ nav:
     - Configuring Filters: 'content/install-setup/configure-filters.md'
     - Application Settings: 'content/ai-assistant/settings.md'
     - 'Dashboard Data: Backfill and Freshness': 'content/logserv-app/dashboard-data.md'
+    - Host Names: 'content/logserv-app/host-names.md'
     - 'AWS S3 Direct: Backfill and Recovery': 'content/install-setup/aws-s3-direct.md'
     - Troubleshooting: 'content/getting-started/troubleshooting.md'
 - Upgrade:

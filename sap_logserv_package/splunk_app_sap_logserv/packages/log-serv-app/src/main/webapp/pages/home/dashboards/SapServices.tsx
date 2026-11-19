@@ -118,12 +118,12 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
 const AUTH_COLS: ColumnDef[] = [
     { key: '_time', label: 'Time', width: '160px', render: (v) => v ? new Date(String(v)).toLocaleString('en-US', { hour12: false }) : '' },
     { key: 'User', label: 'User' },
-    { key: 'Remote IP', label: 'Remote IP' },
+    { key: 'Remote IP', label: 'Remote IP', hostAlias: true },
     { key: 'Method', label: 'Method' },
     { key: 'Result', label: 'Result' },
 ];
 const SSL_COLS: ColumnDef[] = [
-    { key: 'Source IP', label: 'Source IP' },
+    { key: 'Source IP', label: 'Source IP', hostAlias: true },
     { key: 'Failures', label: 'Failures', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Distinct Users', label: 'Distinct Users', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Users Tried', label: 'Users Tried' },

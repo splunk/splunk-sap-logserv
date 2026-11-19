@@ -100,18 +100,22 @@ Distribute the App, and the add-ons of step 2, with the cluster's deployer. Do n
 
 The cluster's captain runs each scheduled search on one member, and KV Store replicates the App's collections to every member, so you run the backfill of step 8 once, from any member. See [Behavior with multiple search heads](dashboard-data.md#behavior-with-multiple-search-heads).
 
+#### :material-crop-square:{ .taiconcolor } App sharing { #app-sharing }
+
+As installed, the App is shared with all apps: its objects carry `export = system`, except its own search view. An admin can change this under **Apps → Manage Apps**, **Permissions** in the App's row, **Sharing for config file-only objects**: **This app only** or **All apps** (the list shows App or Global; Splunk keeps the choice in the App's `metadata/local.meta`, which an upgrade keeps). From build 404 the App works either way. Every dashboard search runs inside the LogServ App, and the App's search-time knowledge, its macros, eventtypes, tags, field extractions and aliases, lookups, indexed-field declarations and Enterprise Security correlation-search entries, stays shared with all apps through stanzas of their own in its `metadata/default.meta`, which are more specific than the App-wide setting. So Enterprise Security and the CIM data models, the AI Assistant's free-form questions (which the Splunk MCP Server runs in the user's default app) and searches in other apps keep working with **This app only**, which then keeps the App's views, navigation, saved searches and settings inside the App. On the reference system, with **This app only**, searches from another app and a free-form AI Assistant question were run and returned rows. Enterprise Security and the CIM data models read the App's knowledge the same way, but were not run with **This app only** there (Enterprise Security is not installed on that system). To confine one of the shared objects, change that object's own permissions. Builds 399 and earlier need **All apps**: with **This app only**, most of their panels come back empty or show 0, and ES, the CIM data models and searches in other apps lose the App's lookups, field extractions, eventtypes, tags and index macro. Either way, the roles' **Read** and **Write** permissions on the App decide who can use it.
+
 ### :material-circle-box:{ .taiconcolor } 5. Update the index macro
 
 Skip this step if your SAP data index is `sap_logserv_logs`.
 
-The dashboards find your data through the search macro `sap_logserv_idx_macro`. Both the LogServ App and the Data TA ship this macro. On a search head that has both apps, such as a single instance or a Splunk Cloud stack with the Data TA, change it in **both** apps: the scheduled rollups and the Dashboard Data backfill use the App's copy, while the live dashboard panels can use the Data TA's copy. On a search head without the Data TA, change the App's copy.
+The dashboards find your data through the search macro `sap_logserv_idx_macro`. Both the LogServ App and the Data TA ship this macro. On a search head that has both apps, such as a single instance or a Splunk Cloud stack with the Data TA, change it in **both** apps: from build 404 the live dashboard panels, the scheduled rollups and the Dashboard Data backfill all run in the LogServ App and use its copy, while searches in other apps, such as Search & Reporting, use the Data TA's copy. (Up to build 399 the live panels ran in each user's default app and used the Data TA's copy.) On a search head without the Data TA, change the App's copy.
 
 Follow the single procedure in [Renaming an Index](../install-setup/install-ta.md#renaming-an-index), then check the result in step 6.
 
 ### :material-circle-box:{ .taiconcolor } 6. Open the App and check that it sees your data
 
 1. In Splunk Web, open **Splunk App for SAP LogServ**. It opens on **Environment Health**, with a navigation rail on the left: **Environment Health**, **Topology**, **Applications**, **Integration**, **Security**, **Platform**, and below a divider **Settings** (admin roles only) and **About**. The [Dashboards Overview](dashboards/index.md) describes the rail, the header and the controls every dashboard shares.
-2. In the Search app, run:
+2. On the App's own search page (any panel's **Open in Search**, or `/app/splunk_app_sap_logserv/search`), run:
 
     ```
     `sap_logserv_idx_macro` | stats count by sourcetype

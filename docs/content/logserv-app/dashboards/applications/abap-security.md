@@ -30,6 +30,8 @@ Every panel reads the hourly summary, which adds each hour at minute :14 of the 
 - **Gateway Errors Over Time** -- Timeline of gateway error events
 - **Activity by SID / Instance** -- Column chart showing event distribution across SAP systems; click it to open [ABAP Operations](abap-operations.md)
 
+**Host names in the two tables.** **ICM Peer Connections** and **Gateway Remote Hosts** show the names an admin gave hosts on **Settings → Host Names**, next to the address or host name from the logs ([Host Names](../../host-names.md)). A click on a row still searches for the value from the logs. The **Host** filter narrows by the host that wrote the events, not by the peer or remote host.
+
 !!! note "What the ICM trace records"
     The ICM trace (`dev_icm`) records sessions, connections and the ICM's own warning and error messages; it records no HTTP status code for individual requests. In a session-list line such as `ASYNC_RFC T229_U23835_M0, 200, BATCH_ALM, , time=10:35:59, ...` the three digits after the session ID are the SAP client, extracted as `sap_client`, followed by the user (`icm_user`) and the terminal (`icm_terminal`).
 

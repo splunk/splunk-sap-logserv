@@ -35,7 +35,7 @@ import { logservTheme } from '../../../styles/logservTheme';
 
 const FIXED_OFFSET_PX = 10;  // gap between tooltip bottom and node top
 
-const Wrap = styled.div`
+const Wrap = styled.div<{ $wideLabels: boolean }>`
     position: fixed;
     /* top and left are supplied via inline style from the anchor's
      * getBoundingClientRect at hover time. The transform anchors the
@@ -70,7 +70,9 @@ const Wrap = styled.div`
 
     .tt-row {
         display: grid;
-        grid-template-columns: 67px 1fr;
+        /* Build 400 - 84 px when the Hostname row shows: its label is wider than
+         * the 67 px column the four short labels fit. */
+        grid-template-columns: ${(p) => (p.$wideLabels ? '84px' : '67px')} 1fr;
         gap: 12px;
         align-items: baseline;
     }
@@ -85,6 +87,13 @@ const Wrap = styled.div`
         color: ${logservTheme.colors.inverseText};
         font-weight: ${logservTheme.fontWeight.semibold};
         font-variant-numeric: tabular-nums;
+    }
+
+    /* Build 400 - the raw value after the customer's name in the Name row. */
+    .tt-raw {
+        margin-left: 8px;
+        color: ${logservTheme.colors.inverseTextMuted};
+        font-weight: ${logservTheme.fontWeight.normal};
     }
 
     /* Caret pointing down to the node — drawn at the tooltip's bottom
@@ -103,6 +112,14 @@ const Wrap = styled.div`
 
 interface NodeTooltipProps {
     name: string;
+    /** Build 400 - the customer's name for the node's host (Settings > Host
+     *  Names): the Name row shows it, then the raw `name` muted. Omitted / null
+     *  shows the raw name alone (SID nodes never pass one). */
+    alias?: string | null;
+    /** Build 400 - the IP enrichment hostname that the customer's name took the
+     *  line under the node from (topology/nodeAlias.ts partnerNameSlot), shown
+     *  in its own row. Omitted / null renders no row. */
+    hostname?: string | null;
     kind: string;
     tag: string;
     events: number;
@@ -116,7 +133,7 @@ interface NodeTooltipProps {
     anchorRect: DOMRect | null;
 }
 
-const NodeTooltip: React.FC<NodeTooltipProps> = ({ name, kind, tag, events, hosts, anchorRect }) => {
+const NodeTooltip: React.FC<NodeTooltipProps> = ({ name, alias, hostname, kind, tag, events, hosts, anchorRect }) => {
     // Early-out when not hovered. Combined with portal mounting below,
     // means we render zero DOM nodes for un-hovered nodes — much lighter
     // than the prior approach of always-rendering with opacity:0.
@@ -127,8 +144,21 @@ const NodeTooltip: React.FC<NodeTooltipProps> = ({ name, kind, tag, events, host
     const top = anchorRect.top;  // tooltip's transform places it above this
 
     return createPortal(
-        <Wrap className="node-tooltip" role="tooltip" style={{ top, left }}>
-            <div className="tt-row"><span className="tt-label">Name</span><span className="tt-value">{name}</span></div>
+        <Wrap className="node-tooltip" role="tooltip" style={{ top, left }} $wideLabels={!!hostname}>
+            <div className="tt-row">
+                <span className="tt-label">Name</span>
+                <span className="tt-value">
+                    {alias ? (
+                        <>
+                            {alias}
+                            <span className="tt-raw">{name}</span>
+                        </>
+                    ) : name}
+                </span>
+            </div>
+            {hostname && (
+                <div className="tt-row"><span className="tt-label">Hostname</span><span className="tt-value">{hostname}</span></div>
+            )}
             <div className="tt-row"><span className="tt-label">Kind</span><span className="tt-value">{kind}</span></div>
             <div className="tt-row"><span className="tt-label">Tag</span><span className="tt-value">{tag}</span></div>
             <div className="tt-row"><span className="tt-label">Events</span><span className="tt-value">{events.toLocaleString()}</span></div>

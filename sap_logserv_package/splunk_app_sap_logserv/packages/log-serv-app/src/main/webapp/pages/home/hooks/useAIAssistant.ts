@@ -172,7 +172,7 @@ export interface CannedPromptParams {
     /** Optional interpretation hint + next-step actions, rendered as a
      *  `'guidance'` chat message after the tool_result lands. Build 140.
      *  Build 141 — `nextSteps` entries can be plain strings OR link
-     *  objects that resolve to a Splunk-search-app URL at dispatch
+     *  objects that resolve to a Splunk search-page URL (in this app) at dispatch
      *  time using the dispatch's earliestTime/latestTime. */
     interpretation?: string;
     nextSteps?: Array<NextStepEntry>;
@@ -236,7 +236,8 @@ interface IntentMapPromptShape {
     /** Optional ordered list of next-step / further-investigation
      *  suggestions. Each entry is either a plain string OR a link
      *  object `{text, savedSearch?, spl?}`. Build 141 — links open
-     *  Splunk's search app in a new tab with a deep-dive query. */
+     *  Splunk's search page (in this app) in a new tab with a deep-dive
+     *  query. */
     nextSteps?: Array<string | { text: string; savedSearch?: string; spl?: string }>;
 }
 interface IntentMapShape {

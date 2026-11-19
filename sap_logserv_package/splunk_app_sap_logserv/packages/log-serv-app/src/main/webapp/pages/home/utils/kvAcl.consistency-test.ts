@@ -29,6 +29,20 @@
  * stripper would read past; K5j2 each AI module builds its KV URL from its own local COLLECTION constant and
  * imports no collection name. What these still cannot see: a method or URL assembled at run time from parts.
  *
+ * Build 400 (host names): logserv_host_aliases is admin-tier write like the SID list (K1a 42, K2b 36). K5l its one
+ * writer, utils/hostAliasApi.ts, names only it and builds its URL from its own COLLECTION constant (and K5k holds
+ * for it, since K5l and K5m read it through the comment stripper); K5m that writer
+ * POSTs only to batch_save, refuses an empty list, steps and cuts its chunk loop by BATCH_SAVE_MAX, counts a chunk
+ * only when the answer lists one key per row, refuses two rows with one key, and DELETEs only a single key it has
+ * checked with isDeletableKey (a DELETE on the collection URL would delete every row; the behaviour itself is driven
+ * through a fake fetch in hostAliasApi.consistency-test); K5n the provider (state/HostAliasProvider.tsx) imports
+ * only the read, and the write functions are imported only by the declared editor files; K5o the collection is no
+ * Dashboard Data target (a Clear never empties it), no saved search names it and no lookup definition points at it;
+ * K5p the editor, components/HostAliasPanel.tsx (the one file of HA_WRITE_IMPORTERS), is imported only by the
+ * Settings page, mounted once and only after the page's admin gate returns for non-admins (as K5g pins for the
+ * backfill panel), and reaches the KV Store only through hostAliasApi (no fetch, XHR or sendBeacon of its own; K5k
+ * holds for it, since K5p reads it through the comment stripper).
+ *
  * Path overrides for mutation checks: KVACL_META, KVACL_SAVED (otherwise the shipped files).
  * Run standalone with: `yarn check:diagnostics`
  */
@@ -104,7 +118,7 @@ const meta = parseConf(read(META));
 const collNames = Object.keys(parseConf(read(COLLECTIONS)));
 
 /* ---- K1 one stanza per collection, none for an unknown one ---- */
-check('K1a collections.conf defines 41 collections', collNames.length === 41, String(collNames.length));
+check('K1a collections.conf defines 42 collections', collNames.length === 42, String(collNames.length));
 collNames.forEach((c) => {
     const s = meta[`collections/${c}`];
     check(`K1 [collections/${c}] has exactly one default.meta stanza`, !!s && s['__count'] === '1',
@@ -125,15 +139,22 @@ collNames.forEach((c) => {
     check(`K2 [collections/${c}] export = system`, s.export === 'system', String(s.export));
 });
 const closed = collNames.filter((c) => OPEN.indexOf(c) === -1);
-check('K2b 35 collections are closed (30 since build 384, the stage, the three AI ones, the SID list of build 395)', closed.length === 35,
-    String(closed.length));
+check('K2b 36 collections are closed (30 since build 384, the stage, the three AI ones, the SID list of build 395, the host'
+    + ' names of build 400)', closed.length === 36, String(closed.length));
 
 /* ---- K3 the defaults cannot reopen them ---- */
 const g = meta[''] || {};
 check('K3a [] is owner nobody, admin-tier write, export system',
     g.owner === 'nobody' && g.access === ADMIN_TIER && g.export === 'system', JSON.stringify(g));
-const wider = Object.keys(meta).filter((s) => s === 'collections' || /^(transforms|savedsearches)(\/|$)/.test(s));
-check('K3b no bare [collections], [transforms...] or [savedsearches...] stanza', wider.length === 0, wider.join(', '));
+// Build 403: a bare [transforms] stanza that sets export = system and nothing else is allowed (it keeps the lookup
+// definitions shared with all apps when the App's own sharing is "This app only"); it cannot reopen a write ACL.
+const exportOnly = (st: string): boolean => JSON.stringify(Object.keys(meta[st] || {}).filter((k) => k !== '__count'))
+    === '["export"]' && meta[st].export === 'system' && meta[st].__count === '1';
+const wider = Object.keys(meta).filter((s) => (s === 'collections' || /^(transforms|savedsearches)(\/|$)/.test(s))
+    && !(s === 'transforms' && exportOnly(s)));
+check('K3b no [collections], [transforms...] or [savedsearches...] stanza, except one bare [transforms] that sets only'
+    + ' export = system',
+    wider.length === 0 && (meta.transforms === undefined || exportOnly('transforms')), wider.join(', '));
 
 /* ---- K4 outputlookup targets resolve, and every writer sets dispatchAs = user ---- */
 const lookups = parseConf(read(TRANSFORMS));
@@ -194,7 +215,7 @@ const OPEN_WRITERS: { [file: string]: string[] } = {
     'utils/diagIngestFacts.ts': ['logserv_diag_ingest_facts'],
 };
 const ADMIN_WRITERS = ['components/RollupBackfillPanel.tsx', 'utils/aiConfigApi.ts', 'utils/telemetryConfApi.ts',
-    'components/ai/modelDiscovery.ts'];
+    'components/ai/modelDiscovery.ts', 'utils/hostAliasApi.ts'];
 const READERS = ['hooks/useTopologyData.ts', 'topology/enrichment.ts', 'utils/diagProbe.ts', 'utils/hostGate.ts', 'utils/kvPagedRead.ts'];
 const kvFiles = listFiles(HOME).filter((p) => read(p).indexOf('storage/collections/data') !== -1).map(rel).sort();
 const declared = Object.keys(OPEN_WRITERS).concat(ADMIN_WRITERS, READERS).sort();
@@ -281,6 +302,86 @@ check('K5h the panel\'s targets (rollupRegistry collections: 24 rollups + 5 topo
 const stageM = /export const STAGE_COLLECTION = '([a-z_]+)';/.exec(code('utils/backfillPlan.ts'));
 check('K5i the panel\'s stage collection is closed', !!stageM && closed.indexOf(stageM[1]) !== -1,
     String(stageM && stageM[1]));
+
+/* ---- K5k-K5p the host name table (build 400) ---- */
+{
+    const HA_COLL = 'logserv_host_aliases';
+    const HA_API = 'utils/hostAliasApi.ts';
+    /** Files that may call the write functions: the Settings > Host Names editor. */
+    const HA_EDITOR = 'components/HostAliasPanel.tsx';
+    const HA_WRITE_IMPORTERS: string[] = [HA_EDITOR];
+    const src = code(HA_API);
+    const named = collsAny(src);
+    const urls = src.split('storage/collections/data/').length - 1;
+    const own = src.split(`storage/collections/data/\${COLLECTION}`).length - 1;
+    // K5l and K5m read the writer through the comment stripper, which would read past a '/*' inside a string.
+    check(`K5k ${HA_API} has no '/*' inside a string`, !/['"`][^'"`\n]*\/\*/.test(read(path.join(HOME, HA_API))),
+        'a string holds "/*"');
+    check('K5l the host name table is closed (admin-tier write)', closed.indexOf(HA_COLL) !== -1, String(closed.indexOf(HA_COLL)));
+    check(`K5l ${HA_API} names exactly ${HA_COLL}, in any quoting, and builds its one KV URL from its own COLLECTION constant`,
+        JSON.stringify(named) === JSON.stringify([HA_COLL]) && src.split(`const COLLECTION = '${HA_COLL}';`).length - 1 === 1
+        && urls === 1 && own === 1 && !/\bimport\b[^;]*\b[A-Za-z_]*(COLLECTION|Collection|COLL)\b[^;]*\bfrom\b/.test(src),
+        `names ${JSON.stringify(named)}, ${urls} KV URL(s), ${own} from COLLECTION`);
+    const posts = (src.match(/method:\s*['"`]POST['"`]/gi) || []).length;
+    const deletes = (src.match(/method:\s*['"`]DELETE['"`]/gi) || []).length;
+    const other = /method:\s*['"`](PUT|PATCH)['"`]|\bnew\s+XMLHttpRequest\b|\bsendBeacon\s*\(|\.\s*method\s*=(?!=)/i.test(src);
+    check(`K5m ${HA_API} POSTs only to batch_save, in chunks of 1000, and never with an empty list`,
+        posts === 1 && /fetch\(`\$\{KV_BASE\}\/batch_save`, \{\s*method: 'POST',/.test(src)
+        && /export const BATCH_SAVE_MAX = 1000;/.test(src)
+        && /if \(!Array\.isArray\(rows\) \|\| rows\.length === 0\) \{\s*throw new Error\(/.test(src) && !other,
+        `${posts} POST(s), another method or channel: ${other}`);
+    // The chunk loop (T2): Splunk refuses a batch_save of more than 1000 rows whole (HTTP 400, nothing stored), so the
+    // loop must step and cut by BATCH_SAVE_MAX, send each chunk as the body, count a chunk only when the answer lists
+    // one key per row (anything else a failure), and refuse two rows with one key before any request (in one batch the
+    // last would win). hostAliasApi.consistency-test drives the same code through a fake fetch.
+    check(`K5m ${HA_API} chunks by BATCH_SAVE_MAX and counts only what the server confirms`,
+        /for \(let from = 0; from < records\.length; from \+= BATCH_SAVE_MAX\) \{\s*const chunk = records\.slice\(from, from \+ BATCH_SAVE_MAX\);/
+            .test(src)
+        && (src.match(/\bBATCH_SAVE_MAX\b/g) || []).length === 3 && /body: JSON\.stringify\(chunk\),/.test(src)
+        && /if \(Array\.isArray\(saved\) && saved\.length === chunk\.length\) \{\s*written \+= chunk\.length;/.test(src)
+        && /\} else if \(Array\.isArray\(saved\) && saved\.length < chunk\.length\) \{\s*written \+= saved\.length;/.test(src)
+        && /message: 'the server did not confirm the rows'/.test(src)
+        && /if \(keys\.has\(key\)\) \{\s*throw new Error\(/.test(src) && /if \(rows\.length > MAX_ROWS\) \{\s*throw new Error\(/.test(src)
+        && (src.match(/\bwritten \+=/g) || []).length === 2,
+    'the for loop over BATCH_SAVE_MAX, the slice, the body, the two counted branches, the unconfirmed failure and the'
+        + ' duplicate-key and size refusals');
+    check(`K5m ${HA_API} DELETEs only one key, checked with isDeletableKey first (a DELETE on the collection URL deletes`
+        + ' every row)', deletes === 1
+        && /if \(!isDeletableKey\(key\)\) \{\s*throw new Error\('[^'\n]*'\);\s*\}\s*const resp = await fetch\(`\$\{KV_BASE\}\/\$\{encodeURIComponent\(key\)\}`, \{\s*method: 'DELETE',/
+            .test(src), `${deletes} DELETE(s)`);
+    const provider = code('state/HostAliasProvider.tsx');
+    const imp = /import \{([^}]*)\} from '\.\.\/utils\/hostAliasApi';/.exec(provider);
+    const imported = imp ? imp[1].split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+    check('K5n the provider imports only readAllHostAliases from hostAliasApi (it never writes)',
+        JSON.stringify(imported) === '["readAllHostAliases"]' && (provider.match(/hostAliasApi'/g) || []).length === 1,
+        JSON.stringify(imported));
+    const haWriters = listFiles(HOME).map(rel)
+        .filter((f) => f !== HA_API && /\b(upsertHostAliases|deleteHostAlias)\b/.test(code(f))).sort();
+    check('K5n the write functions are used only by the declared editor files (HA_WRITE_IMPORTERS)',
+        JSON.stringify(haWriters) === JSON.stringify(HA_WRITE_IMPORTERS.slice().sort()), JSON.stringify(haWriters));
+    check('K5o the host name table is no Dashboard Data target (a Clear never empties it)', regColls.indexOf(HA_COLL) === -1,
+        JSON.stringify(regColls));
+    const namedBy = saved.filter((s) => new RegExp(`\\b${HA_COLL}\\b`).test(s.body)).map((s) => s.name);
+    check('K5o no saved search names the host name table', namedBy.length === 0, namedBy.join(', '));
+    const defs = Object.keys(lookups).filter((n) => n === HA_COLL || lookups[n].collection === HA_COLL);
+    check('K5o no lookup definition points at it (none ships in build 400)', defs.length === 0, defs.join(', '));
+    // K5p the editor: only the Settings page imports it, and mounts it once below the admin gate (K5g's gateEnd).
+    const editorImporters = listFiles(HOME).filter((p) => /from '[^']*\/HostAliasPanel'/.test(read(p))).map(rel);
+    check('K5p the Host Names editor is imported only by the Settings page',
+        JSON.stringify(editorImporters) === JSON.stringify(['dashboards/AIAssistantSettings.tsx']),
+        JSON.stringify(editorImporters));
+    const editorAt = settings.indexOf('<HostAliasPanel');
+    check('K5p the Settings page mounts the Host Names editor once, only after its admin gate returns for non-admins',
+        gateEnd !== -1 && editorAt > gateEnd && settings.indexOf('<HostAliasPanel', editorAt + 1) === -1,
+        `gate ${gateEnd}, editor ${editorAt}`);
+    check(`K5k ${HA_EDITOR} has no '/*' inside a string`, !/['"`][^'"`\n]*\/\*/.test(read(path.join(HOME, HA_EDITOR))),
+        'a string holds "/*"');
+    const editor = code(HA_EDITOR);
+    check(`K5p ${HA_EDITOR} reaches the KV Store only through hostAliasApi (no fetch, XHR or sendBeacon of its own)`,
+        /from '\.\.\/utils\/hostAliasApi';/.test(editor)
+        && !/\bfetch\s*\(|\bnew\s+XMLHttpRequest\b|\bsendBeacon\s*\(|storage\/collections/.test(editor),
+        'the editor calls the network itself');
+}
 
 /* ---- K6 the Settings page admits exactly the closed collections' write roles ---- */
 const rolesM = /const ADMIN_TIER_ROLES = \[([^\]]*)\];/.exec(read(path.join(HOME, 'hooks', 'useIsAdmin.ts')));

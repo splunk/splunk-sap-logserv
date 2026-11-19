@@ -20,6 +20,9 @@ import { SEARCH_NODE_HOST_COUNTS } from '../topology/searches';
 import HostCountContext from '../components/topology/HostCountContext';
 import IpEnrichmentContext from '../components/topology/IpEnrichmentContext';
 import { useIpEnrichment } from '../hooks/useIpEnrichment';
+import NodeAliasContext from '../components/topology/NodeAliasContext';
+import { useHostAlias } from '../state/HostAliasProvider';
+import { hostLabelSet } from '../topology/nodeAlias';
 import { ALL_INTEGRATION_TYPES, failureRate } from '../topology/edgeStyle';
 import type { TrafficRow } from '../topology/panelFacts';
 import {
@@ -683,6 +686,14 @@ const IntegrationTopology: React.FC = () => {
      * picker-bound (latest-known semantics) — only the Refresh nonce
      * re-fetches it. */
     const ipEnrichment = useIpEnrichment(refreshNonce);
+    /* Build 400 - the customer's host names (Settings > Host Names), shown
+     * next to raw host values only. Same delivery discipline as the
+     * enrichment: NodeAliasContext + side-panel props, never the node arrays
+     * (liveNodes feeds TopologyGraph's layout effect), never a node label,
+     * never a search or a KV scope (topology/nodeAlias.ts). `resolve` keeps
+     * its identity until the names change, so a re-read of the same table
+     * re-renders no node. */
+    const { resolve: resolveHostAlias, reload: reloadHostAliases } = useHostAlias();
 
     const hostCountByLabel = useMemo(() => {
         const map = new Map<string, number>();
@@ -823,6 +834,10 @@ const IntegrationTopology: React.FC = () => {
         () => new Set(liveNodes.filter((n) => n.kind === 'sid_focused').map((n) => n.label)),
         [liveNodes],
     );
+    /* Build 400 - the labels only host-labelled nodes carry, so Live Activity
+     * (which holds labels, not nodes) names hosts and never a SID or tenant.
+     * Derived FROM liveNodes; nothing flows back into it. */
+    const hostLabels = useMemo(() => hostLabelSet(liveNodes), [liveNodes]);
     const statsLine = useMemo(() => {
         if (topology.loading) return 'Loading topology data from Splunk…';
         if (liveNodes.length === 0) {
@@ -1100,7 +1115,10 @@ const IntegrationTopology: React.FC = () => {
         // keeping the user's saved layout intact. Different from Reset, which
         // also wipes the saved positions and re-rolls d3-force.
         setRefreshNonce((n) => n + 1);
-    }, []);
+        // Build 400 - read the host names again too, as the IP enrichment is.
+        // A table that has not changed keeps the same names: no node re-renders.
+        reloadHostAliases();
+    }, [reloadHostAliases]);
 
     // ---- Right-sidebar selection edges ----
     const selectedNode = useMemo(
@@ -1339,9 +1357,11 @@ const IntegrationTopology: React.FC = () => {
                               * so its late arrival re-renders node COMPONENTS
                               * (cheap) without touching the nodes array the
                               * layout effect keys on. Build 329 — the IP
-                              * enrichment index travels the same way. */}
+                              * enrichment index travels the same way, and
+                              * build 400's host names too. */}
                             <HostCountContext.Provider value={hostCountByLabel}>
                             <IpEnrichmentContext.Provider value={ipEnrichment}>
+                            <NodeAliasContext.Provider value={resolveHostAlias}>
                                 <ReactFlowProvider>
                                     <TopologyGraph
                                         ref={topologyGraphRef}
@@ -1361,6 +1381,7 @@ const IntegrationTopology: React.FC = () => {
                                         onLayoutChange={handleLayoutChange}
                                     />
                                 </ReactFlowProvider>
+                            </NodeAliasContext.Provider>
                             </IpEnrichmentContext.Provider>
                             </HostCountContext.Provider>
                         </CenterFrame>
@@ -1403,6 +1424,7 @@ const IntegrationTopology: React.FC = () => {
                                     nodeHostTotal={nodeData.hostTotal}
                                     nodeHostCount={selectedNodeHostCount}
                                     ipEnrichment={ipEnrichment}
+                                    resolveHostAlias={resolveHostAlias}
                                     nodeTraffic={selectedNodeTraffic}
                                     endpointAttribution={topology.endpointAttribution}
                                     hostOwnerByValue={topology.inventoryOwnerByValue}
@@ -1448,6 +1470,8 @@ const IntegrationTopology: React.FC = () => {
                             rangeLabel="from current time range"
                             open
                             onToggleOpen={toggleBottom}
+                            hostLabels={hostLabels}
+                            resolveHostAlias={resolveHostAlias}
                         />
                     )}
                 </BottomZone>

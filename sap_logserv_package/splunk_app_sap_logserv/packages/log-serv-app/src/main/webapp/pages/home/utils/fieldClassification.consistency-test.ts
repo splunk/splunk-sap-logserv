@@ -423,6 +423,32 @@ check('D3 ordinary App fields stay readable', ['sap_sid', 'src_port', 'dest_port
             + `${vc.isIdentifierColumnName(n, {}) ? 'redacted' : 'sent'})`).join(', '));
 }
 
+/* ============================ G. the host name columns of build 400 ============================ */
+
+// A host's alias or friendly name (Settings > Host Names) is a name the customer chose for a server and can say what
+// it is for, so utils/piiRedaction.ts redacts such a column with the host names: only with the hostname opt-in, as
+// documented in the privacy tiers. A word that only starts with "alias" is no such column.
+{
+    const ALIAS_COLUMNS = ['alias', 'aliases', 'Alias', 'host_alias', 'Host Alias', 'host alias', 'hostalias', 'gw_remote_alias',
+        'friendly_name', 'Friendly Name', 'friendly_names', 'friendlyname', 'hostAlias', 'hostAliases', 'hostFriendlyName',
+        'serverFriendlyNames'];
+    const NOT_ALIAS = ['alias_count', 'aliasing', 'aliased', 'friendly', 'unfriendly_name_count', 'Aliasing', 'alias_rule'];
+    const onlyOptIn = ALIAS_COLUMNS.filter((n) => !(pii.isPiiColumn(n, { enabled: true, redactHostnames: true })
+        && !pii.isPiiColumn(n, { enabled: true })));
+    check('G1 an alias or friendly-name column is redacted with the hostname opt-in, and only with it', onlyOptIn.length === 0,
+        onlyOptIn.join(', '));
+    const marked = NOT_ALIAS.filter((n) => pii.isPiiColumn(n, { enabled: true, redactHostnames: true }));
+    check('G2 a word that only starts with alias or friendly is no alias column', marked.length === 0, marked.join(', '));
+    const VALUE = 'Payroll-PRD';
+    const shown = ALIAS_COLUMNS.filter((n) => pii.redactValueIfPII(n, VALUE, { enabled: true, redactHostnames: true }) === VALUE
+        || pii.redactValueIfPII(n, VALUE, { enabled: true }) !== VALUE);
+    check('G3 the value of such a column is replaced only with the opt-in', shown.length === 0, shown.join(', '));
+    check('G4 the Tier 2 reader treats the alias columns as identifiers with the opt-in only',
+        ALIAS_COLUMNS.every((n) => vc.isIdentifierColumnName(n, { redactHostnames: true }))
+        && ['host_alias', 'gw_remote_alias', 'friendly_name', 'hostFriendlyName'].every((n) => !vc.isIdentifierColumnName(n, {})),
+    ALIAS_COLUMNS.filter((n) => !vc.isIdentifierColumnName(n, { redactHostnames: true })).join(', '));
+}
+
 /* ===================================================================== */
 
 if (fcFailures > 0) {

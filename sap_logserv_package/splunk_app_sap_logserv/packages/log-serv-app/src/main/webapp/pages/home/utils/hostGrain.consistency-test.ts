@@ -820,7 +820,8 @@ export const run = async (): Promise<number> => {
 
     /* ---- T5 what waits ---- */
     check('T5a useSearch dispatches nothing while pending', /if \(isFilterPending\(query\)\) \{\s*setResults\(null\);\s*setRowsFor\(rowsKey\);\s*setLoading\(true\);[\s\S]*?return undefined;\s*\}/.test(search));
-    check('T5b before the job is created', search.indexOf('isFilterPending(query)') < search.indexOf('.create({'));
+    check('T5b before the job is created', search.indexOf('.create(') !== -1
+        && search.indexOf('isFilterPending(query)') < search.indexOf('(SearchJob as any).create('));
     check('T5c a pending panel counts as dispatched, so it reads as loading',
         /const dispatched = !!enabled && !!query && !isFilterUnavailable\(query\);/.test(search));
     {

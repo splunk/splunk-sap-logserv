@@ -1,9 +1,10 @@
 # Application Settings
 
-The **Application Settings** page holds the LogServ App's admin settings. Open it with **Settings** in the LogServ App's navigation rail (near the bottom, above **About**); its URL is `#/settings` inside the App, and the old `#/settings/ai-assistant` URL still opens it. The page has two tabs:
+The **Application Settings** page holds the LogServ App's admin settings. Open it with **Settings** in the LogServ App's navigation rail (near the bottom, above **About**); its URL is `#/settings` inside the App, and the old `#/settings/ai-assistant` URL still opens it. The page has three tabs:
 
 - **AI Assistant**: everything that governs the AI Assistant, on four sub-tabs (below). To turn the AI Assistant on for the first time, follow [Set Up the AI Assistant](enable.md).
 - **Dashboard Data**: the KV Store rollups behind every dashboard and the Environment Topology view: backfill, late-arriving data, retention and clear. See [Dashboard Data: Backfill and Freshness](../logserv-app/dashboard-data.md).
+- **Host Names**: your own names for hosts, which the dashboards show for the host names and IP addresses from the logs: next to them in tables and host lists, alone on the per-host charts. See [Host Names](../logserv-app/host-names.md).
 
 ```
 Application Settings
@@ -13,16 +14,18 @@ Application Settings
 |   +-- Splunk MCP            (sub-tab)
 |   +-- Audit Log             (sub-tab)
 +-- Dashboard Data            (top-level tab)
++-- Host Names                (top-level tab)
 ```
 
 ![Application Settings — two-level tab hierarchy (AI Assistant ▸ General sub-tab)](../../images/settings-general.png)
 
-## :material-circle-box:{ .taiconcolor } The Two Top-Level Tabs
+## :material-circle-box:{ .taiconcolor } The Three Top-Level Tabs
 
 | Tab | Scope |
 |---|---|
 | **AI Assistant** | Everything specific to the AI Assistant feature, split across four sub-tabs (below). |
 | **Dashboard Data** | App-wide admin controls for the KV Store rollup data layer that powers every dashboard **and** the Environment Topology view: the aggregation master switch, retention, the backfill, per-rollup status and clear ([see below](#dashboard-data-tab)). |
+| **Host Names** | The list of your own names for hosts, shown on the dashboards for the host values from the logs: add, edit, delete, CSV import and export ([see below](#host-names-tab)). |
 
 ### AI Assistant sub-tabs
 
@@ -37,7 +40,7 @@ While **Templates-only mode** is on, an info banner at the top of the **AI Assis
 
 ## :material-circle-box:{ .taiconcolor } Who Can Open the Page { #who-can-open-the-page }
 
-The LogServ App treats a user as an admin only when one of their roles is named exactly `admin`, `sc_admin` or `sc_subadmin`. Only those users see **Settings** in the navigation rail. Anyone else who opens `#/settings` gets **403 — Admin access required**, and cannot change the AI Assistant settings or run **Dashboard Data** Clear and Backfill. A delegated-admin role with any other name, on Splunk Cloud Platform or Splunk Enterprise, is not recognized; give such users one of the three roles itself (whether a role that only imports one of them is enough has not been tested). The page's own checks are not the security boundary: the KV Store collections and the knowledge objects behind it accept writes only from the same three roles (below).
+The LogServ App treats a user as an admin only when one of their roles is named exactly `admin`, `sc_admin` or `sc_subadmin`. Only those users see **Settings** in the navigation rail. Anyone else who opens `#/settings` gets **403 — Admin access required**, with a line that names the page and the three roles, and cannot change the AI Assistant settings, run **Dashboard Data** Clear and Backfill, or edit **Host Names**. A delegated-admin role with any other name, on Splunk Cloud Platform or Splunk Enterprise, is not recognized; give such users one of the three roles itself (whether a role that only imports one of them is enough has not been tested). The page's own checks are not the security boundary: the KV Store collections and the knowledge objects behind it accept writes only from the same three roles (below).
 
 ### Where the AI Assistant settings are stored
 
@@ -49,7 +52,7 @@ The **General** sub-tab's settings and the state of the two legal acknowledgemen
 
 All three ship with `read : [ * ]`, because every page load reads them, and `write : [ admin, sc_admin, sc_subadmin ]` in the App's `metadata/default.meta`. Writing a KV Store row needs only that collection-level permission, not `admin_all_objects`, so a delegated admin role without `admin_all_objects` (common on Splunk Cloud Platform) can still click **Save Defaults** and answer the acknowledgements. The shipped `default/ai_assistant_settings.conf` holds the defaults the App uses until the first save. On the first page load by an admin-tier user, the App copies any values left in `local/ai_assistant_settings.conf` and `local/ai_assistant_acks.conf` by an older build into these rows.
 
-The dashboard rollup, Environment Topology and platform-snapshot collections take writes from the same three roles, which is why **Dashboard Data** Clear and Backfill need one of them; the scheduled searches that fill those collections run as Splunk's system user.
+The dashboard rollup, Environment Topology and platform-snapshot collections take writes from the same three roles, which is why **Dashboard Data** Clear and Backfill need one of them; the scheduled searches that fill those collections run as Splunk's system user. The host name list, `logserv_host_aliases`, also takes writes from those three roles only; every role reads it, and no scheduled search writes it.
 
 ## :material-circle-box:{ .taiconcolor } General Tab
 
@@ -210,6 +213,14 @@ The **Dashboard Data** top-level tab is the admin control surface for the KV Sto
 It manages the dashboard data layer, not the AI Assistant, so its controls are documented with that layer: **[Dashboard Data: Backfill and Freshness → The Dashboard Data settings tab](../logserv-app/dashboard-data.md#the-dashboard-data-settings-tab)**. On a fresh install, run its backfill once: [Backfilling on first install](../logserv-app/dashboard-data.md#backfilling-on-first-install).
 
 A read-only view of the same rollup health, freshness and 30-day-history completeness, is available to **every** user on the **[Data Doctor's Diagnostics page](../logserv-app/dashboards/platform/diagnostics.md)** (*Platform → Diagnostics*), which points back here for the backfill and clear controls.
+
+## :material-circle-box:{ .taiconcolor } Host Names Tab { #host-names-tab }
+
+The **Host Names** top-level tab, after **Dashboard Data**, holds the list of your own names for hosts: a full host name, a short name or an IP address mapped to a name the dashboards show for it. Add, edit and delete names there, or import and export them as a CSV file with the header `host,alias,description`. Editing needs one of the three admin role names ([Who can open the page](#who-can-open-the-page)); every role reads the list, so a description must not hold personal data.
+
+The names are for display only: searches, filters, clicks, **Open in Search**, CSV downloads and the AI Assistant keep the host values from the logs, and **Dashboard Data** Clear never touches the list. Matching rules, the CSV format and where the names show: **[Host Names](../logserv-app/host-names.md)**.
+
+![Settings — Host Names tab](../../images/settings-host-names.png)
 
 ## :material-circle-box:{ .taiconcolor } Legal Acknowledgement Modals
 

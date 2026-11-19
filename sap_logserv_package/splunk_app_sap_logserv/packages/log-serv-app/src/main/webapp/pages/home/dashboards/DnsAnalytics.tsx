@@ -14,6 +14,7 @@ import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { shouldUseRawSource } from '../utils/hybridRouting';
 import { isFilterUnavailable } from '../utils/queryFilters';
 import { recordRawTwin } from '../utils/rawTwin';
+import { useHostAlias } from '../state/HostAliasProvider';
 import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { applySpanToken, chooseTimechartSpan, SPAN_TOKEN, spanSubtitle } from '../utils/timechartSpan';
@@ -221,13 +222,13 @@ const TOP_DOM_COLS: ColumnDef[] = [
     { key: 'Unique Clients', label: 'Unique Clients', align: 'right', render: (v) => formatInteger(v) },
 ];
 const NX_DOM_COLS: ColumnDef[] = [
-    { key: 'Client IP', label: 'Client IP' },
+    { key: 'Client IP', label: 'Client IP', hostAlias: true },
     { key: 'Queries', label: 'Queries', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Unique Domains', label: 'Unique Domains', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Queries per Domain', label: 'Queries / Domain', align: 'right' },
 ];
 const RESOLVER_COLS: ColumnDef[] = [
-    { key: 'Resolver', label: 'Resolver' },
+    { key: 'Resolver', label: 'Resolver', hostAlias: true },
     { key: 'Queries', label: 'Queries', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Unique Domains', label: 'Unique Domains', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Unique Clients', label: 'Unique Clients', align: 'right', render: (v) => formatInteger(v) },
@@ -307,6 +308,9 @@ const DnsAnalytics: React.FC = () => {
     // user's prior experience on first load.
     const [topN, setTopN] = useState<string>('all');
     const [selectedClients, setSelectedClients] = useState<string[]>([]);
+    // Build 400 - each client option reads "alias (client IP)" where Settings >
+    // Host Names gives one; the option's value (the pick, the SPL) stays the raw IP.
+    const { label: aliasLabel } = useHostAlias();
 
     // Client-IP options for the Multiselect — sorted by descending request
     // volume so the dropdown's first items are the busiest clients. Hybrid so a
@@ -423,7 +427,7 @@ const DnsAnalytics: React.FC = () => {
                                 style={{ minWidth: 180, maxWidth: 320 }}
                             >
                                 {clientOptions.map((c) => (
-                                    <Multiselect.Option key={c} label={c} value={c} />
+                                    <Multiselect.Option key={c} label={aliasLabel(c)} value={c} />
                                 ))}
                             </Multiselect>
                             <Select
@@ -441,7 +445,7 @@ const DnsAnalytics: React.FC = () => {
                         </PanelControls>
                     }
                 >
-                    <TimeSeriesChart query={topClientsQuery} height={280} palette="categorical" chartType="line" />
+                    <TimeSeriesChart query={topClientsQuery} height={280} palette="categorical" chartType="line" aliasSeries />
                 </FramedPanel>
                 <FramedPanel
                     title="Requests by Record Type"

@@ -124,7 +124,7 @@ In Splunk Web on the ES search head, open Enterprise Security's asset and identi
 1. An **asset** source that reads the lookup definition `splunk_for_sap_logserv_assets` (you can give the source the same name).
 2. An **identity** source that reads the lookup definition `splunk_for_sap_logserv_identities`.
 
-The App ships both lookup definitions (in its `default/transforms.conf`) and shares them with all apps (`export = system`), so ES can read them. The names of ES's menus and form fields differ between ES versions; follow the ES documentation for your version on adding an asset or identity lookup. After ES's next merge of its asset and identity sources, verify by running:
+The App ships both lookup definitions (in its `default/transforms.conf`) and shares them with all apps (`export = system`), so ES can read them. From build 404 they, and the App's eventtypes, tags, field extractions and aliases that the CIM data models use, stay shared with all apps even when the App's own sharing is **This app only**; with build 399 or earlier, keep the App at **All apps** ([App sharing](../logserv-app/installation.md#app-sharing)). The names of ES's menus and form fields differ between ES versions; follow the ES documentation for your version on adding an asset or identity lookup. After ES's next merge of its asset and identity sources, verify by running:
 
 ```spl
 | inputlookup asset_lookup_by_str | search asset="hec53v013858"

@@ -10,6 +10,7 @@ import DashboardLayout from '../components/DashboardLayout';
 import { useSearch } from '../hooks/useSearch';
 import { useHybridSearch, useRoutedQuery } from '../hooks/useHybridSearch';
 import { useQueryFilters, mapQueryFilters, withQueryFilters } from '../state/SidHostFilterProvider';
+import { useHostAlias } from '../state/HostAliasProvider';
 import { useTimeRange } from '../state/TimeRangeProvider';
 import { buildHostDetailsUrl, buildSplunkSearchUrl, openInNewTab, splQuote } from '../utils/drilldownUrls';
 import { logservTheme } from '../styles/logservTheme';
@@ -217,6 +218,24 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
     return { value, loading, error, search };
 };
 
+/* Build 400 (Settings > Host Names): the Top Drop Source KPI arrives as the one
+ * string "<ip> (N,NNN)", built in SPL by both arms (kpiTopDropSrc above; the
+ * cached / raw twin gates pin that SPL, so it stays as it is). The browser
+ * splits it back with a strict pattern. When the IP has a name, the card shows
+ * the name with the count and the IP under it; a value that does not match, or
+ * an IP with no name, renders exactly as before. */
+const TOP_DROP_SRC_RE = /^(\S+) \(([0-9,]+)\)$/;
+const parseTopDropSrc = (value: unknown): { ip: string; count: string } | null => {
+    if (typeof value !== 'string') {
+        return null;
+    }
+    const m = TOP_DROP_SRC_RE.exec(value);
+    return m ? { ip: m[1], count: m[2] } : null;
+};
+
+// Build 400: `hostAlias` marks the source IP and host columns. DataTable shows the
+// name from Settings > Host Names beside the raw value; sorting, row clicks and the
+// searches they open keep the raw value.
 const SAP_INSTANCE_COLS: ColumnDef[] = [
     { key: 'sap_sid', label: 'SID' },
     { key: 'sap_inst', label: 'Instance' },
@@ -228,7 +247,7 @@ const SAP_INSTANCE_COLS: ColumnDef[] = [
 // Blocked tables (build 374): Total = every line carrying the source / port;
 // At Host = IN_DROP; In Transit / Other = the rest (FWD_DROP and any other line).
 const FW_SRC_COLS: ColumnDef[] = [
-    { key: 'fw_src', label: 'Source IP' },
+    { key: 'fw_src', label: 'Source IP', hostAlias: true },
     { key: 'Drops', label: 'Total', align: 'right', render: (v) => formatInteger(v) },
     { key: 'AtHost', label: 'At Host', align: 'right', render: (v) => formatInteger(v) },
     { key: 'InTransit', label: 'In Transit / Other', align: 'right', render: (v) => formatInteger(v) },
@@ -247,7 +266,7 @@ const FW_PORT_COLS: ColumnDef[] = [
 
 // Resource Pressure column definitions (build 186)
 const OOM_HOST_COLS: ColumnDef[] = [
-    { key: 'host', label: 'Host' },
+    { key: 'host', label: 'Host', hostAlias: true },
     { key: 'Kills', label: 'OOM Kills', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Victims', label: 'Victim Processes' },
     { key: 'Max RSS (MB)', label: 'Max RSS (MB)', align: 'right', render: (v) => formatInteger(v) },
@@ -262,7 +281,7 @@ const OOM_VICTIM_COLS: ColumnDef[] = [
 ];
 
 const CPU_LOCKUP_COLS: ColumnDef[] = [
-    { key: 'host', label: 'Host' },
+    { key: 'host', label: 'Host', hostAlias: true },
     { key: 'Lockups', label: 'Lockups', align: 'right', render: (v) => formatInteger(v) },
     { key: 'CPUs', label: 'CPUs', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Max (sec)', label: 'Max (sec)', align: 'right', render: (v) => formatInteger(v) },
@@ -304,6 +323,11 @@ const Linux: React.FC = () => {
     // The in-transit KPI stays neutral (build 374): on a VPN / IPsec gateway a
     // FWD_DROP is the forwarding policy refusing traffic, not a fault on the host.
     const dropSrcTone = topDropSrc.value ? 'critical' : 'neutral';
+    // Build 400: the name of the top drop source, if it has one (see parseTopDropSrc).
+    // `value` stays the raw string, so the card's empty and zero checks are unchanged.
+    const { resolve: resolveHostAlias } = useHostAlias();
+    const topDropParts = parseTopDropSrc(topDropSrc.value);
+    const topDropAlias = topDropParts ? resolveHostAlias(topDropParts.ip) : null;
 
     /* Drilldowns (build 159 / session 027 task 6). */
     const goSapInstanceRow = (row: Record<string, unknown>): void => {
@@ -395,8 +419,22 @@ const Linux: React.FC = () => {
                 />
                 <KpiCard
                     label="Top Drop Source"
-                    sub="At host and in transit"
+                    sub={
+                        topDropParts && topDropAlias !== null
+                            ? `${topDropParts.ip}, at host and in transit`
+                            : 'At host and in transit'
+                    }
                     value={topDropSrc.value}
+                    formatValue={topDropParts && topDropAlias !== null ? (): string => topDropAlias : undefined}
+                    // A name can be longer than the card: one line, the name cut with an ellipsis, the
+                    // drop count after it always in view, the whole as the tooltip.
+                    truncateValue={topDropParts !== null && topDropAlias !== null}
+                    valueSuffix={topDropParts && topDropAlias !== null ? ` (${topDropParts.count})` : undefined}
+                    valueTitle={
+                        topDropParts && topDropAlias !== null
+                            ? `${topDropAlias} - ${topDropParts.ip} (${topDropParts.count})`
+                            : undefined
+                    }
                     loading={topDropSrc.loading}
                     error={topDropSrc.error}
                     search={topDropSrc.search}
@@ -504,7 +542,7 @@ const Linux: React.FC = () => {
                     />
                 </FramedPanel>
                 <FramedPanel title="TCP Memory Pressure Over Time" subtitle={spanSubtitle('Count of TCP socket-buffer exhaustion warnings, by host', qTcpOomTimeline, 'sustained activity suggests tcp_mem tuning needed')}>
-                    <TimeSeriesChart query={qTcpOomTimeline} height={280} palette="errors" chartType="line" />
+                    <TimeSeriesChart query={qTcpOomTimeline} height={280} palette="errors" chartType="line" aliasSeries />
                 </FramedPanel>
             </PanelGrid2>
         </DashboardLayout>

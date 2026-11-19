@@ -428,7 +428,7 @@ export const ROLLUP_SEARCHES_HEADING = 'Rollup-populating saved searches';
 
 /** Session 113 — the producer definition, prepared for the drawer's
  *  interactive "Open in Search" action: the terminal `| outputlookup` WRITE
- *  is removed first. Opened verbatim, one Enter press in the Search app over
+ *  is removed first. Opened verbatim, one Enter press on Splunk's search page over
  *  a window that is not hour-aligned-and-complete would compute partial
  *  bucket rows and `append=true`-upsert them over correct summary rows
  *  (it would write: since build 384 only the admin tier can write the

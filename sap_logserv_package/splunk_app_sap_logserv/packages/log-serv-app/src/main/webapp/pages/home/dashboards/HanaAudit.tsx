@@ -179,6 +179,9 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
     return { value, loading, error, search };
 };
 
+// Build 400: `hostAlias` marks the HANA host, client host and client IP columns.
+// DataTable shows the name from Settings > Host Names beside the raw value; sorting,
+// row clicks and the searches they open keep the raw value.
 const HEALTH_COLS: ColumnDef[] = [
     { key: 'day', label: 'Day' },
     { key: 'daily_events', label: 'Events', align: 'right', render: (v) => formatInteger(v) },
@@ -194,11 +197,11 @@ const PASSWORD_COLS: ColumnDef[] = [
     { key: 'password_action', label: 'Action' },
     { key: 'target_user', label: 'Target User' },
     { key: 'executing_user', label: 'Exec User' },
-    { key: 'client_ip', label: 'Client IP' },
+    { key: 'client_ip', label: 'Client IP', hostAlias: true },
     { key: 'count', label: 'Count', align: 'right', render: (v) => formatInteger(v) },
 ];
 const HOST_COLS: ColumnDef[] = [
-    { key: 'host', label: 'HANA Host' },
+    { key: 'host', label: 'HANA Host', hostAlias: true },
     { key: 'count', label: 'Failed Ops', align: 'right', render: (v) => formatInteger(v) },
 ];
 const TOP_USER_COLS: ColumnDef[] = [
@@ -208,7 +211,7 @@ const TOP_USER_COLS: ColumnDef[] = [
     { key: 'Failures', label: 'Failures', align: 'right', render: (v) => formatInteger(v) },
 ];
 const CLIENT_IP_COLS: ColumnDef[] = [
-    { key: 'client_ip', label: 'Client IP' },
+    { key: 'client_ip', label: 'Client IP', hostAlias: true },
     { key: 'Events', label: 'Events', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Users', label: 'Users', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Failures', label: 'Failures', align: 'right', render: (v) => formatInteger(v) },
@@ -221,9 +224,9 @@ const HIGH_RISK_COLS: ColumnDef[] = [
     { key: 'action_category', label: 'Category', width: '140px' },
     { key: 'risk_level', label: 'Risk', width: '90px' },
     { key: 'status', label: 'Status', width: '120px' },
-    { key: 'host', label: 'HANA Host', width: '160px' },
-    { key: 'src_host', label: 'Client Host', width: '160px' },
-    { key: 'client_ip', label: 'Client IP', width: '120px' },
+    { key: 'host', label: 'HANA Host', width: '160px', hostAlias: true },
+    { key: 'src_host', label: 'Client Host', width: '160px', hostAlias: true },
+    { key: 'client_ip', label: 'Client IP', width: '120px', hostAlias: true },
     { key: 'sql_statement', label: 'SQL Statement' },
 ];
 const AFTER_HOURS_COLS: ColumnDef[] = [
@@ -233,9 +236,9 @@ const AFTER_HOURS_COLS: ColumnDef[] = [
     { key: 'executing_user', label: 'User', width: '140px' },
     { key: 'action_type', label: 'Action' },
     { key: 'status', label: 'Status', width: '120px' },
-    { key: 'host', label: 'HANA Host', width: '160px' },
-    { key: 'src_host', label: 'Client Host', width: '160px' },
-    { key: 'client_ip', label: 'Client IP', width: '120px' },
+    { key: 'host', label: 'HANA Host', width: '160px', hostAlias: true },
+    { key: 'src_host', label: 'Client Host', width: '160px', hostAlias: true },
+    { key: 'client_ip', label: 'Client IP', width: '120px', hostAlias: true },
 ];
 
 const HanaAudit: React.FC = () => {

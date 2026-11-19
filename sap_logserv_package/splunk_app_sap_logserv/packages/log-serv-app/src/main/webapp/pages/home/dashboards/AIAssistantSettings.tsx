@@ -9,6 +9,9 @@ import DashboardLayout from '../components/DashboardLayout';
 import FramedPanel from '../components/FramedPanel';
 import AuditLogViewer from '../components/AuditLogViewer';
 import RollupBackfillPanel from '../components/RollupBackfillPanel';
+import HostAliasPanel from '../components/HostAliasPanel';
+import DocsHelpIcon from '../components/DocsHelpIcon';
+import { DOCS_HOST_NAMES } from '../utils/docsLinks';
 import { useIsAdmin } from '../hooks/useIsAdmin';
 import {
     CredentialSummary,
@@ -64,6 +67,11 @@ import {
  *     field (api_key, endpoint, region, etc.).
  *   • MCP Server — server URL + bearer token (admin pastes a
  *     pre-obtained token; auto-mint comes in Phase G).
+ *   • Dashboard Data tab — the rollup backfill / clear panel.
+ *   • Host Names tab (build 400) — components/HostAliasPanel.tsx, the
+ *     customer's own names for hosts, shown beside the raw host values on
+ *     the dashboards. Like the backfill panel it is mounted only below the
+ *     admin gate (kvAcl.consistency-test K5g / K5p).
  *
  * Auth:
  *   The page is admin-gated via `useIsAdmin`. Non-admins see a 403-style
@@ -2134,11 +2142,12 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                 <ForbiddenBlock>
                     <strong>403 — Admin access required.</strong>
                     <div style={{ marginTop: 8 }}>
-                        Signed in as <code>{username ?? 'unknown'}</code>. The AI
-                        Assistant configuration page is only available to users
-                        with the <code>admin</code> role. Contact your Splunk
-                        administrator for access, or sign in with an admin
-                        account.
+                        Signed in as <code>{username ?? 'unknown'}</code>. The
+                        Application Settings page is only available to users
+                        who hold a role named <code>admin</code>,{' '}
+                        <code>sc_admin</code> or <code>sc_subadmin</code>.
+                        Contact your Splunk administrator for access, or sign
+                        in with an admin account.
                     </div>
                 </ForbiddenBlock>
             </DashboardLayout>
@@ -2155,7 +2164,7 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
     return (
         <DashboardLayout
             title="Application Settings"
-            subtitle="Admin configuration for the AI Assistant feature and the dashboard KV-Store data layer."
+            subtitle="Admin configuration for the AI Assistant feature, the dashboard KV-Store data layer and the host names shown on the dashboards."
             noCloudFilter
         >
             {globalNotice && <StatusBanner $tone="success">{globalNotice}</StatusBanner>}
@@ -2316,6 +2325,24 @@ const AIAssistantSettings: React.FC<AIAssistantSettingsProps> = ({
                             subtitle={<PanelSub>Aggregation, backfill, retention, and clear for the time-bucketed KV-Store rollups that power every dashboard (including the Environment Topology view). Hourly scheduled searches aggregate raw events into the logserv_*_rollup collections; the dashboards read from KV Store at render time. After first install, run the 30-day backfill here to populate history — it dispatches each rollup's component searches as top-level jobs so they complete correctly at customer scale (the bundled *_backfill saved searches truncate at high event volumes).</PanelSub>}
                         >
                             <RollupBackfillPanel />
+                        </FramedPanel>
+                    </SectionGrid>
+                </TabLayout.Panel>
+
+                <TabLayout.Panel panelId="host-names" label="Host Names">
+                    <SectionGrid>
+                        <FramedPanel
+                            title="Host Names"
+                            subtitle={<PanelSub>Your own names for hosts, shown beside the host names and IP addresses on the dashboards. Display only: searches, filters, clicks, Open in Search and CSV downloads keep the real host names.</PanelSub>}
+                            actions={
+                                <DocsHelpIcon
+                                    href={DOCS_HOST_NAMES}
+                                    title="Open the Host Names documentation in a new tab"
+                                    size={24}
+                                />
+                            }
+                        >
+                            <HostAliasPanel />
                         </FramedPanel>
                     </SectionGrid>
                 </TabLayout.Panel>

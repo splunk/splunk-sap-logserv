@@ -100,6 +100,38 @@ const Value = styled.div<{ $tone: KpiTone; $loading: boolean }>`
     font-feature-settings: 'tnum' 1;
 `;
 
+/* Build 400 - opt-in (truncateValue): a value that is a name rather than a
+   number stays on one line, cut with an ellipsis where the card is narrower. A
+   separate component, so every card without the prop keeps the Value above. */
+const TruncatedValue = styled(Value)`
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+`;
+
+/* Build 400 - opt-in (truncateValue with valueSuffix): the value as a row of two,
+   the text then the suffix. Only the text gives way, cut with an ellipsis; the
+   suffix (Linux's drop count) never shrinks, so it stays in view however long
+   the text is. */
+const SplitValue = styled(TruncatedValue)`
+    display: flex;
+    align-items: baseline;
+`;
+
+const ValueText = styled.span`
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`;
+
+/* white-space: pre keeps the suffix's leading space, which a flex item would drop. */
+const ValueSuffix = styled.span`
+    flex: 0 0 auto;
+    white-space: pre;
+`;
+
 const Sub = styled.div`
     color: ${logservTheme.colors.textMuted};
     font-size: ${logservTheme.fontSize.small};
@@ -188,6 +220,21 @@ interface KpiCardProps {
      *  `| inputlookup` without the empty-safe idiom it is the signature of a
      *  rollup that was never backfilled. */
     search?: PanelMeta;
+    /** Build 400 - opt-in: keep the value on one line and cut it with an
+     *  ellipsis when the card is too narrow (a name, such as Linux's Top Drop
+     *  Source when its IP has one in Host Names). Absent or false: the value
+     *  renders exactly as before. */
+    truncateValue?: boolean;
+    /** Build 400 - opt-in: the value's tooltip, for the full text past an
+     *  ellipsis. Not shown while loading or on an error. Absent: no tooltip,
+     *  as before. */
+    valueTitle?: string;
+    /** Build 400 - opt-in, with truncateValue only (ignored without it): text
+     *  drawn after the value in a span of its own that never shrinks, so only
+     *  the value is cut (Linux's Top Drop Source: the name gives way, the drop
+     *  count " (N,NNN)" stays in view). Not drawn while loading or on an error.
+     *  Absent: the value is drawn as before. */
+    valueSuffix?: string;
 }
 
 const KpiCard: React.FC<KpiCardProps> = ({
@@ -202,6 +249,9 @@ const KpiCard: React.FC<KpiCardProps> = ({
     onClick,
     clickTitle,
     search,
+    truncateValue = false,
+    valueTitle,
+    valueSuffix,
 }) => {
     let displayValue: ReactNode;
     if (loading) {
@@ -296,6 +346,10 @@ const KpiCard: React.FC<KpiCardProps> = ({
         });
     };
 
+    // Build 400 - the opt-in one-line value (truncateValue), split when a suffix is given.
+    const split = truncateValue && valueSuffix !== undefined && !loading && !error;
+    const TruncatedBox = split ? SplitValue : TruncatedValue;
+
     /* §18.8a-25 — the FramedPanel-style interactive-descendant guard, applied
      * to BOTH click and keydown: Enter on the nested Diagnose button must not
      * fire the card's drilldown (stopPropagation on click alone cannot prevent
@@ -346,9 +400,22 @@ const KpiCard: React.FC<KpiCardProps> = ({
                 </DiagnoseCorner>
             )}
             <Label>{label}</Label>
-            <Value $tone={tone} $loading={loading}>
-                {displayValue}
-            </Value>
+            {truncateValue ? (
+                <TruncatedBox $tone={tone} $loading={loading} title={loading || error ? undefined : valueTitle}>
+                    {split ? (
+                        <>
+                            <ValueText>{displayValue}</ValueText>
+                            <ValueSuffix>{valueSuffix}</ValueSuffix>
+                        </>
+                    ) : (
+                        displayValue
+                    )}
+                </TruncatedBox>
+            ) : (
+                <Value $tone={tone} $loading={loading} title={loading || error ? undefined : valueTitle}>
+                    {displayValue}
+                </Value>
+            )}
             {sparkline && <SparklineSlot>{sparkline}</SparklineSlot>}
             {error ? (
                 <ErrorLine>{error.message || 'Search failed'}</ErrorLine>

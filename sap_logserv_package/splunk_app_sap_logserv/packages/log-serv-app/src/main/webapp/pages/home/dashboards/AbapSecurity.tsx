@@ -180,12 +180,12 @@ const useFirstRowFieldHybrid = (cached: string, raw: string, f: string): FirstRo
 };
 
 const ICM_PEER_COLS: ColumnDef[] = [
-    { key: 'Peer IP', label: 'Peer IP' },
+    { key: 'Peer IP', label: 'Peer IP', hostAlias: true },
     { key: 'Connections', label: 'Connections', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Protocols', label: 'Protocols' },
 ];
 const GW_HOST_COLS: ColumnDef[] = [
-    { key: 'Remote Host', label: 'Remote Host' },
+    { key: 'Remote Host', label: 'Remote Host', hostAlias: true },
     { key: 'Function', label: 'Function' },
     { key: 'Events', label: 'Events', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Services', label: 'Services' },

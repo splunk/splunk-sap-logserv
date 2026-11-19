@@ -241,9 +241,11 @@ const QRAW_BASE = {
  *  view of errors across all 11 sourcetypes the KPI counts, broken down by
  *  Category + sourcetype with affected-host count + last-seen timestamp.
  *  Ported from v0.0.4.2 logserv_environment_health.xml's
- *  viz_kpi_total_errors drilldown URL. The Splunk Search app is the only
+ *  viz_kpi_total_errors drilldown URL. Splunk's search page is the only
  *  destination broad enough to host this — no single React dashboard owns
- *  the cross-cutting view. Build 157 / session 027 task 4. */
+ *  the cross-cutting view. Build 157 / session 027 task 4; since build 399
+ *  the search page opens inside this app (utils/searchPage.ts), not in the
+ *  Search app. */
 const TOTAL_ERRORS_DRILLDOWN_SPL =
     '`sap_logserv_idx_macro` ((sourcetype="sap:abap:dispatcher" (dp_severity="ERROR" OR dp_severity="FATAL")) OR ' +
     '(sourcetype="sap:abap:icm" icm_is_error="true") OR ' +
@@ -293,16 +295,19 @@ const formatPercent = (raw: unknown): string => {
     return `${n.toFixed(1)}%`;
 };
 
+// Build 400: `hostAlias` marks the two Host columns. DataTable shows the name from
+// Settings > Host Names beside the raw value; sorting and the Host Details click keep
+// the raw value.
 const CRITICAL_EVENT_COLS: ColumnDef[] = [
     { key: 'Time', label: 'Time', width: '160px' },
-    { key: 'host', label: 'Host', width: '180px' },
+    { key: 'host', label: 'Host', width: '180px', hostAlias: true },
     { key: 'Category', label: 'Category', width: '160px' },
     { key: 'sourcetype', label: 'Sourcetype', width: '200px' },
     { key: 'Detail', label: 'Detail' },
 ];
 
 const TOP_HOSTS_COLS: ColumnDef[] = [
-    { key: 'host', label: 'Host' },
+    { key: 'host', label: 'Host', hostAlias: true },
     { key: 'ABAP', label: 'ABAP', align: 'right', render: (v) => formatInteger(v) },
     { key: 'HANA', label: 'HANA', align: 'right', render: (v) => formatInteger(v) },
     { key: 'Services', label: 'Services', align: 'right', render: (v) => formatInteger(v) },
@@ -351,8 +356,9 @@ const EnvironmentHealth: React.FC = () => {
     const errRateTone = errRateNum >= 5 ? 'critical' : errRateNum >= 1 ? 'warning' : 'neutral';
 
     /* Drilldowns (build 157 / session 027 task 4): every KPI, chart, and
-     * table row opens a related dashboard (or Splunk Search app for Total
-     * Errors) in a NEW BROWSER TAB with the current TimeRange embedded as
+     * table row opens a related dashboard (or, for Total Errors, Splunk's
+     * search page, inside this app since build 399) in a NEW BROWSER TAB
+     * with the current TimeRange embedded as
      * `?earliest=…&latest=…` URL params. The destination dashboard's
      * TimeRangeProvider hydrates from those params on first mount, so the
      * source dashboard's selected window is preserved across the navigation.

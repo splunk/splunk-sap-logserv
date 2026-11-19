@@ -13,6 +13,9 @@ import { isDatabaseTag, displayTag } from '../../../topology/types';
 import AppServersDbIcon from './AppServersDbIcon';
 import IpEnrichmentContext from '../IpEnrichmentContext';
 import { nodeUserLine } from '../../../topology/enrichment';
+import NodeAliasContext from '../NodeAliasContext';
+import { partnerNameSlot } from '../../../topology/nodeAlias';
+import { formatAliasLabel } from '../../../utils/hostAlias';
 
 /**
  * Custom node for remote partners (non-SAP systems, external endpoints,
@@ -404,6 +407,17 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
     const enrichIndex = useContext(IpEnrichmentContext);
     const enrichEntry = enrichIndex.get(d.label);
     const enrichUserLine = enrichEntry ? nodeUserLine(enrichEntry) : null;
+    /* Build 400 - the customer's name for this host (Settings > Host Names),
+     * from NodeAliasContext: never node data and never the label, which stays
+     * raw (topology/nodeAlias.ts). A tenant's label is a SID and gets none. The
+     * name takes the enrichment hostname's line and that hostname moves to the
+     * tooltip, so the square never has more lines than an IP square already
+     * reserves (the 95x175 layout box). A screen reader hears "name (raw)";
+     * with no name, the raw label as before. */
+    const resolveNodeAlias = useContext(NodeAliasContext);
+    const alias = isTenant ? null : resolveNodeAlias(d.label);
+    const nameSlot = partnerNameSlot(alias, enrichEntry?.hostname);
+    const ariaName = formatAliasLabel(alias, d.label);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
     const handleMouseEnter = useCallback((): void => {
@@ -432,6 +446,8 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
               * hedge a sentence can carry (review fold, session 110). */}
             <NodeTooltip
                 name={d.label}
+                alias={alias}
+                hostname={nameSlot.tooltipHostname}
                 kind={isRouter ? 'SAP Router' : 'Remote partner'}
                 tag={displayTag(d.tag as never)}
                 events={d.eventCount}
@@ -476,7 +492,7 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
                             nodeId={id ?? d.label}
                         />
                     )}
-                    <div className="dbDisc" aria-label={d.label}>
+                    <div className="dbDisc" aria-label={ariaName}>
                         <CylinderIcon width={26} height={30} />
                     </div>
                 </div>
@@ -502,7 +518,7 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
                             nodeId={id ?? d.label}
                         />
                     )}
-                    <div className="square" aria-label={d.label}>
+                    <div className="square" aria-label={ariaName}>
                         {isRouter ? '⇄' : '⬢'}
                     </div>
                 </div>
@@ -515,9 +531,18 @@ const PartnerNode: React.FC<NodeProps> = ({ id, data, selected }) => {
             {/* Build 329 / session 112 — enrichment lines under the IP label
               * (resolved hostname + user name/count). Rendered only when the
               * label hits the IP-keyed index, so hostname-labeled squares are
-              * untouched. Titles carry the full strings past the ellipsis. */}
-            {!isTenant && enrichEntry?.hostname && (
-                <div className="enrichHost" title={enrichEntry.hostname}>{enrichEntry.hostname}</div>
+              * untouched. Titles carry the full strings past the ellipsis.
+              * Build 400 - the first line is shared: the customer's name for
+              * the host wins it (hostname-labeled squares included: they gain
+              * the line, never more lines than an IP square already reserves),
+              * and the enrichment hostname it displaces is in the tooltip. */}
+            {!isTenant && nameSlot.line && (
+                <div
+                    className="enrichHost"
+                    title={nameSlot.line.isAlias ? `${nameSlot.line.text} (from Host Names)` : nameSlot.line.text}
+                >
+                    {nameSlot.line.text}
+                </div>
             )}
             {!isTenant && enrichEntry && enrichUserLine && (
                 <div
