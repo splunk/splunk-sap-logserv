@@ -1,0 +1,5791 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/install-setup/aws-remote-s3-connect-instance-role/">
+      
+      
+        <link rel="prev" href="../aws-remote-s3-connect-guide/">
+      
+      
+        <link rel="next" href="../aws-remote-s3-connect-instance-role-reference/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Connect with EC2 Instance Role - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#aws-remote-s3-connect-with-an-ec2-instance-role" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Connect with EC2 Instance Role
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../getting-started/roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../configure-filters/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure and Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/upgrading/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Upgrade
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../logserv-app/dashboards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dashboards
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../enterprise-security/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise Security Integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ai-assistant/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  AI Assistant
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../overview/release-notes/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer/testing-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/limited-preview-announcement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limited Preview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/demo-video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here: Deployment Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Plan
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    1. Plan
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Log Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/package-placement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where Each Package Goes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/splunk-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk Cloud Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/capacity-planning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Planning and First Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    2. Install the Data TA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cloud-attribution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Cloud Attribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decide-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decide Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../distribute-data-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribute the Data TA to Heavy Forwarders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Connect Your Cloud
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    3. Connect Your Cloud
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../choose-your-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Cloud and AWS Scenario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect with EC2 Instance Role
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect with EC2 Instance Role
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Introduction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#before-you-begin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before You Begin
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#find-your-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find Your Scenario
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps at a Glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-get-saps-arns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Get SAP&rsquo;s ARNs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-find-or-create-the-instance-profile-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Find or Create the Instance Profile Role
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Find or Create the Instance Profile Role">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-heavy-forwarder-already-has-an-instance-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Heavy Forwarder Already Has an Instance Profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-heavy-forwarder-has-no-instance-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Heavy Forwarder Has No Instance Profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-set-up-the-iam-role-splunk-logserv-ta-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Set Up the IAM Role splunk-logserv-ta-role
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Set Up the IAM Role splunk-logserv-ta-role">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scenario-a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario A: Deploy the Instance-Role CloudFormation Template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario B: Switch the Deployed Stack&rsquo;s IAM Role to the Instance Profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario C: Create or Reuse the IAM Role and Policy by Hand
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scenario C: Create or Reuse the IAM Role and Policy by Hand">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c1-the-iam-role-and-its-trust-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C.1 The IAM Role and Its Trust Policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c2-the-permissions-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C.2 The Permissions Policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c3-allow-the-instance-profile-role-to-assume-the-iam-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C.3 Allow the Instance Profile Role to Assume the IAM Role
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-give-sap-the-iam-role-arn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Give SAP the IAM Role ARN
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-confirm-the-account-in-the-add-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Confirm the Account in the Add-on
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-add-the-iam-role-in-the-add-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Add the IAM Role in the Add-on
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-test-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Test Access
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-create-or-switch-the-sqs-based-s3-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Create or Switch the SQS-Based S3 Input
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Create or Switch the SQS-Based S3 Input">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scenarios-a-and-c-create-the-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenarios A and C: Create the Input
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-b-switch-your-existing-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario B: Switch Your Existing Inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-confirm-logserv-logs-are-being-ingested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Confirm LogServ Logs are Being Ingested
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-connect-instance-role-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EC2 Instance Role Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../azure-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../gcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Verify Your Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Install the LogServ App
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    5. Install the LogServ App
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the App and Seed the Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure and Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure and Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configure-filters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring Filters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboard-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/host-names/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Names
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../aws-s3-direct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS S3 Direct: Backfill and Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upgrade
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/environment-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/applications/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applications
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Applications
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Network & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Process Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Trace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/integration/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Connector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web and API Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/security/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Perimeter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Stack Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change & Configuration Activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../logserv-app/dashboards/platform/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux System & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cloud Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logserv-app/dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Doctor (Diagnostics)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Security Integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise Security Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIM Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Searches & RBA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset & Identity Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat Intelligence Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Behavioral & Anomaly Detections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Assistant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/enable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Set Up the AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predefined Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drill-down Chips
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricting the LLM Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_8" id="__nav_7_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form LLM Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Free-form LLM Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-Window Reasoning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_9" id="__nav_7_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP LLM Top 10 (2025) Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Architecture (SAIF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.1.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.5 and Earlier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Third-Party Software Licenses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clean Deployment Test (Lab)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-ta-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data TA Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App and AI Assistant Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/build-from-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Packages from Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Introduction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#before-you-begin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Before You Begin
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#find-your-scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Find Your Scenario
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steps at a Glance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-get-saps-arns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Get SAP&rsquo;s ARNs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-find-or-create-the-instance-profile-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Find or Create the Instance Profile Role
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Find or Create the Instance Profile Role">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-heavy-forwarder-already-has-an-instance-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Heavy Forwarder Already Has an Instance Profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-heavy-forwarder-has-no-instance-profile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Heavy Forwarder Has No Instance Profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-set-up-the-iam-role-splunk-logserv-ta-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Set Up the IAM Role splunk-logserv-ta-role
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Set Up the IAM Role splunk-logserv-ta-role">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scenario-a" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario A: Deploy the Instance-Role CloudFormation Template
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-b" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario B: Switch the Deployed Stack&rsquo;s IAM Role to the Instance Profile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-c" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario C: Create or Reuse the IAM Role and Policy by Hand
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scenario C: Create or Reuse the IAM Role and Policy by Hand">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#c1-the-iam-role-and-its-trust-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C.1 The IAM Role and Its Trust Policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c2-the-permissions-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C.2 The Permissions Policy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#c3-allow-the-instance-profile-role-to-assume-the-iam-role" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C.3 Allow the Instance Profile Role to Assume the IAM Role
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-give-sap-the-iam-role-arn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Give SAP the IAM Role ARN
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-confirm-the-account-in-the-add-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Confirm the Account in the Add-on
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-add-the-iam-role-in-the-add-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Add the IAM Role in the Add-on
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-test-access" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Test Access
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-create-or-switch-the-sqs-based-s3-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Create or Switch the SQS-Based S3 Input
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Create or Switch the SQS-Based S3 Input">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scenarios-a-and-c-create-the-input" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenarios A and C: Create the Input
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenario-b-switch-your-existing-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario B: Switch Your Existing Inputs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-confirm-logserv-logs-are-being-ingested" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Confirm LogServ Logs are Being Ingested
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../../getting-started/roadmap/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Get Started
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../choose-your-cloud/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    3. Connect Your Cloud
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="../aws-remote-s3-connect-guide/" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    AWS
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="aws-remote-s3-connect-with-an-ec2-instance-role">AWS Remote S3 Connect with an EC2 Instance Role<a class="headerlink" href="#aws-remote-s3-connect-with-an-ec2-instance-role" title="Permanent link">&para;</a></h1>
+<h3 id="introduction"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h3>
+<p>Use this page when your heavy forwarders run on Amazon EC2 and you may not create IAM users or long-lived access keys. It sets up the same scenario as the <a href="../aws-remote-s3-connect-guide/">AWS Remote S3 Connect Setup Guide</a>, without the IAM user: the Splunk Add-on for AWS takes temporary credentials from the heavy forwarder&rsquo;s EC2 instance profile, and no access key is created in AWS or stored in Splunk.</p>
+<p>As in the main guide, the <strong><em>SAP ECS account</em></strong> holds SAP&rsquo;s S3 bucket and SQS queue, and the <strong><em>Secondary account</em></strong> is your own AWS account.</p>
+<div class="highlight"><pre><span></span><code>Secondary account                              SAP ECS account
++---------------------------------------+      +----------------------------+
+|  Heavy forwarder (EC2 instance)       |      |                            |
+|    instance profile role              |      |  SQS queue and S3 bucket   |
+|         |                             |      |                            |
+|         | sts:AssumeRole              |      |  The queue access policy   |
+|         v                             |      |  and the bucket policy     |
+|  IAM role splunk-logserv-ta-role  ----------&gt;|  name this IAM role        |
+|    reads the queue and the bucket     |      |                            |
++---------------------------------------+      +----------------------------+
+</code></pre></div>
+<p>This page uses two IAM roles, and names them the same way throughout:</p>
+<table>
+<thead>
+<tr>
+<th>Name on this page</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Instance profile role</strong></td>
+<td>The IAM role in the instance profile attached to each heavy forwarder EC2 instance. It needs only <code>sts:AssumeRole</code> on the role below</td>
+</tr>
+<tr>
+<td><strong><code>splunk-logserv-ta-role</code></strong></td>
+<td>The IAM role in your <strong><em>Secondary account</em></strong> that holds the permissions on SAP&rsquo;s SQS queue and S3 bucket. SAP names its ARN in the SQS queue access policy and the S3 bucket policy</td>
+</tr>
+</tbody>
+</table>
+<p>This page does not apply when the input runs on a Splunk Cloud instance, on a host outside EC2, or on an EC2 instance that cannot have an instance profile: use the IAM user in the <a href="../aws-remote-s3-connect-guide/">main guide</a> there. The <strong>Filter</strong> and <strong>Copy</strong> scenarios still need the IAM user.</p>
+<p><br></p>
+<h3 id="before-you-begin"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Before You Begin<a class="headerlink" href="#before-you-begin" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Splunk Add-on for AWS 8.2.2 or later,</strong> installed directly on each heavy forwarder (<a href="../aws-remote-s3-connect-guide/#install-the-splunk-add-on-for-aws">Install the Splunk Add-on for AWS</a>).</li>
+<li><strong><a href="../aws-remote-s3-connect-guide/#check-these-first">Check These First</a></strong> in the main guide applies here too: the prerequisites, the Data TA, cloud attribution, filtering and the first start.</li>
+<li><strong>IAM permissions for you:</strong> create and edit IAM roles and policies in the <strong><em>Secondary account</em></strong>; for scenario A also create a CloudFormation stack; and if a heavy forwarder has no instance profile yet, <code>iam:CreateInstanceProfile</code>, <code>iam:AddRoleToInstanceProfile</code>, <code>iam:PassRole</code> and <code>ec2:AssociateIamInstanceProfile</code>.</li>
+<li><strong>Each heavy forwarder can reach the instance metadata service</strong> (<code>169.254.169.254</code>) as the Splunk user. <a href="../aws-remote-s3-connect-instance-role-reference/#heavy-forwarder-requirements">Heavy Forwarder Requirements</a> has the full list and a check.</li>
+</ul>
+<p><br></p>
+<h3 id="find-your-scenario"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Find Your Scenario<a class="headerlink" href="#find-your-scenario" title="Permanent link">&para;</a></h3>
+<p>Look in the IAM console and the CloudFormation console of your <strong><em>Secondary account</em></strong>, and pick the first row that matches. The scenario decides only step 3; every other step is the same for all three.</p>
+<table>
+<thead>
+<tr>
+<th>What your Secondary account has today</th>
+<th>Your scenario</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The CloudFormation stack from the standard Remote S3 Connect template (<code>splunk-logserv-remote-s3-connect.yaml</code>). It created the IAM user <code>splunk_logserv_user</code> and the IAM role <code>splunk-logserv-ta-role</code>, and your inputs use that user&rsquo;s access key</td>
+<td><a href="#scenario-b"><strong>Scenario B:</strong> switch the deployed stack&rsquo;s IAM role to the instance profile</a></td>
+</tr>
+<tr>
+<td>An IAM role you want to reuse or must create yourself, without CloudFormation: a <code>splunk-logserv-ta-role</code> made by hand or by your own tooling, a role with another name, or a customer managed policy you want to attach</td>
+<td><a href="#scenario-c"><strong>Scenario C:</strong> create or reuse the IAM role and policy by hand</a></td>
+</tr>
+<tr>
+<td>Nothing for LogServ yet: no IAM role named <code>splunk-logserv-ta-role</code> and no Remote S3 Connect stack</td>
+<td><a href="#scenario-a"><strong>Scenario A:</strong> deploy the instance-role CloudFormation template</a></td>
+</tr>
+</tbody>
+</table>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> If the account has a <strong>Remote S3 Filter</strong> or <strong>Remote S3 Copy</strong> stack, this page does not apply. Never update one of those stacks with the template on this page.</p>
+<p><br></p>
+<h3 id="high-level-steps"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Steps at a Glance<a class="headerlink" href="#high-level-steps" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Scenario A</th>
+<th>Scenario B</th>
+<th>Scenario C</th>
+<th>Where</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#1-get-saps-arns">1. Get SAP&rsquo;s ARNs</a></td>
+<td>Yes</td>
+<td>You have them</td>
+<td>Yes</td>
+<td>SAP LogServ Support</td>
+</tr>
+<tr>
+<td><a href="#2-find-or-create-the-instance-profile-role">2. Find or create the instance profile role</a></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>AWS, Secondary account</td>
+</tr>
+<tr>
+<td><a href="#3-set-up-the-iam-role-splunk-logserv-ta-role">3. Set up <code>splunk-logserv-ta-role</code></a></td>
+<td><a href="#scenario-a">Deploy the stack</a></td>
+<td><a href="#scenario-b">Edit the trust policy</a></td>
+<td><a href="#scenario-c">Create or reuse by hand</a></td>
+<td>AWS, Secondary account</td>
+</tr>
+<tr>
+<td><a href="#4-give-sap-the-iam-role-arn">4. Give SAP the IAM role ARN</a></td>
+<td>Yes</td>
+<td>Skip</td>
+<td>Yes</td>
+<td>SAP LogServ Support</td>
+</tr>
+<tr>
+<td><a href="#5-confirm-the-account-in-the-add-on">5. Confirm the account in the add-on</a></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Splunk Web, each heavy forwarder</td>
+</tr>
+<tr>
+<td><a href="#6-add-the-iam-role-in-the-add-on">6. Add the IAM role in the add-on</a></td>
+<td>Yes</td>
+<td>Already there</td>
+<td>Yes</td>
+<td>Splunk Web, each heavy forwarder</td>
+</tr>
+<tr>
+<td><a href="#7-test-access">7. Test access</a></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>A shell on each heavy forwarder</td>
+</tr>
+<tr>
+<td><a href="#8-create-or-switch-the-sqs-based-s3-input">8. Create or switch the SQS-Based S3 input</a></td>
+<td>Create</td>
+<td>Switch</td>
+<td>Create</td>
+<td>Splunk Web, each heavy forwarder</td>
+</tr>
+<tr>
+<td><a href="#9-confirm-logserv-logs-are-being-ingested">9. Confirm ingestion</a></td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>A search head</td>
+</tr>
+</tbody>
+</table>
+<p>Configure each heavy forwarder directly, not through a Deployment Server. Several heavy forwarders can read the same SQS queue (<a href="../../getting-started/capacity-planning/#add-heavy-forwarders-on-the-same-queue">Add Heavy Forwarders on the Same Queue</a>): attach the same instance profile to each.</p>
+<p><br></p>
+<h3 id="1-get-saps-arns"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 1. Get SAP&rsquo;s ARNs<a class="headerlink" href="#1-get-saps-arns" title="Permanent link">&para;</a></h3>
+<p>1.<b class="taiconcolor">a</b> Obtain the ARN of the S3 bucket, the ARN of the SQS queue and their AWS Region, as in <a href="../aws-remote-s3-connect-guide/#1-obtain-arns-from-sap-ecs-account">1. Obtain ARNs from SAP ECS Account</a> in the main guide.</p>
+<p>1.<b class="taiconcolor">b</b> In your <strong><em>Secondary account</em></strong>, check under <strong>Account &gt; AWS Regions</strong> that this Region is enabled.</p>
+<p>1.<b class="taiconcolor">c</b> Ask SAP whether the bucket or the queue is encrypted with a customer managed KMS key. If so, see <a href="../aws-remote-s3-connect-instance-role-reference/#customer-managed-kms-keys">Customer Managed KMS Keys</a> before step 3.</p>
+<p><br></p>
+<h3 id="2-find-or-create-the-instance-profile-role"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 2. Find or Create the Instance Profile Role<a class="headerlink" href="#2-find-or-create-the-instance-profile-role" title="Permanent link">&para;</a></h3>
+<p>An EC2 instance has one instance profile, and an instance profile holds one IAM role. Do the part that matches each heavy forwarder.</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> The instance profile role and <code>splunk-logserv-ta-role</code> are two different IAM roles. Do not attach <code>splunk-logserv-ta-role</code> (or the role whose ARN you give SAP in step 4) to the heavy forwarder instance: the input would then ask that role to assume itself, and AWS refuses that with <code>AccessDenied</code>. If the role you find or create in this step is the one that holds the queue and bucket permissions, see <a href="#troubleshooting">Troubleshooting</a>.</p>
+<h4 id="the-heavy-forwarder-already-has-an-instance-profile"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> The Heavy Forwarder Already Has an Instance Profile<a class="headerlink" href="#the-heavy-forwarder-already-has-an-instance-profile" title="Permanent link">&para;</a></h4>
+<p>Reuse it. Nothing on it changes except one inline policy in step 3.</p>
+<p>2.<b class="taiconcolor">a</b> In the EC2 console, select the heavy forwarder instance. On the <strong>Security</strong> tab, click the link under <strong>IAM Role</strong>. It opens the role in the IAM console.</p>
+<p>2.<b class="taiconcolor">b</b> Copy the role&rsquo;s <strong>ARN</strong> and its <strong>name</strong>. The ARN looks like <code>arn:aws:iam::&lt;secondary-account-id&gt;:role/&lt;instance-profile-role-name&gt;</code>.</p>
+<details class="tip">
+<summary>AWS CLI</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># The instance profile attached to the instance</span>
+aws<span class="w"> </span>ec2<span class="w"> </span>describe-instances<span class="w"> </span>--instance-ids<span class="w"> </span>&lt;instance-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">'Reservations[].Instances[].IamInstanceProfile.Arn'</span><span class="w"> </span>--output<span class="w"> </span>text
+
+<span class="c1"># The IAM role inside that instance profile</span>
+aws<span class="w"> </span>iam<span class="w"> </span>get-instance-profile<span class="w"> </span>--instance-profile-name<span class="w"> </span>&lt;instance-profile-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">'InstanceProfile.Roles[].[RoleName,Arn]'</span><span class="w"> </span>--output<span class="w"> </span>text
+</code></pre></div>
+</details>
+<h4 id="the-heavy-forwarder-has-no-instance-profile"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> The Heavy Forwarder Has No Instance Profile<a class="headerlink" href="#the-heavy-forwarder-has-no-instance-profile" title="Permanent link">&para;</a></h4>
+<p>2.<b class="taiconcolor">c</b> In the IAM console, click <strong>Roles</strong>, then <strong>Create role</strong>. Choose <strong>AWS service</strong> as the trusted entity type and <strong>EC2</strong> as the use case. Add no permissions policies. Name the role, for example <code>splunk-logserv-hf-instance-role</code>, and create it. The console creates an instance profile with the same name.</p>
+<p>2.<b class="taiconcolor">d</b> In the EC2 console, select the heavy forwarder instance, then <strong>Actions &gt; Security &gt; Modify IAM role</strong>, choose the new role and click <strong>Update IAM role</strong>. Repeat for each heavy forwarder, and add the instance profile to the launch template of any heavy forwarder you build later. Splunk should not need a restart.</p>
+<p>2.<b class="taiconcolor">e</b> Copy the role&rsquo;s <strong>ARN</strong> and <strong>name</strong> from its page in the IAM console.</p>
+<details class="tip">
+<summary>AWS CLI</summary>
+<p>Save this as <code>ec2-trust-policy.json</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"Statement"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Principal"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"Service"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ec2.amazonaws.com"</span><span class="w"> </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">"Action"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sts:AssumeRole"</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>iam<span class="w"> </span>create-role<span class="w"> </span>--role-name<span class="w"> </span>splunk-logserv-hf-instance-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--assume-role-policy-document<span class="w"> </span>file://ec2-trust-policy.json
+aws<span class="w"> </span>iam<span class="w"> </span>create-instance-profile<span class="w"> </span>--instance-profile-name<span class="w"> </span>splunk-logserv-hf-instance-role
+aws<span class="w"> </span>iam<span class="w"> </span>add-role-to-instance-profile<span class="w"> </span>--instance-profile-name<span class="w"> </span>splunk-logserv-hf-instance-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--role-name<span class="w"> </span>splunk-logserv-hf-instance-role
+aws<span class="w"> </span>ec2<span class="w"> </span>associate-iam-instance-profile<span class="w"> </span>--instance-id<span class="w"> </span>&lt;instance-id&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--iam-instance-profile<span class="w"> </span><span class="nv">Name</span><span class="o">=</span>splunk-logserv-hf-instance-role
+</code></pre></div>
+</details>
+<p><br></p>
+<h3 id="3-set-up-the-iam-role-splunk-logserv-ta-role"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 3. Set Up the IAM Role splunk-logserv-ta-role<a class="headerlink" href="#3-set-up-the-iam-role-splunk-logserv-ta-role" title="Permanent link">&para;</a></h3>
+<p>Follow the one scenario you picked in <a href="#find-your-scenario">Find Your Scenario</a>, then go on to step 4.</p>
+<p><br></p>
+<h4 id="scenario-a"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Scenario A: Deploy the Instance-Role CloudFormation Template<a class="headerlink" href="#scenario-a" title="Permanent link">&para;</a></h4>
+<p>The <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/cloud_formation/splunk-logserv-remote-s3-connect-instance-role.yaml" target="_blank">CloudFormation template <code>splunk-logserv-remote-s3-connect-instance-role.yaml</code></a> creates the IAM role <code>splunk-logserv-ta-role</code> with its trust policy and its inline policy, and adds the <code>sts:AssumeRole</code> inline policy to your instance profile role. It creates no IAM user and no access key.</p>
+<details class="tip">
+<summary>What does the CloudFormation template do?</summary>
+<p>Creates the following resources in your <strong><em>Secondary account</em></strong>:</p>
+<ul>
+<li>An IAM Role named <strong><em>splunk-logserv-ta-role</em></strong></li>
+<li>A trust policy on that IAM Role that lets one principal assume it: the instance profile role you enter in <strong>HeavyForwarderInstanceRoleArn</strong></li>
+<li>An Inline IAM Policy named <strong><em>splunk-logserv-ta-policy</em></strong> on that IAM Role. It allows reading and deleting messages on SAP&rsquo;s SQS queue (<code>sqs:ReceiveMessage</code>, <code>sqs:DeleteMessage</code>, <code>sqs:ChangeMessageVisibility</code>, <code>sqs:GetQueueAttributes</code>), reading objects in SAP&rsquo;s S3 bucket (<code>s3:GetObject</code>, <code>s3:GetObjectVersion</code>) and listing that bucket (<code>s3:ListBucket</code>)</li>
+<li>Only if you fill in <strong>SapKmsKeyArns</strong>: a <code>kms:Decrypt</code> statement in that policy, on the KMS keys you list</li>
+</ul>
+<p>Updates one resource that already exists:</p>
+<ul>
+<li>Only if you fill in <strong>HeavyForwarderInstanceRoleName</strong>: it adds an Inline IAM Policy named <strong><em>splunk-logserv-sqs-based-input-assume-role-policy</em></strong> to your instance profile role. It allows <code>sts:AssumeRole</code> on <strong><em>splunk-logserv-ta-role</em></strong> and nothing else. The role&rsquo;s other policies and its trust policy are not changed</li>
+</ul>
+<p>Returns three stack outputs: <strong>SplunkLogServRoleArn</strong> (the ARN for steps 4 and 6), <strong>InstanceRoleGrant</strong> (whether the stack added the policy to your instance profile role) and <strong>YourAccountId</strong>.</p>
+<p>It creates no IAM User, no access key, no instance profile, no S3 Bucket and no SQS Queue, and it changes nothing in the <strong><em>SAP ECS account</em></strong>. Deleting the stack deletes the IAM Role and removes the inline policy from your instance profile role.</p>
+</details>
+<p>A.<b class="taiconcolor">1</b> In the CloudFormation console of your <strong><em>Secondary account</em></strong>, in the Region of SAP&rsquo;s queue, click <strong>Create stack</strong>, then <strong>With new resources (standard)</strong>. Upload the template file and click <strong>Next</strong>.</p>
+<p>A.<b class="taiconcolor">2</b> Name the stack, for example <code>splunk-logserv-remote-s3-connect-instance-role</code>, and enter the parameters:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CrossAccountSQSQueueArn</strong></td>
+<td>The complete ARN of SAP&rsquo;s SQS queue</td>
+</tr>
+<tr>
+<td><strong>CrossAccountS3Bucket</strong></td>
+<td>The name (not the ARN) of SAP&rsquo;s S3 bucket</td>
+</tr>
+<tr>
+<td><strong>SapKmsKeyArns</strong></td>
+<td>Blank, unless SAP uses customer managed KMS keys. Then their ARNs, separated by commas with no spaces</td>
+</tr>
+<tr>
+<td><strong>HeavyForwarderInstanceRoleArn</strong></td>
+<td>The ARN of the instance profile role from step 2</td>
+</tr>
+<tr>
+<td><strong>HeavyForwarderInstanceRoleName</strong></td>
+<td>The name of that same role, without any path. Leave it blank only if that role is in another AWS account, then do <a href="#c3-allow-the-instance-profile-role-to-assume-the-iam-role">C.3</a> in that account</td>
+</tr>
+</tbody>
+</table>
+<p>A.<b class="taiconcolor">3</b> Click <strong>Next</strong>, check <strong>I acknowledge that AWS CloudFormation might create IAM resources with custom names</strong>, click <strong>Next</strong>, then <strong>Submit</strong>. Wait for <code>CREATE_COMPLETE</code>.</p>
+<p>A.<b class="taiconcolor">4</b> On the stack&rsquo;s <strong>Outputs</strong> tab, copy <strong>SplunkLogServRoleArn</strong>. It is the ARN for steps 4 and 6.</p>
+<p>A.<b class="taiconcolor">5</b> Turn on termination protection (<strong>Stack actions &gt; Edit termination protection</strong>). Deleting the stack deletes the IAM role, and SAP&rsquo;s policies stop matching it (<a href="../aws-remote-s3-connect-instance-role-reference/#do-not-delete-and-recreate-the-iam-roles">Do Not Delete and Recreate the IAM Roles</a>).</p>
+<details class="tip">
+<summary>AWS CLI</summary>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>cloudformation<span class="w"> </span>deploy<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--region<span class="w"> </span>&lt;region-of-the-sap-queue&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stack-name<span class="w"> </span>splunk-logserv-remote-s3-connect-instance-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--template-file<span class="w"> </span>splunk-logserv-remote-s3-connect-instance-role.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--capabilities<span class="w"> </span>CAPABILITY_NAMED_IAM<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--parameter-overrides<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nv">CrossAccountSQSQueueArn</span><span class="o">=</span>arn:aws:sqs:&lt;region&gt;:&lt;sap-ecs-account-id&gt;:&lt;queue-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nv">CrossAccountS3Bucket</span><span class="o">=</span>&lt;bucket-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nv">HeavyForwarderInstanceRoleArn</span><span class="o">=</span>arn:aws:iam::&lt;secondary-account-id&gt;:role/&lt;instance-profile-role-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="nv">HeavyForwarderInstanceRoleName</span><span class="o">=</span>&lt;instance-profile-role-name&gt;
+
+aws<span class="w"> </span>cloudformation<span class="w"> </span>describe-stacks<span class="w"> </span>--region<span class="w"> </span>&lt;region-of-the-sap-queue&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stack-name<span class="w"> </span>splunk-logserv-remote-s3-connect-instance-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">'Stacks[0].Outputs'</span><span class="w"> </span>--output<span class="w"> </span>table
+
+aws<span class="w"> </span>cloudformation<span class="w"> </span>update-termination-protection<span class="w"> </span>--enable-termination-protection<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--region<span class="w"> </span>&lt;region-of-the-sap-queue&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--stack-name<span class="w"> </span>splunk-logserv-remote-s3-connect-instance-role
+</code></pre></div>
+</details>
+<p>Continue with <a href="#4-give-sap-the-iam-role-arn">step 4</a>.</p>
+<p><br></p>
+<h4 id="scenario-b"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Scenario B: Switch the Deployed Stack&rsquo;s IAM Role to the Instance Profile<a class="headerlink" href="#scenario-b" title="Permanent link">&para;</a></h4>
+<p>Your stack already created <code>splunk-logserv-ta-role</code>, and SAP&rsquo;s SQS queue access policy and S3 bucket policy already name it. You add the instance profile role to that IAM role&rsquo;s trust policy, switch the inputs, then retire the IAM user&rsquo;s access key. The IAM role keeps its ARN, so SAP changes nothing, and the inputs keep working on the access key until you switch them.</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> Leave the CloudFormation stack in place. Do not delete it: deleting it deletes the IAM role. Do not update it with a template that changes the IAM role either: CloudFormation would overwrite the trust policy you edit here. CloudFormation drift detection will report the trust policy you edit as modified, which is expected.</p>
+<p>B.<b class="taiconcolor">1</b> In the IAM console, click <strong>Roles</strong>, open <code>splunk-logserv-ta-role</code>, click the <strong>Trust relationships</strong> tab, then <strong>Edit trust policy</strong>.</p>
+<p>B.<b class="taiconcolor">2</b> Add the ARN of the instance profile role from step 2 to the <code>Principal</code>, next to the IAM user that is already there, and click <strong>Update policy</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"Statement"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Principal"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"AWS"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">          </span><span class="s2">"arn:aws:iam::&lt;secondary-account-id&gt;:user/splunk_logserv_user"</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">"arn:aws:iam::&lt;secondary-account-id&gt;:role/&lt;instance-profile-role-name&gt;"</span>
+<span class="w">        </span><span class="p">]</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">"Action"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sts:AssumeRole"</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<details class="tip">
+<summary>AWS CLI</summary>
+<div class="highlight"><pre><span></span><code><span class="c1"># Show the trust policy in place, and save the edited document as trust-policy.json</span>
+aws<span class="w"> </span>iam<span class="w"> </span>get-role<span class="w"> </span>--role-name<span class="w"> </span>splunk-logserv-ta-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">'Role.AssumeRolePolicyDocument'</span><span class="w"> </span>--output<span class="w"> </span>json
+
+aws<span class="w"> </span>iam<span class="w"> </span>update-assume-role-policy<span class="w"> </span>--role-name<span class="w"> </span>splunk-logserv-ta-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-document<span class="w"> </span>file://trust-policy.json
+</code></pre></div>
+</details>
+<p>B.<b class="taiconcolor">3</b> Do <a href="#c3-allow-the-instance-profile-role-to-assume-the-iam-role">C.3</a>: the inline policy that lets the instance profile role assume <code>splunk-logserv-ta-role</code>.</p>
+<p>B.<b class="taiconcolor">4</b> Skip step 4, and do steps 5, 7, 8 and 9. In step 8 you switch your existing inputs, you do not create new ones.</p>
+<p>B.<b class="taiconcolor">5</b> After step 9 shows data arriving through the instance profile on every heavy forwarder, retire the access key:</p>
+<ul>
+<li>In the Splunk Add-on for AWS on each heavy forwarder, under <strong>Configuration &gt; Account</strong>, delete the account that holds the IAM user&rsquo;s access key.</li>
+<li>In the IAM console, open the user <code>splunk_logserv_user</code>, click the <strong>Security credentials</strong> tab, and under <strong>Access keys</strong> choose <strong>Actions &gt; Deactivate</strong>, then <strong>Delete</strong>.</li>
+<li>Edit the trust policy of <code>splunk-logserv-ta-role</code> again and remove the IAM user&rsquo;s ARN, so that only the instance profile role remains.</li>
+<li>Leave the IAM user itself in place, without a key. The stack owns it.</li>
+</ul>
+<details class="tip">
+<summary>AWS CLI</summary>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>iam<span class="w"> </span>list-access-keys<span class="w"> </span>--user-name<span class="w"> </span>splunk_logserv_user
+aws<span class="w"> </span>iam<span class="w"> </span>update-access-key<span class="w"> </span>--user-name<span class="w"> </span>splunk_logserv_user<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--access-key-id<span class="w"> </span>&lt;access-key-id&gt;<span class="w"> </span>--status<span class="w"> </span>Inactive
+aws<span class="w"> </span>iam<span class="w"> </span>delete-access-key<span class="w"> </span>--user-name<span class="w"> </span>splunk_logserv_user<span class="w"> </span>--access-key-id<span class="w"> </span>&lt;access-key-id&gt;
+
+<span class="c1"># trust-policy.json now names only the instance profile role</span>
+aws<span class="w"> </span>iam<span class="w"> </span>update-assume-role-policy<span class="w"> </span>--role-name<span class="w"> </span>splunk-logserv-ta-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-document<span class="w"> </span>file://trust-policy.json
+</code></pre></div>
+</details>
+<p>The permissions policy the standard stack put on the IAM role works as it is. To narrow it to what the input uses, see <a href="../aws-remote-s3-connect-instance-role-reference/#what-the-permissions-policy-leaves-out">What the Permissions Policy Leaves Out</a>.</p>
+<p>Continue with <a href="#5-confirm-the-account-in-the-add-on">step 5</a>.</p>
+<p><br></p>
+<h4 id="scenario-c"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Scenario C: Create or Reuse the IAM Role and Policy by Hand<a class="headerlink" href="#scenario-c" title="Permanent link">&para;</a></h4>
+<p>Three things must be true when you finish. Each sub-step shows how to get there with a new resource or with one you already have.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>What must be true</th>
+<th>Sub-step</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>The IAM role&rsquo;s <strong>trust policy</strong> lets the instance profile role assume it</td>
+<td><a href="#c1-the-iam-role-and-its-trust-policy">C.1</a></td>
+</tr>
+<tr>
+<td>2</td>
+<td>The IAM role has a <strong>permissions policy</strong> (inline or customer managed) that reads SAP&rsquo;s SQS queue and S3 bucket</td>
+<td><a href="#c2-the-permissions-policy">C.2</a></td>
+</tr>
+<tr>
+<td>3</td>
+<td>The instance profile role may call <code>sts:AssumeRole</code> on the IAM role</td>
+<td><a href="#c3-allow-the-instance-profile-role-to-assume-the-iam-role">C.3</a></td>
+</tr>
+</tbody>
+</table>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> <strong>The role name.</strong> SAP&rsquo;s example policies show the name <code>splunk-logserv-ta-role</code>, and this page uses it. If you reuse an IAM role with another name, use that name wherever this page says <code>splunk-logserv-ta-role</code>, and give SAP that role&rsquo;s ARN in step 4.</p>
+<h5 id="c1-the-iam-role-and-its-trust-policy">C.1 The IAM Role and Its Trust Policy<a class="headerlink" href="#c1-the-iam-role-and-its-trust-policy" title="Permanent link">&para;</a></h5>
+<p><strong>To create a new IAM role:</strong> in the IAM console, click <strong>Roles</strong>, then <strong>Create role</strong>, choose <strong>Custom trust policy</strong>, paste the document below with the ARN from step 2, click <strong>Next</strong>, add no permissions yet, name the role <code>splunk-logserv-ta-role</code> and create it.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"Statement"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Principal"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">"AWS"</span><span class="p">:</span><span class="w"> </span><span class="s2">"arn:aws:iam::&lt;secondary-account-id&gt;:role/&lt;instance-profile-role-name&gt;"</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="nt">"Action"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sts:AssumeRole"</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><strong>To reuse an existing IAM role:</strong> open the role, click the <strong>Trust relationships</strong> tab, then <strong>Edit trust policy</strong>. Keep the statements that are there, and add the statement above to the <code>Statement</code> list (or add the ARN to the <code>Principal</code> of a statement that already allows <code>sts:AssumeRole</code> with no conditions). Click <strong>Update policy</strong>.</p>
+<p>Do not add an <code>sts:ExternalId</code> condition: the add-on sends none. A condition on the role session name must allow <code>splunk_ta_aws</code>.</p>
+<details class="tip">
+<summary>AWS CLI</summary>
+<p>Save the trust policy as <code>trust-policy.json</code>, then:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># New IAM role</span>
+aws<span class="w"> </span>iam<span class="w"> </span>create-role<span class="w"> </span>--role-name<span class="w"> </span>splunk-logserv-ta-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--assume-role-policy-document<span class="w"> </span>file://trust-policy.json
+
+<span class="c1"># Existing IAM role: read its trust policy, add the statement, write it back</span>
+aws<span class="w"> </span>iam<span class="w"> </span>get-role<span class="w"> </span>--role-name<span class="w"> </span>&lt;existing-role-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">'Role.AssumeRolePolicyDocument'</span><span class="w"> </span>--output<span class="w"> </span>json
+aws<span class="w"> </span>iam<span class="w"> </span>update-assume-role-policy<span class="w"> </span>--role-name<span class="w"> </span>&lt;existing-role-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-document<span class="w"> </span>file://trust-policy.json
+</code></pre></div>
+</details>
+<h5 id="c2-the-permissions-policy">C.2 The Permissions Policy<a class="headerlink" href="#c2-the-permissions-policy" title="Permanent link">&para;</a></h5>
+<p>The IAM role needs these permissions, on SAP&rsquo;s resources:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"Statement"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"Sid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ReadSapQueue"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Action"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">"sqs:ReceiveMessage"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"sqs:DeleteMessage"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"sqs:ChangeMessageVisibility"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"sqs:GetQueueAttributes"</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"Resource"</span><span class="p">:</span><span class="w"> </span><span class="s2">"arn:aws:sqs:&lt;region&gt;:&lt;sap-ecs-account-id&gt;:&lt;queue-name&gt;"</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"Sid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ReadSapObjects"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Action"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">        </span><span class="s2">"s3:GetObject"</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">"s3:GetObjectVersion"</span>
+<span class="w">      </span><span class="p">],</span>
+<span class="w">      </span><span class="nt">"Resource"</span><span class="p">:</span><span class="w"> </span><span class="s2">"arn:aws:s3:::&lt;bucket-name&gt;/*"</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"Sid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"ListSapBucket"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Action"</span><span class="p">:</span><span class="w"> </span><span class="s2">"s3:ListBucket"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Resource"</span><span class="p">:</span><span class="w"> </span><span class="s2">"arn:aws:s3:::&lt;bucket-name&gt;"</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>If SAP uses a customer managed KMS key, add the <code>kms:Decrypt</code> statement from <a href="../aws-remote-s3-connect-instance-role-reference/#customer-managed-kms-keys">Customer Managed KMS Keys</a>. <code>s3:ListBucket</code> is for <a href="../aws-s3-direct/">AWS S3 Direct</a>, which loads history; the SQS-Based S3 input does not use it.</p>
+<p>Pick one way to give them to the role:</p>
+<table>
+<thead>
+<tr>
+<th>You have</th>
+<th>Do this in the IAM console</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A customer managed policy you want to reuse</strong></td>
+<td>Open the policy and check on its <strong>Permissions</strong> tab that it allows every action above on SAP&rsquo;s queue ARN and bucket. If it does not, click <strong>Edit</strong> and add what is missing. Then open the IAM role, click <strong>Add permissions &gt; Attach policies</strong>, select the policy and click <strong>Add permissions</strong></td>
+</tr>
+<tr>
+<td><strong>No policy, and you want a customer managed policy</strong> (one policy you can attach to several roles and version)</td>
+<td>Click <strong>Policies</strong>, then <strong>Create policy</strong>, choose <strong>JSON</strong>, paste the document above with SAP&rsquo;s values, name it <code>splunk-logserv-ta-policy</code> and create it. Then attach it to the IAM role as in the row above</td>
+</tr>
+<tr>
+<td><strong>No policy, and an inline policy is enough</strong> (what the CloudFormation template does)</td>
+<td>Open the IAM role, click <strong>Add permissions &gt; Create inline policy</strong>, choose <strong>JSON</strong>, paste the document above with SAP&rsquo;s values, and name it <code>splunk-logserv-ta-policy</code></td>
+</tr>
+</tbody>
+</table>
+<details class="tip">
+<summary>AWS CLI</summary>
+<p>Save the permissions document as <code>permissions-policy.json</code>, then use one of these:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Reuse a customer managed policy: read its default version, then attach it</span>
+aws<span class="w"> </span>iam<span class="w"> </span>get-policy<span class="w"> </span>--policy-arn<span class="w"> </span>arn:aws:iam::&lt;secondary-account-id&gt;:policy/&lt;policy-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--query<span class="w"> </span><span class="s1">'Policy.DefaultVersionId'</span><span class="w"> </span>--output<span class="w"> </span>text
+aws<span class="w"> </span>iam<span class="w"> </span>get-policy-version<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-arn<span class="w"> </span>arn:aws:iam::&lt;secondary-account-id&gt;:policy/&lt;policy-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--version-id<span class="w"> </span>&lt;version-id&gt;<span class="w"> </span>--query<span class="w"> </span><span class="s1">'PolicyVersion.Document'</span><span class="w"> </span>--output<span class="w"> </span>json
+aws<span class="w"> </span>iam<span class="w"> </span>attach-role-policy<span class="w"> </span>--role-name<span class="w"> </span>splunk-logserv-ta-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-arn<span class="w"> </span>arn:aws:iam::&lt;secondary-account-id&gt;:policy/&lt;policy-name&gt;
+
+<span class="c1"># Add missing permissions to that policy: a new default version</span>
+aws<span class="w"> </span>iam<span class="w"> </span>create-policy-version<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-arn<span class="w"> </span>arn:aws:iam::&lt;secondary-account-id&gt;:policy/&lt;policy-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-document<span class="w"> </span>file://permissions-policy.json<span class="w"> </span>--set-as-default
+
+<span class="c1"># Create a new customer managed policy, then attach it</span>
+aws<span class="w"> </span>iam<span class="w"> </span>create-policy<span class="w"> </span>--policy-name<span class="w"> </span>splunk-logserv-ta-policy<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-document<span class="w"> </span>file://permissions-policy.json
+aws<span class="w"> </span>iam<span class="w"> </span>attach-role-policy<span class="w"> </span>--role-name<span class="w"> </span>splunk-logserv-ta-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-arn<span class="w"> </span>arn:aws:iam::&lt;secondary-account-id&gt;:policy/splunk-logserv-ta-policy
+
+<span class="c1"># Or an inline policy on the IAM role</span>
+aws<span class="w"> </span>iam<span class="w"> </span>put-role-policy<span class="w"> </span>--role-name<span class="w"> </span>splunk-logserv-ta-role<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-name<span class="w"> </span>splunk-logserv-ta-policy<span class="w"> </span>--policy-document<span class="w"> </span>file://permissions-policy.json
+</code></pre></div>
+</details>
+<h5 id="c3-allow-the-instance-profile-role-to-assume-the-iam-role">C.3 Allow the Instance Profile Role to Assume the IAM Role<a class="headerlink" href="#c3-allow-the-instance-profile-role-to-assume-the-iam-role" title="Permanent link">&para;</a></h5>
+<p>Open the <strong>instance profile role</strong> from step 2 in the IAM console, click <strong>Add permissions &gt; Create inline policy</strong>, choose <strong>JSON</strong>, paste this with the ARN of <code>splunk-logserv-ta-role</code>, and name it <code>splunk-logserv-sqs-based-input-assume-role-policy</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"Version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2012-10-17"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"Statement"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"Effect"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Allow"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Action"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sts:AssumeRole"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"Resource"</span><span class="p">:</span><span class="w"> </span><span class="s2">"arn:aws:iam::&lt;secondary-account-id&gt;:role/splunk-logserv-ta-role"</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>If you manage the instance profile role&rsquo;s permissions in a customer managed policy of your own, add this statement to that policy instead.</p>
+<p>AWS requires this statement when the instance profile role is in a different AWS account from <code>splunk-logserv-ta-role</code>; add it in that account. In the same account the trust policy alone is enough, and the statement records what the instance profile role may assume.</p>
+<details class="tip">
+<summary>AWS CLI</summary>
+<p>Save the document as <code>assume-role-policy.json</code>, then:</p>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>iam<span class="w"> </span>put-role-policy<span class="w"> </span>--role-name<span class="w"> </span>&lt;instance-profile-role-name&gt;<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-name<span class="w"> </span>splunk-logserv-sqs-based-input-assume-role-policy<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--policy-document<span class="w"> </span>file://assume-role-policy.json
+</code></pre></div>
+</details>
+<p>Continue with <a href="#4-give-sap-the-iam-role-arn">step 4</a>, or with step B.4 if you came here from scenario B.</p>
+<p><br></p>
+<h3 id="4-give-sap-the-iam-role-arn"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 4. Give SAP the IAM Role ARN<a class="headerlink" href="#4-give-sap-the-iam-role-arn" title="Permanent link">&para;</a></h3>
+<p>Scenario B: skip this step. SAP&rsquo;s policies already name the IAM role.</p>
+<p>4.<b class="taiconcolor">a</b> Copy the ARN of <code>splunk-logserv-ta-role</code> from its page in the IAM console (scenario A: the stack output <strong>SplunkLogServRoleArn</strong>). It looks like <code>arn:aws:iam::&lt;secondary-account-id&gt;:role/splunk-logserv-ta-role</code>. Do not send the ARN of the instance profile or of the instance profile role.</p>
+<p>4.<b class="taiconcolor">b</b> Ask SAP LogServ Support to add that ARN to the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-sqs-access-policy.json" target="_blank">SQS queue access policy</a> and the <a href="https://github.com/splunk/splunk-sap-logserv/blob/main/aws_assets/sap_ecs_account_policies/sap-ecs-account-s3-access-policy.json" target="_blank">S3 bucket policy</a>, keeping <code>s3:ListBucket</code> on the bucket as the example does. <a href="../aws-remote-s3-connect-instance-role-reference/#what-to-ask-sap">What to Ask SAP</a> lists what else to confirm in the same request.</p>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> <strong>Wait until SAP LogServ Support confirms that both policies are applied</strong> before step 7. Steps 5 and 6 can be done in the meantime.</p>
+<p><br></p>
+<h3 id="5-confirm-the-account-in-the-add-on"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 5. Confirm the Account in the Add-on<a class="headerlink" href="#5-confirm-the-account-in-the-add-on" title="Permanent link">&para;</a></h3>
+<p>Do steps 5 to 8 on each heavy forwarder that will run the input.</p>
+<p>5.<b class="taiconcolor">a</b> Log in to Splunk Web on the heavy forwarder with a Splunk admin role, open the <strong>Splunk Add-on for AWS</strong>, then click <strong>Configuration</strong>, then <strong>Account</strong>.</p>
+<p>5.<b class="taiconcolor">b</b> Look for a row named after the instance profile role, with <strong>Yes</strong> in the <strong>Autodiscovered IAM Role</strong> column. You do not add this account, and no key is stored. If the row is missing, see <a href="#troubleshooting">Troubleshooting</a>.</p>
+<p><br></p>
+<h3 id="6-add-the-iam-role-in-the-add-on"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 6. Add the IAM Role in the Add-on<a class="headerlink" href="#6-add-the-iam-role-in-the-add-on" title="Permanent link">&para;</a></h3>
+<p>Scenario B: skip this step. The add-on already has the IAM role.</p>
+<p>6.<b class="taiconcolor">a</b> Click the <strong>IAM Role</strong> tab, then <strong>Add</strong>.</p>
+<p>6.<b class="taiconcolor">b</b> Enter a name that uses only letters, digits and underscores, for example <code>splunk_logserv_ta_role</code>, and the ARN of <code>splunk-logserv-ta-role</code> in <strong>IAM Role ARN</strong>, then click <strong>Add</strong>. Step 6 of the <a href="../aws-remote-s3-connect-guide/#6-configure-iam-role-aws-add-on">main guide</a> has screenshots of this form.</p>
+<p><br></p>
+<h3 id="7-test-access"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 7. Test Access<a class="headerlink" href="#7-test-access" title="Permanent link">&para;</a></h3>
+<p>When you save an input, the add-on checks only the SQS queue. A missing S3 or KMS permission shows up only after the input has started taking messages. So test both from the heavy forwarder first: follow <a href="../aws-remote-s3-connect-instance-role-reference/#test-access-from-the-heavy-forwarder">Test Access from the Heavy Forwarder</a>. It needs AWS CLI v2 on the heavy forwarder, only reads, and takes a few minutes.</p>
+<p><br></p>
+<h3 id="8-create-or-switch-the-sqs-based-s3-input"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 8. Create or Switch the SQS-Based S3 Input<a class="headerlink" href="#8-create-or-switch-the-sqs-based-s3-input" title="Permanent link">&para;</a></h3>
+<h4 id="scenarios-a-and-c-create-the-input"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Scenarios A and C: Create the Input<a class="headerlink" href="#scenarios-a-and-c-create-the-input" title="Permanent link">&para;</a></h4>
+<p><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M11 15H6l7-14v8h5l-7 14z"/></svg></span> The input starts with every notification already waiting in SAP&rsquo;s SQS queue, up to 14 days of them. Read <a href="../../getting-started/capacity-planning/#first-start-the-queue-backlog">First Start: The Queue Backlog</a> before you add it.</p>
+<p>8.<b class="taiconcolor">a</b> Click the <strong>Inputs</strong> tab, then <strong>Create New Input</strong>, <strong>Custom Data Type</strong>, then <strong>SQS-Based S3 (Recommended)</strong>. Step 7 of the <a href="../aws-remote-s3-connect-guide/#7-configure-sqs-based-s3-input-aws-add-on">main guide</a> has screenshots of this form.</p>
+<p>8.<b class="taiconcolor">b</b> Fill in the form:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Name</strong></td>
+<td>A descriptive name</td>
+</tr>
+<tr>
+<td><strong>AWS Account</strong></td>
+<td>The account named after the instance profile role (step 5)</td>
+</tr>
+<tr>
+<td><strong>Assume Role</strong></td>
+<td>The IAM role from step 6. It must not be the same role as the one in <strong>AWS Account</strong></td>
+</tr>
+<tr>
+<td><strong>Force using DLQ (Recommended)</strong></td>
+<td>Checked</td>
+</tr>
+<tr>
+<td><strong>AWS Region</strong></td>
+<td>The Region of SAP&rsquo;s queue</td>
+</tr>
+<tr>
+<td><strong>Use Private Endpoints</strong></td>
+<td>Unchecked</td>
+</tr>
+<tr>
+<td><strong>SQS Queue Name</strong></td>
+<td>Type the queue <strong>URL</strong> and select it as <strong>(New value)</strong>: <code>https://sqs.&lt;region&gt;.amazonaws.com/&lt;sap-ecs-account-id&gt;/&lt;queue-name&gt;</code>. The dropdown cannot list a queue in another AWS account</td>
+</tr>
+<tr>
+<td><strong>SQS Batch Size</strong></td>
+<td>10</td>
+</tr>
+<tr>
+<td><strong>S3 File Decoder</strong></td>
+<td>Custom Logs</td>
+</tr>
+<tr>
+<td><strong>Signature Validate All Events</strong></td>
+<td><strong>Unchecked</strong></td>
+</tr>
+<tr>
+<td><strong>Source Type</strong></td>
+<td><code>sap_logserv_logs</code></td>
+</tr>
+<tr>
+<td><strong>Index</strong></td>
+<td><code>sap_logserv_logs</code>, or the name you gave the LogServ data index</td>
+</tr>
+</tbody>
+</table>
+<p>8.<b class="taiconcolor">c</b> Click <strong>Add</strong>, then disable the new input on the <strong>Inputs</strong> tab straight away.</p>
+<p>8.<b class="taiconcolor">d</b> Add the cloud attribution. In <code>$SPLUNK_HOME/etc/apps/Splunk_TA_aws/local/inputs.conf</code>, add this line to the input&rsquo;s stanza, <code>[aws_sqs_based_s3://&lt;input name&gt;]</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="na">_meta</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">cloud_provider::aws</span>
+</code></pre></div>
+<p>8.<b class="taiconcolor">e</b> Restart Splunk, then enable the input. <a href="../cloud-attribution/#add-the-meta-line-to-an-aws-input">Add the <code>_meta</code> Line to an AWS Input</a> shows how to write the line over REST with no restart.</p>
+<h4 id="scenario-b-switch-your-existing-inputs"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 18H6V6h12m0-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2"/></svg></span> Scenario B: Switch Your Existing Inputs<a class="headerlink" href="#scenario-b-switch-your-existing-inputs" title="Permanent link">&para;</a></h4>
+<p>8.<b class="taiconcolor">f</b> On the <strong>Inputs</strong> tab, edit each SQS-Based S3 input that uses the IAM user&rsquo;s account. Change <strong>AWS Account</strong> to the account named after the instance profile role (step 5), leave <strong>Assume Role</strong> and every other field as they are, and save the input.</p>
+<p>8.<b class="taiconcolor">g</b> Check that the <code>_meta = cloud_provider::aws</code> line is still in each input&rsquo;s stanza in <code>$SPLUNK_HOME/etc/apps/Splunk_TA_aws/local/inputs.conf</code>. Put it back if the edit removed it (step 8.d).</p>
+<p>8.<b class="taiconcolor">h</b> After step 9, go back to <a href="#scenario-b">B.5</a> and retire the access key.</p>
+<p><br></p>
+<h3 id="9-confirm-logserv-logs-are-being-ingested"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> 9. Confirm LogServ Logs are Being Ingested<a class="headerlink" href="#9-confirm-logserv-logs-are-being-ingested" title="Permanent link">&para;</a></h3>
+<p>Allow 5-10 minutes for the first events.</p>
+<p>9.<b class="taiconcolor">a</b> On a search head that can search the LogServ data index, run:</p>
+<div class="codehilite"><pre><span></span><code><span class="nx">index</span><span class="p">=</span><span class="nx">sap_logserv_logs</span><span class="w"> </span><span class="nx">earliest</span><span class="p">=</span><span class="o">-</span><span class="mi">1</span><span class="nx">h</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="nx">stats</span><span class="w"> </span><span class="nx">count</span><span class="w"> </span><span class="nx">by</span><span class="w"> </span><span class="nx">sourcetype</span><span class="p">,</span><span class="w"> </span><span class="nx">host</span>
+</code></pre></div>
+
+<p>You should see the sourcetypes your SAP LogServ subscription delivers, from several hosts. <a href="../../getting-started/verify-data/">Verify Your Data</a> has the full set of checks.</p>
+<p>9.<b class="taiconcolor">b</b> Check the add-on&rsquo;s logs even if events arrive, because a permission problem on some objects does not stop the others:</p>
+<div class="codehilite"><pre><span></span><code>index=_internal source=*aws* level IN (ERROR,WARNING) earliest=-1h | head 50
+</code></pre></div>
+
+<p><br></p>
+<h3 id="troubleshooting"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>What you see</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No autodiscovered account under <strong>Configuration &gt; Account</strong></td>
+<td>The instance has no instance profile, or the Splunk user cannot reach the instance metadata service. Run the check in <a href="../aws-remote-s3-connect-instance-role-reference/#heavy-forwarder-requirements">Heavy Forwarder Requirements</a></td>
+</tr>
+<tr>
+<td>Saving the input says <code>The SQS Queue entered may not be present in the given region.</code></td>
+<td>The add-on shows this for any failure of its queue check: the trust policy does not name the instance profile role, SAP&rsquo;s SQS queue access policy is not applied yet, or the Region or URL is wrong. Run <a href="#7-test-access">step 7</a>; its error names the failing call</td>
+</tr>
+<tr>
+<td>Saving the input says <code>An error occurred (AccessDenied) when calling the AssumeRole operation: User: arn:aws:sts::&lt;account-id&gt;:assumed-role/&lt;role-name&gt;/&lt;instance-id&gt; is not authorized to perform: sts:AssumeRole on resource: arn:aws:iam::&lt;account-id&gt;:role/&lt;role-name&gt;</code>, with the <strong>same role name</strong> in both places</td>
+<td>The role attached to the heavy forwarder instance is also the role selected in <strong>Assume Role</strong>, so it is asked to assume itself. Either attach a separate instance profile role to the instance (step 2) and let it assume this role (step 3), which is the setup this page describes; or, if the attached role already holds the permissions of <a href="#c2-the-permissions-policy">C.2</a> and is the role SAP&rsquo;s policies name, edit the input and clear <strong>Assume Role</strong>. The second way has not been run in our lab</td>
+</tr>
+<tr>
+<td>The <strong>SQS Queue Name</strong> dropdown is empty</td>
+<td>Expected. Type the queue URL (step 8.b)</td>
+</tr>
+<tr>
+<td>The input logs <code>AccessDenied</code></td>
+<td><strong>Disable the input at once,</strong> so that failed messages do not pile up or move to SAP&rsquo;s dead-letter queue. Run <a href="#7-test-access">step 7</a> and fix what it shows</td>
+</tr>
+<tr>
+<td>The input logs <code>No AWS account named</code></td>
+<td>The instance profile on the instance changed. Restore it, or edit each input to the new account name and add the new instance profile role to the trust policy</td>
+</tr>
+</tbody>
+</table>
+<p>The <a href="../aws-remote-s3-connect-instance-role-reference/#troubleshooting">reference page</a> has the full table.</p>
+<p><br></p>
+<h2 id="next-steps"><span class="twemoji cboxmove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="../../getting-started/verify-data/">Verify Your Data</a>.</li>
+<li>Load the history you need with <a href="../aws-s3-direct/">AWS S3 Direct</a>: select the account named after the instance profile role, and the IAM role from step 6.</li>
+<li><a href="../../logserv-app/installation/">Install the LogServ App</a> and seed its dashboards.</li>
+<li>Read <a href="../aws-remote-s3-connect-instance-role-reference/#what-behaves-differently-from-a-stored-key">What Behaves Differently from a Stored Key</a> and <a href="../aws-remote-s3-connect-instance-role-reference/#hardening-for-your-security-review">Hardening for Your Security Review</a>.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../aws-remote-s3-connect-guide/" class="md-footer__link md-footer__link--prev" aria-label="Previous: AWS Remote S3 Connect">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                AWS Remote S3 Connect
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../aws-remote-s3-connect-instance-role-reference/" class="md-footer__link md-footer__link--next" aria-label="Next: EC2 Instance Role Reference">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                EC2 Instance Role Reference
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.instant.preview", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.path", "navigation.footer", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+        <script src="../../../js/limited-preview-qr.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,5320 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Splunk">
+      
+      
+        <link rel="canonical" href="https://splunk.github.io/splunk-sap-logserv/content/logserv-app/host-names/">
+      
+      
+        <link rel="prev" href="../dashboard-data/">
+      
+      
+        <link rel="next" href="../../install-setup/aws-s3-direct/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../static/splunk.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+    
+    
+      
+        <title>Host Names - Splunk for SAP LogServ</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../css/print-site.css">
+    
+      <link rel="stylesheet" href="../../../css/print-site-material.css">
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../../css/extra.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#host-names" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      <!-- Source:
+https://github.com/squidfunk/mkdocs-material/blob/master/src/templates/partials/header.html
+-->
+
+
+
+  
+
+
+<!-- Header -->
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav
+    class="md-header__inner md-grid"
+    aria-label="Header"
+  >
+
+    <!-- Link to home -->
+    <a
+      href="../../.."
+      title="Splunk for SAP LogServ"
+      class="md-header__button md-logo"
+      aria-label="Splunk for SAP LogServ"
+      data-md-component="logo"
+    >
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+
+    <!-- Button to open drawer -->
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+
+    <!-- Header title -->
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Splunk for SAP LogServ
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Host Names
+            
+          </span>
+        </div>
+      </div>
+    </div>
+
+    
+      <a href="../../../print_page/" title="Print Site" class="md-header__button md-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 3H6v4h12m1 5a1 1 0 0 1-1-1 1 1 0 0 1 1-1 1 1 0 0 1 1 1 1 1 0 0 1-1 1m-3 7H8v-5h8m3-6H5a3 3 0 0 0-3 3v6h4v4h12v-4h4v-6a3 3 0 0 0-3-3"/></svg>
+      </a>
+    
+
+    <!-- Color palette toggle -->
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="blue"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+
+    <!-- User preference: color palette -->
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+
+    <!-- Site language selector -->
+    
+
+    <!-- Button to open search modal -->
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+
+      <!-- Search interface -->
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+
+    <!-- Repository information -->
+    
+      <div class="md-header__source">
+        <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+      </div>
+    
+  </nav>
+
+  <!-- Navigation tabs (sticky) -->
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../.." class="md-tabs__link">
+          
+  
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/roadmap/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Get Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../install-setup/configure-filters/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Configure and Operate
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../getting-started/upgrading/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Upgrade
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../dashboards/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dashboards
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../enterprise-security/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Enterprise Security Integration
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../ai-assistant/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  AI Assistant
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../overview/release-notes/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../developer/testing-guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="Splunk for SAP LogServ" class="md-nav__button md-logo" aria-label="Splunk for SAP LogServ" data-md-component="logo">
+      
+  <img src="../../../static/splunk-logo.png" alt="logo">
+
+    </a>
+    Splunk for SAP LogServ
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/splunk/splunk-sap-logserv" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Splunk for SAP LogServ
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../.." class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Home
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/limited-preview-announcement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limited Preview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/demo-video/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo Video
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Get Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Get Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start Here: Deployment Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    1. Plan
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    1. Plan
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/supported-log-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported Log Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/package-placement/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Where Each Package Goes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan and Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/splunk-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk Cloud Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/capacity-planning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Capacity Planning and First Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    2. Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    2. Install the Data TA
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/install-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Create the Indexes and Install the Data TA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/cloud-attribution/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Cloud Attribution
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/decide-filtering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decide Filtering
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/distribute-data-ta/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Distribute the Data TA to Heavy Forwarders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    3. Connect Your Cloud
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    3. Connect Your Cloud
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/choose-your-cloud/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Choose Your Cloud and AWS Scenario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_4_2" id="__nav_2_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AWS
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-instance-role/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Connect with EC2 Instance Role
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-connect-instance-role-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    EC2 Instance Role Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-filter-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Filter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-remote-s3-copy-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS Remote S3 Copy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/azure-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Azure Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/gcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    GCP Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/verify-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    4. Verify Your Data
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    5. Install the LogServ App
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    5. Install the LogServ App
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App Prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the App and Seed the Dashboards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configure and Operate
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Configure and Operate
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/configure-filters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring Filters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Application Settings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboard-data/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboard Data: Backfill and Freshness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Names
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Names
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#an-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-can-edit-and-who-can-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who Can Edit and Who Can Read
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-list-is-kept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the List Is Kept
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-edit-and-delete-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add, Edit and Delete Names
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#import-and-export-a-csv-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import and Export a CSV File
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Import and Export a CSV File">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-file-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The file format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#undo-an-import-or-remove-many-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Undo an Import or Remove Many Names
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-host-values-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Host Values Match
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-names-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the Names Show
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-names-do-not-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the Names Do Not Show
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-host-filter-and-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Host Filter and Names
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refresh
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splunk-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk Cloud
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Privacy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../install-setup/aws-s3-direct/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AWS S3 Direct: Backfill and Recovery
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrade
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Upgrade
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/upgrading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Upgrading to This Release
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dashboards
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5" id="__nav_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dashboards
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/environment-health/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Health
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/topology/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Environment Topology
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/applications/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Applications
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_4" id="__nav_5_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Applications
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/abap-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Network & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/abap-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ABAP Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/work-process-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Work Process Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/hana-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/applications/hana-trace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HANA Trace
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/integration/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_5" id="__nav_5_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/sap-services/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Services
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/sap-router/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SAP Router
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/cloud-connector/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cloud Connector
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/web-dispatcher/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Dispatcher
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/integration/web-api-performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web and API Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/security/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_6" id="__nav_5_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/security/network-perimeter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Network Perimeter
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/security/cross-stack-authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Stack Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/security/change-config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change & Configuration Activity
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../dashboards/platform/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Platform
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_5_7" id="__nav_5_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Platform
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/data-pipeline-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Pipeline Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/dns-analytics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DNS Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/linux/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Linux System & Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Windows Events
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/proxy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Proxy Analytics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/host-details/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Host Details
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/multi-cloud-overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Cloud Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dashboards/platform/diagnostics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Doctor (Diagnostics)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enterprise Security Integration
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Enterprise Security Integration
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/cim-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CIM Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/correlation-searches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Correlation Searches & RBA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/asset-identity-feed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset & Identity Feed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/threat-intel/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat Intelligence Integration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../enterprise-security/behavioral-detections/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Behavioral & Anomaly Detections
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI Assistant
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/enable/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Set Up the AI Assistant
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/mcp-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Splunk MCP Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/predefined-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Predefined Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/drill-down-chips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Drill-down Chips
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/audit-log/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Log
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/templates-only-build/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Restricting the LLM Path
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_8" id="__nav_7_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form LLM Features
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Free-form LLM Features
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/free-form-prompts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Free-form Prompts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/power-mode/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Power Mode
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/time-window-reasoning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time-Window Reasoning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_7_9" id="__nav_7_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security & Compliance
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_7_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Security & Compliance
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/privacy-tiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Privacy Tiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/owasp-llm-compliance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    OWASP LLM Top 10 (2025) Compliance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ai-assistant/security-architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Architecture (SAIF)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.1.1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.1.1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-0.0.6/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.6
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/release-notes-archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Release Notes: 0.0.5 and Earlier
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../overview/third-party-licenses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Third-Party Software Licenses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/testing-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clean Deployment Test (Lab)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/data-ta-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data TA Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/ai-assistant-internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    LogServ App and AI Assistant Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../developer/build-from-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building the Packages from Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#an-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-can-edit-and-who-can-read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who Can Edit and Who Can Read
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-list-is-kept" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the List Is Kept
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-edit-and-delete-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add, Edit and Delete Names
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#import-and-export-a-csv-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import and Export a CSV File
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Import and Export a CSV File">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-file-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The file format
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Import
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#undo-an-import-or-remove-many-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Undo an Import or Remove Many Names
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-host-values-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Host Values Match
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-names-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the Names Show
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#where-the-names-do-not-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Where the Names Do Not Show
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-host-filter-and-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Host Filter and Names
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Refresh
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#splunk-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Splunk Cloud
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#privacy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Privacy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limits
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="host-names">Host Names<a class="headerlink" href="#host-names" title="Permanent link">&para;</a></h1>
+<p><strong>Host Names</strong> lets an admin give hosts names of your own. The LogServ App&rsquo;s dashboards then show that name for the host name or IP address the logs carry. Tables and host lists show the name next to the value from the logs, and the entries of the <strong>Host</strong> filter show the name with the value from the logs on the line under it. The per-host charts, the two <strong>Sourcetype Mapping</strong> graphs and the <strong>Host</strong> filter button with one host picked show the name alone (<a href="#where-the-names-show">Where the Names Show</a>).</p>
+<p>The logs often name one machine in several ways: a fully qualified name, a short name and an IP address. None of them says what the machine does. A list of host names maps each of them to one name everyone recognizes.</p>
+<p>The names are for display only. Searches, filters, sorting, clicks and a panel&rsquo;s CSV download keep using the host values from the logs. So adding, changing or deleting a name never needs a <strong>Clear</strong> or a <strong>Backfill</strong>.</p>
+<h2 id="an-example"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> An Example<a class="headerlink" href="#an-example" title="Permanent link">&para;</a></h2>
+<p>The <strong>Gateway Remote Hosts</strong> table on <a href="../dashboards/applications/abap-security/">ABAP Network &amp; Security</a> lists the RFC partners of a system. Say one partner shows up under three values: <code>vm0417a.prod.example.com</code>, <code>vm0417a</code> and <code>192.0.2.41</code>. All three are the payroll application server.</p>
+<p>Two entries cover them:</p>
+<table>
+<thead>
+<tr>
+<th>Host value</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>vm0417a</code></td>
+<td>Payroll app server</td>
+</tr>
+<tr>
+<td><code>192.0.2.41</code></td>
+<td>Payroll app server</td>
+</tr>
+</tbody>
+</table>
+<p>The entry <code>vm0417a</code> has no dot, so it also covers <code>vm0417a.prod.example.com</code>. The <strong>Remote Host</strong> column then reads:</p>
+<div class="highlight"><pre><span></span><code>Remote Host
+---------------------------------------------------
+Payroll app server   vm0417a.prod.example.com
+Payroll app server   vm0417a
+Payroll app server   192.0.2.41
+</code></pre></div>
+<p>The host value from the logs follows the name in a muted color. Hovering over a cell shows both in full, for example <code>Payroll app server - vm0417a.prod.example.com</code>. The three rows stay separate, and a click on a row still opens the search for its own host value.</p>
+<p>On a dashboard it looks like this: <strong>Host Latest Activity</strong> on <a href="../dashboards/platform/data-pipeline-overview/">Data Pipeline Overview</a>, with made-up names for two of its hosts.</p>
+<p><img alt="Host Latest Activity on Data Pipeline Overview: Payroll DB next to hec53v014023 and Router Gateway next to hec53v013858; the other hosts have no name and show their host values" src="../../../images/host-names-host-latest-activity.png" /></p>
+<h2 id="who-can-edit-and-who-can-read"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Who Can Edit and Who Can Read<a class="headerlink" href="#who-can-edit-and-who-can-read" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Edit:</strong> users who hold a role named exactly <code>admin</code>, <code>sc_admin</code> or <code>sc_subadmin</code>. These are the roles that open the Application Settings page (<a href="../../ai-assistant/settings/#who-can-open-the-page">Who Can Open the Page</a>). The KV Store collection that holds the names accepts writes only from the same three roles.</li>
+<li><strong>Read:</strong> every role. Every user sees the names on the dashboards, and every role can read the whole list, descriptions included, for example through Splunk&rsquo;s KV Store REST API. Do not put personal data in a name or a description.</li>
+<li><strong>No <code>admin_all_objects</code> needed.</strong> A KV Store write is governed by the collection&rsquo;s own permissions, so a user with one of the three roles can edit names without <code>admin_all_objects</code>, a delegated <code>sc_subadmin</code> on Splunk Cloud included.</li>
+</ul>
+<h2 id="where-the-list-is-kept"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Where the List Is Kept<a class="headerlink" href="#where-the-list-is-kept" title="Permanent link">&para;</a></h2>
+<p>The names live in the LogServ App&rsquo;s KV Store collection <code>logserv_host_aliases</code>. It holds one row per host value: the value as entered, the name, an optional description, and when and by whom the row was last changed. That time and user name are what the saving page sent (the <strong>Host Names</strong> tab sends the signed-in user and the browser&rsquo;s clock), and a row written through the KV Store REST API carries whatever its writer sent, so they are not an audit record.</p>
+<ul>
+<li><strong>It is not dashboard data.</strong> <strong>Clear</strong> and <strong>Clear all rollups</strong> on <a href="../dashboard-data/">Settings &gt; Dashboard Data</a> never touch it. No retention search trims it, and no scheduled search writes it.</li>
+<li><strong>Nothing to rebuild.</strong> No summary stores a name, so a change shows at once, over every time range.</li>
+<li><strong>It survives upgrades,</strong> like the App&rsquo;s other KV Store data.</li>
+<li><strong>A rollback leaves it unused.</strong> Builds 399 and earlier have no Host Names: after a rollback to one of them the dashboards show host values only. That build&rsquo;s <code>default/collections.conf</code> does not name the collection either, so neither its pages nor a collection list taken from its tarball reach the names (<a href="../../getting-started/upgrading/#removing-the-solution">Removing the Solution</a>). To remove the names, delete them before the rollback, while build 404 or later is installed (<a href="#undo-an-import-or-remove-many-names">Undo an Import or Remove Many Names</a>). Upgrading again shows the names the collection then holds, with nothing to rebuild.</li>
+<li><strong>No lookup definition.</strong> The App ships none for this collection, and none of its searches reads it.</li>
+</ul>
+<h2 id="add-edit-and-delete-names"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Add, Edit and Delete Names<a class="headerlink" href="#add-edit-and-delete-names" title="Permanent link">&para;</a></h2>
+<p>Open <strong>Settings</strong> in the App&rsquo;s navigation rail, then the <strong>Host Names</strong> tab, after <strong>Dashboard Data</strong>. The tab shows how many rows the list holds, out of the 5,000 it can hold.</p>
+<p><img alt="Settings &gt; Host Names: the count of rows (221 of 5,000); the Add a Host Name form holding a made-up sample, vhxsdxcpai20.hec.xsd-vlab.com named Batch Server 20, with the hint that says what it will match; the list filtered by HANA, nine made-up names with their host values, descriptions, who changed them and when; and the Import from CSV section" src="../../../images/settings-host-names.png" /></p>
+<ul>
+<li><strong>Add a host name.</strong> Enter the <strong>Host value</strong>: a full name such as <code>app01.example.com</code>, a short name such as <code>app01</code>, or an IP address. Enter the <strong>Name</strong> and, if you like, a <strong>Description</strong>. Then click <strong>Add</strong>. Under the host value, the form says what the entry will match. If the list already holds that host value, the page asks before it replaces its name, and when you leave <strong>Description</strong> empty, the row keeps the description it has.</li>
+<li><strong>The list.</strong> Its columns are <strong>Name</strong>, <strong>Host value</strong>, <strong>Description</strong>, <strong>Updated by</strong> and <strong>Updated</strong>. Type in the filter box to find rows by name, host value or description. Click the <strong>Name</strong> or <strong>Host value</strong> heading to sort. A row written outside this page under a key its host value does not give is marked <em>written outside this page</em>. When two or more rows written outside this page give one host different names, and the latest of them, which carry the same time of change (hover the <strong>Updated</strong> cell for the exact time) or none, give different names, the list marks the host&rsquo;s rows as well, and the dashboards use none of them: the host then shows no name unless another entry covers it, such as a short-name entry for a full name (<a href="#troubleshooting">Troubleshooting</a>).</li>
+<li><strong>Edit.</strong> <strong>Edit</strong> loads a row into the form, and <strong>Save changes</strong> writes it. If you change the host value, the page writes the new row first and then deletes the old one, so the host is never without a name in between. If the new host value is one the list already holds, the page asks first, as for an add.</li>
+<li><strong>A row stored under the same key.</strong> A row written outside this page can be stored under the key that the host value you save gives, while it holds another host value. A save replaces that row, so the page names it and asks first.</li>
+<li><strong>Delete.</strong> <strong>Delete</strong> asks first. The question says what the dashboards then show for the host, the name another entry gives it (a short-name entry still covers a full name, for example) or no name, and that this browser tab shows the change at once, other open tabs after their next <strong>Refresh</strong>. A delete cannot be undone.</li>
+<li><strong>At most 5,000 rows.</strong> <strong>Add</strong> and <strong>Save changes</strong> refuse a write that would take the list past 5,000 rows: delete a row first.</li>
+<li><strong>The list is read again before Add, Save changes and Delete.</strong> Before <strong>Add</strong> or <strong>Save changes</strong> writes, the page reads the list again. If the save would now do something else (another admin has named the same host in the meantime, say), or the row you are editing has changed, the page writes nothing: it shows the list as it is now and says what a save would now do, with the new question if there is one. Check it and save again. After you confirm a <strong>Delete</strong>, the page reads the list again too. If the row has changed or is gone, or the host would then show something other than the question said, the page deletes nothing: it shows the list as it is now and says what changed. Press <strong>Delete</strong> again if you still want the row deleted. When the list cannot be read again, nothing is written or deleted.</li>
+</ul>
+<p>A change shows on the dashboards in the same browser tab at once. Other open pages show it after a <strong>Refresh</strong> or the next page load (<a href="#refresh">Refresh</a>).</p>
+<h2 id="import-and-export-a-csv-file"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Import and Export a CSV File<a class="headerlink" href="#import-and-export-a-csv-file" title="Permanent link">&para;</a></h2>
+<h3 id="the-file-format">The file format<a class="headerlink" href="#the-file-format" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>host,alias,description
+vm0417a,Payroll app server,Payroll production
+192.0.2.41,Payroll app server,
+db01.prod.example.com,Payroll database,HANA primary
+2001:db8::17,Shop web server,
+</code></pre></div>
+<ul>
+<li><strong>The first line is the header</strong> <code>host,alias,description</code>. The <code>description</code> column may be left out. The column names may come in any order and any letter case. Other columns are ignored, with a warning.</li>
+<li><strong>One row per host value.</strong> <code>host</code> is the host value and <code>alias</code> is the name.</li>
+<li><strong>Commas only.</strong> A file whose columns are separated by semicolons or tabs, as some spreadsheet programs save them in some regions, is refused, with its values in quotes or not. The error then says to separate the columns with commas.</li>
+<li><strong>UTF-8.</strong> In a spreadsheet program, save the file as <strong>CSV UTF-8</strong> (in Excel: <strong>Save As &gt; CSV UTF-8 (Comma delimited)</strong>). A line with a character that cannot be read as UTF-8 is refused, and the error says to save the file as CSV UTF-8. When a refused header line holds such a character, the error says to save the file as CSV UTF-8 instead. A byte order mark, Windows or Unix line endings and blank lines are fine.</li>
+<li><strong>Quoting.</strong> Put a value that holds a comma, a double quote or a line break in double quotes, and double each quote inside it: <code>"Payroll, EU"</code>.</li>
+</ul>
+<h3 id="import">Import<a class="headerlink" href="#import" title="Permanent link">&para;</a></h3>
+<p>Under <strong>Import from CSV</strong>, choose a file with <strong>Choose a CSV file&hellip;</strong>: the preview appears at once. Or paste the text into the box and click <strong>Preview</strong>.</p>
+<ol>
+<li>The preview counts the rows to add, the rows whose name changes, the rows whose description alone changes, the rows that stay the same and the lines it refuses. When the import replaces rows of other hosts (see the rules below), it counts them too. When no line is refused, it lists the hosts whose name changes (<code>host: old name -&gt; new name</code>, or <code>host: no name (its rows give A / B) -&gt; new name</code> for a host whose rows give it different names), the hosts to add and the rows of other hosts the import replaces, the first 100 of each, then <code>and N more</code>. Rows whose description alone changes are only counted.</li>
+<li>It also lists the lines it refuses, with the line number and the reason (the first 100, then <code>and N more</code>), and its warnings. <strong>Any refused line blocks the whole import.</strong> Fix the file, then preview again.</li>
+<li>Click <strong>Import</strong>. When the import would change names already in the list, or replace a row of another host, the page asks you to confirm first. When the import can run, the preview suggests clicking <strong>Export CSV</strong> first, to keep a copy.</li>
+</ol>
+<p>Before <strong>Import</strong> writes, the page reads the list again. If the import would now do something other than the preview showed (another admin has saved a name in the meantime, say), the page writes nothing: it shows the list and a new preview for the list as it is now. Check the preview and click <strong>Import</strong> again.</p>
+<p>The rows are written 1,000 at a time. If a batch fails, the tab says how many rows were written and which rows were not written or not confirmed. A batch that the server answers without confirming its rows, for example with a sign-in page from a proxy, is reported as not confirmed, not as written. The other rows stay written, and <strong>Import</strong> again writes only what still differs.</p>
+<p>The rules:</p>
+<ul>
+<li><strong>Import merges.</strong> It adds rows and changes names. It never deletes a row: to remove a name, delete it in the list.</li>
+<li><strong>An empty description cell keeps the stored description.</strong> To clear a description, edit the row.</li>
+<li><strong>A repeated line</strong> is skipped, with a warning. A line repeats an earlier one when it gives the same host the same name, with the same description or with a description on only one of the two lines. The description is kept either way.</li>
+<li><strong>One host with two different names (letter case counts), or with two different descriptions,</strong> in the file is an error: every line of that host is refused, a line that would otherwise be skipped as a repeat included, so the import is blocked.</li>
+<li><strong>Host values compare after the same normalizing as matching</strong> (letter case, a trailing dot, IP address forms): <code>APP01</code>, <code>app01.</code> and <code>app01</code> are one host, and so are <code>::ffff:192.0.2.10</code> and <code>192.0.2.10</code>. A full name and its short name, such as <code>app01.example.com</code> and <code>app01</code>, are two hosts in a file.</li>
+<li><strong>A row written outside the App.</strong> When the row the dashboards use for a host is marked <em>written outside this page</em>, a file that changes that host&rsquo;s name or description writes a new row under the host&rsquo;s own key, and the dashboards use the new row. The old row stays in the list, still marked, and counts toward the 5,000 rows until you delete it.</li>
+<li><strong>A row stored under the same key.</strong> When a row written outside the App holds another host value but is stored under the key that a host in the file gives, the import replaces that row: the preview names it, and the page asks first.</li>
+<li><strong>Size:</strong> at most 5,000 rows and 2 MB per file. After the import, the list may hold at most 5,000 rows.</li>
+</ul>
+<h3 id="export">Export<a class="headerlink" href="#export" title="Permanent link">&para;</a></h3>
+<p><strong>Export CSV</strong> downloads the list as <code>host_aliases.csv</code>, with the same header, so an exported file imports back unchanged, unless the list marks a host&rsquo;s rows as giving it different names: the file then holds one of those names, and importing it gives the host that name. The file starts with a UTF-8 byte order mark, so that Excel opens it as UTF-8; after editing it there, save it as <strong>CSV UTF-8</strong> again. The rows are sorted by name, then by host value. A cell that starts with <code>=</code>, <code>+</code>, <code>-</code> or <code>@</code> gets a leading apostrophe (<code>'</code>), so that a spreadsheet does not read it as a formula. Import removes that apostrophe again. With an empty list, the file is an empty template.</p>
+<h3 id="undo-an-import-or-remove-many-names">Undo an Import or Remove Many Names<a class="headerlink" href="#undo-an-import-or-remove-many-names" title="Permanent link">&para;</a></h3>
+<p>Import never deletes a row, and the list deletes one row at a time. To keep a way back, and to remove many names:</p>
+<ul>
+<li><strong>Export first.</strong> Click <strong>Export CSV</strong> before an import and keep the file. Importing it again brings back the names the import changed (for a host whose rows the list marked as giving it different names, it gives the host the name the file holds). It does not remove the hosts the import added, and its empty description cells do not clear a description the import added.</li>
+<li><strong>A few rows:</strong> delete them in the list, one at a time.</li>
+<li><strong>Many rows:</strong> delete them with Splunk&rsquo;s KV Store REST API, on the search head&rsquo;s management port, with an account that holds <code>admin</code>, <code>sc_admin</code> or <code>sc_subadmin</code>. On Splunk Cloud the management port must first be opened for you (<a href="../../getting-started/upgrading/#on-splunk-cloud">On Splunk Cloud</a>).</li>
+</ul>
+<p>Each row&rsquo;s key (<code>_key</code>) is its host value as matching normalizes it: lower case, without a trailing dot, and an IP address in one written form (an IPv6 address shortened, such as <code>2001:db8::17</code>, and an IPv4-mapped address as its IPv4 address). A row marked <em>written outside this page</em> can be stored under another key: to find it, run the call below with <code>-X GET</code> in place of <code>-X DELETE</code> and without its query, which lists every row with its <code>_key</code> and its <code>match_value</code> (the host value as entered). This deletes the rows of the made-up hosts <code>stage-app07</code> and <code>stage-db07.example.com</code>:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>-k<span class="w"> </span>-u<span class="w"> </span>admin<span class="w"> </span>-G<span class="w"> </span>-X<span class="w"> </span>DELETE<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="s2">"https://&lt;search-head&gt;:8089/servicesNS/nobody/splunk_app_sap_logserv/storage/collections/data/logserv_host_aliases"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data-urlencode<span class="w"> </span><span class="s1">'query={"$or":[{"_key":"stage-app07"},{"_key":"stage-db07.example.com"}]}'</span>
+</code></pre></div>
+<p>Run the same call with <code>-X GET</code> in place of <code>-X DELETE</code> first: it returns the rows the query matches. A DELETE without its query empties the whole list. Open pages show the change after a <strong>Refresh</strong> (<a href="#refresh">Refresh</a>).</p>
+<h2 id="how-host-values-match"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> How Host Values Match<a class="headerlink" href="#how-host-values-match" title="Permanent link">&para;</a></h2>
+<p>Matching ignores letter case and a trailing dot. The first rule that applies wins:</p>
+<ol>
+<li><strong>An IP address</strong> (IPv4 or IPv6) matches only the entry for the same address. An IPv6 address matches in any of its written forms, without brackets or a zone id (<code>[2001:db8::17]</code> and <code>fe80::1%eth0</code> get no name). An IPv4-mapped IPv6 address, such as <code>::ffff:192.0.2.10</code>, counts as its IPv4 address. An IP address never matches a short name.</li>
+<li><strong>A full name</strong>, one with dots, matches the entry for the same full name.</li>
+<li><strong>An entry without a dot</strong> (a short name) also covers that name&rsquo;s full names: the entry <code>app01</code> covers <code>app01.example.com</code> and <code>app01.eu.example.net</code>.</li>
+<li><strong>A short value from the logs</strong> gets the name of its short entry. Without one, it gets the name of the entries for full names whose first label it is, when they all give one name: <code>db01</code> gets the name of <code>db01.example.com</code>. When they give different names, the short value gets no name, because which one is meant cannot be told.</li>
+<li><strong>Anything else gets no name:</strong> empty values, placeholders such as <code>-</code>, <code>(none)</code> or <code>unknown</code>, URLs, <code>host:port</code> values, and values with a space or a slash.</li>
+</ol>
+<p>There are no wildcards and no address ranges (CIDR).</p>
+<p>With these entries:</p>
+<table>
+<thead>
+<tr>
+<th>Host value</th>
+<th>Name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app01</code></td>
+<td>Payroll app server</td>
+</tr>
+<tr>
+<td><code>db01.example.com</code></td>
+<td>Payroll database</td>
+</tr>
+<tr>
+<td><code>192.0.2.10</code></td>
+<td>Payroll app server</td>
+</tr>
+<tr>
+<td><code>2001:db8::17</code></td>
+<td>Shop web server</td>
+</tr>
+<tr>
+<td><code>web01.eu.example.com</code></td>
+<td>Shop web EU</td>
+</tr>
+<tr>
+<td><code>web01.us.example.com</code></td>
+<td>Shop web US</td>
+</tr>
+</tbody>
+</table>
+<p>values from the logs get these names:</p>
+<table>
+<thead>
+<tr>
+<th>Value from the logs</th>
+<th>Entry that matches</th>
+<th>Name shown</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app01</code></td>
+<td><code>app01</code></td>
+<td>Payroll app server</td>
+</tr>
+<tr>
+<td><code>APP01.Example.COM.</code></td>
+<td><code>app01</code>: a short entry covers full names; case and the trailing dot are ignored</td>
+<td>Payroll app server</td>
+</tr>
+<tr>
+<td><code>db01.example.com</code></td>
+<td><code>db01.example.com</code></td>
+<td>Payroll database</td>
+</tr>
+<tr>
+<td><code>db01</code></td>
+<td><code>db01.example.com</code>: the one full-name entry with the first label <code>db01</code></td>
+<td>Payroll database</td>
+</tr>
+<tr>
+<td><code>db01.test.example.com</code></td>
+<td>none: an entry for a full name covers only that full name and its short name</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>192.0.2.10</code></td>
+<td><code>192.0.2.10</code></td>
+<td>Payroll app server</td>
+</tr>
+<tr>
+<td><code>::ffff:192.0.2.10</code></td>
+<td><code>192.0.2.10</code></td>
+<td>Payroll app server</td>
+</tr>
+<tr>
+<td><code>2001:DB8:0:0:0:0:0:17</code></td>
+<td><code>2001:db8::17</code></td>
+<td>Shop web server</td>
+</tr>
+<tr>
+<td><code>192.0.2.11</code></td>
+<td>none: no address ranges</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>web01.eu.example.com</code></td>
+<td><code>web01.eu.example.com</code></td>
+<td>Shop web EU</td>
+</tr>
+<tr>
+<td><code>web01</code></td>
+<td>none: two full-name entries with different names</td>
+<td>none</td>
+</tr>
+<tr>
+<td><code>https://app01.example.com/</code></td>
+<td>none: not a host value</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<h2 id="where-the-names-show"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Where the Names Show<a class="headerlink" href="#where-the-names-show" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Table columns that hold a host, an IP address or a client</strong> (the list below): the name, then the host value from the logs in a muted color, on one line. When the column is too narrow for both, the line is cut at its end with one ellipsis: the host value gives way first, and the name is cut only when it no longer fits with the ellipsis after it, so the name always comes first and the ellipsis always comes last. A host value longer than about 30 characters is cut even in a wide column. Where a table has room, a long name takes more of the table&rsquo;s width than a host value alone would. Hover over the cell to read both in full, as <code>name - host value</code>. When you copy a selection inside such a cell, the App writes it as <code>name - host value</code> on one line. Sorting, row clicks and the searches they open use the host value.</li>
+<li><strong>The Host filter</strong> in the title row: an entry with a name shows the name, with the host and its role on the line under it. Typing the name in the filter&rsquo;s search box finds the entry. The search box shows whenever any names exist, however short the list is. A name does not change the order of the entries. When exactly one host is picked, the button shows its name. While any names exist, the button&rsquo;s tooltip also lists the picked hosts as the logs give them (the first 10, then how many more); with no names, the tooltip reads as before. See <a href="#the-host-filter-and-names">The Host Filter and Names</a>.</li>
+<li><strong>The other host lists:</strong> Data Pipeline Overview&rsquo;s host list, Host Details&rsquo; host picker and DNS Analytics&rsquo; client list show <code>name (host)</code>.</li>
+<li><strong>Charts and graphs:</strong> the per-host charts (Data Pipeline Overview&rsquo;s <strong>Events Over Time by Host</strong>, Linux&rsquo;s <strong>TCP Memory Pressure Over Time</strong> and DNS Analytics&rsquo; <strong>Clients - Request Volume</strong>) and the two <strong>Sourcetype Mapping</strong> graphs (Data Pipeline Overview and Host Details) show the name alone. When two hosts share a name, each gets its short host name or IP address in parentheses (or the full host value, if the short ones collide too), so two series or nodes never merge. Splunk&rsquo;s own <strong>OTHER</strong> and <strong>NULL</strong> series on a per-host chart keep those labels, since they are not hosts, even when an entry such as <code>other.example.com</code> exists.</li>
+<li><strong>Linux&rsquo;s Top Drop Source card:</strong> when the top source IP address has a name, the card shows the name and the drop count on one line, with the IP address on the line under it. A name too long for the card is cut with an ellipsis, and the count stays visible. Hover over the value to read <code>name - IP address (count)</code> in full.</li>
+<li><strong>Host Details:</strong> the page subtitle and the panel texts that name the selected host.</li>
+<li><strong>Environment Topology:</strong> a partner square or database disc whose label is a host value with a name shows the name on a line under the label; hovering over that line shows <code>name (from Host Names)</code>. When the logs also name the machine behind that IP address, that hostname moves to the node&rsquo;s tooltip. The name also shows in the tooltip, the Details panel (a <strong>Name</strong> row reading <code>name (from Host Names)</code>), the partner donuts, Edge Details, the Hosts tab and Live Activity. The screen-reader label of the square or disc reads <code>name (host value)</code>. The node label itself stays the value from the logs. See <a href="../dashboards/topology/">Environment Topology</a>.</li>
+<li><strong>Page exports:</strong> <strong>Download PNG</strong> and <strong>Download PDF</strong> in the <strong>Actions</strong> menu capture the page, so they show the names. A name and host value that the page cuts short are cut the same way in the export: the host value first, then the name, with the ellipsis at the end. The export lays the page out on its own, so a line close to the edge of its column can be cut in the export and whole on screen, or the other way round, and a line cut in both can be cut at a different point.</li>
+</ul>
+<p>On screen, Data Pipeline Overview&rsquo;s <strong>Events Over Time by Host</strong> shows the names alone in its legend, here with made-up names for three of its hosts:</p>
+<p><img alt="Events Over Time by Host on Data Pipeline Overview: the legend shows Router Gateway, Payroll DB and Finance App alone, and the other hosts by their host values" src="../../../images/host-names-events-by-host.png" /></p>
+<details class="info">
+<summary>Table columns that show names</summary>
+<table>
+<thead>
+<tr>
+<th>Dashboard</th>
+<th>Panels (columns)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Environment Health</td>
+<td>Recent Critical Events (Host); Affected Hosts (Host)</td>
+</tr>
+<tr>
+<td>ABAP Network &amp; Security</td>
+<td>ICM Peer Connections (Peer IP); Gateway Remote Hosts (Remote Host)</td>
+</tr>
+<tr>
+<td>Work Process Performance</td>
+<td>Recent Dispatcher Errors (Host)</td>
+</tr>
+<tr>
+<td>HANA Audit</td>
+<td>Password Management Activities (Client IP); Failed Operations by HANA Host (HANA Host); Client IP Analysis (Client IP); High-Risk Events and After-Hours / Weekend Admin Activity (HANA Host, Client Host, Client IP)</td>
+</tr>
+<tr>
+<td>SAP Services</td>
+<td>Sapstartsrv Authentication Events (Remote IP); SSL Authentication Failure Sources (Source IP)</td>
+</tr>
+<tr>
+<td>SAP Router</td>
+<td>Peer IPs by Connection Volume (Peer IP); Recent Connection Log (Peer IP, Source IP)</td>
+</tr>
+<tr>
+<td>Cloud Connector</td>
+<td>Clients (Client IP)</td>
+</tr>
+<tr>
+<td>Web Dispatcher</td>
+<td>Client IPs by Traffic (Client IP); Recent Errors (4xx / 5xx) (Client IP)</td>
+</tr>
+<tr>
+<td>Web and API Performance</td>
+<td>Slow Clients by Max Response Time (Client IP); Recent 500-Level Errors (Host, Client IP)</td>
+</tr>
+<tr>
+<td>Network Perimeter</td>
+<td>Blocked Source IPs (Source IP); Suspicious Activity Indicator (Beaconing DNS + Denied Proxy, by Host) (Host)</td>
+</tr>
+<tr>
+<td>Cross-Stack Authentication</td>
+<td>Auth Failure Source IPs (Source IP); Recent Windows Auth Failures (Source IP, Host); Recent SAP Auth Failures (Remote IP, Host)</td>
+</tr>
+<tr>
+<td>Change &amp; Configuration Activity</td>
+<td>HANA Audit &mdash; Change Events (HANA Host, Client Host); Windows &mdash; Account &amp; Group Modifications (Computer); Linux &mdash; Sudo &amp; Command Activity (Host)</td>
+</tr>
+<tr>
+<td>Data Pipeline Overview</td>
+<td>Host Latest Activity (Host)</td>
+</tr>
+<tr>
+<td>DNS Analytics</td>
+<td>Clients by Domain Diversity (Client IP); DNS Resolvers (Resolver)</td>
+</tr>
+<tr>
+<td>Linux System &amp; Security</td>
+<td>Blocked Sources (Source IP); OOM Kills by Host (Host); CPU Soft-Lockups (Host)</td>
+</tr>
+<tr>
+<td>Proxy Analytics</td>
+<td>Clients (Client IP); Clients by Domain Diversity (Client IP)</td>
+</tr>
+<tr>
+<td>Host Details</td>
+<td>Host Inventory (Host); Role Activity&rsquo;s SAP Router Peers (Peer IP)</td>
+</tr>
+</tbody>
+</table>
+</details>
+<h2 id="where-the-names-do-not-show"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Where the Names Do Not Show<a class="headerlink" href="#where-the-names-do-not-show" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Searches.</strong> No name is ever put into a search. <strong>Open in Search</strong>, <strong>Inspect</strong>, a panel&rsquo;s <strong>Download (CSV)</strong> and the Splunk searches that clicks open show the host values from the logs.</li>
+<li><strong>The AI Assistant.</strong> Names never enter its searches or its tool results, so no name reaches an AI vendor, at any privacy tier (<a href="#privacy">Privacy</a>).</li>
+<li><strong>The Data Doctor.</strong> Its diagnosis drawer and its PDF reports show host values only.</li>
+<li><strong>Values that are not hosts:</strong> URLs, domains, DNS query names, user names, SIDs, HANA tenants, sourcetypes and source paths. For example, Proxy Analytics&rsquo; <strong>Destination</strong> column holds URLs and shows no names.</li>
+<li><strong>Counts of hosts,</strong> such as <strong>Active Hosts</strong> or <strong>Unique Clients</strong>.</li>
+</ul>
+<h2 id="the-host-filter-and-names"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> The Host Filter and Names<a class="headerlink" href="#the-host-filter-and-names" title="Permanent link">&para;</a></h2>
+<p>The <strong>Host</strong> filter (<a href="../dashboards/#sid-and-host-filters">SID and Host filters</a>) lists the machines that <strong>wrote</strong> the logs: the <code>host</code> field of each event. Picking an entry by its name filters on its host value, exactly as before.</p>
+<p>So the filter narrows a dashboard by the machine that logged each event, not by the hosts or addresses in a panel&rsquo;s columns. On <strong>Gateway Remote Hosts</strong>, picking <code>Payroll app server</code> shows the gateway events that the payroll server logged. It does not show the rows where the payroll server is the remote partner.</p>
+<p>Several host values with one name, such as a full name and an IP address, stay separate entries. Typing the name lists all of them, and each can be ticked.</p>
+<h2 id="refresh"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Refresh<a class="headerlink" href="#refresh" title="Permanent link">&para;</a></h2>
+<p>The App reads the names when it loads in a browser tab; moving between dashboards does not read them again. The <strong>Refresh</strong> button in the header reads them again, and so does the Environment Topology toolbar&rsquo;s <strong>Refresh</strong>. On the <strong>Host Names</strong> tab, the header&rsquo;s <strong>Refresh</strong> also reads the tab&rsquo;s list again. A change made on the <strong>Host Names</strong> tab shows at once in the same browser tab.</p>
+<h2 id="splunk-cloud"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Splunk Cloud<a class="headerlink" href="#splunk-cloud" title="Permanent link">&para;</a></h2>
+<p>Nothing extra is needed. Install the App as a private app, as for any other build (<a href="../../getting-started/upgrading/#on-splunk-cloud">On Splunk Cloud</a>); the collection starts empty. Removing many rows, or a row the page cannot delete, uses Splunk&rsquo;s KV Store REST API on the management port, which must first be opened for you (<a href="#undo-an-import-or-remove-many-names">Undo an Import or Remove Many Names</a>). Editing names needs <code>sc_admin</code>, or a delegated admin role named <code>sc_subadmin</code>, and no <code>admin_all_objects</code> (<a href="../../getting-started/splunk-cloud/#splunk-cloud-roles">Splunk Cloud Considerations</a>).</p>
+<h2 id="privacy"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Privacy<a class="headerlink" href="#privacy" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Every role can read the list:</strong> host values, names, descriptions, and the Splunk user name stored with each row&rsquo;s last change (<a href="#where-the-list-is-kept">Where the List Is Kept</a>). Do not put personal data in a name or a description.</li>
+<li><strong>Names never reach an AI vendor.</strong> They are drawn in the browser and never put into a search, so no tool result can hold one. The collection has no lookup definition, and the AI Assistant&rsquo;s ad-hoc queries may not read it. As a further guard, Tier 2 redacts a column named like a host&rsquo;s alias (<code>alias</code>, <code>host_alias</code>, <code>friendly_name</code> and the like) as it redacts host names, when <strong>Tier 2 hostname redaction</strong> is on (<a href="../../ai-assistant/privacy-tiers/#host-names-never-reach-the-vendor">Privacy Tiers</a>).</li>
+<li><strong>The Data Doctor&rsquo;s reports keep host values,</strong> because every role can read the saved reports.</li>
+</ul>
+<h2 id="limits"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Limits<a class="headerlink" href="#limits" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rows in the list</td>
+<td>5,000</td>
+</tr>
+<tr>
+<td>Rows per import file</td>
+<td>5,000</td>
+</tr>
+<tr>
+<td>Size of an import file</td>
+<td>2 MB</td>
+</tr>
+<tr>
+<td>Name</td>
+<td>64 characters, with at least one character that shows</td>
+</tr>
+<tr>
+<td>Host value</td>
+<td>255 characters: an IPv4 or IPv6 address, or a host name of letters, digits, dots, hyphens and underscores that starts with a letter, a digit or an underscore and in which every dot-separated part holds a letter or a digit. A value of digits and dots only must be an IPv4 address.</td>
+</tr>
+<tr>
+<td>Description</td>
+<td>256 characters, optional</td>
+</tr>
+</tbody>
+</table>
+<p>No field may hold control characters, line breaks, direction marks, invisible characters (the tag characters and the supplementary variation selectors among them), <code>&lt;</code> or <code>&gt;</code>.</p>
+<p><strong>Add</strong>, <strong>Save changes</strong> and <strong>Import</strong> refuse a write that would take the list past 5,000 rows. If more than 5,000 rows are stored, for example rows written outside the App, only 5,000 are read, on this tab and on the dashboards. The tab then warns that some names may not show and that <strong>Export CSV</strong> leaves some rows out, and no host can be added until rows are deleted. An import that changes a host whose row is marked <em>written outside this page</em> is refused too, because that change adds a row (<a href="#import">Import</a>). A row written outside the App that breaks the rules above is not used and is not listed, but it still counts toward the 5,000: the tab says how many such rows it cannot show. Remove them with Splunk&rsquo;s KV Store REST API (<a href="#undo-an-import-or-remove-many-names">Undo an Import or Remove Many Names</a>); on Splunk Cloud the management port must first be opened for you.</p>
+<h2 id="troubleshooting"><span class="twemoji taiconcolor"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>A name does not show.</strong><ul>
+<li>Check the <a href="#how-host-values-match">matching rules</a>. An entry for a full name covers only that full name and its short name. An entry for a short name covers all of that name&rsquo;s full names.</li>
+<li>Click <strong>Refresh</strong> in the header, or reload the page. A page that was open before the change reads the names again only then.</li>
+<li>Check that the value is a host value: URLs, <code>host:port</code> values and placeholders never get a name.</li>
+<li>Check that the column is one of those <a href="#where-the-names-show">that show names</a>.</li>
+<li>Check whether the list marks the host&rsquo;s rows as giving it different names. When two or more rows written outside this page give one host different names, none of them is stored under the key the host value gives, and the latest of them, which carry the same time of change (hover the <strong>Updated</strong> cell for the exact time; the column shows only minutes) or none, give different names, which name is meant cannot be told, so the dashboards use none of them: the host shows no name unless another entry covers it, such as a short-name entry for a full name. Edit the row with the right name and save it: the page asks first, and its question lists the names the latest of those rows give. It then stores the name under the host&rsquo;s own key, and the dashboards use that row. The other rows stay in the list until you delete them.</li>
+</ul>
+</li>
+<li><strong>A short name gets no name, although an entry exists for its full name.</strong> Another entry for a full name with the same first label gives a different name, for example <code>web01.eu.example.com</code> and <code>web01.us.example.com</code>. Add an entry for the short name itself. That entry also covers every other full name that starts with <code>web01.</code> and has no entry of its own, such as <code>web01.ap.example.com</code>.</li>
+<li><strong>Import stays off.</strong><ul>
+<li>The preview lists the refused lines with the reason. Fix those lines and preview again. A file separated by semicolons or tabs is refused, and so is a file with characters not saved as UTF-8 (Excel&rsquo;s plain CSV on Windows): save it as <strong>CSV UTF-8</strong>, with commas.</li>
+<li>The file changes nothing: the preview says <em>Every host in the file already has these names</em>. A file with only the header line holds no rows, and the preview says so.</li>
+<li>The rows the file adds (new hosts, and new rows for hosts written outside the App) would take the list past 5,000 rows: the preview says so. Delete rows first, or import a smaller file.</li>
+</ul>
+</li>
+<li><strong>A row cannot be deleted.</strong> The page does not send a delete for a row written outside the App whose key is of one of the kinds below (keys the App itself never writes), and marks the row as one it cannot delete. Remove such a row with Splunk&rsquo;s KV Store REST API: a DELETE with a query on <code>_key</code> carries the key in the query, not in the URL path (<a href="#undo-an-import-or-remove-many-names">Undo an Import or Remove Many Names</a>). On Splunk Cloud the management port must first be opened for you. The page refuses a key that:<ul>
+<li>holds a slash, a backslash or a percent sign, or a <code>?</code>, <code>#</code> or <code>;</code>: a delete sent with such a key in its URL could reach the whole collection;</li>
+<li>is only dots or blanks, such as <code>..</code>, or has a part of only dots or blanks between slashes or backslashes;</li>
+<li>holds a control, direction or invisible character;</li>
+<li>is longer than 1,024 characters.</li>
+</ul>
+</li>
+<li><strong>A save, an import or a delete fails.</strong> An HTTP error gives the status and, when Splunk sends one, Splunk&rsquo;s own message, which names the cause. A request that does not complete gives the browser&rsquo;s own error, and a batch the server answers without confirming its rows says so. For example, Import sends up to 1,000 rows per request, and Splunk refuses a request with more rows than <code>max_documents_per_batch_save</code> allows (<code>[kvstore]</code> in <code>limits.conf</code>, 1,000 by default).</li>
+<li><strong>The tab cannot read the list.</strong> The dashboards then show host values only. Check that KV Store is running on the search head, then click <strong>Retry</strong>.</li>
+</ul>
+<h2 id="next-steps"><span class="twemoji cboxmove"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14a2 2 0 0 0 2 2h14c1.11 0 2-.89 2-2V5a2 2 0 0 0-2-2m-7 13c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4"/></svg></span> Next Steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
+<ol>
+<li><a href="../../ai-assistant/settings/">Application Settings</a>: the other tabs of the Settings page.</li>
+<li><a href="../dashboards/#sid-and-host-filters">Dashboards Overview</a>: the SID and Host filters.</li>
+<li><a href="../../ai-assistant/privacy-tiers/">Privacy Tiers</a>: what the AI Assistant may send to a vendor.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../dashboard-data/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Dashboard Data: Backfill and Freshness">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Dashboard Data: Backfill and Freshness
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../install-setup/aws-s3-direct/" class="md-footer__link md-footer__link--next" aria-label="Next: AWS S3 Direct: Backfill and Recovery">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                AWS S3 Direct: Backfill and Recovery
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.code.copy", "navigation.instant.preview", "navigation.tabs", "navigation.tabs.sticky", "navigation.indexes", "navigation.path", "navigation.footer", "navigation.top", "toc.follow", "search.suggest", "search.highlight"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../../js/print-site.js"></script>
+      
+        <script src="../../../js/limited-preview-qr.js"></script>
+      
+    
+  </body>
+</html>
