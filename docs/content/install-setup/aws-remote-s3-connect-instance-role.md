@@ -85,6 +85,8 @@ Configure each heavy forwarder directly, not through a Deployment Server. Severa
 
 An EC2 instance has one instance profile, and an instance profile holds one IAM role. Do the part that matches each heavy forwarder.
 
+:material-lightning-bolt:{ .taiconcolor } The instance profile role and `splunk-logserv-ta-role` are two different IAM roles. Do not attach `splunk-logserv-ta-role` (or the role whose ARN you give SAP in step 4) to the heavy forwarder instance: the input would then ask that role to assume itself, and AWS refuses that with `AccessDenied`. If the role you find or create in this step is the one that holds the queue and bucket permissions, see [Troubleshooting](#troubleshooting).
+
 #### :material-crop-square:{ .taiconcolor } The Heavy Forwarder Already Has an Instance Profile
 
 Reuse it. Nothing on it changes except one inline policy in step 3.
@@ -490,7 +492,7 @@ When you save an input, the add-on checks only the SQS queue. A missing S3 or KM
 |---|---|
 | **Name** | A descriptive name |
 | **AWS Account** | The account named after the instance profile role (step 5) |
-| **Assume Role** | The IAM role from step 6 |
+| **Assume Role** | The IAM role from step 6. It must not be the same role as the one in **AWS Account** |
 | **Force using DLQ (Recommended)** | Checked |
 | **AWS Region** | The Region of SAP's queue |
 | **Use Private Endpoints** | Unchecked |
@@ -543,6 +545,7 @@ You should see the sourcetypes your SAP LogServ subscription delivers, from seve
 |---|---|
 | No autodiscovered account under **Configuration > Account** | The instance has no instance profile, or the Splunk user cannot reach the instance metadata service. Run the check in [Heavy Forwarder Requirements](aws-remote-s3-connect-instance-role-reference.md#heavy-forwarder-requirements) |
 | Saving the input says `The SQS Queue entered may not be present in the given region.` | The add-on shows this for any failure of its queue check: the trust policy does not name the instance profile role, SAP's SQS queue access policy is not applied yet, or the Region or URL is wrong. Run [step 7](#7-test-access); its error names the failing call |
+| Saving the input says `An error occurred (AccessDenied) when calling the AssumeRole operation: User: arn:aws:sts::<account-id>:assumed-role/<role-name>/<instance-id> is not authorized to perform: sts:AssumeRole on resource: arn:aws:iam::<account-id>:role/<role-name>`, with the **same role name** in both places | The role attached to the heavy forwarder instance is also the role selected in **Assume Role**, so it is asked to assume itself. Either attach a separate instance profile role to the instance (step 2) and let it assume this role (step 3), which is the setup this page describes; or, if the attached role already holds the permissions of [C.2](#c2-the-permissions-policy) and is the role SAP's policies name, edit the input and clear **Assume Role**. The second way has not been run in our lab |
 | The **SQS Queue Name** dropdown is empty | Expected. Type the queue URL (step 8.b) |
 | The input logs `AccessDenied` | **Disable the input at once,** so that failed messages do not pile up or move to SAP's dead-letter queue. Run [step 7](#7-test-access) and fix what it shows |
 | The input logs `No AWS account named` | The instance profile on the instance changed. Restore it, or edit each input to the new account name and add the new instance profile role to the trust policy |
